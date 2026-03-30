@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+// 👇 AQUÍ ESTÁ LA MAGIA 👇
+// import.meta.env.PROD es 'true' cuando compilas el sistema para la VPS.
+// Es 'false' cuando estás programando en tu PC (npm run dev).
+const API_URL = import.meta.env.PROD ? '/api' : 'http://127.0.0.1:8000';
+
 const client = axios.create({
-    baseURL: 'http://127.0.0.1:8000', // Tu URL del Backend
+    baseURL: API_URL, 
 });
 
 // Interceptor para inyectar el Token en cada petición
