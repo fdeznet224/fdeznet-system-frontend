@@ -1,0 +1,17 @@
+# Dependencias de Node (Frontend)
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Dependencias de Python (Backend)
+backend/venv/
+backend/__pycache__/
+*.pyc
+
+# Variables de entorno (¡Nunca subas tus contraseñas!)
+.env
+backend/.env
+frontend/.env
+
+# Archivos del sistema operativo (Mac/Linux)
+.DS_Store
