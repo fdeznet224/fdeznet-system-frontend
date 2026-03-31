@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import { 
-    QrCodeIcon, MagnifyingGlassIcon, PlusIcon, 
+    QrCodeIcon, MagnifyingGlassIcon, 
     PowerIcon, MapPinIcon, ChatBubbleLeftRightIcon,
     WrenchScrewdriverIcon, HomeIcon,
-    ArrowPathIcon, PhoneIcon, ClipboardDocumentListIcon,
-    MapIcon, ClockIcon, CheckBadgeIcon
+    ArrowPathIcon, ClipboardDocumentListIcon
 } from '@heroicons/react/24/outline';
 
 // 👇 IMPORTA TU NUEVO COMPONENTE 👇

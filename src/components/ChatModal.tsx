@@ -3,7 +3,7 @@ import client from '../api/axios';
 import { toast } from 'react-hot-toast';
 import { 
     ChatBubbleLeftRightIcon, XMarkIcon, PaperAirplaneIcon,
-    ArrowPathIcon, MapIcon, ClockIcon, CheckBadgeIcon, MapPinIcon,
+    ArrowPathIcon, MapIcon, CheckBadgeIcon, MapPinIcon,
     PhotoIcon, GlobeAltIcon
 } from '@heroicons/react/24/outline';
 

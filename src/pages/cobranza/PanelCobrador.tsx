@@ -9,12 +9,10 @@ import {
     ArrowRightOnRectangleIcon, 
     XMarkIcon,
     ArrowPathIcon,
-    WifiIcon,
     ShieldExclamationIcon,
     ClockIcon,
     ChartPieIcon,
     HomeIcon,
-    IdentificationIcon,
     CreditCardIcon
 } from '@heroicons/react/24/outline';
 

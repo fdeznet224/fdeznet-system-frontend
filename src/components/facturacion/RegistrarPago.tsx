@@ -3,7 +3,7 @@ import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import { 
     MagnifyingGlassIcon, XMarkIcon, UserIcon, BanknotesIcon, ArrowPathIcon,
-    ShieldExclamationIcon, CurrencyDollarIcon, CreditCardIcon,
+    ShieldExclamationIcon, CreditCardIcon,
     CheckCircleIcon, ChevronLeftIcon, IdentificationIcon,MapPinIcon
 } from '@heroicons/react/24/outline';
 

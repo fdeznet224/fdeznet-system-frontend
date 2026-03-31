@@ -2,7 +2,7 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import { XMarkIcon, ChatBubbleBottomCenterTextIcon, VariableIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ChatBubbleBottomCenterTextIcon } from '@heroicons/react/24/outline';
 
 interface Props {
     isOpen: boolean;

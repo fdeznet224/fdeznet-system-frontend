@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { 
     DevicePhoneMobileIcon, ArrowPathIcon, CheckBadgeIcon, TrashIcon, 
     ShieldCheckIcon, BoltIcon, ClockIcon, ExclamationTriangleIcon,
-    QrCodeIcon, EllipsisVerticalIcon, Cog6ToothIcon
+     EllipsisVerticalIcon, Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 // Usamos iconos sólidos para algunos elementos de UI
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';

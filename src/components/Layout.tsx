@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'; // ✅ useRef agregado
+import { useState, useEffect, useRef } from 'react'; 
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { toast } from 'react-hot-toast'; // ✅ Importar toast
-import client from '../api/axios'; // ✅ Importar cliente axios
+import { toast } from 'react-hot-toast'; 
+import client from '../api/axios'; 
 import {
     HomeIcon, UsersIcon, SignalIcon, ArrowLeftOnRectangleIcon,
     Bars3Icon, XMarkIcon, ServerStackIcon, GlobeAltIcon,
@@ -9,7 +9,8 @@ import {
     BanknotesIcon, ChartBarIcon, ChevronDownIcon,
     ChevronRightIcon, ComputerDesktopIcon, CubeIcon,
     CpuChipIcon, ClipboardDocumentListIcon,
-    ChatBubbleLeftRightIcon,MapIcon // ✅ Agregar icono
+    ChatBubbleLeftRightIcon, MapIcon,
+    ShieldCheckIcon // ✅ Icono agregado para la VPN
 } from '@heroicons/react/24/outline';
 
 // 👇 IMPORTAR EL CHAT MODAL (Ajusta la ruta según tu proyecto)
@@ -46,7 +47,7 @@ export default function Layout() {
     const checkGlobalMessages = async () => {
         try {
             const res = await client.get('/whatsapp/no-leidos');
-            const newCounts = res.data; // Estructura: { "57": { "count": 1, "antiguedad": "..." } }
+            const newCounts = res.data; 
 
             // 1. Sumar totales para el Sidebar
             const total = Object.values(newCounts).reduce((acc: number, item: any) => acc + (item.count || 0), 0);
@@ -55,19 +56,14 @@ export default function Layout() {
 
             // 2. Comparar mensajes nuevos
             for (const clienteId in newCounts) {
-                // clienteId aquí es un string, lo cual evita el error de "index expression"
                 const actual = newCounts[clienteId].count || 0;
-
-                // Accedemos a la referencia usando la misma llave string
                 const anterior = prevCounts.current[clienteId]?.count || 0;
 
                 if (actual > anterior) {
                     const idNum = parseInt(clienteId);
 
-                    // Disparamos la notificación
                     client.get(`/clientes/${idNum}`).then(resC => {
                         const nombreCliente = resC.data.nombre || "Cliente Nuevo";
-
                         const audio = new Audio('/notification.mp3');
                         audio.play().catch(() => { });
 
@@ -94,10 +90,7 @@ export default function Layout() {
                     });
                 }
             }
-
-            // Guardamos el estado para la siguiente comparación
             prevCounts.current = newCounts;
-
         } catch (error) {
             console.error("Error en el polling global:", error);
         }
@@ -111,7 +104,7 @@ export default function Layout() {
         }
     }, [user.rol]);
 
-    // --- AUTO-APERTURA DE MENÚS (Tu lógica original) ---
+    // --- AUTO-APERTURA DE MENÚS ---
     useEffect(() => {
         const path = location.pathname;
         if (path.startsWith('/admin/facturas') || path.startsWith('/admin/transacciones') || path.startsWith('/admin/estadisticas')) setOpenSubMenu('Finanzas');
@@ -131,7 +124,7 @@ export default function Layout() {
         { name: 'Dashboard', path: '/admin/dashboard', icon: HomeIcon, roles: ['admin'] },
         { name: 'Órdenes / Instalaciones', path: '/admin/ordenes', icon: ClipboardDocumentListIcon, roles: ['admin', 'tecnico'] },
         { name: 'Terminal de Cobro', path: '/admin/cobranza', icon: ComputerDesktopIcon, roles: ['cajero'] },
-        { name: 'Clientes', path: '/admin/clientes', icon: UsersIcon, roles: ['admin', 'tecnico'], hasBadge: true }, // ✅ Marcar para poner globito
+        { name: 'Clientes', path: '/admin/clientes', icon: UsersIcon, roles: ['admin', 'tecnico'], hasBadge: true }, 
         { name: 'Mapa de Red', path: '/admin/mapa', icon: MapIcon, roles: ['admin'] },
         { name: 'Planes de Internet', path: '/admin/planes', icon: SignalIcon, roles: ['admin'] },
         {
@@ -163,6 +156,8 @@ export default function Layout() {
                 { name: 'Logs Sistema/Cron', path: '/admin/configuracion/cron', icon: ClipboardDocumentListIcon },
                 { name: 'Sistema y Respaldo', path: '/admin/configuracion/sistema', icon: Cog6ToothIcon },
                 { name: 'Importar Datos', path: '/admin/configuracion/importar', icon: ArrowLeftOnRectangleIcon },
+                // 👇 AQUÍ AGREGAMOS LA NUEVA RUTA DE VPN
+                { name: 'Túneles VPN', path: '/admin/configuracion/vpn', icon: ShieldCheckIcon },
             ]
         },
     ];
@@ -243,7 +238,6 @@ export default function Layout() {
                     <h2 className="text-xl font-semibold text-slate-100 hidden sm:block italic tracking-tight">FDEZ SYSTEM</h2>
 
                     <div className="flex items-center space-x-4">
-                        {/* BOTÓN DE CHAT RÁPIDO EN EL HEADER (OPCIONAL) */}
                         <div className="relative">
                             <ChatBubbleLeftRightIcon className="w-6 h-6 text-slate-400 cursor-pointer hover:text-blue-400 transition" onClick={() => navigate('/admin/clientes')} />
                             {unreadTotal > 0 && <span className="absolute -top-1 -right-1 bg-rose-500 w-2.5 h-2.5 rounded-full border-2 border-slate-900"></span>}

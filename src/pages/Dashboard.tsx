@@ -4,8 +4,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { 
     UsersIcon, CurrencyDollarIcon, ServerIcon, ArrowPathIcon,
     CreditCardIcon, CpuChipIcon, ExclamationTriangleIcon,
-    BanknotesIcon, ClockIcon, UserPlusIcon, WrenchScrewdriverIcon,
-    DocumentTextIcon, ListBulletIcon, ComputerDesktopIcon, CircleStackIcon,
+    BanknotesIcon, UserPlusIcon, ListBulletIcon, ComputerDesktopIcon, CircleStackIcon,
     WifiIcon, ChartPieIcon
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';

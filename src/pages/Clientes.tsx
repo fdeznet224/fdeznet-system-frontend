@@ -2,11 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import client from '../api/axios';
 import { toast } from 'react-hot-toast';
 import { 
-    MagnifyingGlassIcon, PlusIcon, ComputerDesktopIcon, 
-    XMarkIcon, WrenchScrewdriverIcon, ArrowPathIcon,
-    FunnelIcon, ChevronDownIcon, ServerIcon, WifiIcon,
-    ExclamationCircleIcon, CheckCircleIcon,
-    BanknotesIcon, ChatBubbleLeftRightIcon
+    MagnifyingGlassIcon, PlusIcon, WrenchScrewdriverIcon, ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
 import ClientToolsModal from '../components/modals/ClientToolsModal';

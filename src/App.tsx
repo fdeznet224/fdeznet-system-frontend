@@ -32,6 +32,7 @@ import Importar from './pages/configuracion/Importar';
 import Sistema from './pages/configuracion/Sistema';
 import WhatsappPage from './pages/configuracion/WhatsappPage';
 import CronjobLogs from './pages/configuracion/CronjobLogs';
+import TunnelsVPN from './pages/configuracion/TunnelsVPN';
 
 import PanelCobrador from './pages/cobranza/PanelCobrador';
 
@@ -112,7 +113,8 @@ function App() {
             <Route path="/admin/configuracion/pppoe" element={<Pppoe />} />
             <Route path="/admin/configuracion/whatsapp-qr" element={<WhatsappPage />} />
             <Route path="/admin/configuracion/cron" element={<CronjobLogs />} />
-            <Route path="/admin/configuracion/sistema" element={<Sistema />} /> 
+            <Route path="/admin/configuracion/sistema" element={<Sistema />} />
+            <Route path="/admin/configuracion/vpn" element={<TunnelsVPN />} />
             
         </Route>
       </Routes>

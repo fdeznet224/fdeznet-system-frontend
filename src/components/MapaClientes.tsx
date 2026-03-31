@@ -4,8 +4,7 @@ import L from 'leaflet';
 import client from '../api/axios';
 import { toast } from 'react-hot-toast';
 import {
-    MapPinIcon, UserIcon, WifiIcon,
-    ExclamationTriangleIcon, ArrowPathIcon,
+    ArrowPathIcon,
     SignalIcon
 } from '@heroicons/react/24/outline';
 

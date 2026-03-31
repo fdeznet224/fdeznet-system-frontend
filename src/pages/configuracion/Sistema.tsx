@@ -4,7 +4,7 @@ import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import { 
     Cog6ToothIcon, BellAlertIcon, ScissorsIcon, 
-    CheckCircleIcon, ExclamationTriangleIcon,
+    CheckCircleIcon,
     ArrowLeftIcon, ClockIcon, CalendarDaysIcon, ShieldCheckIcon,
     BoltIcon
 } from '@heroicons/react/24/outline';

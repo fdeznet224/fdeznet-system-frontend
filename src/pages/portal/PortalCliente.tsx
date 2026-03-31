@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import client from '../../api/axios';
 import { 
-    WifiIcon, SignalIcon, CalendarDaysIcon, 
+    WifiIcon, SignalIcon, 
     CurrencyDollarIcon, CheckCircleIcon, XCircleIcon,
     ServerIcon, MapPinIcon, CpuChipIcon, IdentificationIcon,
     ArrowPathIcon, PhoneIcon, ChatBubbleLeftRightIcon,

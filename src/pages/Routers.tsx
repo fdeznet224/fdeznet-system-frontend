@@ -9,8 +9,7 @@ import {
     TrashIcon,
     PencilSquareIcon,
     ShieldCheckIcon,
-    BoltIcon,
-    DocumentDuplicateIcon
+    BoltIcon
 } from '@heroicons/react/24/outline';
 
 import CreateRouterModal from '../components/modals/CreateRouterModal';
@@ -33,10 +32,6 @@ export default function Routers() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [syncingId, setSyncingId] = useState<number | null>(null);
     const [selectedRouter, setSelectedRouter] = useState<Router | null>(null);
-    
-    // ESTADOS PARA LA TERMINAL VPN
-    const [vpnScriptVisible, setVpnScriptVisible] = useState<number | null>(null);
-    const [currentScript, setCurrentScript] = useState<string>("");
 
     const fetchRouters = async () => {
         try {
@@ -46,27 +41,6 @@ export default function Routers() {
         } catch (error) {
             toast.error("Error al cargar la lista de routers");
             setLoading(false);
-        }
-    };
-
-    const handleGetVpnScript = async (router: Router) => {
-        if (vpnScriptVisible === router.id) {
-            setVpnScriptVisible(null);
-            return;
-        }
-
-        const loadingToast = toast.loading(`Generando túnel...`);
-        try {
-            const res = await client.get(`/network/routers/${router.id}/vpn-script/`);
-            setCurrentScript(res.data.script);
-            setVpnScriptVisible(router.id);
-            
-            await navigator.clipboard.writeText(res.data.script);
-            toast.dismiss(loadingToast);
-            toast.success("Script copiado", { icon: '🔐' });
-        } catch (error: any) {
-            toast.dismiss(loadingToast);
-            toast.error("Error al obtener VPN");
         }
     };
 
@@ -98,7 +72,7 @@ export default function Routers() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm("⚠️ ¿Estás seguro?")) return;
+        if (!window.confirm("⚠️ ¿Estás seguro de desvincular este nodo?")) return;
         try {
             await client.delete(`/network/routers/${id}`);
             toast.success("Nodo eliminado");
@@ -124,7 +98,7 @@ export default function Routers() {
                     </h2>
                     <div className="flex items-center gap-3 mt-2 bg-slate-800/80 w-fit px-3 py-1.5 rounded-full border border-slate-700/50 backdrop-blur-md">
                         <span className="text-slate-300 text-[10px] sm:text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
-                            <ShieldCheckIcon className="w-3.5 h-3.5 text-blue-400" /> Gestión de Túneles WireGuard Activa
+                            <ShieldCheckIcon className="w-3.5 h-3.5 text-blue-400" /> Exclusivo PPPoE & Colas Simples
                         </span>
                     </div>
                 </div>
@@ -142,14 +116,17 @@ export default function Routers() {
                     <ArrowPathIcon className="w-12 h-12 animate-spin text-blue-500 mb-4" />
                     <span className="text-slate-400 font-bold uppercase tracking-widest text-sm text-blue-400">Escaneando red FdezNet...</span>
                 </div>
+            ) : routers.length === 0 ? (
+                <div className="py-32 text-center flex flex-col items-center justify-center bg-slate-800/30 rounded-3xl border border-slate-700/30 border-dashed">
+                    <ServerStackIcon className="w-16 h-16 text-slate-600 mb-4" />
+                    <h3 className="text-xl font-bold text-white mb-1">No hay nodos vinculados</h3>
+                </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {routers.map((router) => (
                         <div 
                             key={router.id} 
-                            /* CORRECCIÓN: Si el script es visible, quitamos overflow-hidden y subimos el Z-index */
-                            className={`relative bg-slate-800/80 backdrop-blur-md rounded-3xl border border-slate-700/50 p-1 transition-all duration-300 shadow-xl group flex flex-col 
-                            ${vpnScriptVisible === router.id ? 'z-[100] border-emerald-500/50 ring-1 ring-emerald-500/20' : 'z-10 overflow-hidden hover:border-blue-500/50'}`}
+                            className="relative z-10 bg-slate-800/80 backdrop-blur-md rounded-3xl border border-slate-700/50 p-1 transition-all duration-300 shadow-xl group flex flex-col overflow-hidden hover:border-blue-500/50"
                         >
                             
                             {/* Ping & OS Bar */}
@@ -200,7 +177,7 @@ export default function Routers() {
                                     className={`w-full py-3.5 px-3 rounded-2xl text-xs font-black tracking-widest transition-all flex items-center justify-center gap-2 border uppercase
                                         ${syncingId === router.id
                                             ? 'bg-blue-900/20 text-blue-400 border-blue-500/30'
-                                            : 'bg-slate-700/50 text-slate-300 border-slate-600 hover:bg-slate-700 hover:text-white'}`}
+                                            : 'bg-slate-700/50 text-slate-300 border-slate-600 hover:bg-slate-700 hover:text-white hover:border-slate-500'}`}
                                 >
                                     <ArrowPathIcon className={`w-4 h-4 ${syncingId === router.id ? 'animate-spin' : ''}`} />
                                     <span>{syncingId === router.id ? 'SINCRONIZANDO...' : 'AUTO-SYNC & REPARAR'}</span>
@@ -215,60 +192,6 @@ export default function Routers() {
                                 >
                                     <PencilSquareIcon className="w-4 h-4" /> EDITAR
                                 </button>
-
-                                {/* CONTENEDOR VPN CON POPOVER HACIA ARRIBA */}
-                                <div className="relative">
-                                    <button
-                                        onClick={() => handleGetVpnScript(router)}
-                                        className={`p-3 rounded-2xl transition-all border shadow-sm flex items-center justify-center 
-                                        ${vpnScriptVisible === router.id
-                                            ? 'bg-emerald-600 text-white border-emerald-400'
-                                            : 'bg-slate-800/80 text-emerald-500 border-slate-700 hover:bg-emerald-600 hover:text-white'}`}
-                                        title="Script VPN"
-                                    >
-                                        <ShieldCheckIcon className="w-5 h-5" />
-                                    </button>
-
-                                    {/* BURBUJA DE TERMINAL (FLOTA HACIA ARRIBA) */}
-                                    {vpnScriptVisible === router.id && (
-                                        <div className="absolute bottom-full mb-4 right-0 w-[280px] sm:w-[380px] z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
-                                            <div className="bg-slate-950 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden font-mono ring-1 ring-white/10">
-                                                <div className="bg-slate-900 px-3 py-2 border-b border-slate-700 flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                                                    <span className="flex items-center gap-2">
-                                                        <div className="flex gap-1">
-                                                            <div className="w-2 h-2 rounded-full bg-rose-500/80"></div>
-                                                            <div className="w-2 h-2 rounded-full bg-amber-500/80"></div>
-                                                            <div className="w-2 h-2 rounded-full bg-emerald-500/80"></div>
-                                                        </div>
-                                                        Script Terminal
-                                                    </span>
-                                                    <button 
-                                                        onClick={() => {
-                                                            navigator.clipboard.writeText(currentScript);
-                                                            toast.success("¡Copiado!");
-                                                        }}
-                                                        className="hover:text-white transition-colors p-1"
-                                                    >
-                                                        <DocumentDuplicateIcon className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-
-                                                <div className="p-4 bg-black/40">
-                                                    <pre className="text-[10px] text-emerald-400 leading-relaxed overflow-x-auto whitespace-pre-wrap max-h-[180px] custom-scrollbar selection:bg-emerald-500/30">
-                                                        {currentScript}
-                                                    </pre>
-                                                </div>
-
-                                                <div className="bg-emerald-500/5 px-4 py-2.5 text-[9px] text-emerald-500/70 border-t border-emerald-500/10 flex items-center gap-2">
-                                                    <BoltIcon className="w-3 h-3" />
-                                                    Pega esto en New Terminal de MikroTik.
-                                                </div>
-                                            </div>
-                                            {/* Triangulito */}
-                                            <div className="absolute -bottom-1 right-6 w-3 h-3 bg-slate-950 border-b border-r border-slate-700 rotate-45"></div>
-                                        </div>
-                                    )}
-                                </div>
 
                                 <button
                                     onClick={() => handleDelete(router.id)}

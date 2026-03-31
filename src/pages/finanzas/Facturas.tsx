@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import { 
-    MagnifyingGlassIcon, PrinterIcon, TrashIcon, ArrowPathIcon, 
+    MagnifyingGlassIcon, PrinterIcon, ArrowPathIcon, 
     BanknotesIcon, PlayIcon, ShieldExclamationIcon, ClockIcon 
 } from '@heroicons/react/24/outline';
 import PaymentModal from '../../components/modals/PaymentModal';

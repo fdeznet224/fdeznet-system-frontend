@@ -3,7 +3,7 @@ import {
     MapPinIcon, ChatBubbleLeftRightIcon, ArrowUpTrayIcon, 
     UsersIcon, AdjustmentsHorizontalIcon, KeyIcon, 
     DocumentTextIcon, Cog6ToothIcon, QrCodeIcon,
-    CommandLineIcon 
+    CommandLineIcon, ShieldCheckIcon // ✅ ICONO IMPORTADO PARA VPN
 } from '@heroicons/react/24/outline';
 
 export default function Configuracion() {
@@ -17,79 +17,88 @@ export default function Configuracion() {
             icon: QrCodeIcon,
             color: "text-emerald-500",
             bg: "bg-emerald-500/10",
-            path: "/admin/configuracion/whatsapp-qr" // ✅ CORREGIDO
+            path: "/admin/configuracion/whatsapp-qr"
         },
         // 2. PANEL DE CONTROL (CORTES)
         {
             titulo: "Panel de Control & Cortes",
             descripcion: "Configura la automatización de cortes, horarios y notificaciones.",
             icon: Cog6ToothIcon,
-            color: "text-white", // Nota: Ajusté colores para que resalte
+            color: "text-white", 
             bg: "bg-indigo-600/20 border-indigo-500/50", 
-            path: "/admin/configuracion/sistema" // ✅ CORREGIDO
+            path: "/admin/configuracion/sistema"
         },
-        // 3. PLANTILLAS DE FACTURACIÓN
+        // 3. TÚNELES VPN (NUEVO)
+        {
+            titulo: "Túneles VPN",
+            descripcion: "Administra túneles WireGuard para nodos remotos FdezNet.",
+            icon: ShieldCheckIcon,
+            color: "text-emerald-400", // Color que destaca para la VPN
+            bg: "bg-emerald-500/10",
+            path: "/admin/configuracion/vpn" // ✅ RUTA CORRECTA A LA NUEVA VISTA
+        },
+        // 4. PLANTILLAS DE FACTURACIÓN
         {
             titulo: "Plantillas de Facturación",
             descripcion: "Define fechas de corte, límites de pago y reglas de suspensión.",
             icon: DocumentTextIcon,
             color: "text-pink-500",
             bg: "bg-pink-500/10",
-            path: "/admin/configuracion/plantillas-facturacion" // ✅ CORREGIDO
+            path: "/admin/configuracion/plantillas-facturacion"
         },
-        // 4. PLANTILLAS DE MENSAJES
+        // 5. PLANTILLAS DE MENSAJES
         {
             titulo: "Plantillas de Mensajes",
             descripcion: "Edita los mensajes de WhatsApp/SMS para avisos de pago.",
             icon: ChatBubbleLeftRightIcon,
             color: "text-teal-500",
             bg: "bg-teal-500/10",
-            path: "/admin/configuracion/mensajes" // ✅ CORREGIDO
+            path: "/admin/configuracion/mensajes"
         },
-        // 5. GESTIÓN DE ZONAS
+        // 6. GESTIÓN DE ZONAS
         {
             titulo: "Gestión de Zonas",
             descripcion: "Configura las zonas geográficas y sectores de cobertura.",
             icon: MapPinIcon,
             color: "text-blue-500",
             bg: "bg-blue-500/10",
-            path: "/admin/configuracion/zonas" // ✅ CORREGIDO
+            path: "/admin/configuracion/zonas"
         },
-        // 6. USUARIOS
+        // 7. USUARIOS
         {
             titulo: "Usuarios del Sistema",
             descripcion: "Administra los permisos de empleados y técnicos.",
             icon: UsersIcon,
             color: "text-indigo-500",
             bg: "bg-indigo-500/10",
-            path: "/admin/configuracion/usuarios" // ✅ CORREGIDO
+            path: "/admin/configuracion/usuarios"
         },
-        // 7. PPPoE
+        // 8. PPPoE
         {
             titulo: "Parámetros PPPoE",
             descripcion: "Configura la contraseña default y prefijos.",
             icon: KeyIcon,
             color: "text-rose-500",
             bg: "bg-rose-500/10",
-            path: "/admin/configuracion/pppoe" // ✅ CORREGIDO
+            path: "/admin/configuracion/pppoe"
         },
-        // 8. IMPORTAR
+        // 9. IMPORTAR
         {
             titulo: "Importar Clientes",
             descripcion: "Carga masiva de clientes mediante Excel/CSV.",
             icon: ArrowUpTrayIcon,
             color: "text-purple-500",
             bg: "bg-purple-500/10",
-            path: "/admin/configuracion/importar" // ✅ CORREGIDO
+            path: "/admin/configuracion/importar"
         },
-        // 9. LOGS
+        // 10. LOGS
         {
             titulo: "Terminal de Logs",
             descripcion: "Visor de eventos del sistema, errores y auditoría de cronjobs.",
             icon: CommandLineIcon, 
             color: "text-amber-500",
             bg: "bg-amber-500/10",
-            path: "/admin/configuracion/cron" // ✅ CORREGIDO
+            path: "/admin/configuracion/cron"
         }
     ];
 

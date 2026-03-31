@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import { MapPinIcon, PlusIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { MapPinIcon, PlusIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 
 export default function Zonas() {

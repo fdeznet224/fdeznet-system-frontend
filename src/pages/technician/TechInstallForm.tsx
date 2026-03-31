@@ -6,7 +6,7 @@ import {
     ArrowLeftIcon, QrCodeIcon, WifiIcon, 
     ServerIcon, LockClosedIcon, CheckCircleIcon,
     CubeIcon, ClipboardDocumentIcon, InformationCircleIcon,
-    MapPinIcon, LinkIcon, XCircleIcon
+    MapPinIcon, XCircleIcon
 } from '@heroicons/react/24/outline';
 
 export default function TechInstallForm() {
