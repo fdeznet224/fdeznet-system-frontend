@@ -39,7 +39,7 @@ export default function Importar() {
             try {
                 const [r, z, p, pl] = await Promise.all([
                     client.get('/network/routers/'),
-                    client.get('/zonas'),
+                    client.get('zonas'),
                     client.get('/configuracion/plantillas-facturacion'),
                     client.get('/planes/') 
                 ]);
