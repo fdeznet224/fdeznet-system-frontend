@@ -25,7 +25,7 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
         ip_vpn: '',
         user_api: 'admin',
         pass_api: '',
-        port_api: 8728, 
+        port_api: 80, 
         tipo_seguridad: 'pppoe',         // 👈 FIJO
         tipo_control: 'colas_dinamicas', // 👈 FIJO
         version_os: 'v7'
@@ -43,7 +43,7 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                     ip_vpn: routerToEdit.ip_vpn || '',
                     user_api: routerToEdit.user_api || 'admin',
                     pass_api: '', 
-                    port_api: routerToEdit.port_api || 8728,
+                    port_api: routerToEdit.port_api || 80,
                     // Forzamos a que siempre mantenga el estándar FdezNet, incluso al editar
                     tipo_seguridad: 'pppoe', 
                     tipo_control: 'colas_dinamicas',

@@ -5,59 +5,36 @@ import {
     XMarkIcon, WrenchScrewdriverIcon, ServerIcon,
     PresentationChartLineIcon, ChatBubbleLeftRightIcon,
     PauseCircleIcon, PlayCircleIcon, ArrowLeftIcon,
-    TrashIcon, ArrowPathIcon,
+    TrashIcon, ArrowPathIcon, ArchiveBoxXMarkIcon,
     GlobeAmericasIcon, CheckCircleIcon, NoSymbolIcon,
     ClockIcon, ArrowDownTrayIcon, ArrowUpTrayIcon
 } from '@heroicons/react/24/outline';
 import type { Cliente } from '../../types';
 
-// 👇 IMPORTAMOS EL NUEVO COMPONENTE DEL CHAT 👇
 import ChatModal from '../ChatModal';
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
     cliente: Cliente | null;
+    unreadCount?: number; // 🔥 NUEVO PROP RECIBIDO
     onActionSuccess: () => void;
 }
 
-type ToolMode = 'menu' | 'estado_real' | 'consumo_vivo' | 'suspender_reactivar' | 'eliminar';
+type ToolMode = 'menu' | 'estado_real' | 'consumo_vivo' | 'suspender_reactivar' | 'eliminar' | 'dar_de_baja';
 
-// Helper para el tiempo de espera (Misma lógica que en la tabla)
-const calcularTiempoEspera = (fechaIso: string) => {
-    if (!fechaIso) return "";
-    const inicio = new Date(fechaIso).getTime();
-    const ahora = new Date().getTime();
-    const difMinutos = Math.floor((ahora - inicio) / 60000);
-    if (difMinutos < 1) return "Ahora";
-    if (difMinutos < 60) return `${difMinutos} min`;
-    const horas = Math.floor(difMinutos / 60);
-    return horas < 24 ? `${horas} hr` : `${Math.floor(horas / 24)} d`;
-};
-
-export default function ClientToolsModal({ isOpen, onClose, cliente: clienteProp, onActionSuccess }: Props) {
+export default function ClientToolsModal({ isOpen, onClose, cliente: clienteProp, unreadCount = 0, onActionSuccess }: Props) {
     const [mode, setMode] = useState<ToolMode>('menu');
     const [clienteActual, setClienteActual] = useState<Cliente | null>(clienteProp);
     const [dataEstado, setDataEstado] = useState<any>(null);
     const [dataConsumo, setDataConsumo] = useState<any>(null);
     const [showChatModal, setShowChatModal] = useState(false);
 
-    // 👇 ESTADO PARA NOTIFICACIÓN ESPECÍFICA 👇
-    const [unreadInfo, setUnreadInfo] = useState<{ count: number, antiguedad: string } | null>(null);
-
     const refreshClienteData = useCallback(async () => {
         if (!clienteProp?.id) return;
         try {
             const res = await client.get(`/clientes/${clienteProp.id}`);
             setClienteActual(res.data);
-
-            // ✅ NUEVO: Consultar si este cliente tiene mensajes pendientes
-            const resUnread = await client.get('/whatsapp/no-leidos');
-            if (resUnread.data[clienteProp.id]) {
-                setUnreadInfo(resUnread.data[clienteProp.id]);
-            } else {
-                setUnreadInfo(null);
-            }
         } catch (error) {
             console.error("Error actualizando datos", error);
         }
@@ -77,6 +54,7 @@ export default function ClientToolsModal({ isOpen, onClose, cliente: clienteProp
     const estadoRaw = clienteActual?.estado?.toLowerCase() || '';
     const isSuspended = ['suspendido', 'cortado', 'retirado', 'inactivo'].includes(estadoRaw);
 
+    // Efectos de Monitoreo de Red
     useEffect(() => {
         let interval: any;
         if (isOpen && clienteActual) {
@@ -106,6 +84,9 @@ export default function ClientToolsModal({ isOpen, onClose, cliente: clienteProp
         return () => clearInterval(interval);
     }, [mode, isOpen, clienteActual]);
 
+    // ==========================================
+    // ACCIONES DE LA API
+    // ==========================================
     const handleToggleSuspension = async () => {
         if (!clienteActual) return;
         const nuevoEstado = isSuspended ? 'activo' : 'suspendido';
@@ -116,9 +97,26 @@ export default function ClientToolsModal({ isOpen, onClose, cliente: clienteProp
             toast.success(isSuspended ? "¡Servicio Reactivado!" : "Servicio Suspendido");
             await refreshClienteData();
             onActionSuccess();
+            setMode('menu');
         } catch (error) {
             toast.dismiss(loadToast);
             toast.error("Error en Router");
+        }
+    };
+
+    const handleDarDeBaja = async () => {
+        if (!clienteActual) return;
+        const loadToast = toast.loading("Procesando baja y liberando MikroTik...");
+        try {
+            await client.post(`/clientes/${clienteActual.id}/dar-de-baja`);
+            toast.dismiss(loadToast);
+            toast.success("Servicio cancelado. ONU enviada a recolección.");
+            await refreshClienteData();
+            onActionSuccess();
+            setMode('menu'); 
+        } catch (error: any) {
+            toast.dismiss(loadToast);
+            toast.error(error.response?.data?.detail || "Error al procesar la baja");
         }
     };
 
@@ -167,53 +165,76 @@ export default function ClientToolsModal({ isOpen, onClose, cliente: clienteProp
                                 <MenuButton icon={ServerIcon} label="Estado" desc="Ping" variant="blue" onClick={() => setMode('estado_real')} />
                                 <MenuButton icon={PresentationChartLineIcon} label="Tráfico" desc="En vivo" variant="purple" onClick={() => setMode('consumo_vivo')} />
 
-                                {/* 👇 BOTÓN DE MENSAJE CORREGIDO 👇 */}
-                                <div className="relative h-full">
-                                    <MenuButton
-                                        icon={ChatBubbleLeftRightIcon}
-                                        label="Mensaje"
-                                        desc={unreadInfo ? `Esperando ${calcularTiempoEspera(unreadInfo.antiguedad)}` : "WhatsApp"}
-                                        variant={unreadInfo ? "danger" : "emerald"}
-                                        onClick={() => setShowChatModal(true)}
-                                    />
-                                    {/* Globo rojo posicionado correctamente sobre el icono */}
-                                    {unreadInfo && (
-                                        <div className="absolute top-6 left-10 flex h-5 w-5">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-5 w-5 bg-rose-600 text-[10px] flex items-center justify-center font-black text-white border-2 border-slate-900">
-                                                {unreadInfo.count}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
+                                {/* 🔥 LE PASAMOS EL BADGE DE NO LEÍDOS AL BOTÓN DE CHAT */}
+                                <MenuButton
+                                    icon={ChatBubbleLeftRightIcon}
+                                    label="Mensaje"
+                                    desc="WhatsApp Rápido"
+                                    variant="emerald"
+                                    badge={unreadCount} 
+                                    onClick={() => {
+                                        setShowChatModal(true);
+                                        onActionSuccess(); // Opcional: refrescar para quitar el badge una vez abierto
+                                    }}
+                                />
 
                                 <MenuButton
                                     icon={isSuspended ? PlayCircleIcon : PauseCircleIcon}
                                     label={isSuspended ? "Reactivar" : "Suspender"}
                                     desc={isSuspended ? "Habilitar Internet" : "Cortar Internet"}
-                                    variant={isSuspended ? "success" : "danger"}
+                                    variant={isSuspended ? "success" : "warning"}
                                     onClick={() => setMode('suspender_reactivar')}
                                 />
 
-                                <button onClick={() => setMode('eliminar')} className="col-span-2 mt-4 p-4 rounded-xl border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 text-rose-400 flex items-center justify-center gap-2 transition-all group">
-                                    <TrashIcon className="w-5 h-5 group-hover:scale-110" /> <span className="font-bold text-sm">Eliminar Cliente</span>
-                                </button>
+                                <MenuButton
+                                    icon={ArchiveBoxXMarkIcon}
+                                    label="Dar de Baja"
+                                    desc="Cancelar servicio y recoger"
+                                    variant="orange"
+                                    onClick={() => setMode('dar_de_baja')}
+                                />
+
+                                <MenuButton
+                                    icon={TrashIcon}
+                                    label="Eliminar"
+                                    desc="Borrar registro completo"
+                                    variant="danger"
+                                    onClick={() => setMode('eliminar')}
+                                />
                             </div>
                         )}
 
-                        {/* ... Resto de los modos (suspender, estado_real, consumo, eliminar) quedan igual ... */}
+                        {/* Modos secundarios */}
                         {mode === 'suspender_reactivar' && (
                             <div className="space-y-6 text-center py-8 animate-in slide-in-from-right-4">
                                 <BackButton onClick={() => setMode('menu')} />
-                                <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center border-4 ${isSuspended ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-rose-500/20 bg-rose-500/10'}`}>
-                                    {isSuspended ? <PlayCircleIcon className="w-12 h-12 text-emerald-500" /> : <PauseCircleIcon className="w-12 h-12 text-rose-500" />}
+                                <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center border-4 ${isSuspended ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-amber-500/20 bg-amber-500/10'}`}>
+                                    {isSuspended ? <PlayCircleIcon className="w-12 h-12 text-emerald-500" /> : <PauseCircleIcon className="w-12 h-12 text-amber-500" />}
                                 </div>
                                 <div>
                                     <h4 className="text-white text-xl font-bold mb-2">{isSuspended ? "Reactivar Servicio" : "Suspender Servicio"}</h4>
                                     <p className="text-slate-400 text-sm px-6">Estado actual en BD: <span className={`font-bold uppercase ${isSuspended ? 'text-rose-400' : 'text-emerald-400'}`}>{estadoRaw}</span></p>
                                 </div>
-                                <button onClick={handleToggleSuspension} className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition active:scale-95 ${isSuspended ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'}`}>
-                                    {isSuspended ? "CONFIRMAR REACTIVACIÓN" : "CONFIRMAR CORTE"}
+                                <button onClick={handleToggleSuspension} className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition active:scale-95 ${isSuspended ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-amber-600 hover:bg-amber-500'}`}>
+                                    {isSuspended ? "CONFIRMAR REACTIVACIÓN" : "CONFIRMAR SUSPENSIÓN (CORTE)"}
+                                </button>
+                            </div>
+                        )}
+
+                        {mode === 'dar_de_baja' && (
+                            <div className="space-y-6 text-center py-8 animate-in slide-in-from-right-4">
+                                <BackButton onClick={() => setMode('menu')} />
+                                <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center border-4 border-orange-500/20 bg-orange-500/10">
+                                    <ArchiveBoxXMarkIcon className="w-12 h-12 text-orange-500" />
+                                </div>
+                                <div>
+                                    <h4 className="text-white text-xl font-bold mb-2">Dar de Baja Definitiva</h4>
+                                    <p className="text-slate-400 text-sm px-4">
+                                        Se cortará el servicio en MikroTik y la ONU <span className="font-mono text-white bg-slate-800 px-1 rounded">{clienteActual.identificador_onu || 'N/A'}</span> pasará a estado <strong>Por Recoger</strong> para el técnico.
+                                    </p>
+                                </div>
+                                <button onClick={handleDarDeBaja} className="w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition active:scale-95 bg-orange-600 hover:bg-orange-500">
+                                    PROCESAR BAJA DE SERVICIO
                                 </button>
                             </div>
                         )}
@@ -268,7 +289,7 @@ export default function ClientToolsModal({ isOpen, onClose, cliente: clienteProp
                             <div className="space-y-6 text-center py-8 animate-in slide-in-from-right-4">
                                 <BackButton onClick={() => setMode('menu')} />
                                 <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto ring-1 ring-rose-500/30"><TrashIcon className="w-10 h-10 text-rose-500" /></div>
-                                <div><h4 className="text-white text-xl font-bold">¿Eliminar Cliente?</h4><p className="text-slate-400 text-sm mt-2 px-4">Esta acción no se puede deshacer.</p></div>
+                                <div><h4 className="text-white text-xl font-bold">¿Eliminar Registro?</h4><p className="text-slate-400 text-sm mt-2 px-4">Esta acción no se puede deshacer y borrará el historial de pagos.</p></div>
                                 <div className="grid grid-cols-2 gap-3 mt-4">
                                     <button onClick={() => setMode('menu')} className="py-3 rounded-xl font-bold text-slate-300 bg-slate-800 hover:bg-slate-700">Cancelar</button>
                                     <button onClick={handleEliminarCliente} className="py-3 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-500">Eliminar</button>
@@ -281,7 +302,7 @@ export default function ClientToolsModal({ isOpen, onClose, cliente: clienteProp
 
             <ChatModal
                 isOpen={showChatModal}
-                onClose={() => { setShowChatModal(false); refreshClienteData(); }}
+                onClose={() => setShowChatModal(false)}
                 cliente={clienteActual as any}
             />
         </>
@@ -289,17 +310,25 @@ export default function ClientToolsModal({ isOpen, onClose, cliente: clienteProp
 }
 
 // Componentes Auxiliares
-const MenuButton = ({ icon: Icon, label, desc, variant = 'blue', onClick }: any) => {
+const MenuButton = ({ icon: Icon, label, desc, variant = 'blue', badge = 0, onClick }: any) => {
     const colorClasses: any = {
         blue: { btn: 'hover:border-blue-500/50', iconBg: 'bg-blue-500/10', icon: 'text-blue-400' },
         purple: { btn: 'hover:border-purple-500/50', iconBg: 'bg-purple-500/10', icon: 'text-purple-400' },
         emerald: { btn: 'hover:border-emerald-500/50 border-emerald-500/10 bg-emerald-500/5', iconBg: 'bg-emerald-500/10', icon: 'text-emerald-400' },
         success: { btn: 'hover:border-emerald-500/50 border-emerald-500/20 bg-emerald-500/5', iconBg: 'bg-emerald-500/10', icon: 'text-emerald-400' },
+        warning: { btn: 'hover:border-amber-500/50 border-amber-500/20 bg-amber-500/5', iconBg: 'bg-amber-500/10', icon: 'text-amber-400' },
+        orange: { btn: 'hover:border-orange-500/50 border-orange-500/20 bg-orange-500/5', iconBg: 'bg-orange-500/10', icon: 'text-orange-400' },
         danger: { btn: 'hover:border-rose-500/50 border-rose-500/20 bg-rose-500/5', iconBg: 'bg-rose-500/10', icon: 'text-rose-400' },
     };
     const colors = colorClasses[variant] || colorClasses.blue;
     return (
-        <button onClick={onClick} className={`flex flex-col items-start p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-xl transition-all group text-left w-full h-[120px] ${colors.btn}`}>
+        <button onClick={onClick} className={`relative flex flex-col items-start p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-xl transition-all group text-left w-full h-[120px] ${colors.btn}`}>
+            {/* 🔥 BURBUJA ROJA DEL MENÚ 🔥 */}
+            {badge > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white shadow-lg animate-pulse ring-4 ring-slate-900 z-10">
+                    {badge}
+                </span>
+            )}
             <div className={`p-2 rounded-lg mb-2 group-hover:scale-110 transition-transform duration-300 ${colors.iconBg}`}>
                 <Icon className={`w-6 h-6 ${colors.icon}`} />
             </div>

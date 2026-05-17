@@ -40,3 +40,45 @@
 .read-the-docs {
   color: #888;
 }
+
+
+
+/* =========================================
+   ESTILOS DE SCROLLBAR MODO OSCURO (WHATSAPP)
+   ========================================= */
+
+/* 1. Ocultar la barra por completo pero permitir hacer scroll (Para las Zonas) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* 2. Scrollbar delgado y oscuro (Para listas de clientes y chats) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px; /* Para el scroll horizontal si llega a hacer falta */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent; /* Fondo transparente para que se mezcle con tu diseño */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #374045; /* Color gris oscuro (Estilo WhatsApp) */
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #51585c; /* Un poco más claro cuando le pasas el mouse */
+}
+
+/* Opcional: Para Firefox (Firefox no soporta todo el webkit) */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #374045 transparent;
+}
+
+

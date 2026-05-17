@@ -45,11 +45,12 @@ export default function Plantillas() {
     // Mapeo de nombres técnicos a nombres bonitos
     const titulos: Record<string, string> = {
         'bienvenida': '👋 Mensaje de Bienvenida',
-        'aviso_pago': '⏰ Recordatorio de Pago', // Coincide con backend
-        'recordatorio_pago': '⏰ Recordatorio de Pago', // Compatibilidad
-        'aviso_corte': '🚫 Aviso de Corte',
-        'pago_exitoso': '✅ Confirmación de Pago',
-        'aviso_factura': '📄 Nueva Factura Generada'
+        'nueva_factura': '📄 Nueva Factura Generada',
+        'pago_recibido': '✅ Pago Recibido (Adjunta PDF)',
+        'aviso_corte': '🚫 Corte por Falta de Pago',
+        'corte_servicio': '🛠️ Suspensión Administrativa',
+        'reconexion': '🚀 Reconexión de Servicio',
+        'promesa_pago': '🤝 Promesa de Pago Registrada'
     };
 
     return (
@@ -146,13 +147,17 @@ export default function Plantillas() {
                     <LightBulbIcon className="w-8 h-8 text-indigo-400" />
                 </div>
                 <div className="flex-1">
-                    <h3 className="text-lg font-bold text-white mb-2">Variables Dinámicas Disponibles</h3>
+                    <h3 className="text-lg font-bold text-white mb-2">Variables Maestras de FdezNet</h3>
                     <p className="text-sm text-slate-400 mb-4 max-w-3xl">
-                        Usa estos códigos en tus mensajes. El sistema los reemplazará automáticamente con la información real de cada cliente al momento de enviar.
+                        Usa estas etiquetas en tus mensajes. El sistema inyectará los datos reales de cada cliente, equipo y nodo automáticamente.
                     </p>
                     <div className="flex flex-wrap gap-2">
-                        {['{nombre}', '{plan}', '{precio}', '{dia_corte}', '{ip}', '{direccion}', '{empresa}', '{fecha_actual}'].map(tag => (
-                            <span key={tag} className="px-2.5 py-1 bg-slate-950 border border-slate-700 rounded-lg text-xs font-mono text-emerald-400 font-medium select-all hover:border-emerald-500/50 transition cursor-help" title="Clic para copiar">
+                        {[
+                            '{nombre}', '{cedula}', '{plan}', '{precio}', '{dia_corte}', 
+                            '{direccion}', '{onu_serial}', '{nodo}', '{ip}', 
+                            '{usuario_pppoe}', '{pass_pppoe}', '{empresa}', '{fecha_actual}'
+                        ].map(tag => (
+                            <span key={tag} className="px-2.5 py-1 bg-slate-950 border border-slate-700 rounded-lg text-xs font-mono text-emerald-400 font-bold select-all hover:border-emerald-500/50 transition cursor-help">
                                 {tag}
                             </span>
                         ))}

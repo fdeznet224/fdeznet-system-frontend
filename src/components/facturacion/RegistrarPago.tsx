@@ -100,11 +100,16 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
         setSelectedFactura(null);
 
         try {
-            const res = await client.get(`/finanzas/listado-completo?estado=pendiente`);
-            const pendientes = res.data.items.filter((f: any) => f.cliente.id === cliente.id);
+            // 🚀 MAGIA APLICADA Y MEJORADA: 
+            // Usamos el súper filtro "adeudos" que acabamos de crear en Python.
+            // Una sola petición trae todo lo que deba este cliente exacto.
+            const res = await client.get(`/finanzas/listado-completo?estado=adeudos&cliente_id=${cliente.id}`);
             
-            setFacturasPendientes(pendientes);
-            if (pendientes.length > 0) setSelectedFactura(pendientes[0]);
+            setFacturasPendientes(res.data.items);
+            
+            // Auto-seleccionar la primera factura para agilizar el cobro
+            if (res.data.items.length > 0) setSelectedFactura(res.data.items[0]);
+            
         } catch (error) { 
             toast.error("Error cargando deuda del cliente"); 
         } finally { 

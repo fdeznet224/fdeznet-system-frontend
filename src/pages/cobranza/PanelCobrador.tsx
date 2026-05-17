@@ -46,21 +46,18 @@ export default function PanelCobrador() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // ✅ CORRECCIÓN: Obtener fecha local YYYY-MM-DD
             const now = new Date();
             const offset = now.getTimezoneOffset() * 60000; 
             const localISOTime = new Date(now.getTime() - offset).toISOString().split('T')[0];
-            
-            console.log("Consultando fecha local:", localISOTime); // Para que verifiques en consola
 
-            const [resPendientes, resHistorial, resPromesas] = await Promise.all([
-                client.get('/finanzas/listado-completo?estado=pendiente'),
-                // Usamos la fecha local calculada arriba
+            // 🚀 Un solo llamado para todas las facturas impagas (vencidas + de este mes)
+            const [resAdeudos, resHistorial, resPromesas] = await Promise.all([
+                client.get('/finanzas/listado-completo?estado=adeudos'),
                 client.get(`/finanzas/pagos-reporte?start_date=${localISOTime}&end_date=${localISOTime}`),
                 client.get('/finanzas/listado-completo?estado=promesa')
             ]);
 
-            setFacturas(resPendientes.data.items);
+            setFacturas(resAdeudos.data.items);
             setHistorial(resHistorial.data.detalles || []);
             setPromesas(resPromesas.data.items || []);
         } catch (error) {
@@ -108,16 +105,23 @@ export default function PanelCobrador() {
 
     const handleProcesarPromesa = async (e: React.FormEvent) => {
         e.preventDefault();
+        const toastId = toast.loading("Guardando promesa...");
         try {
-            // Ajustado al endpoint correcto del sistema
-            await client.post(`/clientes/${selectedFactura.cliente.id}/promesa-pago`, {
-                fecha_promesa: fechaPromesa
+            // 👇 CORRECCIÓN: Ruta y nombres de variables exactos del Backend
+            await client.post('/finanzas/promesa-pago', {
+                factura_id: selectedFactura.id,
+                nueva_fecha: fechaPromesa,
+                notas: "Promesa desde Panel Cobrador" // Opcional, según tu schema
             });
-            toast.success("Promesa guardada exitosamente");
+            
+            toast.success("Promesa guardada exitosamente", { id: toastId });
             setIsModalOpen(false);
             setFiltro('');
             fetchData();
-        } catch (error) { toast.error("Error al guardar promesa"); }
+        } catch (error) { 
+            toast.error("Error al guardar promesa", { id: toastId }); 
+            console.error(error);
+        }
     };
 
     const facturasFiltradas = filtro.length > 0 

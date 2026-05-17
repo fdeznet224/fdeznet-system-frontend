@@ -2,7 +2,7 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import { XMarkIcon, ChatBubbleBottomCenterTextIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ChatBubbleBottomCenterTextIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
 interface Props {
     isOpen: boolean;
@@ -13,19 +13,37 @@ interface Props {
 
 export default function CreateMessageModal({ isOpen, onClose, onSuccess, initialData }: Props) {
     const [formData, setFormData] = useState({
-        tipo: 'recordatorio_pago',
+        tipo: 'bienvenida',
         texto: '',
         activo: true
     });
     
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Tipos de mensajes disponibles en el sistema
+    // Tipos de mensajes sincronizados con el Backend (NotificationService)
     const tiposMensaje = [
-        { id: 'recordatorio_pago', label: 'Recordatorio de Pago' },
-        { id: 'aviso_corte', label: 'Aviso de Corte' },
-        { id: 'pago_exitoso', label: 'Confirmación de Pago' },
-        { id: 'bienvenida', label: 'Bienvenida al Cliente' },
+        { id: 'bienvenida', label: '👋 Bienvenida (Instalación)' },
+        { id: 'nueva_factura', label: '📄 Nueva Factura Generada' },
+        { id: 'pago_recibido', label: '✅ Confirmación de Pago (PDF)' },
+        { id: 'aviso_corte', label: '🚫 Corte por Adeudo (Auto)' },
+        { id: 'corte_servicio', label: '🛠️ Suspensión Administrativa' },
+        { id: 'reconexion', label: '🚀 Reconexión de Servicio' },
+        { id: 'promesa_pago', label: '🤝 Promesa de Pago' },
+    ];
+
+    // Variables organizadas por categorías
+    const variablesDisponibles = [
+        { name: 'nombre', label: 'Cliente' },
+        { name: 'cedula', label: 'ID Cédula' },
+        { name: 'plan', label: 'Plan' },
+        { name: 'precio', label: 'Precio' },
+        { name: 'dia_corte', label: 'Día Pago' },
+        { name: 'direccion', label: 'Dirección' },
+        { name: 'onu_serial', label: 'S/N ONU' },
+        { name: 'nodo', label: 'Nodo/Router' },
+        { name: 'usuario_pppoe', label: 'User PPPoE' },
+        { name: 'pass_pppoe', label: 'Pass PPPoE' },
+        { name: 'empresa', label: 'Empresa' },
     ];
 
     useEffect(() => {
@@ -37,8 +55,8 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
             });
         } else {
             setFormData({
-                tipo: 'recordatorio_pago',
-                texto: 'Hola {nombre}, te recordamos que tu servicio vence el {fecha_vencimiento}. Monto: ${monto}.',
+                tipo: 'bienvenida',
+                texto: '¡Hola {nombre}! Bienvenido a {empresa}. Tu código de cliente es {cedula}.',
                 activo: true
             });
         }
@@ -47,34 +65,30 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        const loadingToast = toast.loading("Guardando mensaje...");
+        const loadingToast = toast.loading("Guardando plantilla...");
 
         try {
-            // endpoint exclusivo para mensajes (definido en configuracion.py)
             const endpoint = '/configuracion/plantillas'; 
-
             if (initialData) {
                 await client.put(`${endpoint}/${initialData.id}`, formData);
-                toast.success("Mensaje actualizado");
+                toast.success("Plantilla actualizada");
             } else {
-                await client.post(`${endpoint}`, formData); // Nota: Sin barra al final a veces ayuda
-                toast.success("Mensaje creado");
+                await client.post(`${endpoint}`, formData);
+                toast.success("Plantilla creada");
             }
             toast.dismiss(loadingToast);
             onSuccess();
             onClose();
         } catch (error: any) {
             toast.dismiss(loadingToast);
-            console.error(error);
-            toast.error("Error al guardar mensaje");
+            toast.error("Error al guardar la plantilla");
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // Helper para insertar variables
     const insertVar = (varName: string) => {
-        setFormData(prev => ({ ...prev, texto: prev.texto + ` {${varName}}` }));
+        setFormData(prev => ({ ...prev, texto: prev.texto + `{${varName}}` }));
     };
 
     return (
@@ -85,74 +99,72 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
                 </Transition.Child>
 
                 <div className="fixed inset-0 overflow-y-auto">
-                    <div className="flex min-h-full items-center justify-center p-4">
-                        <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl transition-all p-6">
-                            
-                            <div className="flex justify-between items-center mb-6">
-                                <Dialog.Title as="h3" className="text-xl font-bold text-white flex items-center gap-2">
-                                    <ChatBubbleBottomCenterTextIcon className="w-6 h-6 text-emerald-500" /> 
-                                    {initialData ? 'Editar Mensaje' : 'Nuevo Mensaje'}
+                    <div className="flex min-h-full items-center justify-center p-4 text-center">
+                        <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-3xl bg-slate-900 border border-slate-700 text-left align-middle shadow-2xl transition-all">
+                            <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+                                <Dialog.Title className="text-lg font-bold text-white flex items-center gap-2">
+                                    <SparklesIcon className="w-5 h-5 text-emerald-400" />
+                                    {initialData ? 'Configurar Plantilla' : 'Nueva Plantilla Automática'}
                                 </Dialog.Title>
-                                <button onClick={onClose} className="text-slate-400 hover:text-white"><XMarkIcon className="w-6 h-6" /></button>
+                                <button onClick={onClose} className="text-slate-400 hover:text-white transition"><XMarkIcon className="w-6 h-6" /></button>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                
-                                {/* TIPO DE MENSAJE */}
+                            <form onSubmit={handleSubmit} className="p-6 space-y-5">
                                 <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Tipo de Evento</label>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Evento del Sistema</label>
                                     <select 
                                         value={formData.tipo}
                                         onChange={e => setFormData({...formData, tipo: e.target.value})}
-                                        className="w-full bg-slate-800 border border-slate-600 rounded-xl p-3 text-white focus:border-emerald-500 outline-none"
-                                        disabled={!!initialData} // No cambiar tipo si ya existe para evitar duplicados
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all cursor-pointer"
+                                        disabled={!!initialData}
                                     >
-                                        {tiposMensaje.map(t => (
-                                            <option key={t.id} value={t.id}>{t.label}</option>
-                                        ))}
+                                        {tiposMensaje.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                                     </select>
-                                    <p className="text-[10px] text-slate-500 mt-1">Cuándo se enviará este mensaje automáticamente.</p>
                                 </div>
 
-                                {/* CONTENIDO DEL MENSAJE */}
                                 <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <label className="text-xs font-bold text-slate-400 uppercase block">Contenido del WhatsApp</label>
-                                        <div className="flex gap-2">
-                                            <span className="text-[10px] text-slate-500 uppercase font-bold">Variables:</span>
-                                            <button type="button" onClick={() => insertVar('nombre')} className="text-[10px] bg-slate-700 px-2 rounded text-slate-300 hover:text-white border border-slate-600">Nombre</button>
-                                            <button type="button" onClick={() => insertVar('monto')} className="text-[10px] bg-slate-700 px-2 rounded text-slate-300 hover:text-white border border-slate-600">Monto</button>
-                                            <button type="button" onClick={() => insertVar('fecha_vencimiento')} className="text-[10px] bg-slate-700 px-2 rounded text-slate-300 hover:text-white border border-slate-600">Fecha</button>
+                                    <div className="flex flex-col gap-3 mb-3">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Contenido del Mensaje</label>
+                                        <div className="flex flex-wrap gap-1.5 p-3 bg-slate-950 rounded-xl border border-slate-800">
+                                            {variablesDisponibles.map(v => (
+                                                <button 
+                                                    key={v.name} 
+                                                    type="button" 
+                                                    onClick={() => insertVar(v.name)}
+                                                    className="text-[10px] bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white px-2 py-1 rounded-md border border-slate-700 transition-colors font-medium"
+                                                >
+                                                    +{v.label}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
                                     <textarea 
-                                        rows={6}
-                                        className="w-full bg-slate-800 border border-slate-600 rounded-xl p-3 text-white focus:border-emerald-500 outline-none font-sans text-sm leading-relaxed" 
-                                        placeholder="Escribe tu mensaje aquí..." 
+                                        rows={7}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-2xl p-4 text-white focus:ring-2 focus:ring-emerald-500 outline-none font-sans text-sm leading-relaxed placeholder:text-slate-700" 
+                                        placeholder="Escribe el mensaje aquí..." 
                                         required
                                         value={formData.texto} 
                                         onChange={e => setFormData({...formData, texto: e.target.value})}
                                     />
                                 </div>
 
-                                {/* ACTIVO */}
-                                <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                                <div className="flex items-center gap-3 p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
                                     <input 
                                         type="checkbox" 
                                         id="activo"
-                                        className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 bg-slate-700 border-slate-500"
+                                        className="w-5 h-5 rounded-lg text-emerald-600 focus:ring-emerald-500 bg-slate-950 border-slate-700"
                                         checked={formData.activo}
                                         onChange={e => setFormData({...formData, activo: e.target.checked})}
                                     />
-                                    <label htmlFor="activo" className="text-sm text-slate-300 cursor-pointer select-none">
-                                        Mensaje habilitado (El sistema lo enviará)
+                                    <label htmlFor="activo" className="text-sm text-slate-300 cursor-pointer select-none font-medium">
+                                        Habilitar envío automático para este evento
                                     </label>
                                 </div>
 
-                                <div className="pt-4 flex gap-3">
-                                    <button type="button" onClick={onClose} className="flex-1 px-4 py-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium text-sm">Cancelar</button>
-                                    <button type="submit" disabled={isSubmitting} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95 text-sm">
-                                        {isSubmitting ? 'Guardando...' : 'Guardar Mensaje'}
+                                <div className="pt-2 flex gap-3">
+                                    <button type="button" onClick={onClose} className="flex-1 px-4 py-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-bold text-sm">Cancelar</button>
+                                    <button type="submit" disabled={isSubmitting} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl shadow-lg shadow-emerald-900/20 transition-all active:scale-95 text-sm uppercase tracking-wider">
+                                        {isSubmitting ? 'Guardando...' : 'Guardar Plantilla'}
                                     </button>
                                 </div>
                             </form>
