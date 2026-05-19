@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import client from '../api/axios';
 import { toast } from 'react-hot-toast';
 import {
-    PlusIcon,
+    PlusIcon,UserPlusIcon,
     ServerStackIcon,
     ArrowPathIcon,
     CpuChipIcon,
@@ -88,25 +88,31 @@ export default function Routers() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 font-sans">
-            
-            {/* HEADER */}
-            <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-6 pb-2">
+
+            {/* =========================================================
+    HEADER RESPONSIVO DE NODOS (MINIMALISTA Y COMPACTO)
+   ========================================================= */}
+            <div className="flex justify-between items-center px-1 md:px-0 flex-none gap-2 pb-2">
                 <div>
-                    <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight flex items-center gap-3">
-                        <ServerStackIcon className="w-8 h-8 text-blue-500" />
+                    {/* ✅ LIMPIO: Texto puro sin íconos pesados para una carga visual ligera */}
+                    <h2 className="text-xl md:text-3xl font-black text-white tracking-tight">
                         Nodos MikroTik
                     </h2>
-                    <div className="flex items-center gap-3 mt-2 bg-slate-800/80 w-fit px-3 py-1.5 rounded-full border border-slate-700/50 backdrop-blur-md">
-                        <span className="text-slate-300 text-[10px] sm:text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
+                    {/* En escritorio se mantiene el badge informativo, en móvil se oculta para no estorbar */}
+                    <div className="hidden sm:flex items-center gap-3 mt-2 bg-slate-800/80 w-fit px-3 py-1.5 rounded-full border border-slate-700/50 backdrop-blur-md">
+                        <span className="text-slate-300 text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
                             <ShieldCheckIcon className="w-3.5 h-3.5 text-blue-400" /> Exclusivo PPPoE & Colas Simples
                         </span>
                     </div>
                 </div>
+
+                {/* ✅ REDISEÑADO: Botón micro-compacto en móvil, con UserPlusIcon para estandarizar el UI/UX */}
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:shadow-blue-500/40 transition-all active:scale-95 border border-blue-400/30 flex items-center justify-center gap-2 font-bold text-sm"
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-2 md:px-5 md:py-3 rounded-xl font-extrabold shadow-md hover:shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-1 text-[10px] md:text-sm tracking-wide uppercase md:normal-case shrink-0"
                 >
-                    <PlusIcon className="w-5 h-5" /> Vincular Nodo
+                    <PlusIcon className="w-4 h-4 md:w-5 md:h-5" />
+                    <span>Vincular Nodo</span>
                 </button>
             </div>
 
@@ -124,11 +130,11 @@ export default function Routers() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {routers.map((router) => (
-                        <div 
-                            key={router.id} 
+                        <div
+                            key={router.id}
                             className="relative z-10 bg-slate-800/80 backdrop-blur-md rounded-3xl border border-slate-700/50 p-1 transition-all duration-300 shadow-xl group flex flex-col overflow-hidden hover:border-blue-500/50"
                         >
-                            
+
                             {/* Ping & OS Bar */}
                             <div className="bg-slate-900/40 p-4 rounded-t-2xl border-b border-slate-700/50 flex justify-between items-center h-14 relative z-10">
                                 <RouterPingButton routerId={router.id} />

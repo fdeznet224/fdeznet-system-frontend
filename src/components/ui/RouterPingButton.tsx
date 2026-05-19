@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import { SignalIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { SignalIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 
 export default function RouterPingButton({ routerId }: { routerId: number }) {
     const [status, setStatus] = useState<'idle' | 'checking' | 'online' | 'offline'>('idle');

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import client from '../api/axios';
 import { toast } from 'react-hot-toast';
 import {
-    MagnifyingGlassIcon, PlusIcon, WrenchScrewdriverIcon, ArrowPathIcon, FunnelIcon
+    MagnifyingGlassIcon, WrenchScrewdriverIcon, ArrowPathIcon, FunnelIcon,UserPlusIcon
 } from '@heroicons/react/24/outline';
 
 import ClientToolsModal from '../components/modals/ClientToolsModal';
@@ -33,12 +33,16 @@ interface ClienteUnificado {
 }
 
 export default function Clientes() {
-    // --- ESTADOS ---
+    // --- ESTADOS DE CONTROL DE DATOS ---
     const [clientes, setClientes] = useState<ClienteUnificado[]>([]);
     const [onlineStatus, setOnlineStatus] = useState<Map<string, OnlineStatus>>(new Map());
     const [routers, setRouters] = useState<any[]>([]);
     const [noLeidos, setNoLeidos] = useState<Record<string, { count: number }>>({});
     const [loading, setLoading] = useState(true);
+
+    // --- ESTADOS PARA COLAPSAR FILTROS EN MÓVIL (UI/UX) ---
+    const [mostrarBusquedaMovil, setMostrarBusquedaMovil] = useState(false);
+    const [mostrarFiltrosMovil, setMostrarFiltrosMovil] = useState(false);
 
     // --- FILTROS ---
     const [busqueda, setBusqueda] = useState('');
@@ -60,7 +64,7 @@ export default function Clientes() {
             setClientes(resClientes.data);
             setRouters(resRouters.data);
 
-            // ✅ CORRECCIÓN CLAVE: Mapear el Objeto/Diccionario indexado por ID que manda FastAPI
+            // ✅ CORRECCIÓN: Mapear el Diccionario indexado por ID que manda FastAPI
             try {
                 const resOnline = await client.get('/dashboard/status-tabla-clientes');
                 const detalleClientes = resOnline.data.detalle_clientes;
@@ -98,7 +102,7 @@ export default function Clientes() {
         return () => clearInterval(intervalData);
     }, []);
 
-    // ✅ CORRECCIÓN CLAVE: Buscar en el mapa usando c.id.toString() en vez de la IP
+    // ✅ CORRECCIÓN: Buscar en el mapa usando c.id.toString() de forma estricta
     const clientesFiltrados = useMemo(() => {
         return clientes.filter(c => {
             const term = busqueda.toLowerCase();
@@ -128,23 +132,49 @@ export default function Clientes() {
         <div className="flex flex-col h-[calc(100vh-6rem)] gap-4 md:gap-6 font-sans text-slate-200">
 
             {/* =========================================================
-                HEADER PRINCIPAL
+                HEADER Y ACCIONES DE FILTRADO COMPACTO (MÓVIL PRO)
                ========================================================= */}
-            <div className="flex-none flex justify-between items-center px-2 md:px-0">
-                <div>
-                    <h2 className="text-xl md:text-3xl font-black text-white tracking-tight">Gestión de Clientes</h2>
-                    <p className="text-slate-400 text-xs md:text-sm hidden sm:block">Directorio unificado de servicios y finanzas</p>
-                </div>
-                <button onClick={() => setIsCreateOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 md:px-4 md:py-2.5 rounded-xl flex items-center shadow-lg transition active:scale-95 font-bold text-xs md:text-base">
-                    <PlusIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" /> <span>Nuevo Cliente</span>
-                </button>
-            </div>
+            <div className="flex-none space-y-3 px-2 md:px-0">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl md:text-3xl font-black text-white tracking-tight flex items-center gap-2">
+                            Gestión de Clientes
+                            <span className="text-xs bg-slate-700/50 text-slate-400 px-2 py-0.5 rounded-full font-medium sm:inline hidden">
+                                {clientesFiltrados.length}
+                            </span>
+                        </h2>
+                        <p className="text-slate-400 text-xs md:text-sm hidden sm:block">Directorio unificado de servicios y finanzas</p>
+                    </div>
 
-            {/* =========================================================
-                ZONA DE FILTROS (REDISENADA PARA RESPONDER EN MOVIL)
-               ========================================================= */}
-            <div className="flex-none space-y-3">
-                {/* Escritorio: Caja de filtros unificada estándar */}
+                    {/* Botones de Control de Interfaz */}
+                    <div className="flex items-center gap-1.5">
+                        {/* Botón Buscar (Móvil) */}
+                        <button
+                            onClick={() => { setMostrarBusquedaMovil(!mostrarBusquedaMovil); setMostrarFiltrosMovil(false); }}
+                            className={`xl:hidden p-2.5 rounded-xl border transition-all ${mostrarBusquedaMovil ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-900 border-slate-700/80 text-slate-400'}`}
+                        >
+                            <MagnifyingGlassIcon className="w-4 h-4" />
+                        </button>
+
+                        {/* Botón Configurar Filtros (Móvil) */}
+                        <button
+                            onClick={() => { setMostrarFiltrosMovil(!mostrarFiltrosMovil); setMostrarBusquedaMovil(false); }}
+                            className={`xl:hidden p-2.5 rounded-xl border transition-all flex items-center gap-1 ${mostrarFiltrosMovil ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-900 border-slate-700/80 text-slate-400'}`}
+                        >
+                            <FunnelIcon className="w-4 h-4" />
+                            {(filtroRouter || filtroEstado !== 'todos') && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                            )}
+                        </button>
+
+                        {/* Botón Agregar Cliente */}
+                        <button onClick={() => setIsCreateOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2.5 md:px-4 md:py-2.5 rounded-xl flex items-center shadow-lg transition active:scale-95 font-bold text-xs md:text-base ml-1">
+                            <UserPlusIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" /> <span className="hidden sm:inline">Nuevo Cliente</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* 🖥️ FILTROS ESCRITORIO (FIJOS) */}
                 <div className="hidden xl:flex gap-4 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
                     <div className="relative flex-1">
                         <MagnifyingGlassIcon className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
@@ -168,63 +198,66 @@ export default function Clientes() {
                     </div>
                 </div>
 
-                {/* Movil y Tablet: Interfaz ultra-compacta y despejada */}
-                <div className="xl:hidden flex flex-col gap-2.5 bg-slate-800 p-3 rounded-2xl border border-slate-700/70 shadow-md">
-                    {/* Buscador estilizado */}
-                    <div className="relative">
-                        <MagnifyingGlassIcon className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
+                {/* 📱 DESPLEGABLE MÓVIL A: Buscador flotante */}
+                {mostrarBusquedaMovil && (
+                    <div className="xl:hidden relative bg-slate-900 p-2 rounded-xl border border-slate-700/60 shadow-inner">
+                        <MagnifyingGlassIcon className="absolute left-5 top-4 w-4 h-4 text-slate-500" />
                         <input
-                            type="text" placeholder="Buscar por nombre, IP o ID..."
-                            className="w-full bg-slate-900 text-slate-200 pl-9 pr-4 py-2 rounded-xl border border-slate-700/80 focus:border-blue-500 outline-none text-xs"
-                            value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+                            type="text"
+                            placeholder="Escribe nombre, IP o ID para filtrar..."
+                            autoFocus
+                            className="w-full bg-slate-950 text-slate-200 pl-10 pr-10 py-2 rounded-lg border border-slate-800 focus:border-blue-500 outline-none text-xs"
+                            value={busqueda}
+                            onChange={(e) => setBusqueda(e.target.value)}
                         />
+                        {busqueda && (
+                            <button onClick={() => setBusqueda('')} className="absolute right-5 top-3.5 text-xs text-slate-500 hover:text-white font-bold">
+                                Limpiar
+                            </button>
+                        )}
                     </div>
+                )}
 
-                    {/* Botones Tipo Píldora (Scroll Horizontal para Filtros Rápidos) */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 custom-scrollbar scrollbar-none">
-                        <button
-                            onClick={() => setFiltroEstado('todos')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${filtroEstado === 'todos' ? 'bg-blue-600 text-white' : 'bg-slate-900 text-slate-400 border border-slate-700'}`}
-                        >
-                            Todos ({clientes.length})
-                        </button>
-                        <button
-                            onClick={() => setFiltroEstado('online')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1 ${filtroEstado === 'online' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400 border border-slate-700'}`}
-                        >
-                            <span>🟢</span> Online
-                        </button>
-                        <button
-                            onClick={() => setFiltroEstado('suspendidos')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1 ${filtroEstado === 'suspendidos' ? 'bg-orange-600 text-white' : 'bg-slate-900 text-slate-400 border border-slate-700'}`}
-                        >
-                            <span>⛔</span> Suspendidos
-                        </button>
-                        <button
-                            onClick={() => setFiltroEstado('morosos')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1 ${filtroEstado === 'morosos' ? 'bg-rose-600 text-white' : 'bg-slate-900 text-slate-400 border border-slate-700'}`}
-                        >
-                            <span>💰</span> Con Deuda
-                        </button>
-                    </div>
+                {/* 📱 DESPLEGABLE MÓVIL B: Caja Avanzada de Filtros */}
+                {mostrarFiltrosMovil && (
+                    <div className="xl:hidden bg-slate-900 p-3 rounded-xl border border-slate-700/60 shadow-lg space-y-3">
+                        <div>
+                            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1.5">Filtrar por Estado</span>
+                            <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+                                {['todos', 'online', 'suspendidos', 'morosos'].map((est) => (
+                                    <button
+                                        key={est}
+                                        onClick={() => setFiltroEstado(est as any)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap border transition-all ${filtroEstado === est ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-950 text-slate-400 border-slate-800'}`}
+                                    >
+                                        {est === 'todos' && `Todos (${clientes.length})`}
+                                        {est === 'online' && '🟢 Online'}
+                                        {est === 'suspendidos' && '⛔ Suspendidos'}
+                                        {est === 'morosos' && '💰 Con Deuda'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
-                    {/* Filtro secundario de router micro-compacto */}
-                    <div className="flex items-center gap-2 border-t border-slate-700/50 pt-2 mt-0.5">
-                        <FunnelIcon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <select
-                            value={filtroRouter}
-                            onChange={(e) => setFiltroRouter(e.target.value)}
-                            className="w-full bg-transparent text-slate-300 font-semibold outline-none text-xs cursor-pointer"
-                        >
-                            <option value="" className="bg-slate-900 text-slate-300">Filtrar por Nodo / Router (Todos)</option>
-                            {routers.map(r => <option key={r.id} value={r.id} className="bg-slate-900 text-slate-300">{r.nombre}</option>)}
-                        </select>
+                        <div className="border-t border-slate-800/80 pt-2.5">
+                            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Filtrar por Nodo / Router</span>
+                            <div className="relative bg-slate-950 rounded-lg border border-slate-800 px-2.5 py-1.5">
+                                <select
+                                    value={filtroRouter}
+                                    onChange={(e) => setFiltroRouter(e.target.value)}
+                                    className="w-full bg-transparent text-slate-300 font-bold outline-none text-xs cursor-pointer appearance-none"
+                                >
+                                    <option value="" className="bg-slate-950">Todos los Routers / Mikrotiks</option>
+                                    {routers.map(r => <option key={r.id} value={r.id} className="bg-slate-950">{r.nombre}</option>)}
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* =========================================================
-                ZONA DE RENDIMIENTO Y LISTADO DE CLIENTES
+                ZONA DE DATOS PRINCIPALES
                ========================================================= */}
             <div className="flex-1 bg-slate-800 md:bg-slate-800/40 rounded-2xl md:border border-slate-700/50 shadow-xl overflow-hidden flex flex-col">
                 {loading ? (
@@ -234,7 +267,7 @@ export default function Clientes() {
                 ) : (
                     <div className="overflow-y-auto flex-1 custom-scrollbar">
 
-                        {/* 🖥️ COMPONENTE: TABLA PARA VISTA ESCRITORIO */}
+                        {/* 🖥️ VISTA ESCRITORIO */}
                         <table className="w-full text-left border-collapse hidden md:table">
                             <thead className="bg-slate-900 text-slate-400 text-xs uppercase font-bold sticky top-0 z-10 shadow-md">
                                 <tr>
@@ -248,7 +281,6 @@ export default function Clientes() {
                             </thead>
                             <tbody className="divide-y divide-slate-700/60">
                                 {clientesFiltrados.map((c) => {
-                                    // ✅ CORRECCIÓN CLAVE: Buscar por ID como string
                                     const statusData = onlineStatus.get(c.id.toString());
                                     const unreadCount = noLeidos[c.id]?.count || 0;
                                     return (
@@ -256,7 +288,6 @@ export default function Clientes() {
                                             <td className="px-6 py-4 text-center font-mono text-slate-500 text-xs">#{c.id}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    {/* Punto de estado interactivo */}
                                                     <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusData?.online ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} title={statusData?.diag || 'Actualizando...'}></div>
                                                     <div>
                                                         <div className="font-bold text-white text-sm group-hover:text-blue-400 transition-colors">{c.nombre}</div>
@@ -280,7 +311,7 @@ export default function Clientes() {
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <div className="flex justify-center">
-                                                    <button onClick={(e) => { e.stopPropagation(); setToolModal({ show: true, cliente: c }); }} className="p-1.8 rounded-xl transition text-slate-400 hover:text-white hover:bg-slate-700 relative">
+                                                    <button onClick={(e) => { e.stopPropagation(); setToolModal({ show: true, cliente: c }); }} className="p-1.5 rounded-xl transition text-slate-400 hover:text-white hover:bg-slate-700 relative">
                                                         <WrenchScrewdriverIcon className="w-4 h-4" />
                                                         {unreadCount > 0 && (
                                                             <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white ring-2 ring-slate-800 animate-pulse">
@@ -296,19 +327,16 @@ export default function Clientes() {
                             </tbody>
                         </table>
 
-                        {/* 📱 COMPONENTE: LISTA OPTIMIZADA PARA VISTA MOVIL */}
+                        {/* 📱 VISTA MÓVIL OPTIMIZADA */}
                         <div className="md:hidden flex flex-col gap-2.5 p-2 pb-24">
                             {clientesFiltrados.map((c) => {
-                                // ✅ CORRECCIÓN CLAVE: Buscar por ID como string en móvil
                                 const statusData = onlineStatus.get(c.id.toString());
                                 const unreadCount = noLeidos[c.id]?.count || 0;
                                 return (
                                     <div key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className="bg-slate-900/90 rounded-xl p-3.5 border border-slate-700/60 flex flex-col gap-2.5 shadow-md active:scale-[0.99] transition-transform">
 
-                                        {/* Fila Alta: Nombre, ID y Estado Administrativo */}
                                         <div className="flex justify-between items-start gap-2">
                                             <div className="flex items-start gap-2.5 overflow-hidden">
-                                                {/* Foco de estado online real */}
                                                 <div className={`mt-1 w-2.5 h-2.5 rounded-full shrink-0 ${statusData?.online ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
                                                 <div className="overflow-hidden">
                                                     <h3 className="font-bold text-white text-sm leading-tight truncate">{c.nombre}</h3>
@@ -320,7 +348,6 @@ export default function Clientes() {
                                             </span>
                                         </div>
 
-                                        {/* Fila Media: Plan Técnico vs Estado Financiero */}
                                         <div className="grid grid-cols-2 gap-2 bg-slate-800/40 p-2.5 rounded-lg border border-slate-700/40 text-[11px]">
                                             <div className="overflow-hidden">
                                                 <span className="text-[9px] text-slate-500 uppercase font-black block tracking-wider">Plan Contratado</span>
@@ -334,7 +361,6 @@ export default function Clientes() {
                                             </div>
                                         </div>
 
-                                        {/* Botón de Acciones Rápido */}
                                         <button onClick={(e) => { e.stopPropagation(); setToolModal({ show: true, cliente: c }); }} className="relative mt-0.5 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all border bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-700">
                                             <WrenchScrewdriverIcon className="w-3.5 h-3.5" /> Herramientas de Fibra y Red
                                             {unreadCount > 0 && (
@@ -352,7 +378,7 @@ export default function Clientes() {
             </div>
 
             {/* =========================================================
-                MODALES MODULARES DEL SISTEMA
+                MODALES MODULARES
                ========================================================= */}
             <ClientToolsModal
                 isOpen={toolModal.show}
