@@ -8,11 +8,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'FdezNetPay',
-        short_name: 'FdezNet',
+        name: 'FdezPay',
+        short_name: 'FdezPay',
         description: 'Gestión integral para FdezNet ISP',
-        theme_color: '#0f1219',
-        background_color: '#0f1219',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
         display: 'standalone',
         icons: [
           {
