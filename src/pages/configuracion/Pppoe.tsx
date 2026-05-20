@@ -11,9 +11,6 @@ export default function Pppoe() {
     useEffect(() => {
         client.get('/configuracion/pppoe-default')
             .then(res => {
-                // CORRECCIÓN AQUÍ: 
-                // Tu backend devuelve { "password": "..." }, así que leemos .password
-                // Si alguna vez devuelve null, ponemos string vacío ''
                 setPassword(res.data.password || ''); 
             })
             .catch(() => {
@@ -23,10 +20,6 @@ export default function Pppoe() {
 
     const handleSave = async () => {
         try {
-            // NOTA: Verifica si tu backend espera "valor" o "password" al guardar.
-            // Según tu Swagger anterior era "valor", pero si cambiaste el GET, 
-            // quizás el POST ahora espera "password".
-            // Lo dejo como 'valor' por seguridad, si falla cámbialo a 'password'.
             await client.post('/configuracion/pppoe-default', { valor: password });
             toast.success("Contraseña guardada");
         } catch { 
@@ -35,35 +28,43 @@ export default function Pppoe() {
     };
 
     return (
-        <div className="max-w-xl mx-auto mt-10 animate-in fade-in duration-500">
-             <button onClick={() => navigate('/admin/configuracion')} className="mb-6 flex items-center text-slate-400 hover:text-white transition">
+        /* ✅ ADAPTADO: Fondo base dinámico */
+        <div className="max-w-xl mx-auto mt-10 animate-in fade-in duration-500 p-4 transition-colors duration-300">
+             <button 
+                onClick={() => navigate('/admin/configuracion')} 
+                className="mb-6 flex items-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+            >
                 <ArrowLeftIcon className="w-4 h-4 mr-2" /> Regresar
             </button>
 
-            <div className="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl p-8">
+            {/* ✅ ADAPTADO: Tarjeta blanca/oscura */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-2xl p-8 transition-colors">
                 <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 bg-rose-500/10 rounded-xl flex items-center justify-center">
-                        <KeyIcon className="w-6 h-6 text-rose-500" />
+                    <div className="w-12 h-12 bg-rose-50 dark:bg-rose-500/10 rounded-xl flex items-center justify-center border border-rose-100 dark:border-rose-500/20">
+                        <KeyIcon className="w-6 h-6 text-rose-600 dark:text-rose-500" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-white">Seguridad PPPoE</h2>
-                        <p className="text-slate-400 text-xs">Contraseña por defecto para nuevos clientes.</p>
+                        <h2 className="text-xl font-black text-slate-900 dark:text-white transition-colors">Seguridad PPPoE</h2>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Contraseña por defecto para nuevos clientes.</p>
                     </div>
                 </div>
 
-                <label className="block text-sm font-bold text-slate-300 mb-2">Contraseña Default</label>
+                <label className="block text-sm font-black text-slate-600 dark:text-slate-300 mb-2 transition-colors">Contraseña Default</label>
                 <div className="relative mb-6">
                     <input 
                         type="text" 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
-                        className="w-full bg-slate-900 border border-slate-600 text-white rounded-xl px-4 py-3 pl-10 outline-none focus:border-rose-500 transition-colors"
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 pl-10 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-colors"
                         placeholder="Cargando..."
                     />
-                    <ShieldCheckIcon className="w-5 h-5 text-slate-500 absolute left-3 top-3.5" />
+                    <ShieldCheckIcon className="w-5 h-5 text-slate-400 dark:text-slate-500 absolute left-3 top-3.5 transition-colors" />
                 </div>
 
-                <button onClick={handleSave} className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-rose-500/20">
+                <button 
+                    onClick={handleSave} 
+                    className="w-full bg-rose-600 hover:bg-rose-500 text-white font-black py-3 rounded-xl transition shadow-md hover:shadow-rose-500/20 active:scale-95"
+                >
                     Guardar Cambios
                 </button>
             </div>

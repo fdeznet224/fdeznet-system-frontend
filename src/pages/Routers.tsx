@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import client from '../api/axios';
 import { toast } from 'react-hot-toast';
 import {
-    PlusIcon,UserPlusIcon,
+    PlusIcon,
     ServerStackIcon,
     ArrowPathIcon,
     CpuChipIcon,
@@ -87,58 +87,59 @@ export default function Routers() {
     }, []);
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-20 font-sans">
+        /* ✅ ADAPTADO: Colores transicionan de blanco a slate oscuro suavemente */
+        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12 transition-colors duration-300">
 
             {/* =========================================================
-    HEADER RESPONSIVO DE NODOS (MINIMALISTA Y COMPACTO)
-   ========================================================= */}
+                HEADER RESPONSIVO DE NODOS
+               ========================================================= */}
             <div className="flex justify-between items-center px-1 md:px-0 flex-none gap-2 pb-2">
                 <div>
-                    {/* ✅ LIMPIO: Texto puro sin íconos pesados para una carga visual ligera */}
-                    <h2 className="text-xl md:text-3xl font-black text-white tracking-tight">
+                    {/* ✅ ADAPTADO: Título en negro para claro, blanco para oscuro */}
+                    <h2 className="text-xl md:text-3xl font-black text-slate-800 dark:text-white tracking-tight transition-colors">
                         Nodos MikroTik
                     </h2>
-                    {/* En escritorio se mantiene el badge informativo, en móvil se oculta para no estorbar */}
-                    <div className="hidden sm:flex items-center gap-3 mt-2 bg-slate-800/80 w-fit px-3 py-1.5 rounded-full border border-slate-700/50 backdrop-blur-md">
-                        <span className="text-slate-300 text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
-                            <ShieldCheckIcon className="w-3.5 h-3.5 text-blue-400" /> Exclusivo PPPoE & Colas Simples
+                    {/* Badge se aclara en modo light */}
+                    <div className="hidden sm:flex items-center gap-3 mt-2 bg-white dark:bg-slate-800/80 w-fit px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700/50 backdrop-blur-md shadow-sm transition-colors">
+                        <span className="text-slate-500 dark:text-slate-300 text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
+                            <ShieldCheckIcon className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" /> Exclusivo PPPoE & Colas Simples
                         </span>
                     </div>
                 </div>
 
-                {/* ✅ REDISEÑADO: Botón micro-compacto en móvil, con UserPlusIcon para estandarizar el UI/UX */}
                 <button
                     onClick={() => setIsModalOpen(true)}
                     className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-2 md:px-5 md:py-3 rounded-xl font-extrabold shadow-md hover:shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-1 text-[10px] md:text-sm tracking-wide uppercase md:normal-case shrink-0"
                 >
-                    <PlusIcon className="w-4 h-4 md:w-5 md:h-5" />
+                    <PlusIcon className="w-4 h-4 md:w-5 h-5" />
                     <span>Vincular Nodo</span>
                 </button>
             </div>
 
             {/* GRID */}
             {loading ? (
-                <div className="py-32 text-center flex flex-col items-center justify-center bg-slate-800/30 rounded-3xl border border-slate-700/30 backdrop-blur-sm">
+                <div className="py-32 text-center flex flex-col items-center justify-center bg-white dark:bg-slate-800/30 rounded-3xl border border-slate-200 dark:border-slate-700/30 backdrop-blur-sm shadow-sm">
                     <ArrowPathIcon className="w-12 h-12 animate-spin text-blue-500 mb-4" />
-                    <span className="text-slate-400 font-bold uppercase tracking-widest text-sm text-blue-400">Escaneando red FdezNet...</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-sm text-blue-600 dark:text-blue-400">Escaneando red FdezNet...</span>
                 </div>
             ) : routers.length === 0 ? (
-                <div className="py-32 text-center flex flex-col items-center justify-center bg-slate-800/30 rounded-3xl border border-slate-700/30 border-dashed">
-                    <ServerStackIcon className="w-16 h-16 text-slate-600 mb-4" />
-                    <h3 className="text-xl font-bold text-white mb-1">No hay nodos vinculados</h3>
+                <div className="py-32 text-center flex flex-col items-center justify-center bg-white dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700/30 shadow-sm">
+                    <ServerStackIcon className="w-16 h-16 text-slate-400 dark:text-slate-600 mb-4" />
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-1">No hay nodos vinculados</h3>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {routers.map((router) => (
+                        /* ✅ ADAPTADO: Tarjeta limpia y clara en light mode, oscura en dark mode */
                         <div
                             key={router.id}
-                            className="relative z-10 bg-slate-800/80 backdrop-blur-md rounded-3xl border border-slate-700/50 p-1 transition-all duration-300 shadow-xl group flex flex-col overflow-hidden hover:border-blue-500/50"
+                            className="relative z-10 bg-white dark:bg-slate-800/80 backdrop-blur-md rounded-3xl border border-slate-200 dark:border-slate-700/50 p-1 transition-colors duration-300 shadow-md dark:shadow-xl group flex flex-col overflow-hidden hover:border-blue-500/40 dark:hover:border-blue-500/50"
                         >
 
                             {/* Ping & OS Bar */}
-                            <div className="bg-slate-900/40 p-4 rounded-t-2xl border-b border-slate-700/50 flex justify-between items-center h-14 relative z-10">
+                            <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-t-2xl border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center h-14 relative z-10 transition-colors">
                                 <RouterPingButton routerId={router.id} />
-                                <span className="text-[9px] text-slate-400 font-black tracking-widest bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800 uppercase">
+                                <span className="text-[9px] text-slate-500 dark:text-slate-400 font-black tracking-widest bg-slate-100 dark:bg-slate-950 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 uppercase">
                                     v{router.version_os} REST
                                 </span>
                             </div>
@@ -146,31 +147,31 @@ export default function Routers() {
                             <div className="p-5 flex-1 relative z-10 flex flex-col">
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="overflow-hidden">
-                                        <h3 className="text-2xl font-black text-white group-hover:text-blue-400 transition-colors truncate tracking-tight">
+                                        <h3 className="text-2xl font-black text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate tracking-tight">
                                             {router.nombre}
                                         </h3>
-                                        <div className="flex items-center gap-2 mt-1 text-slate-300">
-                                            <span className="bg-slate-950/50 px-2 py-0.5 rounded text-xs font-mono border border-slate-700/50 uppercase tracking-tighter">
+                                        <div className="flex items-center gap-2 mt-1 text-slate-600 dark:text-slate-300">
+                                            <span className="bg-slate-50 dark:bg-slate-950/50 px-2 py-0.5 rounded text-xs font-mono border border-slate-200 dark:border-slate-700/50 uppercase tracking-tighter">
                                                 {router.ip_vpn || 'SIN IP VPN'}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                                        <CpuChipIcon className="w-6 h-6 text-blue-400" />
+                                    <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl border border-blue-200 dark:border-blue-500/20">
+                                        <CpuChipIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3 mb-6 mt-auto">
-                                    <div className="bg-slate-900/60 p-3 rounded-2xl border border-slate-700/50 text-center shadow-inner">
-                                        <p className="text-[9px] text-slate-400 uppercase font-black tracking-wider mb-1">Protocolo</p>
+                                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 text-center shadow-inner transition-colors">
+                                        <p className="text-[9px] text-slate-400 dark:text-slate-400 uppercase font-black tracking-wider mb-1">Protocolo</p>
                                         <div className="flex items-center justify-center gap-1">
-                                            <ShieldCheckIcon className="w-4 h-4 text-emerald-400" />
-                                            <span className="text-emerald-400 font-black text-sm tracking-widest uppercase">PPPoE</span>
+                                            <ShieldCheckIcon className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                                            <span className="text-emerald-600 dark:text-emerald-400 font-black text-sm tracking-widest uppercase">PPPoE</span>
                                         </div>
                                     </div>
-                                    <div className="bg-slate-900/60 p-3 rounded-2xl border border-slate-700/50 text-center shadow-inner">
-                                        <p className="text-[9px] text-slate-400 uppercase font-black tracking-wider mb-1">Control QoS</p>
-                                        <div className="flex items-center justify-center gap-1 text-blue-400">
+                                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 text-center shadow-inner transition-colors">
+                                        <p className="text-[9px] text-slate-400 dark:text-slate-400 uppercase font-black tracking-wider mb-1">Control QoS</p>
+                                        <div className="flex items-center justify-center gap-1 text-blue-600 dark:text-blue-400">
                                             <BoltIcon className="w-4 h-4" />
                                             <span className="font-black text-[11px] tracking-widest uppercase">QUEUES</span>
                                         </div>
@@ -182,8 +183,8 @@ export default function Routers() {
                                     disabled={syncingId === router.id}
                                     className={`w-full py-3.5 px-3 rounded-2xl text-xs font-black tracking-widest transition-all flex items-center justify-center gap-2 border uppercase
                                         ${syncingId === router.id
-                                            ? 'bg-blue-900/20 text-blue-400 border-blue-500/30'
-                                            : 'bg-slate-700/50 text-slate-300 border-slate-600 hover:bg-slate-700 hover:text-white hover:border-slate-500'}`}
+                                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-500 dark:text-blue-400 border-blue-200 dark:border-blue-500/30'
+                                            : 'bg-white dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white hover:border-slate-400 dark:hover:border-slate-500 shadow-sm'}`}
                                 >
                                     <ArrowPathIcon className={`w-4 h-4 ${syncingId === router.id ? 'animate-spin' : ''}`} />
                                     <span>{syncingId === router.id ? 'SINCRONIZANDO...' : 'AUTO-SYNC & REPARAR'}</span>
@@ -194,14 +195,14 @@ export default function Routers() {
                             <div className="flex gap-2 p-2 pt-0 relative z-10">
                                 <button
                                     onClick={() => handleEdit(router)}
-                                    className="flex-1 bg-slate-800/80 hover:bg-blue-600 text-slate-300 hover:text-white py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-[10px] font-black border border-slate-700 shadow-sm uppercase tracking-wider"
+                                    className="flex-1 bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-600 text-slate-500 dark:text-slate-300 hover:text-white py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-[10px] font-black border border-slate-200 dark:border-slate-700 shadow-sm uppercase tracking-wider active:scale-95"
                                 >
                                     <PencilSquareIcon className="w-4 h-4" /> EDITAR
                                 </button>
 
                                 <button
                                     onClick={() => handleDelete(router.id)}
-                                    className="p-3 bg-slate-800/80 hover:bg-rose-600 text-slate-400 hover:text-white rounded-2xl transition-all border border-slate-700 group/trash flex items-center justify-center"
+                                    className="p-3 bg-slate-50 dark:bg-slate-800/80 hover:bg-rose-600 text-slate-400 dark:text-slate-400 hover:text-white rounded-2xl transition-all border border-slate-200 dark:border-slate-700 group/trash flex items-center justify-center shadow-sm active:scale-90"
                                 >
                                     <TrashIcon className="w-5 h-5 group-hover/trash:animate-bounce" />
                                 </button>

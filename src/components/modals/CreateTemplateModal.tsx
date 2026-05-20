@@ -7,10 +7,9 @@ import {
     ClockIcon, ShieldCheckIcon, CheckCircleIcon 
 } from '@heroicons/react/24/outline';
 
-// Interfaz flexible
 interface FormState {
     nombre: string;
-    dias_antes_emision: number | string; // Represents "Days Before Payment"
+    dias_antes_emision: number | string;
     dia_pago: number | string;
     dias_tolerancia: number | string;
     impuesto: number | string;
@@ -26,15 +25,8 @@ interface Props {
 }
 
 export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initialData }: Props) {
-    // Estado inicial
     const [formData, setFormData] = useState<FormState>({
-        nombre: '',
-        dias_antes_emision: 5, // Default: 5 days before payment
-        dia_pago: 15,          // Default: Payment on the 15th
-        dias_tolerancia: 5,    
-        impuesto: 0,
-        recordatorio_whatsapp: true,
-        aviso_factura: 'whatsapp'
+        nombre: '', dias_antes_emision: 5, dia_pago: 15, dias_tolerancia: 5, impuesto: 0, recordatorio_whatsapp: true, aviso_factura: 'whatsapp'
     });
     
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +35,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
         if (initialData) {
             setFormData({
                 nombre: initialData.nombre,
-                dias_antes_emision: initialData.dias_antes_emision, // Load directly from backend
+                dias_antes_emision: initialData.dias_antes_emision,
                 dia_pago: initialData.dia_pago,
                 dias_tolerancia: initialData.dias_tolerancia,
                 impuesto: initialData.impuesto,
@@ -51,33 +43,19 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                 aviso_factura: initialData.aviso_factura || 'whatsapp'
             });
         } else {
-            setFormData({
-                nombre: '', 
-                dias_antes_emision: 5, 
-                dia_pago: 15, 
-                dias_tolerancia: 5, 
-                impuesto: 0, 
-                recordatorio_whatsapp: true, 
-                aviso_factura: 'whatsapp'
-            });
+            setFormData({ nombre: '', dias_antes_emision: 5, dia_pago: 15, dias_tolerancia: 5, impuesto: 0, recordatorio_whatsapp: true, aviso_factura: 'whatsapp' });
         }
     }, [initialData, isOpen]);
 
     const handleNumberChange = (field: keyof FormState, value: string) => {
-        if (value === '') {
-            setFormData({ ...formData, [field]: '' });
-        } else {
-            setFormData({ ...formData, [field]: parseInt(value) });
-        }
+        setFormData({ ...formData, [field]: value === '' ? '' : parseInt(value) });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         const loadingToast = toast.loading("Guardando...");
-
         try {
-            // Send numbers directly. Backend handles subtraction logic.
             const payload = {
                 ...formData,
                 dias_antes_emision: Number(formData.dias_antes_emision || 0),
@@ -85,14 +63,11 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                 dias_tolerancia: Number(formData.dias_tolerancia || 0),
                 impuesto: Number(formData.impuesto || 0)
             };
-
-            const endpoint = '/configuracion/plantillas-facturacion'; 
-
             if (initialData?.id) {
-                await client.put(`${endpoint}/${initialData.id}`, payload);
+                await client.put(`/configuracion/plantillas-facturacion/${initialData.id}`, payload);
                 toast.success("Ciclo actualizado");
             } else {
-                await client.post(`${endpoint}`, payload);
+                await client.post('/configuracion/plantillas-facturacion', payload);
                 toast.success("Ciclo creado");
             }
             toast.dismiss(loadingToast);
@@ -100,78 +75,57 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
             onClose();
         } catch (error: any) {
             toast.dismiss(loadingToast);
-            const msg = error.response?.data?.detail || "Error al guardar";
-            toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+            toast.error(error.response?.data?.detail || "Error al guardar");
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // === VISUAL CALCULATIONS FOR SIMULATION ===
     const val = (v: number | string) => Number(v || 0);
-    
-    // 1. Calculate Generation Date (Simulated)
-    // Logic: Payment Day - Days Before
     const calcFechaGeneracion = () => {
-        const pago = val(formData.dia_pago);
-        const antes = val(formData.dias_antes_emision);
-        
-        let fecha = pago - antes;
-        
-        // If result is 0 or negative (e.g., Payment on 1st - 5 days = -4)
-        // It means previous month (30 - 4 = Day 26)
-        if (fecha <= 0) {
-            fecha = 30 + fecha; 
-        }
-        return fecha;
+        let dia = val(formData.dia_pago) - val(formData.dias_antes_emision);
+        return dia <= 0 ? 30 + dia : dia;
     };
-
-    // 2. Calculate Cutoff Date
     const calcFechaCorte = () => {
         let dia = val(formData.dia_pago) + val(formData.dias_tolerancia);
-        if (dia > 30) dia = dia - 30; 
-        return dia;
+        return dia > 30 ? dia - 30 : dia;
     };
 
-    // Determine if generation falls in previous month
-    const esMesAnterior = val(formData.dia_pago) - val(formData.dias_antes_emision) <= 0;
-
     return (
+        /* ✅ ADAPTADO: Backdrop y contenedor adaptativos */
         <Transition appear show={isOpen} as={Fragment}>
             <Dialog as="div" className="relative z-50" onClose={onClose}>
                 <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
-                    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm" />
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
                 </Transition.Child>
 
                 <div className="fixed inset-0 overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
-                            <Dialog.Panel className="bg-[#0f1219] rounded-2xl border border-slate-800 w-full max-w-5xl shadow-2xl flex flex-col md:flex-row overflow-hidden relative">
+                            <Dialog.Panel className="bg-white dark:bg-[#0f1219] w-full max-w-5xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col md:flex-row overflow-hidden transition-colors">
                                 
-                                <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white z-10">
+                                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 dark:hover:text-white z-10 transition-colors">
                                     <XMarkIcon className="w-6 h-6" />
                                 </button>
 
-                                {/* === FORM (LEFT) === */}
+                                {/* FORM */}
                                 <div className="flex-1 p-8 md:p-10">
                                     <div className="mb-8">
                                         <div className="flex items-center gap-3 mb-2">
-                                            <div className="p-2 bg-pink-600/20 rounded-lg border border-pink-500/30">
-                                                <DocumentTextIcon className="w-6 h-6 text-pink-500" />
+                                            <div className="p-2 bg-pink-100 dark:bg-pink-600/20 rounded-lg border border-pink-200 dark:border-pink-500/30 transition-colors">
+                                                <DocumentTextIcon className="w-6 h-6 text-pink-600 dark:text-pink-500" />
                                             </div>
-                                            <h3 className="text-2xl font-bold text-white">Nuevo Ciclo de Facturación</h3>
+                                            <h3 className="text-2xl font-black text-slate-900 dark:text-white transition-colors">Nuevo Ciclo</h3>
                                         </div>
-                                        <p className="text-slate-400 text-sm">Configura los días de anticipación y corte.</p>
                                     </div>
 
                                     <form onSubmit={handleSubmit} className="space-y-6">
-                                        
                                         <div>
-                                            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Nombre del Ciclo</label>
+                                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Nombre del Ciclo</label>
                                             <input 
                                                 type="text" 
-                                                className="w-full bg-[#1a1f2e] border border-slate-700 rounded-xl p-4 text-white focus:border-pink-500 outline-none transition placeholder:text-slate-600 font-medium" 
-                                                placeholder="Ej: Pagos día 1 - Generar 5 días antes" 
+                                                className="w-full bg-slate-50 dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-slate-900 dark:text-white text-sm focus:border-pink-500 outline-none transition-all placeholder:text-slate-400" 
+                                                placeholder="Ej: Pagos día 15..." 
                                                 required 
                                                 value={formData.nombre} 
                                                 onChange={e => setFormData({...formData, nombre: e.target.value})}
@@ -179,140 +133,47 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-5">
-                                            
-                                            {/* FIELD 1: ANTICIPATION DAYS */}
-                                            <div className="bg-[#1a1f2e] p-4 rounded-xl border border-slate-700 group focus-within:border-pink-500 transition relative">
-                                                <label className="text-[10px] font-bold text-pink-500 uppercase flex items-center gap-2 mb-2">
-                                                    <ClockIcon className="w-3 h-3"/> Días de Anticipación
-                                                </label>
-                                                <div className="flex items-baseline justify-between">
-                                                    <input 
-                                                        type="number" min="0" max="30"
-                                                        className="w-20 bg-transparent border-b border-slate-600 text-3xl font-bold text-white focus:outline-none focus:border-pink-500 py-1 text-center"
-                                                        value={formData.dias_antes_emision}
-                                                        onChange={e => handleNumberChange('dias_antes_emision', e.target.value)}
-                                                    />
-                                                    <span className="text-[10px] font-bold text-slate-500 uppercase">Días Antes</span>
-                                                </div>
-                                                <p className="text-[10px] text-slate-400 mt-2">Generar factura antes del pago</p>
-                                            </div>
-
-                                            {/* FIELD 2: PAYMENT DAY */}
-                                            <div className="bg-[#1a1f2e] p-4 rounded-xl border border-slate-700 group focus-within:border-indigo-500 transition relative">
-                                                <label className="text-[10px] font-bold text-indigo-400 uppercase flex items-center gap-2 mb-2">
-                                                    <CalendarDaysIcon className="w-3 h-3"/> Día de Pago
-                                                </label>
-                                                <div className="flex items-baseline justify-between">
-                                                    <input 
-                                                        type="number" min="1" max="31"
-                                                        className="w-20 bg-transparent border-b border-slate-600 text-3xl font-bold text-white focus:outline-none focus:border-indigo-500 py-1 text-center"
-                                                        value={formData.dia_pago}
-                                                        onChange={e => handleNumberChange('dia_pago', e.target.value)}
-                                                    />
-                                                    <span className="text-[10px] font-bold text-slate-500 uppercase">Del Mes</span>
-                                                </div>
-                                                <p className="text-[10px] text-slate-400 mt-2">Fecha límite de pago</p>
-                                            </div>
+                                            <InputNumber label="Anticipación" sub="DÍAS ANTES" value={formData.dias_antes_emision} onChange={(v: string) => handleNumberChange('dias_antes_emision', v)} color="pink" />
+                                            <InputNumber label="Día de Pago" sub="DEL MES" value={formData.dia_pago} onChange={(v: string) => handleNumberChange('dia_pago', v)} color="indigo" />
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-5">
-                                            <div className="bg-[#1a1f2e] p-3 rounded-xl border border-slate-700 flex items-center justify-between px-4">
+                                            <div className="bg-slate-50 dark:bg-[#1a1f2e] p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 transition-colors">
                                                 <div>
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase block">Días de Gracia</label>
-                                                    <input 
-                                                        type="number" min="0" 
-                                                        className="bg-transparent text-xl font-bold text-white w-16 focus:outline-none mt-1" 
-                                                        value={formData.dias_tolerancia} 
-                                                        onChange={e => handleNumberChange('dias_tolerancia', e.target.value)}
-                                                    />
+                                                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase block">Gracia</label>
+                                                    <input type="number" className="bg-transparent text-lg font-black text-slate-900 dark:text-white w-16 focus:outline-none mt-1" value={formData.dias_tolerancia} onChange={e => handleNumberChange('dias_tolerancia', e.target.value)}/>
                                                 </div>
-                                                <span className="text-xs font-bold text-slate-600">DÍAS</span>
+                                                <span className="text-xs font-black text-slate-400">DÍAS</span>
                                             </div>
-
-                                            <div className="bg-[#1a1f2e] p-3 rounded-xl border border-slate-700 flex items-center justify-between px-4">
+                                            <div className="bg-slate-50 dark:bg-[#1a1f2e] p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 transition-colors">
                                                 <div>
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase block">Impuesto (IVA)</label>
-                                                    <input 
-                                                        type="number" min="0" 
-                                                        className="bg-transparent text-xl font-bold text-white w-16 focus:outline-none mt-1" 
-                                                        value={formData.impuesto} 
-                                                        onChange={e => handleNumberChange('impuesto', e.target.value)}
-                                                    />
+                                                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase block">IVA %</label>
+                                                    <input type="number" className="bg-transparent text-lg font-black text-slate-900 dark:text-white w-16 focus:outline-none mt-1" value={formData.impuesto} onChange={e => handleNumberChange('impuesto', e.target.value)}/>
                                                 </div>
-                                                <span className="text-xs font-bold text-slate-600">%</span>
+                                                <span className="text-xs font-black text-slate-400">%</span>
                                             </div>
                                         </div>
 
-                                        <label className="flex items-center gap-4 p-4 bg-[#1a1f2e] rounded-xl border border-slate-700/50 cursor-pointer hover:bg-[#202636] transition group">
-                                            <div className={`w-6 h-6 rounded flex items-center justify-center border transition ${formData.recordatorio_whatsapp ? 'bg-pink-600 border-pink-500' : 'border-slate-600 bg-transparent'}`}>
-                                                {formData.recordatorio_whatsapp && <CheckCircleIcon className="w-4 h-4 text-white" />}
-                                            </div>
-                                            <input 
-                                                type="checkbox" 
-                                                className="hidden" 
-                                                checked={formData.recordatorio_whatsapp} 
-                                                onChange={e => setFormData({...formData, recordatorio_whatsapp: e.target.checked})}
-                                            />
-                                            <div className="flex-1">
-                                                <span className="block text-sm font-bold text-white group-hover:text-pink-400 transition">Notificaciones WhatsApp</span>
-                                                <span className="text-xs text-slate-500">Enviar recordatorios automáticos.</span>
-                                            </div>
+                                        <label className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-[#1a1f2e] rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer transition-colors">
+                                            <input type="checkbox" className="w-5 h-5 rounded text-pink-600 focus:ring-pink-500" checked={formData.recordatorio_whatsapp} onChange={e => setFormData({...formData, recordatorio_whatsapp: e.target.checked})} />
+                                            <span className="text-sm font-black text-slate-900 dark:text-white transition-colors">Notificaciones WhatsApp</span>
                                         </label>
 
-                                        <div className="pt-4 flex gap-4">
-                                            <button type="button" onClick={onClose} className="px-6 py-3 text-slate-400 hover:text-white font-bold text-sm transition">Cancelar</button>
-                                            <button type="submit" disabled={isSubmitting} className="flex-1 bg-pink-600 hover:bg-pink-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-pink-600/20 transition-all active:scale-95 text-sm">
-                                                {isSubmitting ? 'Guardando...' : 'Guardar Ciclo'}
-                                            </button>
-                                        </div>
+                                        <button type="submit" disabled={isSubmitting} className="w-full bg-pink-600 hover:bg-pink-500 text-white font-black py-4 rounded-xl shadow-md transition-all active:scale-95">
+                                            {isSubmitting ? 'Guardando...' : 'Guardar Ciclo'}
+                                        </button>
                                     </form>
                                 </div>
 
-                                {/* === SIMULATION (RIGHT) === */}
-                                <div className="hidden md:flex w-[350px] bg-[#0b0e14] border-l border-slate-800 p-8 flex-col justify-center relative">
-                                    <div className="absolute top-20 right-0 opacity-[0.03] pointer-events-none">
-                                        <ShieldCheckIcon className="w-64 h-64 text-pink-500" />
-                                    </div>
-                                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-10 border-b border-slate-800 pb-4">Simulación Mensual</h4>
+                                {/* SIMULATION */}
+                                <div className="hidden md:flex w-[350px] bg-slate-50 dark:bg-[#0b0e14] border-l border-slate-200 dark:border-slate-800 p-8 flex-col justify-center relative transition-colors">
+                                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-10 border-b border-slate-200 dark:border-slate-800 pb-4 transition-colors">Simulación Mensual</h4>
                                     
                                     <div className="relative pl-8 space-y-12">
-                                        <div className="absolute left-[11px] top-2 bottom-2 w-[2px] bg-slate-800"></div>
-
-                                        {/* Step 1: Calculated Generation */}
-                                        <div className="relative">
-                                            <div className="absolute -left-[30px] top-0 w-6 h-6 rounded-full border-4 border-[#0b0e14] bg-pink-600 shadow-[0_0_10px_rgba(219,39,119,0.4)] z-10"></div>
-                                            <div>
-                                                <span className="text-[9px] font-bold text-white bg-pink-600 px-1.5 py-0.5 rounded uppercase mb-1 inline-block">
-                                                    {esMesAnterior ? 'Mes Anterior' : 'Generación'}
-                                                </span>
-                                                <p className="text-3xl font-bold text-white">Día {calcFechaGeneracion()}</p>
-                                                <p className="text-xs text-slate-500 mt-1">
-                                                    {val(formData.dias_antes_emision)} días antes del pago.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Step 2: Payment */}
-                                        <div className="relative">
-                                            <div className="absolute -left-[30px] top-0 w-6 h-6 rounded-full border-4 border-[#0b0e14] bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)] z-10"></div>
-                                            <div>
-                                                <span className="text-[9px] font-bold text-white bg-indigo-600 px-1.5 py-0.5 rounded uppercase mb-1 inline-block">
-                                                    {esMesAnterior ? 'Mes Actual' : 'Vencimiento'}
-                                                </span>
-                                                <p className="text-3xl font-bold text-white">Día {val(formData.dia_pago)}</p>
-                                                <p className="text-xs text-slate-500 mt-1">Fecha límite.</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Step 3: Cutoff */}
-                                        <div className="relative">
-                                            <div className="absolute -left-[30px] top-0 w-6 h-6 rounded-full border-4 border-[#0b0e14] bg-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.4)] z-10"></div>
-                                            <div>
-                                                <span className="text-[9px] font-bold text-white bg-rose-600 px-1.5 py-0.5 rounded uppercase mb-1 inline-block">Corte</span>
-                                                <p className="text-3xl font-bold text-white">Día {calcFechaCorte()}</p>
-                                                <p className="text-xs text-slate-500 mt-1">Suspensión automática.</p>
-                                            </div>
-                                        </div>
+                                        <div className="absolute left-[11px] top-2 bottom-2 w-[2px] bg-slate-200 dark:bg-slate-800 transition-colors"></div>
+                                        <Step label="Generación" day={calcFechaGeneracion()} color="pink" />
+                                        <Step label="Pago" day={val(formData.dia_pago)} color="indigo" />
+                                        <Step label="Corte" day={calcFechaCorte()} color="rose" />
                                     </div>
                                 </div>
                             </Dialog.Panel>
@@ -323,3 +184,23 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
         </Transition>
     );
 }
+
+const InputNumber = ({ label, sub, value, onChange, color }: any) => (
+    <div className="bg-slate-50 dark:bg-[#1a1f2e] p-4 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors">
+        <label className={`text-[10px] font-black uppercase flex items-center gap-2 mb-2 ${color === 'pink' ? 'text-pink-600 dark:text-pink-500' : 'text-indigo-600 dark:text-indigo-400'}`}>
+            {label}
+        </label>
+        <div className="flex items-baseline justify-between">
+            <input type="number" className="w-16 bg-transparent text-2xl font-black text-slate-900 dark:text-white outline-none" value={value} onChange={e => onChange(e.target.value)} />
+            <span className="text-[10px] font-black text-slate-500 uppercase">{sub}</span>
+        </div>
+    </div>
+);
+
+const Step = ({ label, day, color }: any) => (
+    <div className="relative">
+        <div className={`absolute -left-[30px] top-0 w-6 h-6 rounded-full border-4 border-slate-50 dark:border-[#0b0e14] bg-${color}-500 transition-colors`}></div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 transition-colors">{label}</p>
+        <p className="text-3xl font-black text-slate-900 dark:text-white transition-colors">Día {day}</p>
+    </div>
+);

@@ -17,13 +17,10 @@ import { useNavigate } from 'react-router-dom';
 export default function Usuarios() {
     const navigate = useNavigate();
     
-    // --- ESTADOS DE DATOS ---
     const [usuarios, setUsuarios] = useState<any[]>([]);
     const [listaRouters, setListaRouters] = useState<any[]>([]);
-    
     const [editingId, setEditingId] = useState<number | null>(null);
 
-    // Estado inicial del formulario
     const initialForm = { 
         nombre_completo: '', 
         usuario: '', 
@@ -35,14 +32,12 @@ export default function Usuarios() {
 
     const [form, setForm] = useState(initialForm);
 
-    // --- CARGA DE DATOS ---
     const fetchData = async () => {
         try {
             const [resUsers, resRouters] = await Promise.all([
                 client.get('/usuarios/'),
                 client.get('/network/routers/')
             ]);
-
             setUsuarios(resUsers.data);
             setListaRouters(resRouters.data);
         } catch (error) {
@@ -53,7 +48,6 @@ export default function Usuarios() {
 
     useEffect(() => { fetchData(); }, []);
 
-    // --- LÓGICA DEL FORMULARIO ---
     const handleEdit = (user: any) => {
         setEditingId(user.id);
         setForm({
@@ -108,29 +102,30 @@ export default function Usuarios() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-10">
+        /* ✅ ADAPTADO: Fondo principal dinámico */
+        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-10 p-4 md:p-0 transition-colors duration-300">
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
-                <button onClick={() => navigate('/admin/configuracion')} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition">
+                <button onClick={() => navigate('/admin/configuracion')} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
                     <ArrowLeftIcon className="w-5 h-5" />
                 </button>
                 <div>
-                    <h2 className="text-2xl font-bold text-white">Gestión de Usuarios</h2>
-                    <p className="text-slate-400 text-sm">Administra accesos y asignación de routers del personal.</p>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white transition-colors">Gestión de Usuarios</h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">Administra accesos y asignación de routers del personal.</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
-                {/* --- COLUMNA 1: FORMULARIO REDISEÑADO --- */}
-                <div className={`p-6 rounded-2xl border h-fit shadow-xl transition-all ${editingId ? 'bg-[#151a2d] border-indigo-500/50 shadow-indigo-500/10' : 'bg-[#11131a] border-slate-800'}`}>
+                {/* --- COLUMNA 1: FORMULARIO ADAPTATIVO --- */}
+                <div className={`p-6 rounded-2xl border h-fit shadow-sm dark:shadow-xl transition-all duration-300 ${editingId ? 'bg-indigo-50 dark:bg-[#151a2d] border-indigo-500/50' : 'bg-white dark:bg-[#11131a] border-slate-200 dark:border-slate-800'}`}>
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-white font-bold flex items-center gap-2 text-lg">
-                            <ShieldCheckIcon className={`w-6 h-6 ${editingId ? 'text-indigo-400' : 'text-emerald-400'}`}/> 
+                        <h3 className="text-slate-900 dark:text-white font-black flex items-center gap-2 text-lg transition-colors">
+                            <ShieldCheckIcon className={`w-6 h-6 ${editingId ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'}`}/> 
                             {editingId ? 'Editando Usuario' : 'Nuevo Usuario'}
                         </h3>
                         {editingId && (
-                            <button onClick={handleCancelEdit} className="text-xs flex items-center gap-1 bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition">
+                            <button onClick={handleCancelEdit} className="text-xs flex items-center gap-1 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition">
                                 <XMarkIcon className="w-4 h-4"/> Cancelar
                             </button>
                         )}
@@ -141,13 +136,13 @@ export default function Usuarios() {
                             
                             {/* Input Nombre */}
                             <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider ml-1">Nombre Completo</label>
+                                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider ml-1">Nombre Completo</label>
                                 <div className="relative mt-1.5">
-                                    <UserCircleIcon className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                                    <UserCircleIcon className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                                     <input 
                                         type="text" required 
                                         placeholder="Ej. Juan Pérez"
-                                        className="w-full bg-[#0b0d14] border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-white text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-600"
+                                        className="w-full bg-slate-50 dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-800 dark:text-white text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
                                         value={form.nombre_completo} onChange={e => setForm({...form, nombre_completo: e.target.value})} 
                                     />
                                 </div>
@@ -155,13 +150,13 @@ export default function Usuarios() {
 
                             {/* Input Usuario */}
                             <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider ml-1">Usuario (Login)</label>
+                                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider ml-1">Usuario (Login)</label>
                                 <div className="relative mt-1.5">
-                                    <IdentificationIcon className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                                    <IdentificationIcon className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                                     <input 
                                         type="text" required 
                                         placeholder="Ej. jperez"
-                                        className="w-full bg-[#0b0d14] border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-white text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-600"
+                                        className="w-full bg-slate-50 dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-800 dark:text-white text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
                                         value={form.usuario} onChange={e => setForm({...form, usuario: e.target.value})} 
                                     />
                                 </div>
@@ -169,15 +164,15 @@ export default function Usuarios() {
 
                             {/* Input Password */}
                             <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider ml-1">
+                                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider ml-1">
                                     {editingId ? 'Nueva Contraseña' : 'Contraseña'}
                                 </label>
                                 <div className="relative mt-1.5">
-                                    <KeyIcon className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                                    <KeyIcon className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                                     <input 
                                         type="password" required={!editingId} 
                                         placeholder={editingId ? "Dejar vacío para mantener actual" : "Mínimo 6 caracteres"}
-                                        className="w-full bg-[#0b0d14] border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-white text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-600"
+                                        className="w-full bg-slate-50 dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-800 dark:text-white text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
                                         value={form.password} onChange={e => setForm({...form, password: e.target.value})} 
                                     />
                                 </div>
@@ -185,61 +180,58 @@ export default function Usuarios() {
 
                             {/* Select Rol */}
                             <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider ml-1">Rol del Sistema</label>
+                                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider ml-1">Rol del Sistema</label>
                                 <select 
-                                    className="w-full mt-1.5 bg-[#0b0d14] border border-slate-700 rounded-xl py-3 px-4 text-white text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all appearance-none cursor-pointer"
+                                    className="w-full mt-1.5 bg-slate-50 dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 text-slate-800 dark:text-white text-sm focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer"
                                     value={form.rol} onChange={e => setForm({...form, rol: e.target.value})}
                                 >
-                                    <option value="cajero" className="bg-slate-900">Cobrador / Cajero</option>
-                                    <option value="tecnico" className="bg-slate-900">Técnico Instalador</option>
-                                    <option value="admin" className="bg-slate-900">Administrador General</option>
+                                    <option value="cajero" className="bg-white dark:bg-slate-900">Cobrador / Cajero</option>
+                                    <option value="tecnico" className="bg-white dark:bg-slate-900">Técnico Instalador</option>
+                                    <option value="admin" className="bg-white dark:bg-slate-900">Administrador General</option>
                                 </select>
                             </div>
                         </div>
 
-                        <hr className="border-slate-800 my-4"/>
+                        <hr className="border-slate-200 dark:border-slate-800 my-4"/>
 
                         {/* SELECCIÓN DE ROUTERS */}
                         <div>
-                            <label className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5 mb-3 ml-1">
-                                <ServerStackIcon className="w-4 h-4 text-blue-400" /> Routers Permitidos
+                            <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider flex items-center gap-1.5 mb-3 ml-1">
+                                <ServerStackIcon className="w-4 h-4 text-blue-500" /> Routers Permitidos
                             </label>
-                            <div className="bg-[#0b0d14] p-4 rounded-xl border border-slate-700 max-h-48 overflow-y-auto space-y-2.5 custom-scrollbar">
+                            <div className="bg-slate-50 dark:bg-[#0b0d14] p-4 rounded-xl border border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto space-y-2.5 custom-scrollbar transition-colors">
                                 {listaRouters.length === 0 && <p className="text-sm text-slate-500 text-center py-2">No hay routers registrados</p>}
                                 
                                 {listaRouters.map(router => (
-                                    <label key={router.id} className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800/80 p-2 rounded-lg transition border border-transparent hover:border-slate-700">
-                                        <div className="relative flex items-center">
-                                            <input 
-                                                type="checkbox" 
-                                                className="w-5 h-5 rounded border-slate-600 bg-[#11131a] text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
-                                                checked={form.router_ids.includes(router.id)}
-                                                onChange={() => toggleRouter(router.id)}
-                                            />
-                                        </div>
-                                        <span className="text-sm font-medium text-slate-300 truncate">{router.nombre}</span>
+                                    <label key={router.id} className="flex items-center space-x-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/80 p-2 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-5 h-5 rounded border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#11131a] text-blue-600 focus:ring-blue-500"
+                                            checked={form.router_ids.includes(router.id)}
+                                            onChange={() => toggleRouter(router.id)}
+                                        />
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate transition-colors">{router.nombre}</span>
                                     </label>
                                 ))}
                             </div>
-                            <p className="text-[10px] text-slate-500 mt-2 ml-1">* Este usuario solo podrá operar sobre los clientes de los routers seleccionados.</p>
                         </div>
 
                         {/* Switch de Usuario Activo */}
-                        <div className="flex items-center justify-between p-4 bg-[#0b0d14] rounded-xl border border-slate-700 mt-2">
+                        <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-[#0b0d14] rounded-xl border border-slate-200 dark:border-slate-700 transition-colors">
                             <div>
-                                <span className="text-sm font-bold text-white block">Estado de Cuenta</span>
-                                <span className="text-[10px] text-slate-500">{form.activo ? 'El usuario puede iniciar sesión' : 'Acceso denegado al sistema'}</span>
+                                <span className="text-sm font-black text-slate-900 dark:text-white block transition-colors">Estado de Cuenta</span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400">El usuario puede iniciar sesión</span>
                             </div>
                             <button 
                                 type="button"
                                 onClick={() => setForm({...form, activo: !form.activo})}
-                                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${form.activo ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${form.activo ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`}
                             >
                                 <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${form.activo ? 'translate-x-6' : 'translate-x-1'}`} />
                             </button>
                         </div>
 
-                        <button className={`w-full font-bold py-4 rounded-xl mt-4 shadow-lg transition-all flex justify-center items-center gap-2 ${editingId ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'} text-white`}>
+                        <button className={`w-full font-black py-4 rounded-xl mt-4 shadow-md transition-all flex justify-center items-center gap-2 ${editingId ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-blue-600 hover:bg-blue-500'} text-white`}>
                             {editingId ? <PencilSquareIcon className="w-5 h-5"/> : <ShieldCheckIcon className="w-5 h-5"/>}
                             {editingId ? 'Guardar Cambios' : 'Registrar Nuevo Usuario'}
                         </button>
@@ -247,10 +239,10 @@ export default function Usuarios() {
                 </div>
 
                 {/* --- COLUMNA 2 Y 3: LISTA DE USUARIOS --- */}
-                <div className="lg:col-span-2 bg-[#11131a] rounded-2xl border border-slate-800 overflow-hidden shadow-xl h-fit">
+                <div className="lg:col-span-2 bg-white dark:bg-[#11131a] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-xl transition-colors">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-slate-400">
-                            <thead className="bg-[#0b0d14] text-slate-300 font-bold uppercase text-[10px] tracking-widest border-b border-slate-800">
+                        <table className="w-full text-left text-sm text-slate-700 dark:text-slate-400">
+                            <thead className="bg-slate-100 dark:bg-[#0b0d14] text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest border-b border-slate-200 dark:border-slate-800 transition-colors">
                                 <tr>
                                     <th className="p-5">Usuario / Login</th>
                                     <th className="p-5 text-center">Rol</th>
@@ -258,20 +250,20 @@ export default function Usuarios() {
                                     <th className="p-5 text-right">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800/50">
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                                 {usuarios.map(u => (
-                                    <tr key={u.id} className="hover:bg-slate-800/30 transition-colors group">
+                                    <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
                                         <td className="p-5">
-                                            <div className="font-bold text-white text-base mb-0.5">{u.nombre_completo}</div>
+                                            <div className="font-black text-slate-900 dark:text-white text-base mb-0.5 transition-colors">{u.nombre_completo}</div>
                                             <div className="text-xs text-slate-500 flex items-center gap-1">
                                                 <IdentificationIcon className="w-3.5 h-3.5"/> @{u.usuario}
                                             </div>
                                         </td>
                                         <td className="p-5 text-center">
-                                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border ${
-                                                u.rol === 'admin' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' : 
-                                                u.rol === 'tecnico' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
-                                                'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${
+                                                u.rol === 'admin' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30' : 
+                                                u.rol === 'tecnico' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/30' :
+                                                'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30'
                                             }`}>
                                                 {u.rol}
                                             </span>
@@ -282,24 +274,24 @@ export default function Usuarios() {
                                                     u.router_ids.map((rid: number) => {
                                                         const rName = listaRouters.find(r => r.id === rid)?.nombre;
                                                         return rName ? (
-                                                            <span key={rid} className="px-2 py-1 bg-slate-800/80 border border-slate-700 rounded-md text-[10px] font-medium text-slate-300">
+                                                            <span key={rid} className="px-2 py-1 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md text-[10px] font-medium text-slate-600 dark:text-slate-300 transition-colors">
                                                                 {rName}
                                                             </span>
                                                         ) : null;
                                                     })
                                                 ) : (
-                                                    <span className="text-slate-500 text-[11px] italic bg-[#0b0d14] px-2 py-1 rounded-md border border-slate-800">
-                                                        {u.rol === 'admin' ? 'Desbloqueado (Acceso Total)' : 'Ningún router asignado'}
+                                                    <span className="text-slate-400 dark:text-slate-500 text-[11px] italic bg-slate-100 dark:bg-[#0b0d14] px-2 py-1 rounded-md border border-slate-200 dark:border-slate-800 transition-colors">
+                                                        {u.rol === 'admin' ? 'Acceso Total' : 'Sin router'}
                                                     </span>
                                                 )}
                                             </div>
                                         </td>
                                         <td className="p-5 text-right">
                                             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEdit(u)} className="p-2 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 rounded-lg transition border border-transparent hover:border-blue-500/20">
+                                                <button onClick={() => handleEdit(u)} className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition border border-transparent hover:border-blue-200 dark:hover:border-blue-500/20">
                                                     <PencilSquareIcon className="w-5 h-5"/>
                                                 </button>
-                                                <button onClick={() => handleDelete(u.id)} className="p-2 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 rounded-lg transition border border-transparent hover:border-rose-500/20">
+                                                <button onClick={() => handleDelete(u.id)} className="p-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition border border-transparent hover:border-rose-200 dark:hover:border-rose-500/20">
                                                     <TrashIcon className="w-5 h-5"/>
                                                 </button>
                                             </div>

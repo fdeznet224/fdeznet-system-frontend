@@ -1,44 +1,43 @@
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *)); /* 👈 LE DICTA A TAILWIND V4 QUE TRABAJE POR INYECCIÓN DE CLASES */
 
+/* ✅ SOLUCIÓN: Cambia dinámicamente según la clase .dark del HTML raíz */
 body {
-  @apply bg-slate-900 text-slate-200;
+  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300;
 }
 
-/* =========================================
-   ESTILOS DE SCROLLBAR MODO OSCURO (WHATSAPP)
-   ========================================= */
-
-/* 1. Ocultar la barra por completo pero permitir hacer scroll (Para las Zonas) */
+/* =========================================================
+   ESTILOS DE SCROLLBAR ADAPTATIVOS (CLARO / OSCURO)
+   ========================================================= */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* 2. Scrollbar delgado y oscuro (Para listas de clientes y chats) */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
-  height: 6px; /* Para el scroll horizontal si llega a hacer falta */
+  height: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent; /* Fondo transparente para que se mezcle con tu diseño */
+  background: transparent;
 }
 
+/* ✅ MEJORA: El scrollbar ahora también cambia de color según el modo activo */
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #374045; /* Color gris oscuro (Estilo WhatsApp) */
+  background: #cbd5e1; /* Gris claro en modo light */
   border-radius: 10px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #374045; /* Gris oscuro en modo dark (WhatsApp) */
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #51585c; /* Un poco más claro cuando le pasas el mouse */
+  background: #94a3b8;
 }
-
-/* Opcional: Para Firefox (Firefox no soporta todo el webkit) */
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #374045 transparent;
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #51585c;
 }
-

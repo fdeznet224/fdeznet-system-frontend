@@ -1,6 +1,11 @@
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { ThemeProvider, createTheme } from '@mui/material/styles'; // 👈 INYECTORES DE MATERIAL UI
 import 'leaflet/dist/leaflet.css';
+
+// Configuración de tokens del theme para Material UI
+import { getDesignTokens } from './theme';
 
 // Páginas Principales (Admin)
 import Login from './pages/Login';
@@ -17,7 +22,7 @@ import MensajesCRM from './pages/admin/MensajesCRM';
 import RadarOlt from './pages/monitoreo/RadarOlt';
 import InventarioPanel from './pages/InventarioPanel';
 
-// 🔥 IMPORTAMOS EL TUBO MAESTRO 🔥
+// IMPORTAMOS EL CONTEXTO GLOBAL DE WHATSAPP
 import { WhatsAppProvider } from './context/WhatsAppContext';
 
 // --- INFRAESTRUCTURA FTTH ---
@@ -42,12 +47,10 @@ import TunnelsVPN from './pages/configuracion/TunnelsVPN';
 
 import PanelCobrador from './pages/cobranza/PanelCobrador';
 
-// 👇 VISTA PÚBLICA DEL CLIENTE (Solo QR)
+// VISTA PÚBLICA DEL CLIENTE (Solo QR)
 import PortalCliente from './pages/portal/PortalCliente'; 
 
-// =========================================
-// 👇 ROL TÉCNICO (Mobile First)
-// =========================================
+// ROL TÉCNICO (Mobile First)
 import TechDashboard from './pages/technician/TechDashboard';
 import ClientTechView from './pages/technician/ClientTechView';
 import TechSearch from './pages/technician/TechSearch';
@@ -56,82 +59,110 @@ import TechInstallForm from './pages/technician/TechInstallForm';
 import QrScanner from './pages/tools/QrScanner';
 
 function App() {
+  // --- 🔥 CONECTOR INTELIGENTE DE MODO CLARO / OSCURO VIA LOCALSTORAGE 🔥 ---
+  const [currentMode, setCurrentMode] = useState<'light' | 'dark'>(() => {
+    const savedTheme = localStorage.getItem('theme');
+    return savedTheme === 'light' ? 'light' : 'dark';
+  });
+
+  // Listener en tiempo real para capturar cuando el Layout cambia el LocalStorage
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const savedTheme = localStorage.getItem('theme');
+      setCurrentMode(savedTheme === 'light' ? 'light' : 'dark');
+    };
+
+    // Escuchamos el evento de almacenamiento nativo del navegador
+    window.addEventListener('storage', handleThemeChange);
+    
+    // Intervalo de verificación rápida interna (Polling de tema para suavidad inline)
+    const interval = setInterval(handleThemeChange, 500);
+
+    return () => {
+      window.removeEventListener('storage', handleThemeChange);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Creamos la instancia del objeto theme basada en la paleta de tu archivo theme.ts
+  const muiTheme = createTheme(getDesignTokens(currentMode));
+
   return (
-    // 🔥 ENVOLVEMOS TODA LA APP EN EL TUBO MAESTRO 🔥
     <WhatsAppProvider>
-      <BrowserRouter>
-        <Toaster 
-          position="top-center" 
-          toastOptions={{ 
-            style: { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155' },
-            duration: 4000 
-          }} 
-        />
-        
-        <Routes>
-          {/* REDIRECCIÓN: Si entran a la raíz, mandar al login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+      {/* Envolvemos toda la topología en el ThemeProvider de Material UI conectado con React */}
+      <ThemeProvider theme={muiTheme}>
+        <BrowserRouter>
+          <Toaster 
+            position="top-center" 
+            toastOptions={{ 
+              style: currentMode === 'dark' 
+                ? { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155' }
+                : { background: '#ffffff', color: '#0f172a', border: '1px solid #e2e8f0' },
+              duration: 4000 
+            }} 
+          />
           
-          <Route path="/login" element={<Login />} /> 
-          <Route path="/portal/cliente/:cedula" element={<PortalCliente />} />
+          <Routes>
+            {/* REDIRECCIÓN */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            
+            <Route path="/login" element={<Login />} /> 
+            <Route path="/portal/cliente/:cedula" element={<PortalCliente />} />
 
-          {/* ZONA TÉCNICO */}
-          <Route path="/scanner" element={<QrScanner />} />
-          <Route path="/tech/dashboard" element={<TechDashboard />} />
-          <Route path="/tech/buscar" element={<TechSearch />} />
-          <Route path="/tech/cliente/:cedula" element={<ClientTechView />} />
-          <Route path="/tech/nuevo" element={<TechRegister />} />
-          <Route path="/tech/instalar/:cedula" element={<TechInstallForm />} />
+            {/* ZONA TÉCNICO */}
+            <Route path="/scanner" element={<QrScanner />} />
+            <Route path="/tech/dashboard" element={<TechDashboard />} />
+            <Route path="/tech/buscar" element={<TechSearch />} />
+            <Route path="/tech/cliente/:cedula" element={<ClientTechView />} />
+            <Route path="/tech/nuevo" element={<TechRegister />} />
+            <Route path="/tech/instalar/:cedula" element={<TechInstallForm />} />
 
-          {/* 👇 COBRANZA (MOVIL) - FUERA DEL LAYOUT PARA PANTALLA COMPLETA */}
-          <Route path="/admin/cobranza" element={<PanelCobrador />} />
+            {/* COBRANZA (MOVIL) */}
+            <Route path="/admin/cobranza" element={<PanelCobrador />} />
 
-          {/* =========================================
-              👇 ZONA ADMINISTRATIVA (CON SIDEBAR)
-             ========================================= */}
-          <Route element={<Layout />}>
-              
-              <Route path="/admin/dashboard" element={<Dashboard />} />
-              <Route path="/admin/ordenes" element={<Orders />} />
-              <Route path="/admin/mapa" element={<MapaClientes />} />
-              
-              {/* Gestión Comercial */}
-              <Route path="/admin/clientes" element={<Clientes />} />
-              <Route path="/admin/planes" element={<Planes />} />
-              
-              {/* Infraestructura */}
-              <Route path="/admin/routers" element={<Routers />} />
-              <Route path="/admin/naps" element={<CajasNap />} />
-              <Route path="/admin/redes" element={<Redes />} />
-              <Route path="/admin/radar" element={<RadarOlt />} />
-              <Route path="/admin/inventario" element={<InventarioPanel />} />
-              
-              {/* Finanzas */}
-              <Route path="/admin/facturas" element={<Facturas />} />
-              <Route path="/admin/transacciones" element={<Transacciones />} />
-              <Route path="/admin/estadisticas" element={<Estadisticas />} />
+            {/* ZONA ADMINISTRATIVA PRINCIPAL */}
+            <Route element={<Layout />}>
+                <Route path="/admin/dashboard" element={<Dashboard />} />
+                <Route path="/admin/ordenes" element={<Orders />} />
+                <Route path="/admin/mapa" element={<MapaClientes />} />
+                
+                {/* Gestión Comercial */}
+                <Route path="/admin/clientes" element={<Clientes />} />
+                <Route path="/admin/planes" element={<Planes />} />
+                
+                {/* Infraestructura */}
+                <Route path="/admin/routers" element={<Routers />} />
+                <Route path="/admin/naps" element={<CajasNap />} />
+                <Route path="/admin/redes" element={<Redes />} />
+                <Route path="/admin/radar" element={<RadarOlt />} />
+                <Route path="/admin/inventario" element={<InventarioPanel />} />
+                
+                {/* Finanzas */}
+                <Route path="/admin/facturas" element={<Facturas />} />
+                <Route path="/admin/transacciones" element={<Transacciones />} />
+                <Route path="/admin/estadisticas" element={<Estadisticas />} />
 
-              {/* Configuración Principal (Menú de Tarjetas) */}
-              <Route path="/admin/configuracion" element={<Configuracion />} />
-              <Route path="/admin/mensajes" element={<MensajesCRM />} />
-              
-              {/* Sub-rutas de Configuración */}
-              <Route path="/admin/configuracion/zonas" element={<Zonas />} />
-              <Route path="/admin/configuracion/mensajes" element={<PlantillasMensajes />} /> 
-              <Route path="/admin/configuracion/plantillas-facturacion" element={<BillingTemplates />} />
-              <Route path="/admin/configuracion/importar" element={<Importar />} />
-              <Route path="/admin/configuracion/usuarios" element={<Usuarios />} />
-              <Route path="/admin/configuracion/pppoe" element={<Pppoe />} />
-              <Route path="/admin/configuracion/whatsapp-qr" element={<WhatsappPage />} />
-              <Route path="/admin/configuracion/cron" element={<CronjobLogs />} />
-              <Route path="/admin/configuracion/sistema" element={<Sistema />} />
-              <Route path="/admin/configuracion/vpn" element={<TunnelsVPN />} />
-              
-          </Route>
-        </Routes>
-      </BrowserRouter>
+                {/* Configuración Principal */}
+                <Route path="/admin/configuracion" element={<Configuracion />} />
+                <Route path="/admin/mensajes" element={<MensajesCRM />} />
+                
+                {/* Sub-rutas de Configuración */}
+                <Route path="/admin/configuracion/zonas" element={<Zonas />} />
+                <Route path="/admin/configuracion/mensajes" element={<PlantillasMensajes />} /> 
+                <Route path="/admin/configuracion/plantillas-facturacion" element={<BillingTemplates />} />
+                <Route path="/admin/configuracion/importar" element={<Importar />} />
+                <Route path="/admin/configuracion/usuarios" element={<Usuarios />} />
+                <Route path="/admin/configuracion/pppoe" element={<Pppoe />} />
+                <Route path="/admin/configuracion/whatsapp-qr" element={<WhatsappPage />} />
+                <Route path="/admin/configuracion/cron" element={<CronjobLogs />} />
+                <Route path="/admin/configuracion/sistema" element={<Sistema />} />
+                <Route path="/admin/configuracion/vpn" element={<TunnelsVPN />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ThemeProvider>
     </WhatsAppProvider>
-  )
+  );
 }
 
 export default App;

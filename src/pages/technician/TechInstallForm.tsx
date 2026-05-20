@@ -26,7 +26,7 @@ export default function TechInstallForm() {
         serial_number: '',
         mac_address: '',
         caja_nap_id: '',
-        puerto_nap: '', // Ahora guardará el número del puerto clickeado
+        puerto_nap: '', 
         latitud: '',  
         longitud: ''
     });
@@ -147,72 +147,79 @@ export default function TechInstallForm() {
         }
     };
 
-    if (!cliente) return <div className="min-h-screen bg-[#0f1014] flex items-center justify-center text-slate-500">Cargando orden...</div>;
+    if (!cliente) return <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest transition-colors">Cargando orden...</div>;
 
-    const labelStyle = "text-[10px] uppercase font-bold text-slate-500 mb-2 block tracking-widest pl-1";
-    const infoBoxStyle = "w-full bg-[#0b0c10]/50 border border-slate-800 rounded-xl p-4 flex justify-between items-center";
+    /* ✅ ADAPTADO: Estilos para labels y cajas de solo lectura */
+    const labelStyle = "text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-2 block tracking-widest pl-1";
+    const infoBoxStyle = "w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center shadow-sm dark:shadow-none transition-colors";
 
     return (
-        <div className="min-h-screen bg-[#0f1014] text-white pb-32 font-sans">
-            <div className="px-6 py-4 flex items-center gap-4 border-b border-slate-800 bg-[#0f1014]/90 backdrop-blur-md sticky top-0 z-20">
-                <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-slate-800"><ArrowLeftIcon className="w-6 h-6 text-slate-300"/></button>
-                <div>
-                    <h2 className="font-bold text-blue-500 text-[10px] uppercase tracking-widest">Ejecución de Orden</h2>
-                    <p className="text-lg font-bold text-white truncate max-w-[200px]">{cliente.nombre}</p>
+        /* ✅ ADAPTADO: Fondo general que respeta el modo claro y oscuro */
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pb-32 font-sans transition-colors duration-300">
+            
+            {/* Navbar */}
+            <div className="px-4 md:px-6 py-4 flex items-center gap-4 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md sticky top-0 z-20 transition-colors shadow-sm dark:shadow-none">
+                <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <ArrowLeftIcon className="w-6 h-6 text-slate-600 dark:text-slate-300"/>
+                </button>
+                <div className="overflow-hidden pr-2">
+                    <h2 className="font-black text-blue-600 dark:text-blue-500 text-[10px] uppercase tracking-widest">Ejecución de Orden</h2>
+                    <p className="text-lg font-black text-slate-800 dark:text-white truncate transition-colors">{cliente.nombre}</p>
                 </div>
             </div>
 
-            <form onSubmit={handleFinalizar} className="p-6 space-y-6">
+            <form onSubmit={handleFinalizar} className="p-4 md:p-6 space-y-6 max-w-3xl mx-auto">
                 
                 {/* 1. SECCIÓN DE SOLO LECTURA */}
                 <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2 px-1">
+                    <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase flex items-center gap-2 px-1 tracking-widest">
                         <InformationCircleIcon className="w-4 h-4"/> Datos Establecidos
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className={labelStyle}>Plan de Internet</label>
                             <div className={infoBoxStyle}>
-                                <span className="text-sm font-bold text-slate-300">{cliente.plan_nombre}</span>
-                                <WifiIcon className="w-4 h-4 text-slate-600"/>
+                                <span className="text-sm font-black text-slate-800 dark:text-slate-300">{cliente.plan_nombre}</span>
+                                <WifiIcon className="w-4 h-4 text-slate-400 dark:text-slate-600"/>
                             </div>
                         </div>
                         <div>
                             <label className={labelStyle}>Nodo / Torre</label>
                             <div className={infoBoxStyle}>
-                                <span className="text-sm font-bold text-slate-300">{cliente.router_nombre}</span>
-                                <ServerIcon className="w-4 h-4 text-slate-600"/>
+                                <span className="text-sm font-black text-slate-800 dark:text-slate-300 truncate max-w-[100px]">{cliente.router_nombre}</span>
+                                <ServerIcon className="w-4 h-4 text-slate-400 dark:text-slate-600"/>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* 2. CREDENCIALES PPPoE */}
-                <div className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 p-5 rounded-3xl border border-blue-500/20 shadow-lg">
-                    <h3 className="text-xs font-bold text-blue-400 uppercase mb-4 flex items-center gap-2 border-b border-blue-500/10 pb-2">
+                <div className="bg-gradient-to-br from-blue-50 dark:from-blue-600/10 to-indigo-50 dark:to-purple-600/10 p-5 rounded-3xl border border-blue-200 dark:border-blue-500/20 shadow-md dark:shadow-lg transition-colors">
+                    <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase mb-4 flex items-center gap-2 border-b border-blue-200 dark:border-blue-500/10 pb-2">
                         <LockClosedIcon className="w-4 h-4"/> Configuración Mikrotik
                     </h3>
                     <div className="space-y-3">
                         <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-bold text-slate-500 uppercase ml-1">Usuario PPPoE</label>
-                            <div className="bg-black/40 p-3 rounded-xl flex justify-between items-center border border-white/5">
-                                <code className="text-yellow-400 font-bold font-mono text-base">{cliente.suggested_user}</code>
-                                <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_user); toast.success("Usuario copiado")}} className="p-2 text-slate-400 hover:text-white transition"><ClipboardDocumentIcon className="w-5 h-5"/></button>
+                            <label className="text-[9px] font-black text-slate-500 dark:text-slate-500 uppercase ml-1 tracking-widest">Usuario PPPoE</label>
+                            <div className="bg-white dark:bg-black/40 p-3 rounded-xl flex justify-between items-center border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
+                                <code className="text-amber-600 dark:text-yellow-400 font-bold font-mono text-base">{cliente.suggested_user}</code>
+                                <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_user); toast.success("Usuario copiado")}} className="p-2 text-slate-400 hover:text-blue-500 dark:hover:text-white transition-colors"><ClipboardDocumentIcon className="w-5 h-5"/></button>
                             </div>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-bold text-slate-500 uppercase ml-1">Contraseña</label>
-                            <div className="bg-black/40 p-3 rounded-xl flex justify-between items-center border border-white/5">
-                                <code className="text-emerald-400 font-bold font-mono text-base">{cliente.suggested_pass}</code>
-                                <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_pass); toast.success("Password copiada")}} className="p-2 text-slate-400 hover:text-white transition"><ClipboardDocumentIcon className="w-5 h-5"/></button>
+                            <label className="text-[9px] font-black text-slate-500 dark:text-slate-500 uppercase ml-1 tracking-widest">Contraseña</label>
+                            <div className="bg-white dark:bg-black/40 p-3 rounded-xl flex justify-between items-center border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
+                                <code className="text-emerald-600 dark:text-emerald-400 font-bold font-mono text-base">{cliente.suggested_pass}</code>
+                                <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_pass); toast.success("Password copiada")}} className="p-2 text-slate-400 hover:text-emerald-500 dark:hover:text-white transition-colors"><ClipboardDocumentIcon className="w-5 h-5"/></button>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* 3. DATOS FÍSICOS (REGISTRO TÉCNICO) */}
-                <div className="bg-[#1a1b23] p-5 rounded-3xl border border-slate-800 shadow-xl space-y-6">
-                    <h3 className="text-xs font-bold text-emerald-500 uppercase flex items-center gap-2 border-b border-slate-700/50 pb-2">
+                {/* ✅ ADAPTADO: Caja central de registro clara en light mode */}
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg dark:shadow-xl space-y-6 transition-colors">
+                    <h3 className="text-xs font-black text-emerald-600 dark:text-emerald-500 uppercase flex items-center gap-2 border-b border-slate-100 dark:border-slate-700/50 pb-2">
                         <QrCodeIcon className="w-4 h-4"/> Registro de Instalación
                     </h3>
 
@@ -220,12 +227,12 @@ export default function TechInstallForm() {
                     <div>
                         <label className={labelStyle}>Serial Number ONU</label>
                         <div className="flex gap-2">
-                            <input required className="w-full bg-[#0b0c10] border border-slate-700 text-white rounded-xl p-4 font-mono uppercase text-emerald-400 font-bold focus:border-emerald-500 outline-none transition"
+                            <input required className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl p-4 font-mono uppercase text-emerald-600 dark:text-emerald-400 font-black focus:border-emerald-500 outline-none transition-colors shadow-inner"
                                 value={formData.serial_number} 
                                 onChange={e => setFormData({...formData, serial_number: e.target.value.toUpperCase()})} 
                                 placeholder="ESCANEAR SN..." 
                             />
-                            <button type="button" onClick={() => navigate('/scanner')} className="bg-slate-800 px-5 rounded-xl text-white active:scale-95 transition"><QrCodeIcon className="w-7 h-7"/></button>
+                            <button type="button" onClick={() => navigate('/scanner')} className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-5 rounded-xl text-slate-500 dark:text-white hover:text-emerald-500 active:scale-95 transition-all"><QrCodeIcon className="w-7 h-7"/></button>
                         </div>
                     </div>
                     
@@ -234,16 +241,16 @@ export default function TechInstallForm() {
                         <div>
                             <label className={labelStyle}>Conectar a Caja NAP</label>
                             <div className="relative">
-                                <CubeIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-500 pointer-events-none"/>
+                                <CubeIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 dark:text-slate-500 pointer-events-none"/>
                                 <select 
                                     required
-                                    className="w-full bg-[#0b0c10] border border-slate-700 text-white rounded-xl p-3.5 pl-10 text-sm focus:border-emerald-500 outline-none transition appearance-none"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl p-3.5 pl-10 text-sm font-bold focus:border-emerald-500 outline-none transition-colors appearance-none shadow-inner cursor-pointer"
                                     value={formData.caja_nap_id}
                                     onChange={e => cargarPuertos(e.target.value)}
                                 >
-                                    <option value="" disabled>-- Selecciona la NAP física --</option>
+                                    <option value="" disabled className="bg-white dark:bg-slate-950">-- Selecciona la NAP física --</option>
                                     {cajasNap.map(nap => (
-                                        <option key={nap.id} value={nap.id}>
+                                        <option key={nap.id} value={nap.id} className="bg-white dark:bg-slate-950">
                                             {nap.nombre} ({nap.puertos_libres} libres)
                                         </option>
                                     ))}
@@ -256,7 +263,7 @@ export default function TechInstallForm() {
                             <div>
                                 <label className={labelStyle}>Seleccionar Puerto Libre</label>
                                 {loadingPorts ? (
-                                    <div className="text-center p-4 text-slate-500 text-xs animate-pulse">Sincronizando puertos...</div>
+                                    <div className="text-center p-4 text-slate-500 text-xs font-bold uppercase tracking-widest animate-pulse">Sincronizando puertos...</div>
                                 ) : (
                                     <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mt-2">
                                         {Array.from({ length: capacidadActual }, (_, i) => i + 1).map(puerto => {
@@ -271,12 +278,12 @@ export default function TechInstallForm() {
                                                     onClick={() => setFormData({...formData, puerto_nap: puerto.toString()})}
                                                     className={`
                                                         relative h-12 rounded-xl flex items-center justify-center font-black text-sm transition-all
-                                                        ${isSeleccionado ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-105 z-10' : ''}
-                                                        ${isOcupado ? 'bg-[#0b0c10] border border-red-900/30 text-slate-600 opacity-50 cursor-not-allowed' : ''}
-                                                        ${!isSeleccionado && !isOcupado ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 active:scale-95 border border-slate-700' : ''}
+                                                        ${isSeleccionado ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/40 scale-105 z-10' : ''}
+                                                        ${isOcupado ? 'bg-slate-100 dark:bg-slate-950 border border-rose-200 dark:border-red-900/30 text-slate-400 dark:text-slate-600 opacity-60 cursor-not-allowed' : ''}
+                                                        ${!isSeleccionado && !isOcupado ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 border border-slate-200 dark:border-slate-700 shadow-sm' : ''}
                                                     `}
                                                 >
-                                                    {isOcupado && <XCircleIcon className="absolute w-full h-full p-2 text-red-500/20" />}
+                                                    {isOcupado && <XCircleIcon className="absolute w-full h-full p-2 text-rose-500/30 dark:text-red-500/20" />}
                                                     {puerto}
                                                 </button>
                                             )
@@ -288,31 +295,32 @@ export default function TechInstallForm() {
                     </div>
 
                     {/* GEOLOCALIZACIÓN GPS */}
-                    <div className="pt-4 border-t border-slate-800/50">
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800/50">
                         <label className={labelStyle}>Ubicación Exacta (Mapa)</label>
                         {!formData.latitud ? (
-                            <button type="button" onClick={capturarUbicacion} className="w-full bg-slate-800 hover:bg-slate-700 text-blue-400 border border-blue-900/30 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition active:scale-95">
+                            <button type="button" onClick={capturarUbicacion} className="w-full bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30 py-4 rounded-xl font-black tracking-wide flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95">
                                 <MapPinIcon className="w-6 h-6 animate-bounce" /> OBTENER MI UBICACIÓN AHORA
                             </button>
                         ) : (
-                            <div className="bg-emerald-900/20 border border-emerald-500/30 p-3 rounded-xl flex justify-between items-center">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-xl flex justify-between items-center transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-emerald-500/20 p-2 rounded-lg"><MapPinIcon className="w-5 h-5 text-emerald-400" /></div>
+                                    <div className="bg-emerald-100 dark:bg-emerald-500/20 p-2 rounded-lg"><MapPinIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
                                     <div>
-                                        <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Coordenadas Guardadas</p>
-                                        <p className="text-xs text-slate-300 font-mono mt-0.5">{formData.latitud.slice(0,8)}, {formData.longitud.slice(0,9)}</p>
+                                        <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-black uppercase tracking-wider">Coordenadas Guardadas</p>
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 font-mono mt-0.5 font-bold">{formData.latitud.slice(0,8)}, {formData.longitud.slice(0,9)}</p>
                                     </div>
                                 </div>
-                                <button type="button" onClick={capturarUbicacion} className="text-[10px] text-emerald-400 underline p-2 font-bold uppercase">Actualizar</button>
+                                <button type="button" onClick={capturarUbicacion} className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 p-2 font-black uppercase transition-colors">Actualizar</button>
                             </div>
                         )}
                     </div>
 
                 </div>
 
-                <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0f1014] via-[#0f1014] to-transparent z-30">
-                    <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-900/40 active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-3">
-                        {loading ? 'SINCRONIZANDO...' : 'FINALIZAR Y ACTIVAR'}
+                {/* BOTÓN INFERIOR FLOTANTE */}
+                <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-slate-50 via-slate-50 dark:from-slate-950 dark:via-slate-950 to-transparent z-30 transition-colors duration-300">
+                    <button type="submit" disabled={loading} className="w-full max-w-3xl mx-auto bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-sm md:text-lg tracking-widest uppercase shadow-lg dark:shadow-blue-900/40 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3">
+                        {loading ? 'SINCRONIZANDO...' : 'FINALIZAR Y ACTIVAR CLIENTE'}
                         {!loading && <CheckCircleIcon className="w-6 h-6"/>}
                     </button>
                 </div>

@@ -8,7 +8,6 @@ import {
 
 interface Zona { id: number; nombre: string; }
 
-// Interfaz para la edición
 interface NapToEdit {
     id: number;
     nombre: string;
@@ -21,24 +20,20 @@ interface Props {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    routers: any[];
     zonas: Zona[];
-    napToEdit?: NapToEdit; // 👈 Nueva prop para editar
+    napToEdit?: NapToEdit;
 }
 
 export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napToEdit }: Props) {
     const [formData, setFormData] = useState({
-        nombre: '',
-        ubicacion: '',
-        capacidad: '16',
-        zona_id: ''
+        nombre: '', ubicacion: '', capacidad: '16', zona_id: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Efecto para detectar si es Edición o Creación
     useEffect(() => {
         if (isOpen) {
             if (napToEdit) {
-                // Modo Edición: Rellenar datos
                 setFormData({
                     nombre: napToEdit.nombre,
                     ubicacion: napToEdit.ubicacion,
@@ -46,7 +41,6 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napT
                     zona_id: napToEdit.zona_id.toString()
                 });
             } else {
-                // Modo Creación: Limpiar
                 setFormData({ nombre: '', ubicacion: '', capacidad: '16', zona_id: '' });
             }
         }
@@ -65,21 +59,19 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napT
             };
 
             if (napToEdit) {
-                // PUT (Editar)
                 await client.put(`/infraestructura/naps/${napToEdit.id}`, payload);
-                toast.success("Caja NAP actualizada");
+                toast.success("Caja NAP actualizada", { id: loadingToast });
             } else {
-                // POST (Crear)
                 await client.post('/infraestructura/naps', payload);
-                toast.success("Caja NAP creada");
+                toast.success("Caja NAP creada", { id: loadingToast });
             }
             
             onSuccess();
             onClose();
         } catch (error: any) {
+            toast.dismiss(loadingToast);
             toast.error(error.response?.data?.detail || "Error al guardar");
         } finally {
-            toast.dismiss(loadingToast);
             setIsSubmitting(false);
         }
     };
@@ -87,31 +79,29 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napT
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-md shadow-2xl overflow-hidden transform transition-all">
+        /* ✅ ADAPTADO: Backdrop y contenedor adaptativos */
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-colors duration-300">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden transition-colors">
                 
-                {/* Header Dinámico */}
-                <div className="flex justify-between items-center p-5 border-b border-slate-800 bg-slate-800/50">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        {napToEdit ? (
-                            <><PencilSquareIcon className="w-6 h-6 text-blue-500" /> Editar Caja NAP</>
-                        ) : (
-                            <><CubeIcon className="w-6 h-6 text-emerald-500" /> Nueva Caja NAP</>
-                        )}
+                {/* Header */}
+                <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 transition-colors">
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 transition-colors">
+                        {napToEdit ? <PencilSquareIcon className="w-6 h-6 text-blue-600 dark:text-blue-500" /> : <CubeIcon className="w-6 h-6 text-emerald-600 dark:text-emerald-500" />}
+                        {napToEdit ? 'Editar Caja NAP' : 'Nueva Caja NAP'}
                     </h3>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-full transition">
-                        <XMarkIcon className="w-6 h-6 text-slate-400 hover:text-white"/>
+                    <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                        <XMarkIcon className="w-6 h-6" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     {/* Zona */}
                     <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
+                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-2">
                             <MapIcon className="w-3 h-3"/> Zona / Colonia
                         </label>
                         <select 
-                            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-emerald-500 transition"
+                            className="w-full bg-slate-50 dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-colors"
                             required
                             value={formData.zona_id}
                             onChange={e => setFormData({...formData, zona_id: e.target.value})}
@@ -123,8 +113,8 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napT
 
                     {/* Nombre */}
                     <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Identificador de Caja</label>
-                        <input type="text" className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-emerald-500 placeholder:text-slate-700 transition" 
+                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-2 block">Identificador de Caja</label>
+                        <input type="text" className="w-full bg-slate-50 dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-colors" 
                             placeholder="Ej: NAP-05-VicenteG" required
                             value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})}
                         />
@@ -132,10 +122,10 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napT
 
                     {/* Ubicación */}
                     <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
+                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-2">
                             <MapPinIcon className="w-3 h-3"/> Referencia Física
                         </label>
-                        <input type="text" className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-emerald-500 placeholder:text-slate-700 transition" 
+                        <input type="text" className="w-full bg-slate-50 dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-colors" 
                             placeholder="Ej: Poste #45, Esq. con Tienda" required
                             value={formData.ubicacion} onChange={e => setFormData({...formData, ubicacion: e.target.value})}
                         />
@@ -143,36 +133,34 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napT
 
                     {/* Capacidad */}
                     <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Puertos Totales (Splitter)</label>
+                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-2 block">Puertos Totales (Splitter)</label>
                         <div className="grid grid-cols-2 gap-3">
-                            <button type="button" 
-                                onClick={() => setFormData({...formData, capacidad: '8'})}
-                                className={`p-3 rounded-xl border font-bold text-sm transition ${formData.capacidad === '8' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500'}`}
-                            >
-                                8 Puertos
-                            </button>
-                            <button type="button" 
-                                onClick={() => setFormData({...formData, capacidad: '16'})}
-                                className={`p-3 rounded-xl border font-bold text-sm transition ${formData.capacidad === '16' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500'}`}
-                            >
-                                16 Puertos
-                            </button>
+                            {['8', '16'].map((cap) => (
+                                <button key={cap} type="button" 
+                                    onClick={() => setFormData({...formData, capacidad: cap})}
+                                    className={`p-3 rounded-xl border-2 font-black text-sm transition-all ${
+                                        formData.capacidad === cap 
+                                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' 
+                                        : 'bg-slate-50 dark:bg-[#0b0c10] border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300 dark:hover:border-slate-500'
+                                    }`}
+                                >
+                                    {cap} Puertos
+                                </button>
+                            ))}
                         </div>
                     </div>
 
-                    <div className="pt-2">
-                        <button 
-                            type="submit" 
-                            disabled={isSubmitting} 
-                            className={`w-full font-bold py-3.5 rounded-xl transition shadow-lg active:scale-95 flex items-center justify-center gap-2
-                                ${napToEdit 
-                                    ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20' 
-                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'}
-                            `}
-                        >
-                            {isSubmitting ? 'Guardando...' : (napToEdit ? 'Guardar Cambios' : 'Registrar NAP')}
-                        </button>
-                    </div>
+                    <button 
+                        type="submit" 
+                        disabled={isSubmitting} 
+                        className={`w-full font-black py-4 rounded-xl transition-all active:scale-95 shadow-md uppercase tracking-widest text-sm ${
+                            napToEdit 
+                            ? 'bg-blue-600 hover:bg-blue-500 text-white' 
+                            : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                        }`}
+                    >
+                        {isSubmitting ? 'Guardando...' : (napToEdit ? 'Guardar Cambios' : 'Registrar NAP')}
+                    </button>
                 </form>
             </div>
         </div>
