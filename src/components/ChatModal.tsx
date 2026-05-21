@@ -67,13 +67,39 @@ export default function ChatModal({ isOpen, onClose, cliente, onMessagesRead }: 
         finally { setSending(false); }
     };
 
-    const aplicarPlantilla = (texto: string) => setMensaje(texto.replace("{nombre}", cliente?.nombre || "Cliente"));
+    // 🔥 NUEVA FUNCIÓN: Interpreta si el texto es imagen o texto normal
+    const renderizarContenidoMensaje = (texto: string) => {
+        if (texto.includes("[Imagen enviada]")) {
+            let url = texto.substring(texto.indexOf("http"));
+            
+            // Reemplazo vital por si estás probando en local pero apuntas a la VPS
+            url = url.replace("http://localhost:3000/uploads", "https://fdezpay.com/media");
+
+            return (
+                <div className="mt-1 mb-3">
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                        <img 
+                            src={url} 
+                            alt="Imagen recibida" 
+                            className="max-w-[200px] sm:max-w-[250px] rounded-lg cursor-pointer hover:opacity-80 transition-opacity border border-slate-300 dark:border-slate-700 shadow-sm"
+                            onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.parentElement?.insertAdjacentHTML('beforeend', '<span class="text-xs text-red-400 font-bold">Imagen no disponible</span>');
+                            }}
+                        />
+                    </a>
+                </div>
+            );
+        }
+        
+        // Si no es imagen, renderiza el texto normal con el padding original
+        return <span className="break-words whitespace-pre-wrap pr-12">{texto}</span>;
+    };
 
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm sm:p-4 transition-colors">
-            {/* ✅ ADAPTADO: Fondo dinámico del modal */}
             <div className="w-full h-[85vh] sm:h-[650px] sm:max-w-md bg-white dark:bg-[#0b141a] flex flex-col rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl border-t sm:border border-slate-200 dark:border-slate-800 transition-colors">
                 
                 {/* Cabecera */}
@@ -104,7 +130,8 @@ export default function ChatModal({ isOpen, onClose, cliente, onMessagesRead }: 
                                     isOut ? 'bg-emerald-600 dark:bg-[#005c4b] text-white rounded-lg' : 'bg-slate-200 dark:bg-[#202c33] text-slate-900 dark:text-[#e9edef] rounded-lg'
                                 } ${showTail && isOut ? 'rounded-tr-none' : ''} ${showTail && !isOut ? 'rounded-tl-none' : ''}`}>
                                     
-                                    <span className="break-words whitespace-pre-wrap pr-12">{msg.mensaje}</span>
+                                    {/* 🔥 AQUÍ SE LLAMA A LA NUEVA FUNCIÓN */}
+                                    {renderizarContenidoMensaje(msg.mensaje)}
                                     
                                     <div className="absolute bottom-1 right-2 flex items-center gap-1">
                                         <span className="text-[9px] opacity-70 leading-none">

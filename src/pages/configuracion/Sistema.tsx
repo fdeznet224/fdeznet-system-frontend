@@ -13,12 +13,13 @@ interface ConfigSistema {
     activar_corte_automatico: boolean;
     activar_notificaciones: boolean;
     aviso_pantalla_corte: boolean;
-    dia_generacion_factura: number;
+    dia_generacion_factura: number; 
     generar_facturas_automaticamente: boolean;
     hora_ejecucion_corte: string;
     recordatorio_1_dias: number;
     recordatorio_2_dias: number;
     recordatorio_3_dias: number;
+    telefonos_alerta: string; // 👈 Asegúrate de tener esto si ya lo vas a usar
 }
 
 export default function Sistema() {
@@ -36,7 +37,8 @@ export default function Sistema() {
         hora_ejecucion_corte: "03:00",
         recordatorio_1_dias: 3,
         recordatorio_2_dias: 1,
-        recordatorio_3_dias: 0
+        recordatorio_3_dias: 0,
+        telefonos_alerta: ""
     });
 
     useEffect(() => { cargarConfig(); }, []);
@@ -114,13 +116,7 @@ export default function Sistema() {
                                 <input type="time" className="w-full bg-slate-100 dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white font-black outline-none focus:border-rose-500 transition text-center tracking-widest"
                                     value={config.hora_ejecucion_corte} onChange={e => handleChange('hora_ejecucion_corte', e.target.value)} />
                             </div>
-                            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-[#151b2b] rounded-xl border border-slate-200 dark:border-slate-800">
-                                <div>
-                                    <label className="font-black block text-slate-900 dark:text-white text-sm">Aviso de Corte en Navegador</label>
-                                    <span className="text-xs text-slate-500">Requiere Web Proxy en MikroTik</span>
-                                </div>
-                                <Toggle checked={config.aviso_pantalla_corte} onChange={(v: any) => handleChange('aviso_pantalla_corte', v)} color="slate" />
-                            </div>
+                            {/* AQUÍ SE ELIMINÓ EL AVISO DE CORTE EN NAVEGADOR */}
                         </div>
                     </div>
 
@@ -166,6 +162,18 @@ export default function Sistema() {
                         <CardInputRight label="1er Aviso (Preventivo)" sub="DÍAS ANTES" value={config.recordatorio_1_dias} onChange={(v: any) => handleChange('recordatorio_1_dias', Number(v))} textColor="text-blue-600 dark:text-blue-400" />
                         <CardInputRight label="2do Aviso (Urgente)" sub="DÍAS ANTES" value={config.recordatorio_2_dias} onChange={(v: any) => handleChange('recordatorio_2_dias', Number(v))} textColor="text-amber-600 dark:text-amber-400" />
                         <CardInputRight label="3er Aviso (Corte)" sub="0 = DÍA DEL CORTE" value={config.recordatorio_3_dias} onChange={(v: any) => handleChange('recordatorio_3_dias', Number(v))} textColor="text-rose-600 dark:text-rose-400" />
+                        
+                        {/* 🔥 AGREGAMOS EL INPUT PARA LOS NÚMEROS DE WHATSAPP 🔥 */}
+                        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+                            <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">Números WhatsApp (Separados por coma)</label>
+                            <input 
+                                type="text" 
+                                className="w-full bg-slate-50 dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white font-mono text-sm outline-none focus:border-emerald-500 transition-colors"
+                                placeholder="5219611234567,5219617654321"
+                                value={config.telefonos_alerta} 
+                                onChange={e => handleChange('telefonos_alerta', e.target.value)} 
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

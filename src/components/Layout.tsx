@@ -119,31 +119,65 @@ export default function Layout() {
 
     // NOTIFICACIONES TOAST 
     useEffect(() => {
-        if (user.rol !== 'admin' || !wsEvent) return;
-        if (wsEvent.type === 'NEW_MESSAGE' && wsEvent.data.direccion === 'entrada') {
-            const nuevoMensaje = wsEvent.data;
-            client.get(`/clientes/${nuevoMensaje.cliente_id}`).then(resC => {
-                const nombreCliente = resC.data.nombre || "Cliente Nuevo";
-                const audio = new Audio('/notification.mp3');
-                audio.play().catch(() => { });
-                toast.custom((t) => (
-                    <div
-                        onClick={() => { toast.dismiss(t.id); setTargetCliente(resC.data); setShowChatModal(true); }}
-                        className={`${t.visible ? 'animate-in fade-in' : 'animate-out fade-out'} max-w-md w-full bg-[#1a1f2e] border border-emerald-500/30 shadow-2xl rounded-2xl pointer-events-auto flex cursor-pointer hover:bg-[#242b3d] transition-all z-[9999]`}
-                    >
-                        <div className="flex-1 p-4 flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shrink-0">{nombreCliente.charAt(0).toUpperCase()}</div>
-                            <div className="overflow-hidden">
-                                <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">WhatsApp - Nuevo Mensaje</p>
-                                <p className="text-sm font-bold text-white truncate">{nombreCliente}</p>
-                                <p className="text-xs text-slate-400 truncate mt-1">{nuevoMensaje.mensaje}</p>
-                            </div>
+    if (user.rol !== 'admin' || !wsEvent) return;
+
+    if (wsEvent.type === 'NEW_MESSAGE' && wsEvent.data.direccion === 'entrada') {
+        const nuevoMensaje = wsEvent.data;
+
+        // 1. Creamos una función reutilizable para lanzar el Toast
+        const lanzarNotificacion = (nombreMostrar: string, dataCliente: any) => {
+            const audio = new Audio('/notification.mp3');
+            audio.play().catch(() => { });
+            
+            toast.custom((t) => (
+                <div
+                    onClick={() => { 
+                        toast.dismiss(t.id); 
+                        // Solo intentamos abrir el modal si tenemos los datos del cliente
+                        if (dataCliente) {
+                            setTargetCliente(dataCliente); 
+                            setShowChatModal(true); 
+                        } else {
+                            console.log("Mensaje de número desconocido. Ve a la bandeja general.");
+                            // Aquí podrías opcionalmente redirigir a una bandeja general de prospectos si la tienes
+                        }
+                    }}
+                    className={`${t.visible ? 'animate-in fade-in' : 'animate-out fade-out'} max-w-md w-full bg-[#1a1f2e] border border-emerald-500/30 shadow-2xl rounded-2xl pointer-events-auto flex cursor-pointer hover:bg-[#242b3d] transition-all z-[9999]`}
+                >
+                    <div className="flex-1 p-4 flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shrink-0">
+                            {nombreMostrar.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="overflow-hidden">
+                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">WhatsApp - Nuevo Mensaje</p>
+                            <p className="text-sm font-bold text-white truncate">{nombreMostrar}</p>
+                            <p className="text-xs text-slate-400 truncate mt-1">{nuevoMensaje.mensaje}</p>
                         </div>
                     </div>
-                ), { position: 'top-right', id: `msg-${nuevoMensaje.id}`, duration: 5000 });
-            });
+                </div>
+            ), { position: 'top-right', id: `msg-${nuevoMensaje.id}`, duration: 5000 });
+        };
+
+        // 2. 🔥 LA VALIDACIÓN CRÍTICA 🔥
+        if (nuevoMensaje.cliente_id && nuevoMensaje.cliente_id !== "null") {
+            // Sí es un cliente registrado: Hacemos la petición a FastAPI
+            client.get(`/clientes/${nuevoMensaje.cliente_id}`)
+                .then(resC => {
+                    const nombreCliente = resC.data.nombre || "Cliente";
+                    lanzarNotificacion(nombreCliente, resC.data);
+                })
+                .catch(err => {
+                    console.error("Error al buscar el nombre del cliente:", err);
+                    lanzarNotificacion("Cliente", null);
+                });
+        } else {
+            // Es un prospecto o número desconocido: NO hacemos petición a FastAPI
+            // Usamos el teléfono que viene en wsEvent si existe, si no, "Desconocido"
+            const nombreProspecto = nuevoMensaje.telefono || "Nuevo Contacto";
+            lanzarNotificacion(nombreProspecto, null);
         }
-    }, [wsEvent, user.rol]);
+    }
+}, [wsEvent, user.rol]);
 
     const handleLogout = () => { localStorage.clear(); navigate('/'); };
     const toggleSubMenu = (name: string) => setOpenSubMenu(openSubMenu === name ? null : name);
