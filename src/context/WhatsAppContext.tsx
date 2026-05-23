@@ -43,13 +43,12 @@ export const WhatsAppProvider = ({ children }: { children: React.ReactNode }) =>
         let reconnectTimer: ReturnType<typeof setTimeout>;
 
         const connectWebSocket = () => {
-            // 1. Detección automática de protocolo y host
+            // ✅ SOLUCIÓN APLICADA: Dejamos que Nginx maneje los puertos
             const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-            const hostname = window.location.hostname;
-            const port = '8000'; // Ajusta esto si tu FastAPI corre en otro puerto
+            const host = window.location.host; // Automáticamente usa fdezpay.com en prod, o localhost:5173 en dev
             
-            // Construcción dinámica de la URL
-            const wsUrl = `${protocol}://${hostname}:${port}/whatsapp/ws/global_admin`;
+            // Construcción dinámica de la URL (Sin el :8000 forzado)
+            const wsUrl = `${protocol}://${host}/whatsapp/ws/global_admin`;
             
             socket = new WebSocket(wsUrl);
 
