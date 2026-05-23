@@ -1,12 +1,13 @@
 import { useState, useEffect, Fragment } from 'react';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import { Dialog, Transition, Tab } from '@headlessui/react';
+import { Dialog, Transition } from '@headlessui/react';
 import { useNavigate } from 'react-router-dom';
 import { 
     BanknotesIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, 
     XMarkIcon, ArrowPathIcon, ShieldExclamationIcon, ClockIcon, 
-    ChartPieIcon, HomeIcon, CreditCardIcon
+    ChartPieIcon, HomeIcon, CreditCardIcon, CalendarDaysIcon, 
+    CheckCircleIcon, IdentificationIcon
 } from '@heroicons/react/24/outline';
 
 export default function PanelCobrador() {
@@ -25,10 +26,13 @@ export default function PanelCobrador() {
     const totalTransferencia = historial.filter(h => h.metodo === 'transferencia').reduce((acc, curr) => acc + curr.monto, 0);
     const totalRetencionPromesas = promesas.reduce((acc, curr) => acc + curr.saldo_pendiente, 0);
 
+    // ESTADOS DEL MODAL
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedFactura, setSelectedFactura] = useState<any>(null);
+    const [modo, setModo] = useState<'pagar' | 'promesa'>('pagar'); // 👈 Nuevo estado para las tabs
     const [formCobro, setFormCobro] = useState({ metodo: 'efectivo', referencia: '', monto: 0 });
     const [fechaPromesa, setFechaPromesa] = useState('');
+    const [procesando, setProcesando] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -65,6 +69,7 @@ export default function PanelCobrador() {
     const handleOpenCobrar = (factura: any) => {
         setSelectedFactura(factura);
         setFormCobro({ metodo: 'efectivo', referencia: '', monto: factura.saldo_pendiente });
+        setModo('pagar'); // Resetear a Pagar al abrir
         const date = new Date();
         date.setDate(date.getDate() + 3);
         setFechaPromesa(date.toISOString().split('T')[0]);
@@ -73,49 +78,60 @@ export default function PanelCobrador() {
 
     const handleProcesarCobro = async (e: React.FormEvent) => {
         e.preventDefault();
+        setProcesando(true);
         const toastId = toast.loading("Procesando...");
         try {
             await client.post('/finanzas/cobrar', {
                 factura_id: selectedFactura.id,
                 metodo_pago: formCobro.metodo,
                 monto_recibido: Number(formCobro.monto),
-                referencia: formCobro.referencia
+                referencia: formCobro.referencia || `POS #${selectedFactura.id}`
             });
-            toast.success("Pago registrado", { id: toastId });
+            toast.success("Pago registrado exitosamente", { id: toastId });
             setIsModalOpen(false);
             setFiltro('');
             fetchData();
-        } catch (error) { toast.error("Error al cobrar", { id: toastId }); }
+        } catch (error) { 
+            toast.error("Error al cobrar", { id: toastId }); 
+        } finally {
+            setProcesando(false);
+        }
     };
 
     const handleProcesarPromesa = async (e: React.FormEvent) => {
         e.preventDefault();
+        setProcesando(true);
         const toastId = toast.loading("Guardando promesa...");
         try {
             await client.post('/finanzas/promesa-pago', {
                 factura_id: selectedFactura.id,
                 nueva_fecha: fechaPromesa
             });
-            toast.success("Promesa guardada", { id: toastId });
+            toast.success("Promesa guardada y servicio activo", { id: toastId });
             setIsModalOpen(false);
             setFiltro('');
             fetchData();
-        } catch (error) { toast.error("Error al guardar promesa", { id: toastId }); }
+        } catch (error) { 
+            toast.error("Error al guardar promesa", { id: toastId }); 
+        } finally {
+            setProcesando(false);
+        }
     };
 
     const facturasFiltradas = filtro.length > 0 
         ? facturas.filter(f => f.cliente.nombre.toLowerCase().includes(filtro.toLowerCase()) || f.cliente.ip_asignada?.includes(filtro))
         : [];
 
+    const saldoAFavor = formCobro.monto > selectedFactura?.saldo_pendiente ? formCobro.monto - selectedFactura.saldo_pendiente : 0;
+
     return (
-        /* ✅ ADAPTADO: Fondo base dinámico */
         <div className="min-h-screen bg-slate-50 dark:bg-[#0f1219] text-slate-800 dark:text-white font-sans flex flex-col transition-colors duration-300">
             
             {/* HEADER ADAPTATIVO */}
             <div className="bg-white dark:bg-[#1a1f2e] border-b border-slate-200 dark:border-slate-800 px-5 py-3 flex justify-between items-center sticky top-0 z-30 shadow-sm dark:shadow-xl transition-colors">
                 <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center font-bold text-lg text-white">
-                        {user.usuario?.charAt(0)}
+                        {user.usuario?.charAt(0)?.toUpperCase()}
                     </div>
                     <div>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest transition-colors">Cobrador</p>
@@ -128,9 +144,9 @@ export default function PanelCobrador() {
             </div>
 
             {/* CONTENIDO PRINCIPAL */}
-            <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+            <div className="flex-1 p-4 space-y-6 overflow-y-auto pb-24">
                 
-                {/* === TABS === */}
+                {/* === PESTAÑA: COBRAR === */}
                 {activeTab === 'cobrar' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
                         <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 shadow-md relative overflow-hidden">
@@ -140,17 +156,17 @@ export default function PanelCobrador() {
 
                         <div className="space-y-4">
                             <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase ml-1 tracking-widest">Buscar Cliente</label>
-                            <div className="bg-white dark:bg-[#1a1f2e] rounded-xl flex items-center border border-slate-200 dark:border-slate-700 shadow-sm dark:shadow-lg p-1 transition-colors">
+                            <div className="bg-white dark:bg-[#1a1f2e] rounded-xl flex items-center border border-slate-200 dark:border-slate-700 shadow-sm p-1 transition-colors">
                                 <MagnifyingGlassIcon className="w-6 h-6 text-slate-400 ml-3" />
                                 <input className="w-full bg-transparent p-3 text-slate-900 dark:text-white outline-none text-lg font-bold placeholder-slate-400" placeholder="Nombre o IP..." value={filtro} onChange={e => setFiltro(e.target.value)} />
                             </div>
                         </div>
 
-                        <div className="space-y-3 pb-20">
+                        <div className="space-y-3">
                             {facturasFiltradas.map((f) => {
                                 const isVencida = new Date(f.fecha_vencimiento) < new Date();
                                 return (
-                                    <div key={f.id} onClick={() => handleOpenCobrar(f)} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center relative overflow-hidden active:scale-[0.98] transition-all">
+                                    <div key={f.id} onClick={() => handleOpenCobrar(f)} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer">
                                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${isVencida ? 'bg-rose-500' : 'bg-amber-500'}`}></div>
                                         <div className="pl-2">
                                             <h3 className="font-black text-slate-900 dark:text-white text-base transition-colors">{f.cliente.nombre}</h3>
@@ -168,6 +184,90 @@ export default function PanelCobrador() {
                         </div>
                     </div>
                 )}
+
+                {/* === PESTAÑA: PROMESAS === */}
+                {activeTab === 'promesas' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4">
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">Promesas Activas</h2>
+                        {promesas.length === 0 ? (
+                            <div className="text-center py-10">
+                                <ShieldExclamationIcon className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-2"/>
+                                <p className="text-slate-500 font-bold">No hay promesas activas</p>
+                            </div>
+                        ) : (
+                            promesas.map((f) => (
+                                <div key={f.id} onClick={() => handleOpenCobrar(f)} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500"></div>
+                                    <div className="pl-2">
+                                        <h3 className="font-black text-slate-900 dark:text-white text-base">{f.cliente.nombre}</h3>
+                                        <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-1 uppercase flex items-center gap-1">
+                                            <CalendarDaysIcon className="w-3 h-3"/> Promesa: {f.fecha_vencimiento}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">${f.saldo_pendiente}</span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
+                {/* === PESTAÑA: HISTORIAL === */}
+                {activeTab === 'historial' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4">
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">Cobros de Hoy</h2>
+                        {historial.length === 0 ? (
+                            <div className="text-center py-10">
+                                <ClockIcon className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-2"/>
+                                <p className="text-slate-500 font-bold">Aún no hay cobros registrados hoy</p>
+                            </div>
+                        ) : (
+                            historial.map((h, i) => (
+                                <div key={i} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-full ${h.metodo === 'efectivo' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                                            {h.metodo === 'efectivo' ? <BanknotesIcon className="w-5 h-5"/> : <CreditCardIcon className="w-5 h-5"/>}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-sm text-slate-900 dark:text-white">Factura #{h.factura_id}</h3>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">{h.metodo}</p>
+                                        </div>
+                                    </div>
+                                    <span className="font-black text-slate-900 dark:text-white">+${h.monto}</span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
+                {/* === PESTAÑA: CIERRE === */}
+                {activeTab === 'cierre' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">Corte de Caja</h2>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4">
+                                <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                                    <BanknotesIcon className="w-4 h-4"/> Efectivo
+                                </span>
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">${totalEfectivo}</h3>
+                            </div>
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
+                                <span className="text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                                    <CreditCardIcon className="w-4 h-4"/> Transferencia
+                                </span>
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">${totalTransferencia}</h3>
+                            </div>
+                        </div>
+                        
+                        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl p-4">
+                             <span className="text-purple-600 dark:text-purple-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                                <ShieldExclamationIcon className="w-4 h-4"/> Por Promesas Activas
+                            </span>
+                            <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">${totalRetencionPromesas}</h3>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* NAV INFERIOR ADAPTATIVO */}
@@ -178,19 +278,122 @@ export default function PanelCobrador() {
                 <NavButton active={activeTab === 'cierre'} icon={ChartPieIcon} label="Cierre" onClick={() => setActiveTab('cierre')} />
             </div>
 
-            {/* MODAL COBRO (Adaptado) */}
+            {/* =========================================================================
+                MODAL COBRO (DISEÑO POS - ADAPTATIVO CLARO/OSCURO) 
+               ========================================================================= */}
             <Transition appear show={isModalOpen} as={Fragment}>
                 <Dialog as="div" className="relative z-50" onClose={() => setIsModalOpen(false)}>
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
                     <div className="fixed inset-0 overflow-y-auto">
-                        <div className="flex min-h-full items-end justify-center p-0">
+                        <div className="flex min-h-full items-end justify-center p-0 sm:items-center sm:p-4">
                             <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="translate-y-full opacity-0" enterTo="translate-y-0 opacity-100">
-                                <Dialog.Panel className="w-full sm:max-w-md bg-white dark:bg-[#1e293b] rounded-t-3xl border-t border-slate-200 dark:border-slate-700 shadow-2xl p-6 transition-colors">
+                                
+                                <Dialog.Panel className="w-full sm:max-w-md bg-white dark:bg-[#0b0e14] rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-8 transition-colors flex flex-col h-[85vh] sm:h-auto">
+                                    
+                                    {/* CABECERA Y TARJETA DEL CLIENTE */}
                                     <div className="flex justify-between items-center mb-6">
-                                        <Dialog.Title className="text-xl font-black text-slate-900 dark:text-white">{selectedFactura?.cliente.nombre}</Dialog.Title>
-                                        <button onClick={() => setIsModalOpen(false)} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-full text-slate-500"><XMarkIcon className="w-5 h-5"/></button>
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-xl font-bold text-white shrink-0 shadow-lg">
+                                                {selectedFactura?.cliente.nombre.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                                                    <IdentificationIcon className="w-3 h-3"/> {selectedFactura?.cliente.cedula || 'S/N'}
+                                                </p>
+                                                <h3 className="font-bold text-slate-900 dark:text-white text-base sm:text-lg truncate leading-none">{selectedFactura?.cliente.nombre}</h3>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => setIsModalOpen(false)} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-white">
+                                            <XMarkIcon className="w-5 h-5"/>
+                                        </button>
                                     </div>
-                                    {/* (El resto de la lógica de tabs se mantiene igual, solo asegura que los fondos de botones sean bg-slate-50 dark:bg-[#0f172a] y textos contrasten) */}
+
+                                    {/* CONCEPTO A PAGAR */}
+                                    <div className="mb-6">
+                                        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2 px-1">Concepto a Pagar</label>
+                                        <div className="w-full bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl p-4 font-bold shadow-sm dark:shadow-lg">
+                                            #{selectedFactura?.id} - Vence: {selectedFactura?.fecha_vencimiento} - ${selectedFactura?.saldo_pendiente}
+                                        </div>
+                                    </div>
+
+                                    {/* TABS DE ACCIÓN */}
+                                    <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-xl mb-6 shadow-sm dark:shadow-lg">
+                                        <button onClick={() => setModo('pagar')} className={`py-3 rounded-lg text-sm font-bold transition-all ${modo === 'pagar' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+                                            Registrar Pago
+                                        </button>
+                                        <button onClick={() => setModo('promesa')} className={`py-3 rounded-lg text-sm font-bold transition-all ${modo === 'promesa' ? 'bg-orange-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+                                            Crear Promesa
+                                        </button>
+                                    </div>
+
+                                    {/* FORMULARIOS */}
+                                    <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar">
+                                        {modo === 'pagar' ? (
+                                            <form onSubmit={handleProcesarCobro} className="flex flex-col flex-1 h-full">
+                                                
+                                                <div className="mb-6 bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center shadow-sm dark:shadow-lg">
+                                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-4">Monto Recibido</label>
+                                                    <div className="relative inline-block w-full max-w-[200px]">
+                                                        <span className="absolute left-0 top-1/2 -translate-y-1/2 text-3xl font-bold text-emerald-500">$</span>
+                                                        <input 
+                                                            type="number" step="0.01" required
+                                                            className="bg-transparent text-5xl sm:text-6xl font-black text-slate-900 dark:text-white outline-none w-full text-center pl-8 placeholder-slate-300 dark:placeholder-slate-800 transition-all border-b-2 border-transparent focus:border-emerald-500 pb-1"
+                                                            placeholder="0.00" value={formCobro.monto || ''} onChange={e => setFormCobro({...formCobro, monto: Number(e.target.value)})}
+                                                        />
+                                                    </div>
+                                                    {saldoAFavor > 0 && (
+                                                        <div className="mt-4 text-emerald-600 dark:text-emerald-400 text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 inline-block px-4 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-500/20 animate-in fade-in slide-in-from-bottom-2">
+                                                            Genera Saldo a Favor: +${saldoAFavor.toFixed(2)}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-3 mb-6">
+                                                    <button type="button" onClick={() => setFormCobro({...formCobro, metodo: 'efectivo'})} className={`p-4 rounded-xl border flex flex-col justify-center items-center gap-2 transition-all font-bold text-sm ${formCobro.metodo === 'efectivo' ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 shadow-sm dark:shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-slate-50 dark:bg-[#11131a] border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                                                        <BanknotesIcon className="w-6 h-6"/> Efectivo
+                                                    </button>
+                                                    <button type="button" onClick={() => setFormCobro({...formCobro, metodo: 'transferencia'})} className={`p-4 rounded-xl border flex flex-col justify-center items-center gap-2 transition-all font-bold text-sm ${formCobro.metodo === 'transferencia' ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 shadow-sm dark:shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-slate-50 dark:bg-[#11131a] border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                                                        <CreditCardIcon className="w-6 h-6"/> Transferencia
+                                                    </button>
+                                                </div>
+
+                                                {formCobro.metodo === 'transferencia' && (
+                                                    <div className="mb-6 animate-in fade-in slide-in-from-top-2">
+                                                        <input type="text" required placeholder="Referencia / Folio / Banco..." className="w-full bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm shadow-sm dark:shadow-lg" value={formCobro.referencia} onChange={e => setFormCobro({...formCobro, referencia: e.target.value})} />
+                                                    </div>
+                                                )}
+
+                                                <div className="mt-auto pt-4">
+                                                    <button type="submit" disabled={procesando} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 sm:py-5 rounded-2xl shadow-lg active:scale-95 transition-all disabled:opacity-50 text-base sm:text-lg flex justify-center items-center gap-2">
+                                                        {procesando ? <ArrowPathIcon className="w-6 h-6 animate-spin"/> : <><CheckCircleIcon className="w-6 h-6" /> CONFIRMAR COBRO</>}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        ) : (
+                                            <form onSubmit={handleProcesarPromesa} className="flex flex-col flex-1 h-full">
+                                                <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 p-5 rounded-2xl mb-6 text-center shadow-sm dark:shadow-lg">
+                                                    <ShieldExclamationIcon className="w-12 h-12 text-orange-500 mx-auto mb-3"/>
+                                                    <p className="text-orange-700 dark:text-orange-200 text-sm font-medium">Esta acción dará acceso temporal a internet al cliente. El sistema cortará el servicio automáticamente si no paga en la fecha límite acordada.</p>
+                                                </div>
+                                                
+                                                <div className="mb-8">
+                                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2 px-1">Fecha Límite de Pago</label>
+                                                    <input 
+                                                        type="date" required 
+                                                        className="w-full bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-900 dark:text-white font-bold text-center text-lg outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 shadow-sm dark:shadow-lg" 
+                                                        value={fechaPromesa} onChange={e => setFechaPromesa(e.target.value)} 
+                                                    />
+                                                </div>
+                                                
+                                                <div className="mt-auto pt-4">
+                                                    <button type="submit" disabled={procesando} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-4 sm:py-5 rounded-2xl shadow-lg active:scale-95 transition-all disabled:opacity-50 text-base sm:text-lg flex justify-center items-center gap-2">
+                                                        {procesando ? <ArrowPathIcon className="w-6 h-6 animate-spin"/> : 'ACTIVAR SERVICIO (PROMESA)'}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        )}
+                                    </div>
+
                                 </Dialog.Panel>
                             </Transition.Child>
                         </div>

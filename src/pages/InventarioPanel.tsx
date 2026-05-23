@@ -119,12 +119,11 @@ export default function InventarioPanel() {
     }, [equipos, filtro]);
 
     return (
-        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12">
+        /* 🔥 CLAVE 1: Limitamos la altura total y evitamos el scroll global */
+        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 h-[calc(100dvh-80px)] md:h-[calc(100vh-100px)] overflow-hidden transition-colors duration-300">
             
-            {/* =========================================================
-                HEADER RESPONSIVO COMPACTO (ADAPTATIVO)
-               ========================================================= */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 md:p-5 flex justify-between items-center shadow-sm dark:shadow-xl gap-4 flex-none">
+            {/* HEADER RESPONSIVO (Fijo) */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 md:p-5 flex justify-between items-center shadow-sm dark:shadow-xl gap-4 flex-none shrink-0">
                 <div>
                     <h1 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white leading-tight">Bodega e Inventario</h1>
                     <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm mt-0.5 hidden sm:block">Logística y Control de Equipos de Fibra Optica</p>
@@ -138,21 +137,19 @@ export default function InventarioPanel() {
                 </button>
             </div>
 
-            {/* =========================================================
-                KPI CARDS: CARRUSEL EN MÓVIL / GRID EN PC
-               ========================================================= */}
-            <div className="flex gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-4 md:pb-0 scrollbar-none flex-none">
+            {/* KPI CARDS (Fijo) */}
+            <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:pb-0 scrollbar-none flex-none shrink-0">
                 <KpiCard title="Total" value={stats.total} icon={ArchiveBoxIcon} color="text-blue-600 dark:text-blue-400" bg="bg-blue-500/10" onClick={() => setFiltro('todos')} active={filtro === 'todos'} />
                 <KpiCard title="En Bodega" value={stats.disponibles} icon={CheckBadgeIcon} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-500/10" onClick={() => setFiltro('DISPONIBLE')} active={filtro === 'DISPONIBLE'} />
                 <KpiCard title="Instalados" value={stats.instalados} icon={WrenchScrewdriverIcon} color="text-purple-600 dark:text-purple-400" bg="bg-purple-500/10" onClick={() => setFiltro('INSTALADO')} active={filtro === 'INSTALADO'} />
                 <KpiCard title="Por Recoger" value={stats.porRecoger} icon={ArrowDownTrayIcon} color="text-rose-600 dark:text-rose-400" bg="bg-rose-500/10" onClick={() => setFiltro('POR_RECOGER')} active={filtro === 'POR_RECOGER'} />
             </div>
 
-            {/* =========================================================
-                ZONA DE DATOS PRINCIPALES
-               ========================================================= */}
-            <div className="flex-1 bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md dark:shadow-xl overflow-hidden flex flex-col transition-colors duration-200">
-                <div className="overflow-y-auto flex-1 custom-scrollbar">
+            {/* 🔥 CLAVE 2: flex-1 y min-h-0 le dice a este bloque que tome el resto del espacio y permita el scroll interno */}
+            <div className="flex-1 min-h-0 bg-transparent md:bg-white md:dark:bg-slate-900/90 md:rounded-2xl md:border md:border-slate-200 md:dark:border-slate-800 md:shadow-md md:dark:shadow-xl overflow-hidden flex flex-col transition-colors duration-200 relative">
+                
+                {/* 🔥 CLAVE 3: overflow-y-auto en este div envuelve la tabla y las tarjetas para que hagan scroll solas */}
+                <div className="overflow-y-auto flex-1 custom-scrollbar pb-10">
                     
                     {/* 🖥️ COMPONENTE: TABLA ESCRITORIO */}
                     <table className="w-full text-left border-collapse hidden md:table text-xs">
@@ -231,41 +228,41 @@ export default function InventarioPanel() {
                     </table>
 
                     {/* 📱 COMPONENTE: ARCHIVO DE CARDS MÓVILES */}
-                    <div className="md:hidden flex flex-col gap-2.5 p-2 pb-24">
+                    <div className="md:hidden flex flex-col gap-3 px-1 pb-10">
                         {loading && equipos.length === 0 ? (
                             <div className="p-8 text-center"><ArrowPathIcon className="w-6 h-6 animate-spin mx-auto text-orange-500"/></div>
                         ) : equiposFiltrados.map((eq) => (
-                            <div key={eq.id} className="bg-slate-50 dark:bg-slate-950/40 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 flex flex-col gap-2.5 shadow-sm">
+                            <div key={eq.id} className="bg-white dark:bg-slate-950/40 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col gap-3 shadow-sm relative overflow-hidden transition-colors">
                                 
                                 <div className="flex justify-between items-start gap-2">
                                     <div className="flex items-start gap-2 overflow-hidden">
-                                        <QrCodeIcon className="w-4 h-4 text-slate-400 dark:text-slate-500 mt-0.5 shrink-0" />
+                                        <QrCodeIcon className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5 shrink-0" />
                                         <div className="overflow-hidden">
-                                            <span className="font-mono font-black text-slate-900 dark:text-white text-sm block leading-tight">{eq.identificador}</span>
-                                            <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-black block mt-0.5 truncate">{eq.tecnologia} — {eq.modelo}</span>
+                                            <span className="font-mono font-black text-slate-900 dark:text-white text-base block leading-tight">{eq.identificador}</span>
+                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black block mt-0.5 truncate">{eq.tecnologia} — {eq.modelo}</span>
                                         </div>
                                     </div>
                                     <EstadoBadge estado={eq.estado} />
                                 </div>
 
                                 {eq.cliente_nombre && (
-                                    <div className="bg-white dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/40 text-[11px] space-y-1">
+                                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/40 text-[11px] space-y-1.5">
                                         <div className="flex justify-between items-center">
-                                            <div className="flex items-center gap-1 text-slate-800 dark:text-white font-bold truncate">
-                                                <UserIcon className="w-3 h-3 text-slate-400 shrink-0" />
+                                            <div className="flex items-center gap-1.5 text-slate-800 dark:text-white font-bold truncate text-xs">
+                                                <UserIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                                 <span>{eq.cliente_nombre}</span>
                                             </div>
-                                            <div className="px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[8px] font-black text-indigo-600 dark:text-indigo-400 tracking-wide uppercase font-mono shrink-0">
+                                            <div className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black text-indigo-600 dark:text-indigo-400 tracking-wide uppercase font-mono shrink-0">
                                                 {eq.cliente_zona || 'Sin Zona'}
                                             </div>
                                         </div>
-                                        <p className="text-slate-400 dark:text-slate-500 text-[10px] leading-tight line-clamp-1">{eq.cliente_direccion}</p>
+                                        <p className="text-slate-500 dark:text-slate-500 text-[10px] leading-snug line-clamp-2">{eq.cliente_direccion}</p>
                                     </div>
                                 )}
 
                                 {eq.estado === 'POR_RECOGER' ? (
-                                    <div className="flex flex-col gap-2 border-t border-slate-200 dark:border-slate-800/60 pt-2 mt-0.5">
-                                        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5">
+                                    <div className="flex flex-col gap-2.5 border-t border-slate-100 dark:border-slate-800/60 pt-3 mt-1">
+                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2">
                                             <TruckIcon className="w-4 h-4 text-slate-400 shrink-0" />
                                             <select 
                                                 value={eq.tecnico_id || ""} 
@@ -281,18 +278,18 @@ export default function InventarioPanel() {
                                         
                                         <button 
                                             onClick={() => handleConfirmarRecoleccion(eq)}
-                                            className="w-full flex items-center justify-center gap-1.5 py-2 bg-emerald-600 text-white font-black rounded-lg text-xs tracking-wide shadow-sm active:scale-[0.98] transition-all"
+                                            className="w-full flex items-center justify-center gap-1.5 py-3 bg-emerald-600 text-white font-black rounded-xl text-xs tracking-wide shadow-sm active:scale-[0.98] transition-all"
                                         >
-                                            <CheckBadgeIcon className="w-4 h-4" /> <span>CONFIRMAR RETORNO A STOCK</span>
+                                            <CheckBadgeIcon className="w-5 h-5" /> <span>CONFIRMAR RETORNO A STOCK</span>
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="flex justify-between items-center border-t border-slate-200 dark:border-slate-800/50 pt-2 mt-0.5">
+                                    <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800/50 pt-2.5 mt-1">
                                         <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic">
                                             {eq.estado === 'INSTALADO' ? '📡 Equipo operando en campo' : '📦 ONU resguardada en bodega'}
                                         </p>
                                         {eq.estado === 'DISPONIBLE' && (
-                                            <button onClick={() => handleEliminar(eq.id)} className="p-1.5 text-slate-400 hover:text-rose-500 active:scale-90 transition-all">
+                                            <button onClick={() => handleEliminar(eq.id)} className="p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 rounded-lg active:scale-90 transition-all">
                                                 <TrashIcon className="w-4 h-4" />
                                             </button>
                                         )}
@@ -305,9 +302,7 @@ export default function InventarioPanel() {
                 </div>
             </div>
             
-            {/* =========================================================
-                MODAL DE INGRESO ADAPTATIVO
-               ========================================================= */}
+            {/* MODAL DE INGRESO (Mantenido igual) */}
             {showModal && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95">
@@ -359,7 +354,6 @@ export default function InventarioPanel() {
     );
 }
 
-// --- SUB-COMPONENTES AUXILIARES ADAPTATIVOS ---
 const KpiCard = ({ title, value, icon: Icon, color, bg, onClick, active }: any) => (
     <div onClick={onClick} className={`p-4 rounded-xl border cursor-pointer transition-all shrink-0 min-w-[125px] md:min-w-0 flex-1 ${active ? `border-orange-500/50 bg-white dark:bg-slate-800 shadow-md ring-1 ring-orange-500/10` : 'border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/50 shadow-sm'}`}>
         <div className="flex justify-between items-start mb-1">
