@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import client from '../api/axios'; // Ajusta la ruta a tu archivo de Axios si es necesario
+import client from '../api/axios';
 
-// 1. Definimos la forma de los datos que viajarán por la tubería
+// 1. Definimos la forma de los datos
 interface WhatsAppContextType {
-    wsEvent: any; // El último evento que escupió el WebSocket (Mensaje nuevo, Palomitas, etc.)
-    unreadCounts: Record<string, { count: number; antiguedad: string }>; // El contador de globitos rojos
-    fetchUnread: () => Promise<void>; // Función para recargar los no leídos manualmente si hace falta
-    clearUnread: (clienteId: number) => void; // Función para borrar el globito rojo cuando abrimos un chat
+    wsEvent: any; 
+    unreadCounts: Record<string, { count: number; antiguedad: string }>;
+    fetchUnread: () => Promise<void>;
+    clearUnread: (clienteId: number) => void;
 }
 
 const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined);
@@ -15,7 +15,6 @@ export const WhatsAppProvider = ({ children }: { children: React.ReactNode }) =>
     const [wsEvent, setWsEvent] = useState<any>(null);
     const [unreadCounts, setUnreadCounts] = useState<Record<string, { count: number; antiguedad: string }>>({});
 
-    // Función para ir a la base de datos y saber cuántos mensajes pendientes hay al abrir el sistema
     const fetchUnread = async () => {
         try {
             const res = await client.get('/whatsapp/no-leidos');
@@ -25,7 +24,6 @@ export const WhatsAppProvider = ({ children }: { children: React.ReactNode }) =>
         }
     };
 
-    // Función que limpia el globito rojo de un cliente específico (Se usa cuando abres su chat)
     const clearUnread = (clienteId: number) => {
         setUnreadCounts(prev => {
             const updated = { ...prev };
@@ -36,21 +34,28 @@ export const WhatsAppProvider = ({ children }: { children: React.ReactNode }) =>
         });
     };
 
-    // 🔥 EL MOTOR PRINCIPAL: LA TUBERÍA MAESTRA 🔥
+    // 🔥 EL MOTOR PRINCIPAL: LA TUBERÍA MAESTRA (PRODUCCIÓN) 🔥
     useEffect(() => {
-        fetchUnread(); // Descargamos los pendientes al abrir la página
+        fetchUnread();
 
         let socket: WebSocket;
         let pingInterval: ReturnType<typeof setInterval>;
         let reconnectTimer: ReturnType<typeof setTimeout>;
 
         const connectWebSocket = () => {
-            // Nos conectamos a FastAPI con un identificador global
-            socket = new WebSocket('ws://127.0.0.1:8000/whatsapp/ws/global_admin');
+            // 1. Detección automática de protocolo y host
+            const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            const hostname = window.location.hostname;
+            const port = '8000'; // Ajusta esto si tu FastAPI corre en otro puerto
+            
+            // Construcción dinámica de la URL
+            const wsUrl = `${protocol}://${hostname}:${port}/whatsapp/ws/global_admin`;
+            
+            socket = new WebSocket(wsUrl);
 
             socket.onopen = () => {
-                console.log("🟢 TUBERÍA MAESTRA CONECTADA");
-                // Latido para que FastAPI no nos cierre la conexión por inactividad
+                console.log("🟢 TUBERÍA MAESTRA CONECTADA A:", wsUrl);
+                // Latido para mantener viva la conexión
                 pingInterval = setInterval(() => {
                     if (socket.readyState === WebSocket.OPEN) {
                         socket.send("ping");
@@ -61,10 +66,10 @@ export const WhatsAppProvider = ({ children }: { children: React.ReactNode }) =>
             socket.onmessage = (event) => {
                 const payload = JSON.parse(event.data);
                 
-                // 1. Guardamos el evento para que las demás pantallas (Layout, MensajesCRM) lo lean
+                // 1. Guardamos el evento
                 setWsEvent(payload); 
 
-                // 2. Si es un mensaje entrante, le sumamos +1 al contador general automáticamente
+                // 2. Sumamos al contador si es un mensaje nuevo
                 if (payload.type === 'NEW_MESSAGE' && payload.data.direccion === 'entrada') {
                     setUnreadCounts(prev => ({
                         ...prev,
@@ -84,13 +89,12 @@ export const WhatsAppProvider = ({ children }: { children: React.ReactNode }) =>
 
             socket.onerror = (err) => {
                 console.error("⚠️ Error en la Tubería Maestra", err);
-                socket.close(); // Forzamos el cierre para que se active la reconexión automática
+                socket.close();
             };
         };
 
         connectWebSocket();
 
-        // Limpieza total si cerramos la pestaña
         return () => {
             clearInterval(pingInterval);
             clearTimeout(reconnectTimer);
@@ -107,7 +111,6 @@ export const WhatsAppProvider = ({ children }: { children: React.ReactNode }) =>
     );
 };
 
-// Hook personalizado para usar la tubería fácilmente en cualquier archivo
 export const useWhatsApp = () => {
     const context = useContext(WhatsAppContext);
     if (!context) {
