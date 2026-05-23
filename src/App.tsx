@@ -59,28 +59,59 @@ import TechInstallForm from './pages/technician/TechInstallForm';
 import QrScanner from './pages/tools/QrScanner';
 
 function App() {
-  // --- 🔥 CONECTOR INTELIGENTE DE MODO CLARO / OSCURO VIA LOCALSTORAGE 🔥 ---
+  // --- 🔥 CONECTOR INTELIGENTE (LOCALSTORAGE + SISTEMA OPERATIVO) 🔥 ---
   const [currentMode, setCurrentMode] = useState<'light' | 'dark'>(() => {
     const savedTheme = localStorage.getItem('theme');
-    return savedTheme === 'light' ? 'light' : 'dark';
+    if (savedTheme) {
+      return savedTheme === 'light' ? 'light' : 'dark';
+    }
+    // Si no hay tema guardado, detectamos el sistema del usuario (celular/PC)
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  // Listener en tiempo real para capturar cuando el Layout cambia el LocalStorage
+  // Efecto 1: Aplica la clase para Tailwind y guarda en LocalStorage automáticamente
   useEffect(() => {
-    const handleThemeChange = () => {
-      const savedTheme = localStorage.getItem('theme');
-      setCurrentMode(savedTheme === 'light' ? 'light' : 'dark');
+    const root = window.document.documentElement; // Tu técnica estricta
+
+    if (currentMode === 'dark') {
+      root.classList.add('dark');
+      root.style.colorScheme = 'dark'; // ¡Tu excelente truco de scrollbars!
+    } else {
+      root.classList.remove('dark');
+      root.style.colorScheme = 'light';
+    }
+    localStorage.setItem('theme', currentMode);
+  }, [currentMode]);
+
+  // Efecto 2: Escuchadores de eventos optimizados (SIN setInterval)
+  useEffect(() => {
+    // 1. Escuchar si cambia el tema desde otra pestaña
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'theme') {
+        setCurrentMode(e.newValue === 'light' ? 'light' : 'dark');
+      }
     };
 
-    // Escuchamos el evento de almacenamiento nativo del navegador
-    window.addEventListener('storage', handleThemeChange);
-    
-    // Intervalo de verificación rápida interna (Polling de tema para suavidad inline)
-    const interval = setInterval(handleThemeChange, 500);
+    // 2. Escuchar el evento personalizado desde Layout (Botón de cambio de tema)
+    const handleCustomThemeChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setCurrentMode(customEvent.detail);
+    };
+
+    // 3. (Opcional) Escuchar si el usuario cambia el tema de su celular mientras usa la app
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = (e: MediaQueryListEvent) => {
+      setCurrentMode(e.matches ? 'dark' : 'light');
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('theme-changed', handleCustomThemeChange);
+    mediaQuery.addEventListener('change', handleSystemChange);
 
     return () => {
-      window.removeEventListener('storage', handleThemeChange);
-      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('theme-changed', handleCustomThemeChange);
+      mediaQuery.removeEventListener('change', handleSystemChange);
     };
   }, []);
 

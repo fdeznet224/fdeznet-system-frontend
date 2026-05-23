@@ -25,26 +25,17 @@ export default function Layout() {
 
     // --- 🔥 NUEVO MOTOR DE MODO CLARO / OSCURO 🔥 ---
     const [darkMode, setDarkMode] = useState(() => {
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) return savedTheme === 'dark';
-        return true; // Modo oscuro por defecto para cuidar tus pantallas
+        return localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark');
     });
 
-    // Efecto para inyectar o remover la clase 'dark' en la etiqueta HTML raíz
-    useEffect(() => {
-        // Forzamos la consulta al elemento raíz de la manera más estricta
-        const root = window.document.documentElement;
+    // 2. Función súper limpia que se ejecuta al presionar tu botón de Sol/Luna
+    const handleToggleTheme = () => {
+        const newMode = !darkMode;
+        setDarkMode(newMode);
 
-        if (darkMode) {
-            root.classList.add('dark');
-            root.style.colorScheme = 'dark'; // Le avisa al navegador el cambio de esquema
-            localStorage.setItem('theme', 'dark');
-        } else {
-            root.classList.remove('dark');
-            root.style.colorScheme = 'light'; // Cambia barras de scroll y selects a modo claro
-            localStorage.setItem('theme', 'light');
-        }
-    }, [darkMode]);
+        // ¡LA MAGIA! Le enviamos la señal a App.tsx para que actualice TODO (Tailwind + Material UI) al instante
+        window.dispatchEvent(new CustomEvent('theme-changed', { detail: newMode ? 'dark' : 'light' }));
+    };
 
     // --- ESTADOS PARA EL BUSCADOR GLOBAL ---
     const [busquedaGlobal, setBusquedaGlobal] = useState('');
@@ -119,65 +110,65 @@ export default function Layout() {
 
     // NOTIFICACIONES TOAST 
     useEffect(() => {
-    if (user.rol !== 'admin' || !wsEvent) return;
+        if (user.rol !== 'admin' || !wsEvent) return;
 
-    if (wsEvent.type === 'NEW_MESSAGE' && wsEvent.data.direccion === 'entrada') {
-        const nuevoMensaje = wsEvent.data;
+        if (wsEvent.type === 'NEW_MESSAGE' && wsEvent.data.direccion === 'entrada') {
+            const nuevoMensaje = wsEvent.data;
 
-        // 1. Creamos una función reutilizable para lanzar el Toast
-        const lanzarNotificacion = (nombreMostrar: string, dataCliente: any) => {
-            const audio = new Audio('/notification.mp3');
-            audio.play().catch(() => { });
-            
-            toast.custom((t) => (
-                <div
-                    onClick={() => { 
-                        toast.dismiss(t.id); 
-                        // Solo intentamos abrir el modal si tenemos los datos del cliente
-                        if (dataCliente) {
-                            setTargetCliente(dataCliente); 
-                            setShowChatModal(true); 
-                        } else {
-                            console.log("Mensaje de número desconocido. Ve a la bandeja general.");
-                            // Aquí podrías opcionalmente redirigir a una bandeja general de prospectos si la tienes
-                        }
-                    }}
-                    className={`${t.visible ? 'animate-in fade-in' : 'animate-out fade-out'} max-w-md w-full bg-[#1a1f2e] border border-emerald-500/30 shadow-2xl rounded-2xl pointer-events-auto flex cursor-pointer hover:bg-[#242b3d] transition-all z-[9999]`}
-                >
-                    <div className="flex-1 p-4 flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shrink-0">
-                            {nombreMostrar.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="overflow-hidden">
-                            <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">WhatsApp - Nuevo Mensaje</p>
-                            <p className="text-sm font-bold text-white truncate">{nombreMostrar}</p>
-                            <p className="text-xs text-slate-400 truncate mt-1">{nuevoMensaje.mensaje}</p>
+            // 1. Creamos una función reutilizable para lanzar el Toast
+            const lanzarNotificacion = (nombreMostrar: string, dataCliente: any) => {
+                const audio = new Audio('/notification.mp3');
+                audio.play().catch(() => { });
+
+                toast.custom((t) => (
+                    <div
+                        onClick={() => {
+                            toast.dismiss(t.id);
+                            // Solo intentamos abrir el modal si tenemos los datos del cliente
+                            if (dataCliente) {
+                                setTargetCliente(dataCliente);
+                                setShowChatModal(true);
+                            } else {
+                                console.log("Mensaje de número desconocido. Ve a la bandeja general.");
+                                // Aquí podrías opcionalmente redirigir a una bandeja general de prospectos si la tienes
+                            }
+                        }}
+                        className={`${t.visible ? 'animate-in fade-in' : 'animate-out fade-out'} max-w-md w-full bg-[#1a1f2e] border border-emerald-500/30 shadow-2xl rounded-2xl pointer-events-auto flex cursor-pointer hover:bg-[#242b3d] transition-all z-[9999]`}
+                    >
+                        <div className="flex-1 p-4 flex items-center gap-4">
+                            <div className="h-10 w-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shrink-0">
+                                {nombreMostrar.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="overflow-hidden">
+                                <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">WhatsApp - Nuevo Mensaje</p>
+                                <p className="text-sm font-bold text-white truncate">{nombreMostrar}</p>
+                                <p className="text-xs text-slate-400 truncate mt-1">{nuevoMensaje.mensaje}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            ), { position: 'top-right', id: `msg-${nuevoMensaje.id}`, duration: 5000 });
-        };
+                ), { position: 'top-right', id: `msg-${nuevoMensaje.id}`, duration: 5000 });
+            };
 
-        // 2. 🔥 LA VALIDACIÓN CRÍTICA 🔥
-        if (nuevoMensaje.cliente_id && nuevoMensaje.cliente_id !== "null") {
-            // Sí es un cliente registrado: Hacemos la petición a FastAPI
-            client.get(`/clientes/${nuevoMensaje.cliente_id}`)
-                .then(resC => {
-                    const nombreCliente = resC.data.nombre || "Cliente";
-                    lanzarNotificacion(nombreCliente, resC.data);
-                })
-                .catch(err => {
-                    console.error("Error al buscar el nombre del cliente:", err);
-                    lanzarNotificacion("Cliente", null);
-                });
-        } else {
-            // Es un prospecto o número desconocido: NO hacemos petición a FastAPI
-            // Usamos el teléfono que viene en wsEvent si existe, si no, "Desconocido"
-            const nombreProspecto = nuevoMensaje.telefono || "Nuevo Contacto";
-            lanzarNotificacion(nombreProspecto, null);
+            // 2. 🔥 LA VALIDACIÓN CRÍTICA 🔥
+            if (nuevoMensaje.cliente_id && nuevoMensaje.cliente_id !== "null") {
+                // Sí es un cliente registrado: Hacemos la petición a FastAPI
+                client.get(`/clientes/${nuevoMensaje.cliente_id}`)
+                    .then(resC => {
+                        const nombreCliente = resC.data.nombre || "Cliente";
+                        lanzarNotificacion(nombreCliente, resC.data);
+                    })
+                    .catch(err => {
+                        console.error("Error al buscar el nombre del cliente:", err);
+                        lanzarNotificacion("Cliente", null);
+                    });
+            } else {
+                // Es un prospecto o número desconocido: NO hacemos petición a FastAPI
+                // Usamos el teléfono que viene en wsEvent si existe, si no, "Desconocido"
+                const nombreProspecto = nuevoMensaje.telefono || "Nuevo Contacto";
+                lanzarNotificacion(nombreProspecto, null);
+            }
         }
-    }
-}, [wsEvent, user.rol]);
+    }, [wsEvent, user.rol]);
 
     const handleLogout = () => { localStorage.clear(); navigate('/'); };
     const toggleSubMenu = (name: string) => setOpenSubMenu(openSubMenu === name ? null : name);
@@ -254,7 +245,7 @@ export default function Layout() {
                             {sidebarOpen ? <XMarkIcon className="w-8 h-8" /> : <Bars3Icon className="w-8 h-8" />}
                         </button>
                         {/* ✅ LIMPIO: Título puro sin cortes de línea toscos */}
-                        <h2 className="text-base md:text-xl font-black text-slate-900 dark:text-white hidden lg:block tracking-tight uppercase">Fdez<span className="text-blue-500 font-black">System</span></h2>
+                        <h2 className="text-base md:text-xl font-black text-slate-900 dark:text-white hidden lg:block tracking-tight uppercase"><span className="text-blue-500 font-black"></span></h2>
                     </div>
 
                     {/* BUSCADOR GLOBAL */}
@@ -317,7 +308,7 @@ export default function Layout() {
 
                         {/* 🔥 INTERRUPTOR PREMIUM MODO CLARO / OSCURO 🔥 */}
                         <button
-                            onClick={() => setDarkMode(!darkMode)}
+                            onClick={handleToggleTheme} // 👈 AQUÍ ESTÁ EL CAMBIO
                             className="p-2.5 rounded-xl border bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all active:scale-90"
                             title={darkMode ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
                         >
