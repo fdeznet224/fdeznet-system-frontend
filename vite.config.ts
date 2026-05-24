@@ -11,8 +11,8 @@ export default defineConfig({
         name: 'FdezPay',
         short_name: 'FdezPay',
         description: 'Gestión integral para FdezNet ISP',
-        theme_color: '#ffffff00',
-        background_color: '#ffffff00',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
         display: 'standalone',
         icons: [
           {
