@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import client from '../api/axios';
 import { toast } from 'react-hot-toast';
-import { Scanner } from '@yudiel/react-qr-scanner';
+import { Html5QrcodeScanner } from 'html5-qrcode'; // 🔥 NUEVA LIBRERÍA
 import {
     ArchiveBoxIcon, UserPlusIcon, QrCodeIcon,
     TrashIcon, ArrowPathIcon, CheckBadgeIcon,
@@ -10,6 +10,82 @@ import {
     TruckIcon
 } from '@heroicons/react/24/outline';
 
+// ==========================================
+// 🔥 NUEVO COMPONENTE: ESCÁNER "FRANCOTIRADOR LÁSER"
+// ==========================================
+const ScannerArtilleria = ({ onScan, onCancel }: { onScan: (texto: string) => void, onCancel: () => void }) => {
+    useEffect(() => {
+        const scanner = new Html5QrcodeScanner(
+            "lector-codigo",
+            { 
+                fps: 15, 
+                qrbox: { width: 300, height: 60 }, // La "rendija" delgada
+                formatsToSupport: [ 0, 3, 4, 8 ], // Soporte para QR y Barras (CODE_128)
+                rememberLastUsedCamera: true, 
+                supportedScanTypes: [0] // Solo cámara
+            },
+            false
+        );
+
+        scanner.render(
+            (textoEscaneado) => {
+                scanner.clear();
+                onScan(textoEscaneado);
+            },
+            (error) => { /* Errores ignorados */ }
+        );
+
+        return () => {
+            scanner.clear().catch(e => console.error("Error al desmontar escáner", e));
+        };
+    }, [onScan]);
+
+    return (
+        <div className="relative w-full bg-slate-900 rounded-xl overflow-hidden shadow-inner pt-2 pb-4">
+            {/* ESTILOS PARA LA LÍNEA ROJA Y LA INTERFAZ */}
+            <style>{`
+                #lector-codigo { width: 100%; border: none !important; padding: 0 !important; }
+                #lector-codigo img { display: none; }
+                #lector-codigo a { display: none !important; }
+                #lector-codigo span { color: white; font-size: 12px; margin-bottom: 5px; display: block;}
+                #lector-codigo button { background-color: #ea580c; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 900; margin-top: 10px; cursor: pointer; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;}
+                #lector-codigo select { background-color: #1e293b; color: white; padding: 10px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 10px; width: 90%; font-size: 12px; font-weight: bold; outline: none; }
+                #qr-shaded-region > div { border-color: #ef4444 !important; border-width: 3px !important; border-radius: 8px; }
+                
+                .laser-francotirador {
+                    position: absolute;
+                    top: 50%;
+                    left: 15%;
+                    width: 70%;
+                    height: 2px;
+                    background-color: #ef4444;
+                    box-shadow: 0 0 10px #ef4444, 0 0 20px #ef4444;
+                    z-index: 50;
+                    pointer-events: none;
+                    animation: parpadeo 2s infinite;
+                }
+                
+                @keyframes parpadeo {
+                    0% { opacity: 0.5; }
+                    50% { opacity: 1; }
+                    100% { opacity: 0.5; }
+                }
+            `}</style>
+
+            {/* BOTÓN PARA CANCELAR Y CERRAR LA CÁMARA */}
+            <button onClick={onCancel} className="absolute top-2 right-2 bg-rose-600/90 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-md z-[100] uppercase tracking-wider hover:bg-rose-500 transition-colors">
+                X Cancelar
+            </button>
+
+            <div id="lector-codigo" className="w-full text-center"></div>
+            <div className="laser-francotirador"></div>
+        </div>
+    );
+};
+
+// ==========================================
+// COMPONENTE PRINCIPAL
+// ==========================================
 export default function InventarioPanel() {
     const [equipos, setEquipos] = useState<any[]>([]);
     const [tecnicos, setTecnicos] = useState<any[]>([]);
@@ -76,10 +152,10 @@ export default function InventarioPanel() {
         const val = codigoEscaneado.toUpperCase();
         setNuevoId(val);
 
-        // 🤖 Autodetección inteligente de marcas por prefijo MAC/SN
+        // 🤖 Autodetección inteligente
         if (val.startsWith('HWTC')) {
             setTecnologia('GPON');
-            setModelo('Huawei EG8141A5'); // O el modelo Huawei que más uses
+            setModelo('Huawei EG8141A5'); 
         } else if (val.startsWith('ZTEG')) {
             setTecnologia('GPON');
             setModelo('ZTE F670L');
@@ -87,14 +163,13 @@ export default function InventarioPanel() {
             setTecnologia('GPON');
             setModelo('Nokia G-2425G-A');
         } else if (val.includes(':')) {
-            // Si trae dos puntos, suele ser MAC Address de un equipo genérico o Mimosa/Cambium
             setTecnologia('EPON');
             setModelo('V-SOL V2801');
         } else {
             setTecnologia('GPON');
         }
 
-        toast.success("¡Código escaneado correctamente!");
+        toast.success("¡Código capturado!");
         setIsScanning(false);
     };
 
@@ -134,7 +209,6 @@ export default function InventarioPanel() {
     return (
         <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 h-[calc(100dvh-80px)] md:h-[calc(100vh-100px)] overflow-hidden transition-colors duration-300">
 
-            {/* HEADER RESPONSIVO (Fijo) */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 md:p-5 flex justify-between items-center shadow-sm dark:shadow-xl gap-4 flex-none shrink-0">
                 <div>
                     <h1 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white leading-tight">Bodega e Inventario</h1>
@@ -149,7 +223,6 @@ export default function InventarioPanel() {
                 </button>
             </div>
 
-            {/* KPI CARDS (Fijo) */}
             <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:pb-0 scrollbar-none flex-none shrink-0">
                 <KpiCard title="Total" value={stats.total} icon={ArchiveBoxIcon} color="text-blue-600 dark:text-blue-400" bg="bg-blue-500/10" onClick={() => setFiltro('todos')} active={filtro === 'todos'} />
                 <KpiCard title="En Bodega" value={stats.disponibles} icon={CheckBadgeIcon} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-500/10" onClick={() => setFiltro('DISPONIBLE')} active={filtro === 'DISPONIBLE'} />
@@ -159,8 +232,6 @@ export default function InventarioPanel() {
 
             <div className="flex-1 min-h-0 bg-transparent md:bg-white md:dark:bg-slate-900/90 md:rounded-2xl md:border md:border-slate-200 md:dark:border-slate-800 md:shadow-md md:dark:shadow-xl overflow-hidden flex flex-col transition-colors duration-200 relative">
                 <div className="overflow-y-auto flex-1 custom-scrollbar pb-10">
-
-                    {/* 🖥️ COMPONENTE: TABLA ESCRITORIO */}
                     <table className="w-full text-left border-collapse hidden md:table text-xs">
                         <thead className="bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 shadow-sm">
                             <tr>
@@ -235,7 +306,6 @@ export default function InventarioPanel() {
                         </tbody>
                     </table>
 
-                    {/* 📱 COMPONENTE: ARCHIVO DE CARDS MÓVILES */}
                     <div className="md:hidden flex flex-col gap-3 px-1 pb-10 mt-2">
                         {loading && equipos.length === 0 ? (
                             <div className="p-8 text-center"><ArrowPathIcon className="w-6 h-6 animate-spin mx-auto text-orange-500" /></div>
@@ -306,7 +376,7 @@ export default function InventarioPanel() {
                 </div>
             </div>
 
-            {/* MODAL DE INGRESO RECONSTRUIDO */}
+            {/* MODAL DE INGRESO CON ESCÁNER LÁSER */}
             {showModal && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95">
@@ -316,16 +386,14 @@ export default function InventarioPanel() {
                             </h3>
                             <button onClick={() => { setShowModal(false); setIsScanning(false); }} className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-full bg-slate-100 dark:bg-slate-800"><XMarkIcon className="w-5 h-5" /></button>
                         </div>
+                        
                         <div className="p-5 space-y-4">
+                            {/* AQUÍ INYECTAMOS EL NUEVO COMPONENTE */}
                             {isScanning ? (
-                                <div className="bg-black rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 relative w-full aspect-square">
-                                    {/* 🔥 ESCÁNER CONFIGURADO PARA CÓDIGOS DE BARRAS DE RED Y AUTOENFOQUE 🔥 */}
-                                    <Scanner
-                                        onScan={(res) => { if (res) handleSuccessfulScan(Array.isArray(res) ? res[0].rawValue : res); }}
-                                        formats={['qr_code', 'code_128', 'code_39', 'ean_13']}
-                                    />
-                                    <button onClick={() => setIsScanning(false)} className="absolute top-3 right-3 bg-rose-600 text-white px-3 py-1 rounded-lg text-xs font-black shadow-md">Cancelar</button>
-                                </div>
+                                <ScannerArtilleria 
+                                    onScan={handleSuccessfulScan} 
+                                    onCancel={() => setIsScanning(false)} 
+                                />
                             ) : (
                                 <button onClick={() => setIsScanning(true)} className="w-full py-6 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-orange-500 dark:hover:border-orange-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl flex flex-col items-center gap-1.5 transition-all group cursor-pointer">
                                     <CameraIcon className="w-7 h-7 text-slate-400 group-hover:text-orange-500 transition-colors" />
@@ -351,8 +419,6 @@ export default function InventarioPanel() {
                                     </div>
                                     <div>
                                         <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1">Marca / Modelo</label>
-
-                                        {/* 🔥 EL TRUCO DEL DATALIST: Despliega opciones, pero permite escribir libremente 🔥 */}
                                         <input
                                             list="modelos-onu"
                                             placeholder="Selecciona o escribe..."
@@ -370,7 +436,6 @@ export default function InventarioPanel() {
                                             <option value="Nokia G-140W-C" />
                                             <option value="V-SOL V2801" />
                                         </datalist>
-
                                     </div>
                                 </div>
                                 <button type="submit" className="w-full py-3.5 bg-orange-600 hover:bg-orange-500 text-white font-black rounded-xl shadow-lg transition-all active:scale-[0.98] uppercase text-xs tracking-widest mt-2">Guardar Equipo</button>
