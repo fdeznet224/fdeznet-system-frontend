@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import client from '../api/axios';
 import { toast } from 'react-hot-toast';
-import { Html5QrcodeScanner } from 'html5-qrcode'; // 🔥 NUEVA LIBRERÍA
+import { Scanner } from '@yudiel/react-qr-scanner'; // 🔥 REGRESAMOS A LA LIBRERÍA QUE FUNCIONABA BIEN
 import {
     ArchiveBoxIcon, UserPlusIcon, QrCodeIcon,
     TrashIcon, ArrowPathIcon, CheckBadgeIcon,
@@ -10,82 +10,6 @@ import {
     TruckIcon
 } from '@heroicons/react/24/outline';
 
-// ==========================================
-// 🔥 NUEVO COMPONENTE: ESCÁNER "FRANCOTIRADOR LÁSER"
-// ==========================================
-const ScannerArtilleria = ({ onScan, onCancel }: { onScan: (texto: string) => void, onCancel: () => void }) => {
-    useEffect(() => {
-        const scanner = new Html5QrcodeScanner(
-            "lector-codigo",
-            { 
-                fps: 15, 
-                qrbox: { width: 300, height: 60 }, // La "rendija" delgada
-                formatsToSupport: [ 0, 3, 4, 8 ], // Soporte para QR y Barras (CODE_128)
-                rememberLastUsedCamera: true, 
-                supportedScanTypes: [0] // Solo cámara
-            },
-            false
-        );
-
-        scanner.render(
-            (textoEscaneado) => {
-                scanner.clear();
-                onScan(textoEscaneado);
-            },
-            (error) => { /* Errores ignorados */ }
-        );
-
-        return () => {
-            scanner.clear().catch(e => console.error("Error al desmontar escáner", e));
-        };
-    }, [onScan]);
-
-    return (
-        <div className="relative w-full bg-slate-900 rounded-xl overflow-hidden shadow-inner pt-2 pb-4">
-            {/* ESTILOS PARA LA LÍNEA ROJA Y LA INTERFAZ */}
-            <style>{`
-                #lector-codigo { width: 100%; border: none !important; padding: 0 !important; }
-                #lector-codigo img { display: none; }
-                #lector-codigo a { display: none !important; }
-                #lector-codigo span { color: white; font-size: 12px; margin-bottom: 5px; display: block;}
-                #lector-codigo button { background-color: #ea580c; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 900; margin-top: 10px; cursor: pointer; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;}
-                #lector-codigo select { background-color: #1e293b; color: white; padding: 10px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 10px; width: 90%; font-size: 12px; font-weight: bold; outline: none; }
-                #qr-shaded-region > div { border-color: #ef4444 !important; border-width: 3px !important; border-radius: 8px; }
-                
-                .laser-francotirador {
-                    position: absolute;
-                    top: 50%;
-                    left: 15%;
-                    width: 70%;
-                    height: 2px;
-                    background-color: #ef4444;
-                    box-shadow: 0 0 10px #ef4444, 0 0 20px #ef4444;
-                    z-index: 50;
-                    pointer-events: none;
-                    animation: parpadeo 2s infinite;
-                }
-                
-                @keyframes parpadeo {
-                    0% { opacity: 0.5; }
-                    50% { opacity: 1; }
-                    100% { opacity: 0.5; }
-                }
-            `}</style>
-
-            {/* BOTÓN PARA CANCELAR Y CERRAR LA CÁMARA */}
-            <button onClick={onCancel} className="absolute top-2 right-2 bg-rose-600/90 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-md z-[100] uppercase tracking-wider hover:bg-rose-500 transition-colors">
-                X Cancelar
-            </button>
-
-            <div id="lector-codigo" className="w-full text-center"></div>
-            <div className="laser-francotirador"></div>
-        </div>
-    );
-};
-
-// ==========================================
-// COMPONENTE PRINCIPAL
-// ==========================================
 export default function InventarioPanel() {
     const [equipos, setEquipos] = useState<any[]>([]);
     const [tecnicos, setTecnicos] = useState<any[]>([]);
@@ -152,7 +76,7 @@ export default function InventarioPanel() {
         const val = codigoEscaneado.toUpperCase();
         setNuevoId(val);
 
-        // 🤖 Autodetección inteligente
+        // 🤖 Autodetección inteligente de marcas por prefijo
         if (val.startsWith('HWTC')) {
             setTecnologia('GPON');
             setModelo('Huawei EG8141A5'); 
@@ -376,7 +300,6 @@ export default function InventarioPanel() {
                 </div>
             </div>
 
-            {/* MODAL DE INGRESO CON ESCÁNER LÁSER */}
             {showModal && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95">
@@ -386,14 +309,23 @@ export default function InventarioPanel() {
                             </h3>
                             <button onClick={() => { setShowModal(false); setIsScanning(false); }} className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-full bg-slate-100 dark:bg-slate-800"><XMarkIcon className="w-5 h-5" /></button>
                         </div>
-                        
                         <div className="p-5 space-y-4">
-                            {/* AQUÍ INYECTAMOS EL NUEVO COMPONENTE */}
                             {isScanning ? (
-                                <ScannerArtilleria 
-                                    onScan={handleSuccessfulScan} 
-                                    onCancel={() => setIsScanning(false)} 
-                                />
+                                <div className="bg-black rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 relative w-full aspect-square">
+                                    
+                                    {/* 🔥 LA MAGIA: LÍNEA LÁSER ROJA FLOTANTE 🔥 */}
+                                    <div className="absolute top-1/2 left-6 right-6 h-1 bg-red-500 shadow-[0_0_15px_#ef4444] z-50 -translate-y-1/2 pointer-events-none rounded-full animate-pulse"></div>
+
+                                    {/* EL ESCÁNER DE YUDIEL (Ocultamos su cuadro feo por defecto si es posible, pero la línea roja guiará al ojo) */}
+                                    <Scanner
+                                        onScan={(res) => { if (res) handleSuccessfulScan(Array.isArray(res) ? res[0].rawValue : res); }}
+                                        formats={['qr_code', 'code_128', 'code_39', 'ean_13']}
+                                    />
+                                    
+                                    <button onClick={() => setIsScanning(false)} className="absolute top-3 right-3 bg-rose-600 text-white px-3 py-1 rounded-lg text-xs font-black shadow-md z-[100]">
+                                        Cancelar
+                                    </button>
+                                </div>
                             ) : (
                                 <button onClick={() => setIsScanning(true)} className="w-full py-6 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-orange-500 dark:hover:border-orange-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl flex flex-col items-center gap-1.5 transition-all group cursor-pointer">
                                     <CameraIcon className="w-7 h-7 text-slate-400 group-hover:text-orange-500 transition-colors" />
@@ -419,6 +351,7 @@ export default function InventarioPanel() {
                                     </div>
                                     <div>
                                         <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1">Marca / Modelo</label>
+
                                         <input
                                             list="modelos-onu"
                                             placeholder="Selecciona o escribe..."
@@ -430,12 +363,13 @@ export default function InventarioPanel() {
                                         <datalist id="modelos-onu">
                                             <option value="ZTE F670L" />
                                             <option value="ZTE F660" />
-                                            <option value="Huawei EG8141A5" />
+                                            <option value="Huawei HG8145V5" />
                                             <option value="Huawei HG8145V5V3" />
                                             <option value="Nokia G-2425G-A" />
                                             <option value="Nokia G-140W-C" />
                                             <option value="V-SOL V2801" />
                                         </datalist>
+
                                     </div>
                                 </div>
                                 <button type="submit" className="w-full py-3.5 bg-orange-600 hover:bg-orange-500 text-white font-black rounded-xl shadow-lg transition-all active:scale-[0.98] uppercase text-xs tracking-widest mt-2">Guardar Equipo</button>
