@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import client from '../api/axios'; 
+import client from '../api/axios';
 import { toast } from 'react-hot-toast';
-import { Scanner } from '@yudiel/react-qr-scanner'; 
-import { 
-    ArchiveBoxIcon, UserPlusIcon, QrCodeIcon, 
+import { Scanner } from '@yudiel/react-qr-scanner';
+import {
+    ArchiveBoxIcon, UserPlusIcon, QrCodeIcon,
     TrashIcon, ArrowPathIcon, CheckBadgeIcon,
     WrenchScrewdriverIcon, ArrowDownTrayIcon,
     CameraIcon, XMarkIcon, MapPinIcon, UserIcon,
@@ -12,14 +12,14 @@ import {
 
 export default function InventarioPanel() {
     const [equipos, setEquipos] = useState<any[]>([]);
-    const [tecnicos, setTecnicos] = useState<any[]>([]); 
+    const [tecnicos, setTecnicos] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filtro, setFiltro] = useState<string>('todos');
-    
+
     const [showModal, setShowModal] = useState(false);
     const [nuevoId, setNuevoId] = useState('');
     const [tecnologia, setTecnologia] = useState('GPON');
-    const [modelo, setModelo] = useState('ZTE F670L');
+    const [modelo, setModelo] = useState('');
     const [isScanning, setIsScanning] = useState(false);
 
     const fetchInventario = async () => {
@@ -45,7 +45,7 @@ export default function InventarioPanel() {
 
     useEffect(() => {
         fetchInventario();
-        fetchTecnicos(); 
+        fetchTecnicos();
     }, []);
 
     const handleAsignarTecnico = async (clienteId: number, tecnicoId: string) => {
@@ -54,14 +54,14 @@ export default function InventarioPanel() {
         try {
             await client.post(`/clientes/${clienteId}/asignar-retiro/${tecnicoId}`);
             toast.success("Técnico asignado correctamente", { id: load });
-            fetchInventario(); 
+            fetchInventario();
         } catch (error) {
             toast.error("Error al asignar técnico", { id: load });
         }
     };
 
     const handleConfirmarRecoleccion = async (eq: any) => {
-        if(!confirm(`¿Confirmas que has recuperado el equipo de ${eq.cliente_nombre}?`)) return;
+        if (!confirm(`¿Confirmas que has recuperado el equipo de ${eq.cliente_nombre}?`)) return;
         const load = toast.loading("Ingresando a stock...");
         try {
             await client.post(`/clientes/${eq.cliente_id}/confirmar-retiro-onu`);
@@ -75,13 +75,26 @@ export default function InventarioPanel() {
     const handleSuccessfulScan = (codigoEscaneado: string) => {
         const val = codigoEscaneado.toUpperCase();
         setNuevoId(val);
-        if (val.includes(':')) {
+
+        // 🤖 Autodetección inteligente de marcas por prefijo MAC/SN
+        if (val.startsWith('HWTC')) {
+            setTecnologia('GPON');
+            setModelo('Huawei EG8141A5'); // O el modelo Huawei que más uses
+        } else if (val.startsWith('ZTEG')) {
+            setTecnologia('GPON');
+            setModelo('ZTE F670L');
+        } else if (val.startsWith('ALCL') || val.startsWith('NOK')) {
+            setTecnologia('GPON');
+            setModelo('Nokia G-2425G-A');
+        } else if (val.includes(':')) {
+            // Si trae dos puntos, suele ser MAC Address de un equipo genérico o Mimosa/Cambium
             setTecnologia('EPON');
             setModelo('V-SOL V2801');
         } else {
             setTecnologia('GPON');
         }
-        toast.success("¡Código escaneado!");
+
+        toast.success("¡Código escaneado correctamente!");
         setIsScanning(false);
     };
 
@@ -119,18 +132,17 @@ export default function InventarioPanel() {
     }, [equipos, filtro]);
 
     return (
-        /* 🔥 CLAVE 1: Limitamos la altura total y evitamos el scroll global */
         <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 h-[calc(100dvh-80px)] md:h-[calc(100vh-100px)] overflow-hidden transition-colors duration-300">
-            
+
             {/* HEADER RESPONSIVO (Fijo) */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 md:p-5 flex justify-between items-center shadow-sm dark:shadow-xl gap-4 flex-none shrink-0">
                 <div>
                     <h1 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white leading-tight">Bodega e Inventario</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm mt-0.5 hidden sm:block">Logística y Control de Equipos de Fibra Optica</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm mt-0.5 hidden sm:block">Logística y Control de Equipos</p>
                 </div>
-                
-                <button 
-                    onClick={() => { setShowModal(true); setIsScanning(false); }} 
+
+                <button
+                    onClick={() => { setShowModal(true); setIsScanning(false); setModelo(''); setNuevoId(''); }}
                     className="bg-orange-600 hover:bg-orange-500 text-white px-2.5 py-2 md:px-4 md:py-2.5 rounded-xl font-extrabold shadow-md active:scale-95 transition flex items-center justify-center gap-1 text-[10px] md:text-sm tracking-wide uppercase md:normal-case shrink-0"
                 >
                     <UserPlusIcon className="w-4 h-4 md:w-5 md:h-5" /> <span>Ingresar Equipo</span>
@@ -145,12 +157,9 @@ export default function InventarioPanel() {
                 <KpiCard title="Por Recoger" value={stats.porRecoger} icon={ArrowDownTrayIcon} color="text-rose-600 dark:text-rose-400" bg="bg-rose-500/10" onClick={() => setFiltro('POR_RECOGER')} active={filtro === 'POR_RECOGER'} />
             </div>
 
-            {/* 🔥 CLAVE 2: flex-1 y min-h-0 le dice a este bloque que tome el resto del espacio y permita el scroll interno */}
             <div className="flex-1 min-h-0 bg-transparent md:bg-white md:dark:bg-slate-900/90 md:rounded-2xl md:border md:border-slate-200 md:dark:border-slate-800 md:shadow-md md:dark:shadow-xl overflow-hidden flex flex-col transition-colors duration-200 relative">
-                
-                {/* 🔥 CLAVE 3: overflow-y-auto en este div envuelve la tabla y las tarjetas para que hagan scroll solas */}
                 <div className="overflow-y-auto flex-1 custom-scrollbar pb-10">
-                    
+
                     {/* 🖥️ COMPONENTE: TABLA ESCRITORIO */}
                     <table className="w-full text-left border-collapse hidden md:table text-xs">
                         <thead className="bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 shadow-sm">
@@ -163,7 +172,7 @@ export default function InventarioPanel() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                             {loading && equipos.length === 0 ? (
-                                <tr><td colSpan={4} className="p-8 text-center"><ArrowPathIcon className="w-8 h-8 animate-spin mx-auto text-orange-500"/></td></tr>
+                                <tr><td colSpan={4} className="p-8 text-center"><ArrowPathIcon className="w-8 h-8 animate-spin mx-auto text-orange-500" /></td></tr>
                             ) : equiposFiltrados.map((eq) => (
                                 <tr key={eq.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors bg-transparent text-slate-800 dark:text-slate-200">
                                     <td className="px-6 py-4">
@@ -185,7 +194,6 @@ export default function InventarioPanel() {
                                                 <div className="flex items-center gap-1 text-xs text-slate-800 dark:text-white font-bold">
                                                     <UserIcon className="w-3 h-3 text-slate-400 dark:text-slate-500" /> {eq.cliente_nombre}
                                                 </div>
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate max-w-[240px]">{eq.cliente_direccion}</p>
                                             </div>
                                         )}
                                     </td>
@@ -194,8 +202,8 @@ export default function InventarioPanel() {
                                             <div className="space-y-1.5 max-w-[200px]">
                                                 <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1"><TruckIcon className="w-3 h-3" /> Asignar a:</p>
                                                 <div className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 flex items-center">
-                                                    <select 
-                                                        value={eq.tecnico_id || ""} 
+                                                    <select
+                                                        value={eq.tecnico_id || ""}
                                                         onChange={(e) => handleAsignarTecnico(eq.cliente_id, e.target.value)}
                                                         className="w-full bg-transparent text-xs text-slate-800 dark:text-white font-bold outline-none cursor-pointer appearance-none"
                                                     >
@@ -228,12 +236,12 @@ export default function InventarioPanel() {
                     </table>
 
                     {/* 📱 COMPONENTE: ARCHIVO DE CARDS MÓVILES */}
-                    <div className="md:hidden flex flex-col gap-3 px-1 pb-10">
+                    <div className="md:hidden flex flex-col gap-3 px-1 pb-10 mt-2">
                         {loading && equipos.length === 0 ? (
-                            <div className="p-8 text-center"><ArrowPathIcon className="w-6 h-6 animate-spin mx-auto text-orange-500"/></div>
+                            <div className="p-8 text-center"><ArrowPathIcon className="w-6 h-6 animate-spin mx-auto text-orange-500" /></div>
                         ) : equiposFiltrados.map((eq) => (
                             <div key={eq.id} className="bg-white dark:bg-slate-950/40 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col gap-3 shadow-sm relative overflow-hidden transition-colors">
-                                
+
                                 <div className="flex justify-between items-start gap-2">
                                     <div className="flex items-start gap-2 overflow-hidden">
                                         <QrCodeIcon className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5 shrink-0" />
@@ -252,11 +260,7 @@ export default function InventarioPanel() {
                                                 <UserIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                                 <span>{eq.cliente_nombre}</span>
                                             </div>
-                                            <div className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black text-indigo-600 dark:text-indigo-400 tracking-wide uppercase font-mono shrink-0">
-                                                {eq.cliente_zona || 'Sin Zona'}
-                                            </div>
                                         </div>
-                                        <p className="text-slate-500 dark:text-slate-500 text-[10px] leading-snug line-clamp-2">{eq.cliente_direccion}</p>
                                     </div>
                                 )}
 
@@ -264,29 +268,29 @@ export default function InventarioPanel() {
                                     <div className="flex flex-col gap-2.5 border-t border-slate-100 dark:border-slate-800/60 pt-3 mt-1">
                                         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2">
                                             <TruckIcon className="w-4 h-4 text-slate-400 shrink-0" />
-                                            <select 
-                                                value={eq.tecnico_id || ""} 
+                                            <select
+                                                value={eq.tecnico_id || ""}
                                                 onChange={(e) => handleAsignarTecnico(eq.cliente_id, e.target.value)}
                                                 className="w-full bg-transparent text-slate-800 dark:text-slate-300 font-bold outline-none text-xs cursor-pointer appearance-none"
                                             >
-                                                <option value="" className="bg-white dark:bg-slate-950 text-slate-800 dark:text-white">Asignar técnico para retiro...</option>
+                                                <option value="" className="bg-white dark:bg-slate-950 text-slate-800 dark:text-white">Asignar técnico...</option>
                                                 {tecnicos.map(t => (
                                                     <option key={t.id} value={t.id} className="bg-white dark:bg-slate-950 text-slate-800 dark:text-white">{t.nombre_completo || t.usuario}</option>
                                                 ))}
                                             </select>
                                         </div>
-                                        
-                                        <button 
+
+                                        <button
                                             onClick={() => handleConfirmarRecoleccion(eq)}
                                             className="w-full flex items-center justify-center gap-1.5 py-3 bg-emerald-600 text-white font-black rounded-xl text-xs tracking-wide shadow-sm active:scale-[0.98] transition-all"
                                         >
-                                            <CheckBadgeIcon className="w-5 h-5" /> <span>CONFIRMAR RETORNO A STOCK</span>
+                                            <CheckBadgeIcon className="w-5 h-5" /> <span>CONFIRMAR RETORNO</span>
                                         </button>
                                     </div>
                                 ) : (
                                     <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800/50 pt-2.5 mt-1">
                                         <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic">
-                                            {eq.estado === 'INSTALADO' ? '📡 Equipo operando en campo' : '📦 ONU resguardada en bodega'}
+                                            {eq.estado === 'INSTALADO' ? '📡 Operando en campo' : '📦 En bodega'}
                                         </p>
                                         {eq.estado === 'DISPONIBLE' && (
                                             <button onClick={() => handleEliminar(eq.id)} className="p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 rounded-lg active:scale-90 transition-all">
@@ -301,8 +305,8 @@ export default function InventarioPanel() {
 
                 </div>
             </div>
-            
-            {/* MODAL DE INGRESO (Mantenido igual) */}
+
+            {/* MODAL DE INGRESO RECONSTRUIDO */}
             {showModal && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95">
@@ -315,36 +319,61 @@ export default function InventarioPanel() {
                         <div className="p-5 space-y-4">
                             {isScanning ? (
                                 <div className="bg-black rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 relative w-full aspect-square">
-                                    <Scanner onScan={(res) => { if(res) handleSuccessfulScan(Array.isArray(res) ? res[0].rawValue : res); }} />
-                                    <button onClick={() => setIsScanning(false)} className="absolute top-3 right-3 bg-rose-600 text-white px-3 py-1 rounded-lg text-xs font-black shadow-md">Cerrar</button>
+                                    {/* 🔥 ESCÁNER CONFIGURADO PARA CÓDIGOS DE BARRAS DE RED Y AUTOENFOQUE 🔥 */}
+                                    <Scanner
+                                        onScan={(res) => { if (res) handleSuccessfulScan(Array.isArray(res) ? res[0].rawValue : res); }}
+                                        formats={['qr_code', 'code_128', 'code_39', 'ean_13']}
+                                    />
+                                    <button onClick={() => setIsScanning(false)} className="absolute top-3 right-3 bg-rose-600 text-white px-3 py-1 rounded-lg text-xs font-black shadow-md">Cancelar</button>
                                 </div>
                             ) : (
                                 <button onClick={() => setIsScanning(true)} className="w-full py-6 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-orange-500 dark:hover:border-orange-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl flex flex-col items-center gap-1.5 transition-all group cursor-pointer">
                                     <CameraIcon className="w-7 h-7 text-slate-400 group-hover:text-orange-500 transition-colors" />
-                                    <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide">Escanear Código Barcode/QR</span>
+                                    <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide">Escanear Código de Barras</span>
                                 </button>
                             )}
+
                             <form onSubmit={handleRegistrar} className="space-y-4">
                                 <div>
-                                    <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1">Identificador de Hardware</label>
-                                    <input type="text" placeholder="S/N o MAC de la ONU" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-mono uppercase font-black text-sm outline-none focus:border-orange-500 transition-colors shadow-inner" value={nuevoId} onChange={(e) => setNuevoId(e.target.value.toUpperCase())} required />
+                                    <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1">Identificador (MAC o S/N)</label>
+                                    <input type="text" placeholder="Ej. HWTCB991C1AE" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-mono uppercase font-black text-sm outline-none focus:border-orange-500 transition-colors shadow-inner" value={nuevoId} onChange={(e) => setNuevoId(e.target.value.toUpperCase())} required />
                                 </div>
+
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1">Tecnología de Red</label>
+                                        <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1">Tecnología</label>
                                         <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center">
                                             <select className="w-full bg-transparent text-xs text-slate-800 dark:text-white font-black outline-none cursor-pointer" value={tecnologia} onChange={e => setTecnologia(e.target.value)}>
-                                                <option value="GPON" className="bg-white dark:bg-slate-950">GPON</option>
-                                                <option value="EPON" className="bg-white dark:bg-slate-950">EPON</option>
+                                                <option value="GPON">GPON</option>
+                                                <option value="EPON">EPON</option>
                                             </select>
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1">Modelo de Equipo</label>
-                                        <input type="text" placeholder="Ej: ZTE F670L" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-bold text-xs outline-none focus:border-orange-500 transition-colors shadow-inner" value={modelo} onChange={e => setModelo(e.target.value)} required />
+                                        <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1">Marca / Modelo</label>
+
+                                        {/* 🔥 EL TRUCO DEL DATALIST: Despliega opciones, pero permite escribir libremente 🔥 */}
+                                        <input
+                                            list="modelos-onu"
+                                            placeholder="Selecciona o escribe..."
+                                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-bold text-xs outline-none focus:border-orange-500 transition-colors shadow-inner"
+                                            value={modelo}
+                                            onChange={e => setModelo(e.target.value)}
+                                            required
+                                        />
+                                        <datalist id="modelos-onu">
+                                            <option value="ZTE F670L" />
+                                            <option value="ZTE F660" />
+                                            <option value="Huawei EG8141A5" />
+                                            <option value="Huawei HG8145V5V3" />
+                                            <option value="Nokia G-2425G-A" />
+                                            <option value="Nokia G-140W-C" />
+                                            <option value="V-SOL V2801" />
+                                        </datalist>
+
                                     </div>
                                 </div>
-                                <button type="submit" className="w-full py-3.5 bg-orange-600 hover:bg-orange-500 text-white font-black rounded-xl shadow-lg transition-all active:scale-[0.98] uppercase text-xs tracking-widest mt-2">Guardar en Bodega</button>
+                                <button type="submit" className="w-full py-3.5 bg-orange-600 hover:bg-orange-500 text-white font-black rounded-xl shadow-lg transition-all active:scale-[0.98] uppercase text-xs tracking-widest mt-2">Guardar Equipo</button>
                             </form>
                         </div>
                     </div>
