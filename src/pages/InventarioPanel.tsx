@@ -311,21 +311,27 @@ export default function InventarioPanel() {
                         </div>
                         <div className="p-5 space-y-4">
                             {isScanning ? (
-                                /* 🔥 Agregamos la clase "scanner-container" al final 🔥 */
                                 <div className="bg-black rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 relative w-full aspect-square scanner-container">
 
-                                    {/* 🔥 TRUCO CSS: Apagamos el recuadro blanco feo de la librería 🔥 */}
+                                    {/* 🔥 TRUCO CSS BLINDADO: Apaga cualquier cosa que la librería dibuje encima del video 🔥 */}
                                     <style>{`
-                .scanner-container svg { display: none !important; }
+                .scanner-container svg, 
+                .scanner-container div[style*="box-shadow"],
+                .scanner-container div[style*="border"] { 
+                    display: none !important; 
+                }
             `}</style>
 
-                                    {/* 🔥 LA MAGIA: LÍNEA LÁSER ROJA FLOTANTE 🔥 */}
-                                    <div className="absolute top-1/2 left-6 right-6 h-1 bg-red-600 shadow-[0_0_15px_#ef4444] z-50 -translate-y-1/2 pointer-events-none rounded-full animate-pulse"></div>
+                                    {/* 🔥 TU LÍNEA LÁSER ROJA (Lo único que se debe ver) 🔥 */}
+                                    <div className="absolute top-1/2 left-6 right-6 h-[3px] bg-red-600 shadow-[0_0_15px_#ef4444] z-[60] -translate-y-1/2 pointer-events-none rounded-full animate-pulse"></div>
 
-                                    {/* EL ESCÁNER DE YUDIEL (Ahora sí, operando de fondo sin mostrar su cuadro) */}
+                                    {/* EL ESCÁNER DE YUDIEL */}
                                     <Scanner
                                         onScan={(res) => { if (res) handleSuccessfulScan(Array.isArray(res) ? res[0].rawValue : res); }}
                                         formats={['qr_code', 'code_128', 'code_39', 'ean_13']}
+                                        components={{
+                                            tracker: () => null // 🔥 LA ORDEN DEFINITIVA PARA DESTRUIR EL CUADRO PUNTEADO 🔥
+                                        }}
                                     />
 
                                     <button onClick={() => setIsScanning(false)} className="absolute top-3 right-3 bg-rose-600 text-white px-3 py-1 rounded-lg text-xs font-black shadow-md z-[100]">
