@@ -79,7 +79,7 @@ export default function InventarioPanel() {
         // 🤖 Autodetección inteligente de marcas por prefijo
         if (val.startsWith('HWTC')) {
             setTecnologia('GPON');
-            setModelo('Huawei EG8141A5'); 
+            setModelo('Huawei EG8141A5');
         } else if (val.startsWith('ZTEG')) {
             setTecnologia('GPON');
             setModelo('ZTE F670L');
@@ -311,17 +311,23 @@ export default function InventarioPanel() {
                         </div>
                         <div className="p-5 space-y-4">
                             {isScanning ? (
-                                <div className="bg-black rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 relative w-full aspect-square">
-                                    
-                                    {/* 🔥 LA MAGIA: LÍNEA LÁSER ROJA FLOTANTE 🔥 */}
-                                    <div className="absolute top-1/2 left-6 right-6 h-1 bg-red-500 shadow-[0_0_15px_#ef4444] z-50 -translate-y-1/2 pointer-events-none rounded-full animate-pulse"></div>
+                                /* 🔥 Agregamos la clase "scanner-container" al final 🔥 */
+                                <div className="bg-black rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 relative w-full aspect-square scanner-container">
 
-                                    {/* EL ESCÁNER DE YUDIEL (Ocultamos su cuadro feo por defecto si es posible, pero la línea roja guiará al ojo) */}
+                                    {/* 🔥 TRUCO CSS: Apagamos el recuadro blanco feo de la librería 🔥 */}
+                                    <style>{`
+                .scanner-container svg { display: none !important; }
+            `}</style>
+
+                                    {/* 🔥 LA MAGIA: LÍNEA LÁSER ROJA FLOTANTE 🔥 */}
+                                    <div className="absolute top-1/2 left-6 right-6 h-1 bg-red-600 shadow-[0_0_15px_#ef4444] z-50 -translate-y-1/2 pointer-events-none rounded-full animate-pulse"></div>
+
+                                    {/* EL ESCÁNER DE YUDIEL (Ahora sí, operando de fondo sin mostrar su cuadro) */}
                                     <Scanner
                                         onScan={(res) => { if (res) handleSuccessfulScan(Array.isArray(res) ? res[0].rawValue : res); }}
                                         formats={['qr_code', 'code_128', 'code_39', 'ean_13']}
                                     />
-                                    
+
                                     <button onClick={() => setIsScanning(false)} className="absolute top-3 right-3 bg-rose-600 text-white px-3 py-1 rounded-lg text-xs font-black shadow-md z-[100]">
                                         Cancelar
                                     </button>
