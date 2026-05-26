@@ -17,6 +17,7 @@ interface ClienteUnificado {
     cedula: string;
     telefono: string;
     direccion: string;
+    zona?: string; // 🔥 Agregado para soportar el filtro de Zonas sin errores de TypeScript
     servicio: {
         plan_nombre: string;
         precio_plan: number;
@@ -44,7 +45,9 @@ export default function Clientes() {
 
     const [busqueda, setBusqueda] = useState('');
     const [filtroRouter, setFiltroRouter] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState<'todos' | 'online' | 'suspendidos' | 'activos' | 'morosos'>('todos');
+    const [filtroZona, setFiltroZona] = useState(''); // 🔥 NUEVO ESTADO PARA ZONAS
+    // 🔥 Agregado 'offline' a las opciones permitidas
+    const [filtroEstado, setFiltroEstado] = useState<'todos' | 'online' | 'offline' | 'suspendidos' | 'activos' | 'morosos'>('todos');
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [toolModal, setToolModal] = useState<{ show: boolean, cliente: any }>({ show: false, cliente: null });
@@ -106,22 +109,30 @@ export default function Clientes() {
 
             if (!matchTexto) return false;
 
+            // Filtro Router
             if (filtroRouter) {
                 const rSelect = routers.find(r => r.id.toString() === filtroRouter);
                 if (rSelect && c.servicio.router_nombre !== rSelect.nombre) return false;
             }
 
+            // 🔥 Filtro Zona Lógica
+            if (filtroZona && c.zona !== filtroZona) return false;
+
+            // Filtros de Estado
             if (filtroEstado === 'activos') return c.servicio.estado_servicio === 'activo';
             if (filtroEstado === 'suspendidos') return c.servicio.estado_servicio !== 'activo';
             if (filtroEstado === 'morosos') return c.finanzas.estado_financiero === 'moroso';
             if (filtroEstado === 'online') return onlineStatus.get(c.id.toString())?.online === true;
+            if (filtroEstado === 'offline') return onlineStatus.get(c.id.toString())?.online === false; // 🔥 Atrapa los errores de conexión
 
             return true;
         });
-    }, [clientes, busqueda, filtroRouter, filtroEstado, onlineStatus]);
+    }, [clientes, busqueda, filtroRouter, filtroZona, filtroEstado, onlineStatus]);
+
+    // Extraemos las zonas únicas dinámicamente de tus clientes
+    const zonasUnicas = Array.from(new Set(clientes.map(c => c.zona).filter(Boolean)));
 
     return (
-        /* ✅ ADAPTADO: Color de texto adaptativo de nivel raíz */
         <div className="flex flex-col h-[calc(100vh-6rem)] gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200">
 
             {/* =========================================================
@@ -130,7 +141,6 @@ export default function Clientes() {
             <div className="flex-none space-y-3 px-2 md:px-0">
                 <div className="flex justify-between items-center">
                     <div>
-                        {/* ✅ ADAPTADO: Título puro negro en claro, blanco en oscuro */}
                         <h2 className="text-base md:text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
                             Gestión de Clientes
                             <span className="text-xs bg-slate-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full font-bold sm:inline hidden">
@@ -141,7 +151,6 @@ export default function Clientes() {
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Botón Buscar (Móvil) */}
                         <button
                             onClick={() => { setMostrarBusquedaMovil(!mostrarBusquedaMovil); setMostrarFiltrosMovil(false); }}
                             className={`xl:hidden p-2 rounded-xl border transition-all ${mostrarBusquedaMovil ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'}`}
@@ -149,27 +158,25 @@ export default function Clientes() {
                             <MagnifyingGlassIcon className="w-4 h-4" />
                         </button>
 
-                        {/* Botón Configurar Filtros (Móvil) */}
                         <button
                             onClick={() => { setMostrarFiltrosMovil(!mostrarFiltrosMovil); setMostrarBusquedaMovil(false); }}
                             className={`xl:hidden p-2 rounded-xl border transition-all flex items-center gap-1 ${mostrarFiltrosMovil ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'}`}
                         >
                             <FunnelIcon className="w-4 h-4" />
-                            {(filtroRouter || filtroEstado !== 'todos') && (
+                            {(filtroRouter || filtroZona || filtroEstado !== 'todos') && (
                                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
                             )}
                         </button>
 
-                        {/* Botón Agregar Cliente */}
                         <button onClick={() => setIsCreateOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-2 md:px-4 md:py-2.5 rounded-xl flex items-center shadow-md active:scale-95 font-extrabold text-[10px] md:text-sm tracking-wide uppercase md:normal-case ml-1">
                             <UserPlusIcon className="w-4 h-4 md:w-5 md:h-5" /> <span className="hidden sm:inline">Nuevo Cliente</span>
                         </button>
                     </div>
                 </div>
 
-                {/* 🖥️ ✅ ADAPTADO: FILTROS ESCRITORIO (Blanco en claro, Slate en oscuro) */}
-                <div className="hidden xl:flex gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-md dark:shadow-lg">
-                    <div className="relative flex-1">
+                {/* 🖥️ FILTROS ESCRITORIO */}
+                <div className="hidden xl:flex gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-md dark:shadow-lg overflow-x-auto">
+                    <div className="relative min-w-[250px] flex-1">
                         <MagnifyingGlassIcon className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
                         <input
                             type="text" placeholder="Buscar por nombre, IP, ID, cédula..."
@@ -177,21 +184,30 @@ export default function Clientes() {
                             value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
                         />
                     </div>
-                    <div className="flex gap-3">
+                    
+                    <div className="flex gap-3 shrink-0">
                         <select value={filtroRouter} onChange={(e) => setFiltroRouter(e.target.value)} className="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 outline-none text-sm font-bold cursor-pointer">
-                            <option value="">Todos los Routers</option>
+                            <option value="">Todos los Nodos</option>
                             {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
                         </select>
+
+                        {/* 🔥 SELECT DE ZONAS ESCRITORIO 🔥 */}
+                        <select value={filtroZona} onChange={(e) => setFiltroZona(e.target.value)} className="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 outline-none text-sm font-bold cursor-pointer">
+                            <option value="">Todas las Zonas</option>
+                            {zonasUnicas.map((z: any) => <option key={z} value={z}>{z}</option>)}
+                        </select>
+
                         <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as any)} className="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-black text-sm cursor-pointer">
                             <option value="todos">Todos los Estados</option>
                             <option value="online">🟢 Online</option>
+                            <option value="offline">🔴 Offline</option>
                             <option value="suspendidos">⛔ Suspendidos</option>
                             <option value="morosos">💰 Con Deuda</option>
                         </select>
                     </div>
                 </div>
 
-                {/* 📱 DESPLEGABLE MÓVIL A */}
+                {/* 📱 DESPLEGABLE MÓVIL A (Búsqueda) */}
                 {mostrarBusquedaMovil && (
                     <div className="xl:hidden relative bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700/60 shadow-md">
                         <MagnifyingGlassIcon className="absolute left-5 top-4 w-4 h-4 text-slate-400" />
@@ -206,19 +222,21 @@ export default function Clientes() {
                     </div>
                 )}
 
-                {/* 📱 DESPLEGABLE MÓVIL B */}
+                {/* 📱 DESPLEGABLE MÓVIL B (Filtros) */}
                 {mostrarFiltrosMovil && (
                     <div className="xl:hidden bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 shadow-lg space-y-3">
                         <div>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider block mb-1.5">Filtrar Estado</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider block mb-1.5">Filtrar Estado Técnico</span>
                             <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
-                                {['todos', 'online', 'suspendidos', 'morosos'].map((est) => (
+                                {/* 🔥 OFFLINE AÑADIDO A LOS BOTONES RÁPIDOS 🔥 */}
+                                {['todos', 'online', 'offline', 'suspendidos', 'morosos'].map((est) => (
                                     <button
                                         key={est} onClick={() => setFiltroEstado(est as any)}
                                         className={`px-3 py-1.5 rounded-lg text-xs font-black whitespace-nowrap border transition-all ${filtroEstado === est ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'}`}
                                     >
                                         {est === 'todos' && `Todos (${clientes.length})`}
                                         {est === 'online' && '🟢 Online'}
+                                        {est === 'offline' && '🔴 Offline'}
                                         {est === 'suspendidos' && '⛔ Suspendidos'}
                                         {est === 'morosos' && '💰 Con Deuda'}
                                     </button>
@@ -226,16 +244,32 @@ export default function Clientes() {
                             </div>
                         </div>
 
-                        <div className="border-t border-slate-100 dark:border-slate-800/80 pt-2.5">
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider block mb-1">Filtrar Nodo / Router</span>
-                            <div className="relative bg-slate-100 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 px-2.5 py-1.5">
-                                <select
-                                    value={filtroRouter} onChange={(e) => setFiltroRouter(e.target.value)}
-                                    className="w-full bg-transparent text-slate-700 dark:text-slate-300 font-extrabold outline-none text-xs cursor-pointer appearance-none"
-                                >
-                                    <option value="" className="dark:bg-slate-950">Todos los Nodos / Mikrotiks</option>
-                                    {routers.map(r => <option key={r.id} value={r.id} className="dark:bg-slate-950">{r.nombre}</option>)}
-                                </select>
+                        <div className="grid grid-cols-2 gap-2 border-t border-slate-100 dark:border-slate-800/80 pt-2.5">
+                            <div>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider block mb-1">Filtrar Nodo / Mikrotik</span>
+                                <div className="relative bg-slate-100 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 px-2.5 py-1.5">
+                                    <select
+                                        value={filtroRouter} onChange={(e) => setFiltroRouter(e.target.value)}
+                                        className="w-full bg-transparent text-slate-700 dark:text-slate-300 font-extrabold outline-none text-xs cursor-pointer appearance-none truncate"
+                                    >
+                                        <option value="" className="dark:bg-slate-950">Todos los Nodos</option>
+                                        {routers.map(r => <option key={r.id} value={r.id} className="dark:bg-slate-950">{r.nombre}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            {/* 🔥 SELECT DE ZONAS MÓVIL 🔥 */}
+                            <div>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider block mb-1">Filtrar por Zona</span>
+                                <div className="relative bg-slate-100 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 px-2.5 py-1.5">
+                                    <select
+                                        value={filtroZona} onChange={(e) => setFiltroZona(e.target.value)}
+                                        className="w-full bg-transparent text-slate-700 dark:text-slate-300 font-extrabold outline-none text-xs cursor-pointer appearance-none truncate"
+                                    >
+                                        <option value="" className="dark:bg-slate-950">Todas las Zonas</option>
+                                        {zonasUnicas.map((z: any) => <option key={z} value={z} className="dark:bg-slate-950">{z}</option>)}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -245,7 +279,6 @@ export default function Clientes() {
             {/* =========================================================
                 ZONA DE DATOS PRINCIPALES
                ========================================================= */}
-            {/* ✅ ADAPTADO: Contenedor principal adaptable de color */}
             <div className="flex-1 bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col transition-colors duration-300">
                 {loading ? (
                     <div className="flex justify-center items-center h-full">
@@ -256,7 +289,6 @@ export default function Clientes() {
 
                         {/* 🖥️ VISTA ESCRITORIO */}
                         <table className="w-full text-left border-collapse hidden md:table text-xs">
-                            {/* ✅ ADAPTADO: Cabecera gris en claro, negra en oscuro */}
                             <thead className="bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider sticky top-0 z-10 shadow-sm border-b border-slate-200 dark:border-slate-800">
                                 <tr>
                                     <th className="px-6 py-4 text-center w-20">ID</th>
@@ -272,7 +304,6 @@ export default function Clientes() {
                                     const statusData = onlineStatus.get(c.id.toString());
                                     const unreadCount = noLeidos[c.id]?.count || 0;
                                     return (
-                                        /* ✅ ADAPTADO: Fila limpia con textos legibles en ambos esquemas */
                                         <tr key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition group cursor-pointer bg-transparent">
                                             <td className="px-6 py-4 text-center font-mono text-slate-400 dark:text-slate-500 font-bold">#{c.id}</td>
                                             <td className="px-6 py-4">
@@ -322,7 +353,6 @@ export default function Clientes() {
                                 const statusData = onlineStatus.get(c.id.toString());
                                 const unreadCount = noLeidos[c.id]?.count || 0;
                                 return (
-                                    /* ✅ ADAPTADO: Tarjetas móviles con cambio de look inteligente */
                                     <div key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className="bg-slate-50 dark:bg-slate-950/40 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 flex flex-col gap-2.5 shadow-sm active:scale-[0.99] transition-all">
 
                                         <div className="flex justify-between items-start gap-2">
