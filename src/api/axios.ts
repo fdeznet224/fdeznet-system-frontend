@@ -9,6 +9,12 @@ const client = axios.create({
     baseURL: API_URL, 
 });
 
+// 🔥 ESTA ES LA MAGIA GLOBAL ANTI-CACHÉ 🔥
+// Obliga al navegador a siempre pedir los datos frescos al servidor en las peticiones GET
+client.defaults.headers.get['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+client.defaults.headers.get['Pragma'] = 'no-cache';
+client.defaults.headers.get['Expires'] = '0';
+
 // Interceptor para inyectar el Token en cada petición
 client.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');

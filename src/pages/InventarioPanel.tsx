@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import client from '../api/axios';
 import { toast } from 'react-hot-toast';
-import { Scanner } from '@yudiel/react-qr-scanner'; // 🔥 REGRESAMOS A LA LIBRERÍA QUE FUNCIONABA BIEN
+import { Scanner } from '@yudiel/react-qr-scanner'; 
 import {
     ArchiveBoxIcon, UserPlusIcon, QrCodeIcon,
     TrashIcon, ArrowPathIcon, CheckBadgeIcon,
     WrenchScrewdriverIcon, ArrowDownTrayIcon,
     CameraIcon, XMarkIcon, MapPinIcon, UserIcon,
-    TruckIcon
+    TruckIcon, ExclamationTriangleIcon // 🔥 Nuevo icono para las fallas
 } from '@heroicons/react/24/outline';
 
 export default function InventarioPanel() {
@@ -48,11 +48,11 @@ export default function InventarioPanel() {
         fetchTecnicos();
     }, []);
 
-    const handleAsignarTecnico = async (clienteId: number, tecnicoId: string) => {
+    const handleAsignarTecnico = async (inventarioId: number, tecnicoId: string) => {
         if (!tecnicoId) return;
         const load = toast.loading("Asignando técnico para retiro...");
         try {
-            await client.post(`/clientes/${clienteId}/asignar-retiro/${tecnicoId}`);
+            await client.post(`/clientes/inventario/${inventarioId}/asignar-retiro/${tecnicoId}`);
             toast.success("Técnico asignado correctamente", { id: load });
             fetchInventario();
         } catch (error) {
@@ -61,10 +61,10 @@ export default function InventarioPanel() {
     };
 
     const handleConfirmarRecoleccion = async (eq: any) => {
-        if (!confirm(`¿Confirmas que has recuperado el equipo de ${eq.cliente_nombre}?`)) return;
+        if (!confirm(`¿Confirmas que has recuperado el equipo ${eq.identificador}?`)) return;
         const load = toast.loading("Ingresando a stock...");
         try {
-            await client.post(`/clientes/${eq.cliente_id}/confirmar-retiro-onu`);
+            await client.post(`/clientes/inventario/${eq.id}/confirmar-retiro-onu`);
             toast.success("Equipo de vuelta en bodega", { id: load });
             fetchInventario();
         } catch (error) {
@@ -76,7 +76,6 @@ export default function InventarioPanel() {
         const val = codigoEscaneado.toUpperCase();
         setNuevoId(val);
 
-        // 🤖 Autodetección inteligente de marcas por prefijo
         if (val.startsWith('HWTC')) {
             setTecnologia('GPON');
             setModelo('Huawei EG8141A5');
@@ -110,20 +109,23 @@ export default function InventarioPanel() {
     };
 
     const handleEliminar = async (id: number) => {
-        if (!confirm("¿Eliminar permanente?")) return;
+        if (!confirm("¿Eliminar permanente de la base de datos?")) return;
         try {
             await client.delete(`/inventario/${id}`);
-            toast.success("Eliminado"); fetchInventario();
+            toast.success("Equipo eliminado con éxito"); 
+            fetchInventario();
         } catch (error: any) {
-            toast.error(error.response?.data?.detail || "Error");
+            toast.error(error.response?.data?.detail || "Error al eliminar");
         }
     };
 
+    // 🔥 Agregamos las fallas a las estadísticas
     const stats = useMemo(() => {
         const disponibles = equipos.filter(e => e.estado === 'DISPONIBLE').length;
         const instalados = equipos.filter(e => e.estado === 'INSTALADO').length;
         const porRecoger = equipos.filter(e => e.estado === 'POR_RECOGER').length;
-        return { total: equipos.length, disponibles, instalados, porRecoger };
+        const conFalla = equipos.filter(e => e.estado === 'CON_FALLA').length;
+        return { total: equipos.length, disponibles, instalados, porRecoger, conFalla };
     }, [equipos]);
 
     const equiposFiltrados = useMemo(() => {
@@ -147,11 +149,14 @@ export default function InventarioPanel() {
                 </button>
             </div>
 
-            <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:pb-0 scrollbar-none flex-none shrink-0">
+            {/* 🔥 Modificamos la cuadrícula para que quepan 5 tarjetas (grid-cols-5) */}
+            <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-5 md:pb-0 scrollbar-none flex-none shrink-0">
                 <KpiCard title="Total" value={stats.total} icon={ArchiveBoxIcon} color="text-blue-600 dark:text-blue-400" bg="bg-blue-500/10" onClick={() => setFiltro('todos')} active={filtro === 'todos'} />
                 <KpiCard title="En Bodega" value={stats.disponibles} icon={CheckBadgeIcon} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-500/10" onClick={() => setFiltro('DISPONIBLE')} active={filtro === 'DISPONIBLE'} />
                 <KpiCard title="Instalados" value={stats.instalados} icon={WrenchScrewdriverIcon} color="text-purple-600 dark:text-purple-400" bg="bg-purple-500/10" onClick={() => setFiltro('INSTALADO')} active={filtro === 'INSTALADO'} />
                 <KpiCard title="Por Recoger" value={stats.porRecoger} icon={ArrowDownTrayIcon} color="text-rose-600 dark:text-rose-400" bg="bg-rose-500/10" onClick={() => setFiltro('POR_RECOGER')} active={filtro === 'POR_RECOGER'} />
+                {/* 🔥 Nueva tarjeta para los averiados */}
+                <KpiCard title="Averiados" value={stats.conFalla} icon={ExclamationTriangleIcon} color="text-red-600 dark:text-red-400" bg="bg-red-500/10" onClick={() => setFiltro('CON_FALLA')} active={filtro === 'CON_FALLA'} />
             </div>
 
             <div className="flex-1 min-h-0 bg-transparent md:bg-white md:dark:bg-slate-900/90 md:rounded-2xl md:border md:border-slate-200 md:dark:border-slate-800 md:shadow-md md:dark:shadow-xl overflow-hidden flex flex-col transition-colors duration-200 relative">
@@ -199,7 +204,7 @@ export default function InventarioPanel() {
                                                 <div className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 flex items-center">
                                                     <select
                                                         value={eq.tecnico_id || ""}
-                                                        onChange={(e) => handleAsignarTecnico(eq.cliente_id, e.target.value)}
+                                                        onChange={(e) => handleAsignarTecnico(eq.id, e.target.value)}
                                                         className="w-full bg-transparent text-xs text-slate-800 dark:text-white font-bold outline-none cursor-pointer appearance-none"
                                                     >
                                                         <option value="" className="bg-white dark:bg-slate-950 text-slate-800 dark:text-white">-- Sin asignar --</option>
@@ -211,14 +216,17 @@ export default function InventarioPanel() {
                                             </div>
                                         ) : eq.estado === 'INSTALADO' ? (
                                             <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic">En uso activo</p>
+                                        ) : eq.estado === 'CON_FALLA' ? (
+                                            <p className="text-[10px] text-red-500 font-bold italic">Equipo averiado</p>
                                         ) : (
                                             <p className="text-[10px] text-emerald-600 dark:text-emerald-500/60 font-bold italic">Listo para salir</p>
                                         )}
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
-                                            {eq.estado === 'DISPONIBLE' && (
-                                                <button onClick={() => handleEliminar(eq.id)} className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors"><TrashIcon className="w-4 h-4" /></button>
+                                            {/* 🔥 Permite eliminar tanto DISPONIBLES como averiados (CON_FALLA) */}
+                                            {(eq.estado === 'DISPONIBLE' || eq.estado === 'CON_FALLA') && (
+                                                <button onClick={() => handleEliminar(eq.id)} title="Eliminar equipo" className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors"><TrashIcon className="w-4 h-4" /></button>
                                             )}
                                             {eq.estado === 'POR_RECOGER' && (
                                                 <button onClick={() => handleConfirmarRecoleccion(eq)} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[10px] font-black hover:bg-emerald-500 transition-all uppercase shadow-sm"><CheckBadgeIcon className="w-4 h-4" /> Recibido</button>
@@ -264,7 +272,7 @@ export default function InventarioPanel() {
                                             <TruckIcon className="w-4 h-4 text-slate-400 shrink-0" />
                                             <select
                                                 value={eq.tecnico_id || ""}
-                                                onChange={(e) => handleAsignarTecnico(eq.cliente_id, e.target.value)}
+                                                onChange={(e) => handleAsignarTecnico(eq.id, e.target.value)} 
                                                 className="w-full bg-transparent text-slate-800 dark:text-slate-300 font-bold outline-none text-xs cursor-pointer appearance-none"
                                             >
                                                 <option value="" className="bg-white dark:bg-slate-950 text-slate-800 dark:text-white">Asignar técnico...</option>
@@ -284,9 +292,11 @@ export default function InventarioPanel() {
                                 ) : (
                                     <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800/50 pt-2.5 mt-1">
                                         <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic">
-                                            {eq.estado === 'INSTALADO' ? '📡 Operando en campo' : '📦 En bodega'}
+                                            {eq.estado === 'INSTALADO' ? '📡 Operando en campo' : 
+                                             eq.estado === 'CON_FALLA' ? '❌ Equipo Averiado' : '📦 En bodega'}
                                         </p>
-                                        {eq.estado === 'DISPONIBLE' && (
+                                        {/* 🔥 Activar eliminar en móvil para fallas */}
+                                        {(eq.estado === 'DISPONIBLE' || eq.estado === 'CON_FALLA') && (
                                             <button onClick={() => handleEliminar(eq.id)} className="p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 rounded-lg active:scale-90 transition-all">
                                                 <TrashIcon className="w-4 h-4" />
                                             </button>
@@ -312,28 +322,17 @@ export default function InventarioPanel() {
                         <div className="p-5 space-y-4">
                             {isScanning ? (
                                 <div className="bg-black rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 relative w-full aspect-square scanner-container">
-
-                                    {/* 🔥 TRUCO CSS BLINDADO: Apaga cualquier cosa que la librería dibuje encima del video 🔥 */}
                                     <style>{`
-                .scanner-container svg, 
-                .scanner-container div[style*="box-shadow"],
-                .scanner-container div[style*="border"] { 
-                    display: none !important; 
-                }
-            `}</style>
-
-                                    {/* 🔥 TU LÍNEA LÁSER ROJA (Lo único que se debe ver) 🔥 */}
+                                        .scanner-container svg, 
+                                        .scanner-container div[style*="box-shadow"],
+                                        .scanner-container div[style*="border"] { display: none !important; }
+                                    `}</style>
                                     <div className="absolute top-1/2 left-6 right-6 h-[3px] bg-red-600 shadow-[0_0_15px_#ef4444] z-[60] -translate-y-1/2 pointer-events-none rounded-full animate-pulse"></div>
-
-                                    {/* EL ESCÁNER DE YUDIEL */}
                                     <Scanner
                                         onScan={(res) => { if (res) handleSuccessfulScan(Array.isArray(res) ? res[0].rawValue : res); }}
                                         formats={['qr_code', 'code_128', 'code_39', 'ean_13']}
-                                        components={{
-                                            tracker: () => null // 🔥 LA ORDEN DEFINITIVA PARA DESTRUIR EL CUADRO PUNTEADO 🔥
-                                        }}
+                                        components={{ tracker: () => null }}
                                     />
-
                                     <button onClick={() => setIsScanning(false)} className="absolute top-3 right-3 bg-rose-600 text-white px-3 py-1 rounded-lg text-xs font-black shadow-md z-[100]">
                                         Cancelar
                                     </button>
@@ -409,6 +408,8 @@ const EstadoBadge = ({ estado }: { estado: string }) => {
         case 'DISPONIBLE': return <span className="px-1.5 py-0.5 rounded border text-[8px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 tracking-wider">BODEGA</span>;
         case 'INSTALADO': return <span className="px-1.5 py-0.5 rounded border text-[8px] font-extrabold bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 tracking-wider">INSTALADO</span>;
         case 'POR_RECOGER': return <span className="px-1.5 py-0.5 rounded border text-[8px] font-extrabold bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 animate-pulse tracking-wider">POR RECOGER</span>;
+        // 🔥 Badge específico para fallas
+        case 'CON_FALLA': return <span className="px-1.5 py-0.5 rounded border text-[8px] font-extrabold bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 tracking-wider">AVERÍA</span>;
         default: return <span className="px-1.5 py-0.5 rounded border text-[8px] font-extrabold bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20 tracking-wider">{estado}</span>;
     }
 };

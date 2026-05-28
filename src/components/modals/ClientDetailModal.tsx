@@ -2,15 +2,14 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition, Tab } from '@headlessui/react';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import { Scanner } from '@yudiel/react-qr-scanner'; 
 import { 
     XMarkIcon, UserIcon, WifiIcon, ServerIcon, 
     CalendarDaysIcon, ClipboardDocumentIcon, 
     DocumentTextIcon, IdentificationIcon, 
     PencilSquareIcon, CheckCircleIcon, 
-    BanknotesIcon, PlusIcon, CpuChipIcon, CameraIcon, 
+    BanknotesIcon, PlusIcon, CpuChipIcon, 
     QrCodeIcon, GlobeAmericasIcon, CubeIcon, MapPinIcon,
-    SignalIcon, GlobeAltIcon, PhoneIcon
+    SignalIcon, GlobeAltIcon, PhoneIcon, ArrowPathRoundedSquareIcon
 } from '@heroicons/react/24/outline';
 import type { Cliente } from '../../types';
 
@@ -25,13 +24,12 @@ function classNames(...classes: string[]) {
     return classes.filter(Boolean).join(' ')
 }
 
-const inputClass = "w-full bg-white dark:bg-[#0b0c10] border border-slate-300 dark:border-slate-700/50 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600";
+const inputClass = "w-full bg-white dark:bg-[#0b0c10] border border-slate-300 dark:border-slate-700/50 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-900";
 const labelClass = "block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 mb-1 tracking-wider";
 
 export default function ClientDetailModal({ isOpen, onClose, cliente: clienteInicial, onEditSuccess }: Props) {
     const [cliente, setCliente] = useState<Cliente | null>(null);
     const [isEditing, setIsEditing] = useState(false);
-    const [isScanning, setIsScanning] = useState(false);
     
     const [addingSaldo, setAddingSaldo] = useState(false);
     const [montoSaldo, setMontoSaldo] = useState('');
@@ -49,12 +47,17 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     
     const [puertosOcupados, setPuertosOcupados] = useState<number[]>([]);
 
+    // ESTADOS PARA SWAP SEGURO
+    const [isSwapOpen, setIsSwapOpen] = useState(false);
+    const [swapData, setSwapData] = useState({ nuevo_inventario_id: '', estado_vieja_onu: 'CON_FALLA' });
+    const [equiposDisponibles, setEquiposDisponibles] = useState<any[]>([]);
+
     const [formData, setFormData] = useState({
-        nombre: '', cedula: '', identificador_onu: '', telefono: '', direccion: '',
+        nombre: '', cedula: '', telefono: '', direccion: '',
         plantilla_id: 0, zona_id: 0, router_id: 0, plan_id: 0,
         ip_asignada: '', user_pppoe: '', pass_pppoe: '',
         olt_id: 0, caja_nap_id: 0, puerto_nap: 0, 
-        latitud: '', longitud: ''
+        latitud: '', longitud: '', identificador_onu: ''
     });
 
     useEffect(() => {
@@ -62,7 +65,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             cargarDatosCompletos(clienteInicial.id);
             setIsEditing(false);
             setAddingSaldo(false);
-            setIsScanning(false);
+            setIsSwapOpen(false);
         }
     }, [isOpen, clienteInicial]);
 
@@ -85,14 +88,26 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
     const cargarCatalogos = async () => {
         try {
-            const [r, p, z, pl, n, o] = await Promise.all([
-                client.get('network/routers/'), client.get('planes/'), client.get('zonas/'), 
-                client.get('configuracion/plantillas-facturacion/'), client.get('infraestructura/naps/'), client.get('olts/') 
+            const [resRouters, resPlanes, resZonas, resPlantillas, resNaps, resOlts, resInventario] = await Promise.all([
+                client.get('network/routers/'), 
+                client.get('planes/'), 
+                client.get('zonas/'), 
+                client.get('configuracion/plantillas-facturacion/'), 
+                client.get('infraestructura/naps/'), 
+                client.get('olts/'), 
+                client.get('/inventario/?estado=DISPONIBLE') 
             ]);
-            setRouters(Array.isArray(r.data) ? r.data : []); setPlanes(Array.isArray(p.data) ? p.data : []);
-            setZonas(Array.isArray(z.data) ? z.data : []); setPlantillas(Array.isArray(pl.data) ? pl.data : []);
-            setNaps(Array.isArray(n.data) ? n.data : []); setOlts(Array.isArray(o.data) ? o.data : []);
-        } catch (error) { toast.error("Error cargando listas"); }
+            
+            setRouters(Array.isArray(resRouters.data) ? resRouters.data : []); 
+            setPlanes(Array.isArray(resPlanes.data) ? resPlanes.data : []);
+            setZonas(Array.isArray(resZonas.data) ? resZonas.data : []); 
+            setPlantillas(Array.isArray(resPlantillas.data) ? resPlantillas.data : []);
+            setNaps(Array.isArray(resNaps.data) ? resNaps.data : []); 
+            setOlts(Array.isArray(resOlts.data) ? resOlts.data : []);
+            
+            setEquiposDisponibles(Array.isArray(resInventario.data) ? resInventario.data : []);
+            
+        } catch (error) { toast.error("Error cargando listas de configuración"); }
     };
 
     const toggleEditMode = () => {
@@ -100,22 +115,23 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             cargarCatalogos();
             setFormData({
                 nombre: cliente.nombre || '', cedula: cliente.cedula || '', 
-                identificador_onu: cliente.onu_asignada?.identificador || '',
                 telefono: cliente.telefono || '', direccion: cliente.direccion || '',
                 plantilla_id: cliente.plantilla?.id || 0, zona_id: cliente.zona?.id || 0,
                 router_id: cliente.router?.id || 0, plan_id: cliente.plan?.id || 0,
                 ip_asignada: cliente.ip_asignada || '', user_pppoe: cliente.user_pppoe || '', pass_pppoe: cliente.pass_pppoe || '', 
                 olt_id: cliente.olt?.id || 0, caja_nap_id: cliente.caja_nap?.id || 0, puerto_nap: cliente.puerto_nap || 0,
-                latitud: cliente.latitud ? cliente.latitud.toString() : '', longitud: cliente.longitud ? cliente.longitud.toString() : ''
+                latitud: cliente.latitud ? cliente.latitud.toString() : '', longitud: cliente.longitud ? cliente.longitud.toString() : '',
+                identificador_onu: cliente.onu_asignada?.identificador || ''
             });
             setIsEditing(true);
-        } else { setIsEditing(false); setIsScanning(false); }
+        } else { 
+            setIsEditing(false); 
+        }
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        const finalValue = name === 'identificador_onu' ? value.toUpperCase() : value;
-        setFormData(prev => ({ ...prev, [name]: name.includes('_id') || name === 'puerto_nap' ? Number(finalValue) : finalValue }));
+        setFormData(prev => ({ ...prev, [name]: name.includes('_id') || name === 'puerto_nap' ? Number(value) : value }));
     };
 
     useEffect(() => {
@@ -129,13 +145,34 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         if (!cliente) return;
         const load = toast.loading("Guardando...");
         try {
-            const payload = { ...formData, mac_address: formData.identificador_onu, latitud: formData.latitud ? parseFloat(formData.latitud) : null, longitud: formData.longitud ? parseFloat(formData.longitud) : null };
+            const payload = { 
+                ...formData, 
+                mac_address: !cliente.onu_asignada ? formData.identificador_onu : undefined, 
+                latitud: formData.latitud ? parseFloat(formData.latitud) : null, 
+                longitud: formData.longitud ? parseFloat(formData.longitud) : null 
+            };
             await client.put(`/clientes/${cliente.id}`, payload);
             toast.success("Información Actualizada", { id: load });
             cargarDatosCompletos(cliente.id);
             setIsEditing(false);
             if (onEditSuccess) onEditSuccess();
         } catch (error) { toast.error("Error al guardar cambios", { id: load }); }
+    };
+
+    // 🔥 NUEVA FUNCIÓN: REACTIVAR CLIENTE CANCELADO 🔥
+    const handleReactivarCliente = async () => {
+        if (!cliente || cliente.estado !== 'cancelado') return;
+        if (!confirm("¿Estás seguro de reactivar este servicio en el MikroTik?")) return;
+        
+        const load = toast.loading("Reactivando servicio...");
+        try {
+            await client.post(`/clientes/${cliente.id}/reactivar`);
+            toast.success("¡Servicio Reactivado y Conectado!", { id: load });
+            cargarDatosCompletos(cliente.id);
+            if (onEditSuccess) onEditSuccess();
+        } catch (error: any) {
+            toast.error(error.response?.data?.detail || "Error al reactivar el servicio", { id: load });
+        }
     };
 
     const handleAgregarSaldo = async () => {
@@ -153,7 +190,56 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
     const handleAbrirMapa = () => {
         if (cliente?.latitud && cliente?.longitud) {
-            window.open(`http://maps.google.com/maps?q=$${cliente.latitud},${cliente.longitud}`, '_blank');
+            window.open(`http://maps.google.com/maps?q=$$${cliente.latitud},${cliente.longitud}`, '_blank');
+        }
+    };
+
+    const handleCaptureGPS = () => {
+        if (!navigator.geolocation) {
+            toast.error("Tu navegador no soporta GPS");
+            return;
+        }
+
+        const loadId = toast.loading("Obteniendo ubicación exacta...");
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                setFormData(prev => ({
+                    ...prev,
+                    latitud: latitude.toString(),
+                    longitud: longitude.toString()
+                }));
+                toast.success("¡Coordenadas capturadas!", { id: loadId });
+            },
+            (error) => {
+                console.error("Error GPS:", error);
+                toast.error("Error GPS. Revisa que tu navegador tenga permisos de ubicación.", { id: loadId, duration: 4000 });
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
+
+    const abrirModalSwap = () => {
+        setIsSwapOpen(true);
+        setSwapData({ nuevo_inventario_id: '', estado_vieja_onu: 'CON_FALLA' });
+    };
+
+    const handleProcesarSwap = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!cliente || !swapData.nuevo_inventario_id) return;
+        
+        const load = toast.loading("Procesando asignación/cambio...");
+        try {
+            await client.post(`/clientes/${cliente.id}/cambiar-onu`, {
+                nuevo_inventario_id: Number(swapData.nuevo_inventario_id),
+                estado_vieja_onu: swapData.estado_vieja_onu
+            });
+            toast.success("¡ONU vinculada exitosamente!", { id: load });
+            setIsSwapOpen(false);
+            cargarDatosCompletos(cliente.id); 
+            if (onEditSuccess) onEditSuccess();
+        } catch (error: any) {
+            toast.error(error.response?.data?.detail || "Error al cambiar equipo", { id: load });
         }
     };
 
@@ -168,6 +254,19 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         }
         return options;
     };
+
+    const obtenerTecnologiaOLT = (olt: any) => {
+        if (!olt) return null;
+        if (olt.tecnologia) return olt.tecnologia.toUpperCase();
+        if (olt.nombre?.toUpperCase().includes('EPON')) return 'EPON';
+        if (olt.nombre?.toUpperCase().includes('GPON')) return 'GPON';
+        return null;
+    };
+
+    const tecOltActual = obtenerTecnologiaOLT(olts.find(o => o.id === formData.olt_id));
+    const equiposCompatibles = formData.olt_id 
+        ? equiposDisponibles.filter(eq => tecOltActual ? eq.tecnologia?.toUpperCase() === tecOltActual : true)
+        : [];
     
     if (!cliente) return null;
     const isPPPoE = cliente.router?.tipo_seguridad === 'pppoe' || formData.router_id !== 0; 
@@ -201,15 +300,20 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                 </div>
                                 <div className="hidden sm:flex gap-2">
                                     {isEditing ? (
-                                        <><button onClick={toggleEditMode} className="bg-slate-100 dark:bg-[#1a1c23] border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 px-5 py-2 rounded-lg text-sm font-bold transition">Cancelar</button><button onClick={handleGuardar} className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><CheckCircleIcon className="w-5 h-5"/> Guardar</button></>
+                                        <><button onClick={toggleEditMode} className="bg-slate-100 dark:bg-[#1a1c23] border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 px-5 py-2 rounded-lg text-sm font-bold transition">Cancelar</button><button onClick={handleGuardar} className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><CheckCircleIcon className="w-5 h-5"/> Guardar Datos</button></>
                                     ) : (
-                                        <button onClick={toggleEditMode} className="text-blue-600 dark:text-blue-400 bg-blue-600/10 hover:bg-blue-600/20 px-5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><PencilSquareIcon className="w-5 h-5"/> Editar Ficha</button>
+                                        <>
+                                            {/* 🔥 BOTÓN DE REACTIVACIÓN CONDICIONAL 🔥 */}
+                                            {cliente.estado === 'cancelado' && (
+                                                <button onClick={handleReactivarCliente} className="text-emerald-600 dark:text-emerald-400 bg-emerald-600/10 hover:bg-emerald-600/20 px-5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><ArrowPathRoundedSquareIcon className="w-5 h-5"/> Reactivar Servicio</button>
+                                            )}
+                                            <button onClick={toggleEditMode} className="text-blue-600 dark:text-blue-400 bg-blue-600/10 hover:bg-blue-600/20 px-5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><PencilSquareIcon className="w-5 h-5"/> Editar Ficha</button>
+                                        </>
                                     )}
                                     <button onClick={onClose} className="text-slate-500 bg-slate-100 dark:bg-[#1a1c23] border border-slate-200 dark:border-slate-800 hover:bg-slate-200 dark:hover:text-white p-2 rounded-lg transition"><XMarkIcon className="w-5 h-5"/></button>
                                 </div>
                             </div>
 
-                            {/* INDICADORES SUPERIORES (KPIs) - AQUÍ VIVE LA ONU */}
                             <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 <KpiHeader icon={QrCodeIcon} color="emerald" title="Cédula / Identificación" value={cliente.cedula || 'N/A'} />
                                 <KpiHeader icon={CpuChipIcon} color="slate" title="ONU Asignada" value={cliente.onu_asignada?.identificador || 'Sin registrar'} />
@@ -218,7 +322,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                             </div>
                         </div>
 
-                        {/* ================= CONTENIDO CON TABS ================= */}
+                        {/* ================= CONTENIDO ================= */}
                         <Tab.Group as="div" className="flex flex-col flex-1 overflow-hidden">
                             <Tab.List className="flex gap-6 px-6 bg-slate-50 dark:bg-[#16171d] border-b border-slate-200 dark:border-slate-800 transition-colors">
                                 <TabItem label="Vista General" icon={UserIcon} />
@@ -228,10 +332,8 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                             <Tab.Panels className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100 dark:bg-[#0a0a0c] custom-scrollbar transition-colors">
                                 <Tab.Panel className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-20 sm:pb-0">
                                     
-                                    {/* --- COLUMNA IZQUIERDA (Principal) --- */}
                                     <div className="lg:col-span-2 space-y-5">
-                                        
-                                        {/* 1. INFORMACIÓN DEL CLIENTE */}
+                                        {/* INFO CONTACTO */}
                                         <SectionCard title="Información del Contacto" icon={UserIcon} iconColor="text-blue-500 dark:text-blue-400">
                                             {isEditing ? (
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -239,9 +341,23 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                     <div><label className={labelClass}>Teléfono</label><input name="telefono" value={formData.telefono} onChange={handleInputChange} className={inputClass}/></div>
                                                     <div><label className={labelClass}>Zona</label><select name="zona_id" value={formData.zona_id} onChange={handleInputChange} className={inputClass}><option value={0}>Seleccionar...</option>{zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}</select></div>
                                                     <div className="col-span-2"><label className={labelClass}>Dirección Principal</label><textarea name="direccion" value={formData.direccion} onChange={(e: any)=>handleInputChange(e)} rows={2} className={`${inputClass} resize-none`}/></div>
-                                                    <div className="col-span-2 grid grid-cols-2 gap-4">
-                                                        <div><label className={labelClass}>Latitud</label><input name="latitud" value={formData.latitud} onChange={handleInputChange} className={inputClass}/></div>
-                                                        <div><label className={labelClass}>Longitud</label><input name="longitud" value={formData.longitud} onChange={handleInputChange} className={inputClass}/></div>
+                                                    
+                                                    {/* GPS CAPTURE */}
+                                                    <div className="col-span-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors">
+                                                        <div className="flex justify-between items-center mb-3">
+                                                            <span className={labelClass + " !mb-0"}>Ubicación GPS</span>
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={handleCaptureGPS}
+                                                                className="flex items-center gap-1.5 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-500/30 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-colors active:scale-95"
+                                                            >
+                                                                <MapPinIcon className="w-4 h-4" /> Capturar Aquí
+                                                            </button>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div><label className="text-[9px] font-bold text-slate-400 block mb-1">Latitud</label><input name="latitud" value={formData.latitud} onChange={handleInputChange} className={inputClass}/></div>
+                                                            <div><label className="text-[9px] font-bold text-slate-400 block mb-1">Longitud</label><input name="longitud" value={formData.longitud} onChange={handleInputChange} className={inputClass}/></div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ) : (
@@ -259,32 +375,46 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             )}
                                         </SectionCard>
 
-                                        {/* 2. INFRAESTRUCTURA FTTH (SIN DUPLICAR LA ONU) */}
+                                        {/* INFRAESTRUCTURA (FTTH) */}
                                         <SectionCard title="Infraestructura de Fibra (FTTH)" icon={SignalIcon} iconColor="text-emerald-500">
                                             {isEditing ? (
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    {/* En modo edición sí dejamos el input para que puedas asignar la ONU */}
-                                                    <div className="col-span-2">
-                                                        <label className={labelClass}>Asignar Equipo ONU (SN / MAC)</label>
-                                                        {!isScanning ? (
-                                                            <div className="flex gap-2">
-                                                                <input name="identificador_onu" placeholder="Ej: HWTCC..." value={formData.identificador_onu} onChange={handleInputChange} className={`${inputClass} flex-1 font-mono uppercase text-emerald-600 dark:text-emerald-400`}/>
-                                                                <button type="button" onClick={() => setIsScanning(true)} className="bg-slate-200 dark:bg-slate-800 p-2.5 rounded-lg hover:text-emerald-600 dark:hover:text-emerald-400 transition"><CameraIcon className="w-5 h-5"/></button>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="relative rounded-xl overflow-hidden bg-slate-100 dark:bg-black border border-emerald-500 h-32">
-                                                                <Scanner onScan={(r) => { if (r?.[0]) { setFormData(p => ({...p, identificador_onu: r[0].rawValue.trim().toUpperCase()})); setIsScanning(false); toast.success("Capturado"); } }} components={{ audio: false }} />
-                                                                <button type="button" onClick={() => setIsScanning(false)} className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-red-500/80 text-white text-[10px] px-3 py-1 rounded">Cancelar</button>
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    
+                                                    {/* 1. Seleccionar OLT */}
                                                     <div className="col-span-2"><label className={labelClass}>OLT Conectada</label><select name="olt_id" value={formData.olt_id} onChange={handleInputChange} className={inputClass}><option value={0}>Seleccionar OLT...</option>{olts.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}</select></div>
                                                     <div><label className={labelClass}>Caja NAP</label><select name="caja_nap_id" value={formData.caja_nap_id} onChange={handleInputChange} className={inputClass}><option value={0}>Ninguna</option>{naps.map(n => <option key={n.id} value={n.id}>{n.nombre}</option>)}</select></div>
                                                     <div><label className={labelClass}>Puerto Físico</label><select name="puerto_nap" value={formData.puerto_nap} onChange={handleInputChange} className={inputClass} disabled={!formData.caja_nap_id}><option value={0}>-</option>{renderPuertoOptions()}</select></div>
+
+                                                    {/* 2. Seleccionar ONU */}
+                                                    <div className="col-span-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                                                        <label className={labelClass}>Equipo ONU Asignado</label>
+                                                        {cliente.onu_asignada ? (
+                                                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 dark:bg-[#0f1015] border border-slate-200 dark:border-slate-800 p-3 rounded-xl transition-colors">
+                                                                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 flex-1 text-sm">
+                                                                    {cliente.onu_asignada.identificador} <span className="text-slate-500 font-sans text-xs">({cliente.onu_asignada.modelo})</span>
+                                                                </span>
+                                                                <button type="button" onClick={abrirModalSwap} className="bg-amber-500/10 text-amber-600 dark:text-amber-500 hover:bg-amber-500/20 px-4 py-2 rounded-lg text-xs font-black uppercase flex justify-center items-center gap-1.5 transition-colors w-full sm:w-auto">
+                                                                    <ArrowPathRoundedSquareIcon className="w-4 h-4" /> Reemplazar ONU
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <select name="identificador_onu" value={formData.identificador_onu} onChange={handleInputChange} className={inputClass} disabled={!formData.olt_id}>
+                                                                {!formData.olt_id ? (
+                                                                    <option value="">Primero selecciona una OLT arriba...</option>
+                                                                ) : (
+                                                                    <>
+                                                                        <option value="">Seleccionar equipo de bodega...</option>
+                                                                        {equiposCompatibles.map(eq => (
+                                                                            <option key={eq.id} value={eq.identificador}>{eq.identificador} - {eq.modelo} ({eq.tecnologia})</option>
+                                                                        ))}
+                                                                    </>
+                                                                )}
+                                                            </select>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                    {/* En modo vista, quitamos la ONU y solo dejamos OLT y Caja NAP */}
                                                     <DataBox icon={ServerIcon} label="OLT Conectada" value={cliente.olt?.nombre} />
                                                     <div className="bg-slate-50 dark:bg-[#0f1015] p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between items-center group transition-colors">
                                                         <div className="flex items-center gap-3 overflow-hidden">
@@ -302,7 +432,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             )}
                                         </SectionCard>
 
-                                        {/* 3. CONFIGURACIÓN LÓGICA */}
+                                        {/* CONFIGURACIÓN LÓGICA */}
                                         <SectionCard title="Configuración Lógica" icon={GlobeAltIcon} iconColor="text-indigo-500 dark:text-indigo-400">
                                             {isEditing ? (
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -328,10 +458,9 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         </SectionCard>
                                     </div>
 
-                                    {/* --- COLUMNA DERECHA (Facturación, Plan, Saldo) --- */}
+                                    {/* --- COLUMNA DERECHA --- */}
                                     <div className="space-y-5">
-                                        
-                                        {/* SALDO A FAVOR - Se mantiene idéntico por ser un color sólido de marca/estado */}
+                                        {/* SALDO A FAVOR */}
                                         <div className="bg-[#0e744d] rounded-2xl p-6 relative overflow-hidden shadow-lg border border-emerald-500/20">
                                             <div className="relative z-10">
                                                 <div className="flex justify-between items-center mb-2">
@@ -411,7 +540,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                         {/* ACCIONES MÓVIL (Sticky bottom) */}
                         <div className="sm:hidden fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-[#0f1014] border-t border-slate-200 dark:border-slate-800 z-50 flex gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.5)] transition-colors">
                              {isEditing ? (
-                                <><button onClick={toggleEditMode} className="flex-1 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-3 rounded-xl font-bold transition-colors">Cancelar</button><button onClick={handleGuardar} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold">Guardar</button></>
+                                <><button onClick={toggleEditMode} className="flex-1 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-3 rounded-xl font-bold transition-colors">Cancelar</button><button onClick={handleGuardar} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold">Guardar Datos</button></>
                             ) : (
                                 <button onClick={toggleEditMode} className="w-full text-blue-600 dark:text-blue-400 bg-blue-500/10 py-3 rounded-xl font-bold flex justify-center items-center gap-2 border border-blue-500/20"><PencilSquareIcon className="w-5 h-5"/> Editar</button>
                             )}
@@ -419,6 +548,58 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                     </Dialog.Panel>
                 </div>
             </Dialog>
+
+            {/* 🔥 MODAL SECUNDARIO: SWAP DE ONU 🔥 */}
+            <Transition appear show={isSwapOpen} as={Fragment}>
+                <Dialog as="div" className="relative z-[100]" onClose={() => setIsSwapOpen(false)}>
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true" />
+                    <div className="fixed inset-0 flex items-center justify-center p-4">
+                        <Dialog.Panel className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700">
+                            <div className="flex justify-between items-center mb-5">
+                                <h3 className="font-black text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                                    <ArrowPathRoundedSquareIcon className="w-5 h-5 text-amber-500" /> Cambio de Equipo
+                                </h3>
+                                <button onClick={() => setIsSwapOpen(false)} className="text-slate-400"><XMarkIcon className="w-5 h-5"/></button>
+                            </div>
+                            
+                            <form onSubmit={handleProcesarSwap} className="space-y-4">
+                                
+                                {cliente.onu_asignada && (
+                                    <div>
+                                        <label className={labelClass}>Estado del equipo retirado ({cliente.onu_asignada.identificador})</label>
+                                        <select value={swapData.estado_vieja_onu} onChange={(e) => setSwapData(p => ({...p, estado_vieja_onu: e.target.value}))} className={inputClass}>
+                                            <option value="CON_FALLA">❌ Averiado / Con Falla</option>
+                                            <option value="DISPONIBLE">✅ Funcional (Regresa a Bodega)</option>
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className={labelClass}>Nueva ONU a Instalar</label>
+                                    {!formData.olt_id ? (
+                                        <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 text-xs font-bold text-center">
+                                            ⚠️ Cierra este cuadro y selecciona una OLT en el formulario primero.
+                                        </div>
+                                    ) : equiposCompatibles.length === 0 ? (
+                                        <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 text-xs font-bold text-center">
+                                            No hay equipos {tecOltActual || ''} compatibles en bodega.
+                                        </div>
+                                    ) : (
+                                        <select required value={swapData.nuevo_inventario_id} onChange={(e) => setSwapData(p => ({...p, nuevo_inventario_id: e.target.value}))} className={inputClass}>
+                                            <option value="">Selecciona de Bodega...</option>
+                                            {equiposCompatibles.map(e => <option key={e.id} value={e.id}>{e.identificador} ({e.modelo})</option>)}
+                                        </select>
+                                    )}
+                                </div>
+
+                                <button type="submit" disabled={!swapData.nuevo_inventario_id} className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-black py-3 rounded-xl mt-4 transition-colors">
+                                    Confirmar Reemplazo
+                                </button>
+                            </form>
+                        </Dialog.Panel>
+                    </div>
+                </Dialog>
+            </Transition>
         </Transition>
     );
 }
