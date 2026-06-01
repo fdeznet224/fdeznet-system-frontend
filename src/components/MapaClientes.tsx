@@ -85,8 +85,10 @@ export default function MapaClientes() {
             const resStatus = await client.get('/dashboard/status-tabla-clientes');
             const mapaStatus: Record<string, string> = {};
 
-            resStatus.data.detalle_clientes.forEach((item: any) => {
-                mapaStatus[item.ip] = item.estado_tecnico;
+            // 🔥 CORRECCIÓN: Iterar sobre Objeto en lugar de Array 🔥
+            const detalles = resStatus.data.detalle_clientes || {};
+            Object.entries(detalles).forEach(([id, item]: [string, any]) => {
+                mapaStatus[id] = item.estado_tecnico;
             });
 
             setStatusTecnico(mapaStatus);
@@ -134,7 +136,9 @@ export default function MapaClientes() {
                 />
 
                 {clientesMap.map((cliente) => {
-                    const estadoReal = statusTecnico[cliente.servicio.ip_asignada] || 'OFFLINE';
+                    // 🔥 CORRECCIÓN: Buscar estadoReal usando el ID del cliente 🔥
+                    const estadoReal = statusTecnico[cliente.id] || 'OFFLINE';
+                    
                     return (
                         <Marker
                             key={cliente.id}
