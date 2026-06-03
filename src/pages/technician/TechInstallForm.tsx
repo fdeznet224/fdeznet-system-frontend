@@ -6,25 +6,28 @@ import {
     ArrowLeftIcon, QrCodeIcon, WifiIcon, 
     ServerIcon, LockClosedIcon, CheckCircleIcon,
     CubeIcon, ClipboardDocumentIcon, InformationCircleIcon,
-    MapPinIcon, XCircleIcon
+    MapPinIcon, XCircleIcon, IdentificationIcon,
+    CpuChipIcon
 } from '@heroicons/react/24/outline';
 
 export default function TechInstallForm() {
     const { cedula } = useParams(); 
     const navigate = useNavigate();
     const [cliente, setCliente] = useState<any>(null);
+    
+    const [olts, setOlts] = useState<any[]>([]); 
+    const [onusDisponibles, setOnusDisponibles] = useState<any[]>([]); 
     const [cajasNap, setCajasNap] = useState<any[]>([]); 
     
-    // 👇 Estados para la cuadrícula de puertos
     const [puertosOcupados, setPuertosOcupados] = useState<number[]>([]);
     const [loadingPorts, setLoadingPorts] = useState(false);
-    const [capacidadActual, setCapacidadActual] = useState(16); // Por defecto 16
+    const [capacidadActual, setCapacidadActual] = useState(16); 
 
     const [loading, setLoading] = useState(false);
     
     const [formData, setFormData] = useState({
-        serial_number: '',
-        mac_address: '',
+        olt_id: '', 
+        onu_id: '',
         caja_nap_id: '',
         puerto_nap: '', 
         latitud: '',  
@@ -34,26 +37,41 @@ export default function TechInstallForm() {
     useEffect(() => {
         const cargarDatos = async () => {
             try {
+                // 1. Cargar datos de la orden
                 const resCliente = await client.get(`/clientes/${cedula}/portal`);
                 const c = resCliente.data;
                 setCliente(c);
 
-                const resNaps = await client.get('/infraestructura/naps');
-                setCajasNap(resNaps.data);
+                // 2. Cargar catálogos solo si no vienen pre-asignados (Basado en IDs)
+                if (!c.olt_id) {
+                    const resOlts = await client.get('/olts/');
+                    setOlts(resOlts.data);
+                }
 
+                if (!c.onu_id) {
+                    const resOnus = await client.get('/inventario/?estado=DISPONIBLE'); 
+                    setOnusDisponibles(resOnus.data);
+                }
+
+                if (!c.caja_nap_id || !c.puerto_nap) {
+                    const resNaps = await client.get('/infraestructura/naps');
+                    setCajasNap(resNaps.data);
+                    
+                    if (c.caja_nap_id && !c.puerto_nap) {
+                        cargarPuertos(c.caja_nap_id, resNaps.data);
+                    }
+                }
+
+                // 3. Autocompletar el state
                 setFormData(prev => ({
                     ...prev,
-                    serial_number: c.cedula || '',
+                    olt_id: c.olt_id || '',
+                    onu_id: c.onu_id || '', 
                     caja_nap_id: c.caja_nap_id || '',
                     puerto_nap: c.puerto_nap || '',
                     latitud: c.latitud || '',
                     longitud: c.longitud || ''
                 }));
-
-                // Si ya venía con una NAP asignada, cargar sus puertos
-                if (c.caja_nap_id) {
-                    cargarPuertos(c.caja_nap_id, resNaps.data);
-                }
 
             } catch (error) {
                 toast.error("Error al cargar la orden o infraestructura");
@@ -63,15 +81,17 @@ export default function TechInstallForm() {
         if (cedula) cargarDatos();
     }, [cedula, navigate]);
 
-    // 👇 Función para obtener el estado real de los puertos cuando cambian de NAP
     const cargarPuertos = async (napId: number | string, listaNaps = cajasNap) => {
-        if (!napId) return;
+        if (!napId) {
+            // Si eligen "Sin NAP", limpiamos los puertos
+            setFormData(prev => ({ ...prev, caja_nap_id: '', puerto_nap: '' }));
+            setPuertosOcupados([]);
+            return;
+        }
         
         setLoadingPorts(true);
-        // Reseteamos el puerto seleccionado si cambiamos de caja
         setFormData(prev => ({ ...prev, caja_nap_id: napId.toString(), puerto_nap: '' }));
         
-        // Ajustamos la cuadrícula según la capacidad de la caja (ej. 8 o 16 puertos)
         const cajaSeleccionada = listaNaps.find(n => n.id === Number(napId));
         if (cajaSeleccionada && cajaSeleccionada.capacidad) {
             setCapacidadActual(cajaSeleccionada.capacidad);
@@ -79,7 +99,6 @@ export default function TechInstallForm() {
 
         try {
             const res = await client.get(`/infraestructura/naps/${napId}/detalles`);
-            // Extraemos solo los números de puerto que ya están asignados a un cliente
             const ocupados = res.data
                 .filter((c: any) => c.puerto_nap != null)
                 .map((c: any) => c.puerto_nap);
@@ -94,10 +113,10 @@ export default function TechInstallForm() {
 
     const capturarUbicacion = () => {
         if (!navigator.geolocation) {
-            toast.error("Tu dispositivo no soporta GPS");
+            toast.error("Tu celular no soporta GPS");
             return;
         }
-        const loadGPS = toast.loading("Obteniendo coordenadas exactas...");
+        const loadGPS = toast.loading("Obteniendo coordenadas...");
         navigator.geolocation.getCurrentPosition(
             (posicion) => {
                 setFormData(prev => ({
@@ -105,10 +124,10 @@ export default function TechInstallForm() {
                     latitud: posicion.coords.latitude.toString(),
                     longitud: posicion.coords.longitude.toString()
                 }));
-                toast.success("¡Ubicación guardada con precisión!", { id: loadGPS });
+                toast.success("¡Ubicación guardada!", { id: loadGPS });
             },
             (error) => {
-                toast.error("Error GPS. Activa la ubicación en tu celular.", { id: loadGPS, duration: 4000 });
+                toast.error("Error GPS. Activa la ubicación.", { id: loadGPS, duration: 4000 });
             },
             { enableHighAccuracy: true, timeout: 10000 }
         );
@@ -116,19 +135,27 @@ export default function TechInstallForm() {
 
     const handleFinalizar = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.serial_number) return toast.error("El S/N es obligatorio para activar");
-        if (!formData.puerto_nap || !formData.caja_nap_id) return toast.error("Debes indicar la Caja NAP y seleccionar un puerto");
-        if (!formData.latitud || !formData.longitud) return toast.error("⚠️ Falta capturar la ubicación GPS del cliente");
+        
+        const finalOltId = cliente.olt_id || formData.olt_id;
+        const finalOnuId = cliente.onu_id || formData.onu_id;
+        const finalNapId = cliente.caja_nap_id || formData.caja_nap_id;
+        const finalPuerto = cliente.puerto_nap || formData.puerto_nap;
+
+        if (!finalOltId) return toast.error("Falta indicar la OLT");
+        if (!finalOnuId) return toast.error("La ONU es obligatoria");
+        if (finalNapId && !finalPuerto) return toast.error("Si seleccionas una Caja NAP, debes indicar el puerto");
+        if (!formData.latitud || !formData.longitud) return toast.error("⚠️ Falta capturar la ubicación GPS");
 
         setLoading(true);
-        const load = toast.loading("Aprovisionando en Mikrotik...");
+        const load = toast.loading("Aprovisionando en red...");
 
         try {
             await client.post(`/clientes/${cliente.id}/completar-instalacion`, {
-                cedula: formData.serial_number,
-                mac_address: formData.mac_address,
-                caja_nap_id: Number(formData.caja_nap_id),
-                puerto_nap: Number(formData.puerto_nap),
+                cedula: cliente.cedula,
+                olt_id: Number(finalOltId), 
+                onu_id: Number(finalOnuId), 
+                caja_nap_id: finalNapId ? Number(finalNapId) : null,
+                puerto_nap: finalPuerto ? Number(finalPuerto) : null,
                 latitud: parseFloat(formData.latitud),   
                 longitud: parseFloat(formData.longitud), 
                 plan_id: cliente.plan_id,
@@ -138,7 +165,7 @@ export default function TechInstallForm() {
                 ip_asignada: cliente.ip_asignada === "Pendiente" ? null : cliente.ip_asignada
             });
 
-            toast.success("¡INSTALACIÓN COMPLETADA EXITOSAMENTE!", { id: load });
+            toast.success("¡INSTALACIÓN EXITOSA!", { id: load });
             setTimeout(() => navigate('/tech/dashboard'), 1500);
         } catch (error: any) {
             toast.error(error.response?.data?.detail || "Error en activación", { id: load });
@@ -147,125 +174,173 @@ export default function TechInstallForm() {
         }
     };
 
-    if (!cliente) return <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest transition-colors">Cargando orden...</div>;
+    if (!cliente) return <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest">Cargando orden...</div>;
 
-    /* ✅ ADAPTADO: Estilos para labels y cajas de solo lectura */
-    const labelStyle = "text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-2 block tracking-widest pl-1";
-    const infoBoxStyle = "w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center shadow-sm dark:shadow-none transition-colors";
+    const labelStyle = "text-[11px] uppercase font-black text-slate-400 dark:text-slate-500 mb-2 block tracking-widest pl-1";
+    const infoBoxStyle = "w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col justify-center items-start shadow-sm";
+    const readOnlyBoxStyle = "w-full bg-slate-100 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center text-slate-500 dark:text-slate-400 opacity-90 cursor-not-allowed";
 
     return (
-        /* ✅ ADAPTADO: Fondo general que respeta el modo claro y oscuro */
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pb-32 font-sans transition-colors duration-300">
             
-            {/* Navbar */}
-            <div className="px-4 md:px-6 py-4 flex items-center gap-4 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md sticky top-0 z-20 transition-colors shadow-sm dark:shadow-none">
-                <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            {/* Navbar Móvil */}
+            <div className="px-4 py-3 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md sticky top-0 z-20 shadow-sm">
+                <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all">
                     <ArrowLeftIcon className="w-6 h-6 text-slate-600 dark:text-slate-300"/>
                 </button>
-                <div className="overflow-hidden pr-2">
-                    <h2 className="font-black text-blue-600 dark:text-blue-500 text-[10px] uppercase tracking-widest">Ejecución de Orden</h2>
-                    <p className="text-lg font-black text-slate-800 dark:text-white truncate transition-colors">{cliente.nombre}</p>
+                <div className="overflow-hidden">
+                    <h2 className="font-black text-blue-600 dark:text-blue-500 text-[10px] uppercase tracking-widest leading-tight">Instalación</h2>
+                    <p className="text-base font-black text-slate-800 dark:text-white truncate">{cliente.nombre}</p>
                 </div>
             </div>
 
-            <form onSubmit={handleFinalizar} className="p-4 md:p-6 space-y-6 max-w-3xl mx-auto">
+            <form onSubmit={handleFinalizar} className="p-4 space-y-5 max-w-lg mx-auto">
                 
-                {/* 1. SECCIÓN DE SOLO LECTURA */}
-                <div className="space-y-4">
-                    <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase flex items-center gap-2 px-1 tracking-widest">
-                        <InformationCircleIcon className="w-4 h-4"/> Datos Establecidos
+                {/* 1. DATOS ESTABLECIDOS */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 tracking-widest">
+                        <InformationCircleIcon className="w-4 h-4"/> Detalles del Cliente
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className={labelStyle}>Plan de Internet</label>
-                            <div className={infoBoxStyle}>
-                                <span className="text-sm font-black text-slate-800 dark:text-slate-300">{cliente.plan_nombre}</span>
-                                <WifiIcon className="w-4 h-4 text-slate-400 dark:text-slate-600"/>
-                            </div>
+                        <div className={infoBoxStyle}>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1"><IdentificationIcon className="w-3 h-3"/> Cédula</span>
+                            <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400 mt-1">{cliente.cedula}</span>
                         </div>
-                        <div>
-                            <label className={labelStyle}>Nodo / Torre</label>
-                            <div className={infoBoxStyle}>
-                                <span className="text-sm font-black text-slate-800 dark:text-slate-300 truncate max-w-[100px]">{cliente.router_nombre}</span>
-                                <ServerIcon className="w-4 h-4 text-slate-400 dark:text-slate-600"/>
-                            </div>
+                        <div className={infoBoxStyle}>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1"><WifiIcon className="w-3 h-3"/> Plan</span>
+                            <span className="text-xs font-black text-slate-700 dark:text-slate-300 mt-1 leading-tight">{cliente.plan_nombre}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* 2. CREDENCIALES PPPoE */}
-                <div className="bg-gradient-to-br from-blue-50 dark:from-blue-600/10 to-indigo-50 dark:to-purple-600/10 p-5 rounded-3xl border border-blue-200 dark:border-blue-500/20 shadow-md dark:shadow-lg transition-colors">
-                    <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase mb-4 flex items-center gap-2 border-b border-blue-200 dark:border-blue-500/10 pb-2">
-                        <LockClosedIcon className="w-4 h-4"/> Configuración Mikrotik
+                <div className="bg-gradient-to-br from-blue-50 dark:from-blue-600/10 to-indigo-50 dark:to-purple-600/10 p-4 rounded-3xl border border-blue-200 dark:border-blue-500/20 shadow-sm">
+                    <h3 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase mb-3 flex items-center gap-2 tracking-widest">
+                        <LockClosedIcon className="w-4 h-4"/> Datos Mikrotik
                     </h3>
                     <div className="space-y-3">
-                        <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-black text-slate-500 dark:text-slate-500 uppercase ml-1 tracking-widest">Usuario PPPoE</label>
-                            <div className="bg-white dark:bg-black/40 p-3 rounded-xl flex justify-between items-center border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
-                                <code className="text-amber-600 dark:text-yellow-400 font-bold font-mono text-base">{cliente.suggested_user}</code>
-                                <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_user); toast.success("Usuario copiado")}} className="p-2 text-slate-400 hover:text-blue-500 dark:hover:text-white transition-colors"><ClipboardDocumentIcon className="w-5 h-5"/></button>
+                        <div className="bg-white dark:bg-slate-900/80 p-3 rounded-2xl flex justify-between items-center border border-white/50 dark:border-slate-800 shadow-sm">
+                            <div>
+                                <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Usuario</span>
+                                <code className="text-blue-600 dark:text-blue-400 font-bold font-mono text-sm">{cliente.suggested_user}</code>
                             </div>
+                            <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_user); toast.success("Copiado")}} className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-500 active:scale-90 transition-all"><ClipboardDocumentIcon className="w-5 h-5"/></button>
                         </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-black text-slate-500 dark:text-slate-500 uppercase ml-1 tracking-widest">Contraseña</label>
-                            <div className="bg-white dark:bg-black/40 p-3 rounded-xl flex justify-between items-center border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
-                                <code className="text-emerald-600 dark:text-emerald-400 font-bold font-mono text-base">{cliente.suggested_pass}</code>
-                                <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_pass); toast.success("Password copiada")}} className="p-2 text-slate-400 hover:text-emerald-500 dark:hover:text-white transition-colors"><ClipboardDocumentIcon className="w-5 h-5"/></button>
+                        <div className="bg-white dark:bg-slate-900/80 p-3 rounded-2xl flex justify-between items-center border border-white/50 dark:border-slate-800 shadow-sm">
+                            <div>
+                                <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Contraseña</span>
+                                <code className="text-emerald-600 dark:text-emerald-400 font-bold font-mono text-sm">{cliente.suggested_pass}</code>
                             </div>
+                            <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_pass); toast.success("Copiado")}} className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl text-emerald-500 active:scale-90 transition-all"><ClipboardDocumentIcon className="w-5 h-5"/></button>
                         </div>
                     </div>
                 </div>
 
-                {/* 3. DATOS FÍSICOS (REGISTRO TÉCNICO) */}
-                {/* ✅ ADAPTADO: Caja central de registro clara en light mode */}
-                <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg dark:shadow-xl space-y-6 transition-colors">
-                    <h3 className="text-xs font-black text-emerald-600 dark:text-emerald-500 uppercase flex items-center gap-2 border-b border-slate-100 dark:border-slate-700/50 pb-2">
-                        <QrCodeIcon className="w-4 h-4"/> Registro de Instalación
+                {/* 3. REGISTRO TÉCNICO (Hardware) */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                    <h3 className="text-[10px] font-black text-emerald-600 dark:text-emerald-500 uppercase flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 tracking-widest">
+                        <ServerIcon className="w-4 h-4"/> Hardware Físico
                     </h3>
 
-                    {/* S/N */}
+                    {/* 🟢 OLT: Ahora depende 100% de olt_id */}
                     <div>
-                        <label className={labelStyle}>Serial Number ONU</label>
-                        <div className="flex gap-2">
-                            <input required className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl p-4 font-mono uppercase text-emerald-600 dark:text-emerald-400 font-black focus:border-emerald-500 outline-none transition-colors shadow-inner"
-                                value={formData.serial_number} 
-                                onChange={e => setFormData({...formData, serial_number: e.target.value.toUpperCase()})} 
-                                placeholder="ESCANEAR SN..." 
-                            />
-                            <button type="button" onClick={() => navigate('/scanner')} className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-5 rounded-xl text-slate-500 dark:text-white hover:text-emerald-500 active:scale-95 transition-all"><QrCodeIcon className="w-7 h-7"/></button>
-                        </div>
-                    </div>
-                    
-                    {/* INFRAESTRUCTURA FIBRA */}
-                    <div className="space-y-4 pt-2">
-                        <div>
-                            <label className={labelStyle}>Conectar a Caja NAP</label>
+                        <label className={labelStyle}>OLT Principal</label>
+                        {cliente.olt_id ? (
+                            <div className={readOnlyBoxStyle}>
+                                <span className="text-sm font-black text-slate-600 dark:text-slate-300">
+                                    {cliente.olt_nombre}
+                                </span>
+                                <LockClosedIcon className="w-5 h-5 text-slate-400/50"/>
+                            </div>
+                        ) : (
                             <div className="relative">
-                                <CubeIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 dark:text-slate-500 pointer-events-none"/>
+                                <CpuChipIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none"/>
                                 <select 
                                     required
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl p-3.5 pl-10 text-sm font-bold focus:border-emerald-500 outline-none transition-colors appearance-none shadow-inner cursor-pointer"
-                                    value={formData.caja_nap_id}
-                                    onChange={e => cargarPuertos(e.target.value)}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-2xl p-4 pl-10 text-sm font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none transition-all shadow-inner"
+                                    value={formData.olt_id}
+                                    onChange={e => setFormData({...formData, olt_id: e.target.value})}
                                 >
-                                    <option value="" disabled className="bg-white dark:bg-slate-950">-- Selecciona la NAP física --</option>
-                                    {cajasNap.map(nap => (
-                                        <option key={nap.id} value={nap.id} className="bg-white dark:bg-slate-950">
-                                            {nap.nombre} ({nap.puertos_libres} libres)
-                                        </option>
+                                    <option value="" disabled>-- Elige OLT (Ej. VSOL 4 PON) --</option>
+                                    {olts.map(olt => (
+                                        <option key={olt.id} value={olt.id}>{olt.nombre}</option>
                                     ))}
                                 </select>
                             </div>
+                        )}
+                    </div>
+
+                    {/* 🟢 ONU: Ahora depende 100% de onu_id */}
+                    <div>
+                        <label className={labelStyle}>ONU / Equipo Cliente</label>
+                        {cliente.onu_id ? (
+                            <div className={readOnlyBoxStyle}>
+                                <span className="text-sm font-black font-mono text-slate-600 dark:text-slate-300">
+                                    S/N: {cliente.identificador_onu}
+                                </span>
+                                <LockClosedIcon className="w-5 h-5 text-slate-400/50"/>
+                            </div>
+                        ) : (
+                            <div className="relative">
+                                <QrCodeIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none"/>
+                                <select 
+                                    required
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-2xl p-4 pl-10 text-sm font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none transition-all shadow-inner"
+                                    value={formData.onu_id}
+                                    onChange={e => setFormData({...formData, onu_id: e.target.value})}
+                                >
+                                    <option value="" disabled>-- Toca para elegir equipo --</option>
+                                    {onusDisponibles.map(onu => (
+                                        <option key={onu.id} value={onu.id}>S/N: {onu.identificador}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* 🟢 CAJA NAP: Ahora depende 100% de caja_nap_id */}
+                    <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <div>
+                            <label className={labelStyle}>Caja NAP Conectada (Opcional)</label>
+                            {cliente.caja_nap_id ? (
+                                <div className={readOnlyBoxStyle}>
+                                    <span className="text-sm font-black text-slate-600 dark:text-slate-300">
+                                        {cliente.nap_nombre}
+                                    </span>
+                                    <LockClosedIcon className="w-5 h-5 text-slate-400/50"/>
+                                </div>
+                            ) : (
+                                <div className="relative">
+                                    <CubeIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none"/>
+                                    <select 
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-2xl p-4 pl-10 text-sm font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none transition-all shadow-inner"
+                                        value={formData.caja_nap_id}
+                                        onChange={e => cargarPuertos(e.target.value)}
+                                    >
+                                        <option value="">-- Sin NAP asignada (Zona en registro) --</option>
+                                        {cajasNap.map(nap => (
+                                            <option key={nap.id} value={nap.id}>{nap.nombre}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
-                        {/* 👇 CUADRÍCULA VISUAL DE PUERTOS 👇 */}
-                        {formData.caja_nap_id && (
+                        {/* CUADRÍCULA DE PUERTOS */}
+                        {(formData.caja_nap_id || cliente.caja_nap_id) && (
                             <div>
-                                <label className={labelStyle}>Seleccionar Puerto Libre</label>
-                                {loadingPorts ? (
-                                    <div className="text-center p-4 text-slate-500 text-xs font-bold uppercase tracking-widest animate-pulse">Sincronizando puertos...</div>
+                                <label className={labelStyle}>Puerto Usado</label>
+                                {cliente.puerto_nap ? (
+                                    <div className={readOnlyBoxStyle}>
+                                        <span className="text-sm font-black text-slate-600 dark:text-slate-300">
+                                            Puerto #{cliente.puerto_nap}
+                                        </span>
+                                        <LockClosedIcon className="w-5 h-5 text-slate-400/50"/>
+                                    </div>
+                                ) : loadingPorts ? (
+                                    <div className="text-center p-3 text-slate-400 text-[10px] font-bold uppercase tracking-widest animate-pulse">Sincronizando...</div>
                                 ) : (
-                                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mt-2">
+                                    <div className="grid grid-cols-4 gap-2 mt-2">
                                         {Array.from({ length: capacidadActual }, (_, i) => i + 1).map(puerto => {
                                             const isOcupado = puertosOcupados.includes(puerto);
                                             const isSeleccionado = Number(formData.puerto_nap) === puerto;
@@ -278,12 +353,12 @@ export default function TechInstallForm() {
                                                     onClick={() => setFormData({...formData, puerto_nap: puerto.toString()})}
                                                     className={`
                                                         relative h-12 rounded-xl flex items-center justify-center font-black text-sm transition-all
-                                                        ${isSeleccionado ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/40 scale-105 z-10' : ''}
-                                                        ${isOcupado ? 'bg-slate-100 dark:bg-slate-950 border border-rose-200 dark:border-red-900/30 text-slate-400 dark:text-slate-600 opacity-60 cursor-not-allowed' : ''}
-                                                        ${!isSeleccionado && !isOcupado ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 border border-slate-200 dark:border-slate-700 shadow-sm' : ''}
+                                                        ${isSeleccionado ? 'bg-emerald-500 text-white shadow-md scale-105 z-10' : ''}
+                                                        ${isOcupado ? 'bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-700 opacity-50' : ''}
+                                                        ${!isSeleccionado && !isOcupado ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 active:bg-slate-100 border border-slate-200 dark:border-slate-700 shadow-sm' : ''}
                                                     `}
                                                 >
-                                                    {isOcupado && <XCircleIcon className="absolute w-full h-full p-2 text-rose-500/30 dark:text-red-500/20" />}
+                                                    {isOcupado && <XCircleIcon className="absolute w-full h-full p-2 text-rose-500/20" />}
                                                     {puerto}
                                                 </button>
                                             )
@@ -294,33 +369,33 @@ export default function TechInstallForm() {
                         )}
                     </div>
 
-                    {/* GEOLOCALIZACIÓN GPS */}
-                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800/50">
-                        <label className={labelStyle}>Ubicación Exacta (Mapa)</label>
+                    {/* 🟢 GPS */}
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <label className={labelStyle}>Ubicación Instalación</label>
                         {!formData.latitud ? (
-                            <button type="button" onClick={capturarUbicacion} className="w-full bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30 py-4 rounded-xl font-black tracking-wide flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95">
-                                <MapPinIcon className="w-6 h-6 animate-bounce" /> OBTENER MI UBICACIÓN AHORA
+                            <button type="button" onClick={capturarUbicacion} className="w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border-2 border-dashed border-blue-200 dark:border-blue-800 py-4 rounded-2xl font-black text-xs tracking-widest uppercase flex flex-col items-center justify-center gap-2 transition-all active:scale-95">
+                                <MapPinIcon className="w-7 h-7" /> GUARDAR MI UBICACIÓN
                             </button>
                         ) : (
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-xl flex justify-between items-center transition-colors">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-2xl flex justify-between items-center">
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-emerald-100 dark:bg-emerald-500/20 p-2 rounded-lg"><MapPinIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
+                                    <div className="bg-emerald-100 dark:bg-emerald-500/20 p-2.5 rounded-xl"><MapPinIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
                                     <div>
-                                        <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-black uppercase tracking-wider">Coordenadas Guardadas</p>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 font-mono mt-0.5 font-bold">{formData.latitud.slice(0,8)}, {formData.longitud.slice(0,9)}</p>
+                                        <p className="text-[9px] text-emerald-700 dark:text-emerald-400 font-black uppercase tracking-widest">Coordenadas</p>
+                                        <p className="text-xs text-slate-700 dark:text-slate-300 font-mono mt-0.5 font-bold">{formData.latitud.slice(0,8)}, {formData.longitud.slice(0,9)}</p>
                                     </div>
                                 </div>
-                                <button type="button" onClick={capturarUbicacion} className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 p-2 font-black uppercase transition-colors">Actualizar</button>
+                                <button type="button" onClick={capturarUbicacion} className="text-[9px] text-emerald-600 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30 px-3 py-2 rounded-lg font-black uppercase active:scale-90 transition-all">Cambiar</button>
                             </div>
                         )}
                     </div>
 
                 </div>
 
-                {/* BOTÓN INFERIOR FLOTANTE */}
-                <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-slate-50 via-slate-50 dark:from-slate-950 dark:via-slate-950 to-transparent z-30 transition-colors duration-300">
-                    <button type="submit" disabled={loading} className="w-full max-w-3xl mx-auto bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-sm md:text-lg tracking-widest uppercase shadow-lg dark:shadow-blue-900/40 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3">
-                        {loading ? 'SINCRONIZANDO...' : 'FINALIZAR Y ACTIVAR CLIENTE'}
+                {/* BOTÓN FINALIZAR */}
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-50 via-slate-50/90 dark:from-slate-950 dark:via-slate-950/90 to-transparent z-30 pb-6">
+                    <button type="submit" disabled={loading} className="w-full max-w-lg mx-auto bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-sm tracking-widest uppercase shadow-xl shadow-blue-600/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                        {loading ? 'ACTIVANDO...' : 'FINALIZAR INSTALACIÓN'}
                         {!loading && <CheckCircleIcon className="w-6 h-6"/>}
                     </button>
                 </div>
