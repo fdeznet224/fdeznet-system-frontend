@@ -20,18 +20,19 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
     
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Tipos de mensajes sincronizados con el Backend (NotificationService)
+    // 🔥 ACTUALIZADO: Se agregó la opción del Abono Parcial
     const tiposMensaje = [
         { id: 'bienvenida', label: '👋 Bienvenida (Instalación)' },
         { id: 'nueva_factura', label: '📄 Nueva Factura Generada' },
         { id: 'pago_recibido', label: '✅ Confirmación de Pago (PDF)' },
+        { id: 'abono_recibido', label: '💸 Abono Parcial Recibido' }, // 👈 NUEVA OPCIÓN AQUÍ
         { id: 'aviso_corte', label: '🚫 Corte por Adeudo (Auto)' },
         { id: 'corte_servicio', label: '🛠️ Suspensión Administrativa' },
         { id: 'reconexion', label: '🚀 Reconexión de Servicio' },
         { id: 'promesa_pago', label: '🤝 Promesa de Pago' },
     ];
 
-    // ✅ VARIABLES ACTUALIZADAS: Exactamente igual al diccionario del backend
+    // 🔥 ACTUALIZADO: Se agregaron los botones para inyectar Monto y Referencia
     const variablesDisponibles = [
         { name: 'empresa', label: 'Empresa' },
         { name: 'fecha_actual', label: 'Fecha' },
@@ -47,6 +48,8 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
         { name: 'dia_corte', label: 'Día Pago' },
         { name: 'usuario_pppoe', label: 'User PPPoE' },
         { name: 'pass_pppoe', label: 'Pass PPPoE' },
+        { name: 'monto_pagado', label: 'Monto Abono' }, // 👈 NUEVO BOTÓN
+        { name: 'referencia', label: 'Restante/Ref' },  // 👈 NUEVO BOTÓN
     ];
 
     useEffect(() => {
