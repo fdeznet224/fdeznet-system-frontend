@@ -40,9 +40,11 @@ export default function Plantillas() {
         setIsModalOpen(true);
     };
 
+    // 🔥 AQUÍ SE AGREGÓ EL RECORDATORIO AMIGABLE 🔥
     const titulos: Record<string, string> = {
         'bienvenida': '👋 Mensaje de Bienvenida',
         'nueva_factura': '📄 Nueva Factura Generada',
+        'recordatorio_pago': '🔔 Recordatorio Amigable (Previo)', // 👈 NUEVO EVENTO
         'pago_recibido': '✅ Pago Recibido (Adjunta PDF)',
         'abono_recibido': '💸 Abono Parcial Recibido',
         'aviso_corte': '🚫 Corte por Falta de Pago',

@@ -20,9 +20,11 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
     
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // 🔥 AQUÍ SE AGREGÓ EL RECORDATORIO AMIGABLE 🔥
     const tiposMensaje = [
         { id: 'bienvenida', label: '👋 Bienvenida (Instalación)' },
         { id: 'nueva_factura', label: '📄 Nueva Factura Generada' },
+        { id: 'recordatorio_pago', label: '🔔 Recordatorio Amigable (Previo)' }, // 👈 NUEVO EVENTO
         { id: 'pago_recibido', label: '✅ Confirmación de Pago (PDF)' },
         { id: 'abono_recibido', label: '💸 Abono Parcial Recibido' },
         { id: 'aviso_corte', label: '🚫 Corte por Adeudo (Auto)' },
