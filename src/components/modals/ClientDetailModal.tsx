@@ -186,7 +186,6 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         } catch (error) { toast.error("Error al abonar", { id: load }); }
     };
 
-    // CORRECCIÓN: Enlace oficial de Google Maps
     const handleAbrirMapa = () => {
         if (cliente?.latitud && cliente?.longitud) {
             window.open(`https://www.google.com/maps/search/?api=1&query=${cliente.latitud},${cliente.longitud}`, '_blank');
@@ -221,6 +220,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         setSwapData({ nuevo_inventario_id: '', estado_vieja_onu: 'CON_FALLA' });
     };
 
+    // 🔥 ESTA ES LA FUNCIÓN QUE CORRIGE EL ERROR 🔥
     const handleProcesarSwap = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!cliente || !swapData.nuevo_inventario_id) return;
@@ -232,7 +232,15 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                 estado_vieja_onu: swapData.estado_vieja_onu
             });
             toast.success("¡ONU vinculada exitosamente!", { id: load });
+            
+            // 1. Cierra el modal de Swap
             setIsSwapOpen(false);
+            
+            // 2. 🚀 LA CLAVE: Sacamos el modal principal del modo "edición"
+            // Esto destruye el formData viejo, evitando que se mande la MAC vieja en un PUT.
+            setIsEditing(false); 
+            
+            // 3. Recarga los datos actualizados
             cargarDatosCompletos(cliente.id);
             if (onEditSuccess) onEditSuccess();
         } catch (error: any) {
@@ -304,13 +312,11 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             <div className="flex flex-col">
                                                 <h3 className="font-black text-xl text-slate-900 dark:text-white truncate leading-none tracking-tight mb-1.5">{cliente?.nombre}</h3>
                                                 <div className="flex items-center gap-2 select-none overflow-x-auto scrollbar-none">
-                                                    {/* ETIQUETA DE ESTADO */}
                                                     <span className={classNames(
                                                         "text-[10px] px-2.5 py-0.5 rounded-md font-black uppercase tracking-widest border shrink-0",
                                                         cliente?.estado === 'activo' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
                                                     )}>{cliente?.estado}</span>
 
-                                                    {/* NUEVA ETIQUETA MINIMALISTA DE CÉDULA */}
                                                     {cliente?.cedula && (
                                                         <span className="flex items-center gap-1 text-[11px] font-black font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 shrink-0">
                                                             <IdentificationIcon className="w-3 h-3 text-blue-500" />
@@ -318,7 +324,6 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                         </span>
                                                     )}
 
-                                                    {/* ID DE BASE DE DATOS */}
                                                     <span className="text-[11px] font-black font-mono text-slate-400 dark:text-slate-500 px-1 shrink-0">
                                                         ID: {cliente?.id}
                                                     </span>
@@ -328,7 +333,6 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                     </div>
                                 </div>
 
-                                {/* Acciones Desktop */}
                                 <div className="hidden sm:flex items-center gap-2">
                                     {isEditing ? (
                                         <>
@@ -345,7 +349,6 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         </>
                                     )}
                                 </div>
-                                {/* Cerrar Móvil */}
                                 <button onClick={onClose} className="sm:hidden p-2 text-slate-400 bg-slate-100 dark:bg-slate-900 rounded-xl"><XMarkIcon className="w-5 h-5" /></button>
                             </div>
 
@@ -416,7 +419,6 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                         <div><label className={labelClass}>Zona / Cobertura</label><select name="zona_id" value={formData.zona_id} onChange={handleInputChange} className={inputClass}><option value={0}>Seleccionar...</option>{zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}</select></div>
                                                         <div><label className={labelClass}>Dirección</label><textarea name="direccion" value={formData.direccion} onChange={(e: any) => handleInputChange(e)} rows={2} className={`${inputClass} resize-none`} /></div>
 
-                                                        {/* GPS Update */}
                                                         <div className="p-4 bg-slate-100 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800">
                                                             <div className="flex justify-between items-center mb-3"><span className="text-xs font-black uppercase text-slate-500">Ubicación (GPS)</span><button type="button" onClick={handleCaptureGPS} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase shadow-md">Auto-Capturar</button></div>
                                                             <div className="grid grid-cols-2 gap-3">

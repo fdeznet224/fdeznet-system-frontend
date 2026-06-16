@@ -25,7 +25,7 @@ export default function Facturas() {
     const [filtros, setFiltros] = useState({
         inicio: firstDay,
         fin: lastDay,
-        tipoFecha: 'emision',
+        tipoFecha: 'vencimiento', // 🔥 CAMBIO: Ahora carga las del mes actual basado en Vencimiento (Prepago)
         routerId: '',
         estado: 'cualquiera'
     });
@@ -58,7 +58,6 @@ export default function Facturas() {
     };
 
     return (
-        /* 🔥 CLAVE 1: h-[calc(100dvh-80px)] y overflow-hidden evitan que toda la página baje */
         <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 h-[calc(100dvh-80px)] md:h-[calc(100vh-100px)] overflow-hidden transition-colors duration-300">
             
             {/* HEADER (Fijo) */}
@@ -100,6 +99,17 @@ export default function Facturas() {
             {/* FILTROS MÓVIL DESPLEGABLES (Fijo cuando se abre) */}
             {mostrarFiltrosMovil && (
                 <div className="md:hidden bg-white dark:bg-[#1a1f2e] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg space-y-3 flex-none shrink-0 animate-in fade-in slide-in-from-top-2 z-10 relative">
+                    
+                    {/* 🔥 NUEVO EN MÓVIL: Selector de Tipo de Fecha */}
+                    <div>
+                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 block">Filtrar por</label>
+                        <select className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 outline-none focus:border-blue-500" value={filtros.tipoFecha} onChange={e => setFiltros({ ...filtros, tipoFecha: e.target.value })}>
+                            <option value="vencimiento">Fecha de Vencimiento</option>
+                            <option value="emision">Fecha de Emisión</option>
+                            <option value="pago">Día Pagado en Caja</option>
+                        </select>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 block">Desde</label>
@@ -139,8 +149,10 @@ export default function Facturas() {
                 <div>
                     <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5 block">Tipo Fecha</label>
                     <select className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 outline-none focus:border-blue-500 transition-colors" value={filtros.tipoFecha} onChange={e => setFiltros({ ...filtros, tipoFecha: e.target.value })}>
-                        <option value="emision">Fecha Emisión</option>
-                        <option value="vencimiento">Fecha Vencimiento</option>
+                        <option value="vencimiento">F. Vencimiento</option>
+                        <option value="emision">F. Emisión</option>
+                        {/* 🔥 NUEVO EN ESCRITORIO: Opción de filtrado por pago */}
+                        <option value="pago">Fecha Pagada</option> 
                     </select>
                 </div>
                 <div>
@@ -174,10 +186,8 @@ export default function Facturas() {
                 </button>
             </div>
 
-            {/* 🔥 CLAVE 2: flex-1 y min-h-0 le dice a este bloque que tome el resto del espacio y permita el scroll interno */}
             <div className="flex-1 min-h-0 md:bg-white md:dark:bg-[#1a1f2e] md:rounded-2xl md:border md:border-slate-200 md:dark:border-slate-800 md:shadow-xl overflow-hidden flex flex-col transition-colors relative">
                 
-                {/* 🔥 CLAVE 3: overflow-y-auto en este div envuelve la tabla y las tarjetas para que hagan scroll solas */}
                 <div className="overflow-y-auto flex-1 custom-scrollbar pb-10">
                     
                     {/* --- VISTA DESKTOP (TABLA) --- */}
