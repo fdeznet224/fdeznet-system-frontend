@@ -5,7 +5,7 @@ import {
     UsersIcon, CurrencyDollarIcon, ServerIcon, ArrowPathIcon,
     CreditCardIcon, CpuChipIcon, ExclamationTriangleIcon,
     BanknotesIcon, UserPlusIcon, ListBulletIcon, ComputerDesktopIcon, CircleStackIcon,
-    WifiIcon, ChartPieIcon
+    WifiIcon, ChartPieIcon, ArrowUpRightIcon
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 
@@ -63,141 +63,166 @@ export default function Dashboard() {
     const handlePosSuccess = () => { setIsPosOpen(false); fetchData(); };
     const handleCreateClientSuccess = () => { setIsCreateClientOpen(false); fetchData(); };
 
-    if (loading) return <div className="flex justify-center items-center h-[calc(100vh-6rem)]"><ArrowPathIcon className="w-10 h-10 text-blue-500 animate-spin" /></div>;
+    if (loading) return <div className="flex justify-center items-center h-[calc(100vh-6rem)]"><ArrowPathIcon className="w-10 h-10 text-indigo-500 animate-spin" /></div>;
     if (!data) return null;
 
     const totalConectados = (data.metricas.navegando_ok || 0) + (data.metricas.morosos_online || 0);
     const fallasReales = data.metricas.falla_tecnica || 0;
 
     return (
-        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-5 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12">
+        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-5 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12 transition-colors duration-300 h-full overflow-y-auto custom-scrollbar">
 
-            {/* =========================================================
-                HEADER RESPONSIVO DEL PANEL DE CONTROL (CORREGIDO INLINE)
-               ========================================================= */}
-            <div className="flex justify-between items-center px-1 md:px-0 flex-none gap-2 pb-1">
+            {/* ================= HEADER TIPO INVENTARIO (BENTO) ================= */}
+            <div className="bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800/80 rounded-[1.5rem] p-4 flex justify-between items-center shadow-sm gap-4 flex-none shrink-0 transition-colors">
                 <div>
-                    {/* ✅ LIMPIO: Texto puro y balanceado en una sola línea */}
-                    <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white tracking-tight whitespace-nowrap">
-                        Panel de Control
-                    </h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5 hidden sm:block">Monitoreo en vivo de infraestructura y finanzas.</p>
+                    <h1 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">Panel de Control</h1>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm mt-0.5 hidden sm:block">Monitoreo de red y finanzas en tiempo real</p>
                 </div>
 
-                {/* Botones inline simétricos exactos al resto del CRM */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex gap-2 items-center">
                     <button
                         onClick={() => setIsCreateClientOpen(true)}
-                        className="bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 px-2.5 py-2 md:px-4 md:py-2.5 rounded-xl font-extrabold shadow-sm active:scale-95 transition text-[10px] md:text-sm tracking-wide uppercase md:normal-case"
+                        className="p-3 sm:px-5 sm:py-3 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl sm:rounded-[1rem] font-black active:scale-95 transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700/50"
                     >
-                        <UserPlusIcon className="w-3.5 h-3.5 md:w-5 md:h-5" />
-                        <span>Nuevo Cliente</span>
+                        <UserPlusIcon className="w-5 h-5" /> 
+                        <span className="hidden sm:inline text-xs tracking-widest uppercase">Nuevo Cliente</span>
                     </button>
 
                     <button
                         onClick={() => setIsPosOpen(true)}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-2 md:px-4 md:py-2.5 rounded-xl font-extrabold shadow-md active:scale-95 transition flex items-center justify-center gap-1 text-[10px] md:text-sm tracking-wide uppercase md:normal-case"
+                        className="p-3 sm:px-5 sm:py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl sm:rounded-[1rem] font-black shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
-                        <BanknotesIcon className="w-3.5 h-3.5 md:w-5 md:h-5" />
-                        <span>Cobrar</span>
+                        <BanknotesIcon className="w-5 h-5" /> 
+                        <span className="hidden sm:inline text-xs tracking-widest uppercase">Cobrar</span>
                     </button>
                 </div>
             </div>
 
-            {/* --- SECCIÓN 1: KPIs FINANCIEROS Y COMERCIALES ADAPTATIVOS --- */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 flex-none">
-                <KpiCard title="CLIENTES TOTALES" value={data.resumen_clientes.total_registrados} icon={UsersIcon} border="border-cyan-500/20 dark:border-cyan-500/30" textColor="text-cyan-600 dark:text-cyan-400" extra={data.resumen_clientes.online_activos} extraLabel="Activos en BD" />
-                <KpiCard title="INGRESO HOY" value={`$${data.finanzas.cobrado_hoy.toLocaleString()}`} icon={BanknotesIcon} border="border-emerald-500/20 dark:border-emerald-500/30" textColor="text-emerald-600 dark:text-emerald-400" extra="Corte al momento" isTextExtra />
-                <KpiCard title="ACUMULADO MES" value={`$${data.finanzas.cobrado_mes.toLocaleString()}`} icon={CreditCardIcon} border="border-indigo-500/20 dark:border-indigo-500/30" textColor="text-indigo-600 dark:text-indigo-400" extra="Total facturado" isTextExtra />
+            {/* ================= CARRUSEL MÓVIL / GRID PC (KPIs FINANCIEROS) ================= */}
+            <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:pb-0 scrollbar-none flex-none shrink-0 snap-x">
+                <KpiCard title="Total Clientes" value={data.resumen_clientes.total_registrados} icon={UsersIcon} color="text-blue-600 dark:text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" extra={data.resumen_clientes.online_activos} extraLabel="Activos" />
+                <KpiCard title="Ingreso Hoy" value={`$${data.finanzas.cobrado_hoy.toLocaleString()}`} icon={BanknotesIcon} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" extra="Corte Diario" isTextExtra />
+                <KpiCard title="Acumulado Mes" value={`$${data.finanzas.cobrado_mes.toLocaleString()}`} icon={CreditCardIcon} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-500/10" border="border-indigo-500/20" extra="Facturado" isTextExtra />
 
-                {/* Ciclo Facturación Adaptativo */}
-                <div className="relative overflow-hidden rounded-2xl p-5 shadow-sm dark:shadow-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-pink-500/40 transition-all duration-300 group">
-                    <div className="relative z-10 flex flex-col justify-between h-full">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h4 className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">CICLO FACTURACIÓN</h4>
-                                <div className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white flex items-baseline gap-1">{data.facturacion?.porcentaje}% <span className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider">Recaudado</span></div>
-                            </div>
-                            <div className="p-2.5 rounded-xl bg-pink-500/10 border border-pink-500/20 group-hover:scale-105 transition-transform"><ChartPieIcon className="w-5 h-5 text-pink-500" /></div>
+                {/* KPI ESPECIAL: Ciclo Facturación */}
+                <div className="relative overflow-hidden rounded-[1.25rem] p-4 shadow-sm bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800/80 shrink-0 min-w-[200px] snap-start flex-1 flex flex-col justify-between group transition-colors">
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recaudación</p>
+                        <div className="p-1.5 rounded-xl border bg-pink-500/10 border-pink-500/20 group-hover:scale-110 transition-transform"><ChartPieIcon className="w-4 h-4 text-pink-500" /></div>
+                    </div>
+                    
+                    <div className="text-2xl font-black text-slate-800 dark:text-white flex items-baseline gap-1">
+                        {data.facturacion?.porcentaje}%
+                    </div>
+                    
+                    <div className="mt-3 w-full">
+                        <div className="w-full bg-slate-100 dark:bg-slate-900/80 rounded-full h-1.5 overflow-hidden mb-1.5 border border-slate-200/50 dark:border-slate-800 shadow-inner">
+                            <div className="bg-gradient-to-r from-pink-500 to-rose-400 h-full rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(244,63,94,0.4)]" style={{ width: `${data.facturacion?.porcentaje}%` }}></div>
                         </div>
-                        <div className="mt-4">
-                            <div className="w-full bg-slate-100 dark:bg-slate-950 rounded-full h-2.5 overflow-hidden mb-2 border border-slate-200 dark:border-slate-800/50 shadow-inner">
-                                <div className="bg-gradient-to-r from-pink-600 to-rose-400 h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(244,63,94,0.3)]" style={{ width: `${data.facturacion?.porcentaje}%` }}></div>
-                            </div>
-                            <div className="flex justify-between text-[9px] font-black uppercase tracking-widest">
-                                <span className="text-emerald-600 dark:text-emerald-400/80">{data.facturacion?.pagadas} Pagadas</span>
-                                <span className="text-rose-500 dark:text-rose-400/80">{data.facturacion?.pendientes} Pendientes</span>
-                            </div>
+                        <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-slate-400">
+                            <span className="text-emerald-500/90">{data.facturacion?.pagadas} Pag.</span>
+                            <span className="text-rose-500/90">{data.facturacion?.pendientes} Pend.</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* --- SECCIÓN 2: TÉCNICO Y SERVIDOR ADAPTATIVOS --- */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 flex-none">
-
-                {/* LISTA: RESUMEN DEL SISTEMA */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-2xl overflow-hidden flex flex-col">
-                    <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950/40">
-                        <h3 className="font-black text-slate-700 dark:text-white text-xs sm:text-sm uppercase tracking-widest flex items-center gap-2"><ListBulletIcon className="w-4 h-4 text-indigo-500" /> Resumen del Sistema</h3>
-                        <div className="text-[8px] sm:text-[9px] font-black tracking-widest uppercase text-slate-400 dark:text-slate-500 flex items-center gap-1.5 bg-slate-100 dark:bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div> EN VIVO</div>
+            {/* ================= ESTADO TÉCNICO Y SISTEMA ================= */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5 flex-none">
+                
+                {/* Resumen del Sistema (Estilo App Settings) */}
+                <div className="lg:col-span-2 bg-white dark:bg-[#12141a] rounded-[1.5rem] border border-slate-200 dark:border-slate-800/80 shadow-sm overflow-hidden flex flex-col transition-colors">
+                    <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/50 flex justify-between items-center bg-transparent">
+                        <h3 className="font-black text-slate-800 dark:text-white text-sm uppercase tracking-widest flex items-center gap-2">
+                            <ListBulletIcon className="w-5 h-5 text-indigo-500" /> Resumen de Red
+                        </h3>
+                        <div className="text-[9px] font-black tracking-widest uppercase text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> LIVE
+                        </div>
                     </div>
-                    <div className="p-2 sm:p-3">
-                        <ul className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                            <SystemListItem number="1" label="Routers Conectados" value={routersList.length} color="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/10" />
-                            <SystemListItem number="2" label="Clientes Online (MikroTik)" value={totalConectados} color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10" icon={<WifiIcon className="w-4 h-4 text-emerald-500 mr-2.5 shrink-0" />} />
-                            <SystemListItem number="3" label="Contratos Activos" value={data.resumen_clientes.online_activos} color="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10" />
-                            <SystemListItem number="4" label="Suspendidos por Pago" value={data.resumen_clientes.offline_cortados} color="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700" />
-                            <SystemListItem number="5" label="Fallas Técnicas (Cortes de Red)" value={fallasReales} color="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/10" blink={fallasReales > 0} icon={<ExclamationTriangleIcon className="w-4 h-4 text-rose-500 mr-2.5 shrink-0" />} />
-                        </ul>
+                    <div className="p-3 space-y-1">
+                        <SystemListItem label="Routers Conectados" value={routersList.length} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-50 dark:bg-indigo-500/10" icon={ServerIcon} />
+                        <SystemListItem label="Clientes Online (MikroTik)" value={totalConectados} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-50 dark:bg-emerald-500/10" icon={WifiIcon} />
+                        <SystemListItem label="Contratos Activos" value={data.resumen_clientes.online_activos} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-500/10" icon={UsersIcon} />
+                        <SystemListItem label="Fallas Técnicas (Caídas)" value={fallasReales} color="text-rose-600 dark:text-rose-400" bg="bg-rose-50 dark:bg-rose-500/10" icon={ExclamationTriangleIcon} blink={fallasReales > 0} />
                     </div>
                 </div>
 
-                {/* DATOS DEL SERVIDOR */}
-                <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-2xl p-5 sm:p-6 flex flex-col justify-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/[0.02] dark:bg-blue-500/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
-                    <div className="mb-6 pb-3 border-b border-slate-100 dark:border-slate-800/60 relative z-10">
-                        <h3 className="font-black text-slate-700 dark:text-white text-xs sm:text-sm uppercase tracking-widest flex items-center gap-2"><ServerIcon className="w-4 h-4 text-blue-500" /> Rendimiento Servidor</h3>
+                {/* Rendimiento Servidor (Widget) */}
+                <div className="bg-white dark:bg-[#12141a] rounded-[1.5rem] border border-slate-200 dark:border-slate-800/80 shadow-sm p-5 sm:p-6 flex flex-col justify-center relative overflow-hidden transition-colors">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                    <div className="mb-5 pb-3 border-b border-slate-100 dark:border-slate-800/50 relative z-10">
+                        <h3 className="font-black text-slate-800 dark:text-white text-sm uppercase tracking-widest flex items-center gap-2">
+                            <CpuChipIcon className="w-5 h-5 text-blue-500" /> Servidor Principal
+                        </h3>
                     </div>
-                    <div className="space-y-5 relative z-10">
-                        <ServerMetric label="Procesador (CPU)" value={`${data.servidor.cpu_percent}%`} percent={data.servidor.cpu_percent} color="blue" icon={CpuChipIcon} />
-                        <ServerMetric label="Memoria (RAM)" value={`${data.servidor.ram_usada_percent}%`} percent={data.servidor.ram_usada_percent} color="purple" icon={ComputerDesktopIcon} />
-                        <ServerMetric label="Almacenamiento" value={`${data.servidor.disco_libre_percent}% Libre`} percent={100 - data.servidor.disco_libre_percent} color="emerald" icon={CircleStackIcon} />
+                    <div className="space-y-4 relative z-10">
+                        <ServerMetric label="CPU" value={`${data.servidor.cpu_percent}%`} percent={data.servidor.cpu_percent} color="blue" />
+                        <ServerMetric label="RAM" value={`${data.servidor.ram_usada_percent}%`} percent={data.servidor.ram_usada_percent} color="purple" />
+                        <ServerMetric label="Disco" value={`${data.servidor.disco_libre_percent}% Libre`} percent={100 - data.servidor.disco_libre_percent} color="emerald" />
                     </div>
                 </div>
             </div>
 
-            {/* --- SECCIÓN 3: ÚLTIMOS PAGOS ADAPTATIVOS --- */}
-            <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-2xl overflow-hidden flex-1 flex flex-col">
-                <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950/40 flex-none">
-                    <h3 className="font-black text-slate-700 dark:text-white text-xs sm:text-sm uppercase tracking-widest flex items-center gap-1.5"><CurrencyDollarIcon className="w-4 h-4 text-emerald-500" /> Pagos Recientes</h3>
-                    <Link to="/admin/transacciones" className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-1.5 rounded-lg active:scale-95 transition">Ver Historial</Link>
+            {/* ================= TABLA/TARJETAS DE PAGOS RECIENTES ================= */}
+            <div className="bg-white dark:bg-[#12141a] rounded-[1.5rem] border border-slate-200 dark:border-slate-800/80 shadow-sm overflow-hidden flex-1 flex flex-col transition-colors min-h-[300px]">
+                <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/50 flex justify-between items-center flex-none">
+                    <h3 className="font-black text-slate-800 dark:text-white text-sm uppercase tracking-widest flex items-center gap-2">
+                        <CurrencyDollarIcon className="w-5 h-5 text-emerald-500" /> Últimos Pagos
+                    </h3>
+                    <Link to="/admin/transacciones" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 px-3 py-1.5 rounded-lg active:scale-95 transition-all flex items-center gap-1">
+                        Historial <ArrowUpRightIcon className="w-3 h-3" />
+                    </Link>
                 </div>
+                
                 <div className="overflow-y-auto flex-1 custom-scrollbar">
-                    <table className="w-full text-left text-xs whitespace-nowrap">
-                        <thead className="bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 text-[9px] uppercase font-black tracking-widest border-b border-slate-200 dark:border-slate-800/80 sticky top-0 z-10 shadow-sm">
-                            <tr><th className="px-6 py-3.5">Cliente</th><th className="px-6 py-3.5 text-right">Monto</th><th className="px-6 py-3.5 text-center">Cobrador</th><th className="px-6 py-3.5 text-right">Hora</th></tr>
+                    
+                    {/* VISTA ESCRITORIO (Tabla Limpia) */}
+                    <table className="w-full text-left text-xs whitespace-nowrap hidden sm:table">
+                        <thead className="bg-slate-50 dark:bg-slate-900/40 text-slate-400 dark:text-slate-500 text-[9px] uppercase font-black tracking-widest sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800">
+                            <tr><th className="px-6 py-4">Cliente</th><th className="px-6 py-4 text-right">Monto Recibido</th><th className="px-6 py-4 text-center">Cobrador</th><th className="px-6 py-4 text-right">Hora</th></tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                             {data.ultimos_pagos.length > 0 ? data.ultimos_pagos.map((p, i) => (
-                                <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition group bg-transparent">
-                                    <td className="px-6 py-3.5 font-bold text-slate-700 dark:text-slate-200 truncate max-w-[150px] sm:max-w-xs group-hover:text-blue-600 dark:group-hover:text-white transition-colors">{p.cliente}</td>
-                                    <td className="px-6 py-3.5 text-right"><span className="font-black text-emerald-600 dark:text-emerald-400 text-sm tracking-tight">+${p.monto.toLocaleString()}</span></td>
-                                    <td className="px-6 py-3.5 text-center"><span className="inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-extrabold tracking-wider bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 uppercase">{p.cobrador}</span></td>
-                                    <td className="px-6 py-3.5 text-right text-slate-400 dark:text-slate-500 font-mono text-[11px] font-bold">{p.fecha.split(' ')[1]}</td>
+                                <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors group bg-transparent">
+                                    <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{p.cliente}</td>
+                                    <td className="px-6 py-4 text-right"><span className="font-black text-emerald-600 dark:text-emerald-400 text-sm tracking-tight">+${p.monto.toLocaleString()}</span></td>
+                                    <td className="px-6 py-4 text-center"><span className="inline-flex items-center px-2.5 py-1 rounded-md text-[9px] font-extrabold tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 uppercase">{p.cobrador}</span></td>
+                                    <td className="px-6 py-4 text-right text-slate-400 dark:text-slate-500 font-mono text-[11px] font-bold">{p.fecha.split(' ')[1]}</td>
                                 </tr>
-                            )) : <tr><td colSpan={4} className="p-10 text-center text-slate-400 dark:text-slate-500 font-bold italic">No hay pagos registrados el día de hoy.</td></tr>}
+                            )) : <tr><td colSpan={4} className="p-10 text-center text-slate-400 font-bold">No hay pagos registrados hoy.</td></tr>}
                         </tbody>
                     </table>
+
+                    {/* VISTA MÓVIL (Tarjetas de Transacción) */}
+                    <div className="sm:hidden flex flex-col divide-y divide-slate-100 dark:divide-slate-800/40">
+                        {data.ultimos_pagos.length > 0 ? data.ultimos_pagos.map((p, i) => (
+                            <div key={i} className="p-4 flex items-center justify-between bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 flex items-center justify-center shrink-0">
+                                        <CurrencyDollarIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    <div className="overflow-hidden">
+                                        <p className="text-sm font-black text-slate-800 dark:text-slate-200 truncate">{p.cliente}</p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{p.cobrador} • {p.fecha.split(' ')[1]}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right shrink-0 pl-3">
+                                    <p className="font-black text-emerald-600 dark:text-emerald-400 text-base tracking-tight">+${p.monto.toLocaleString()}</p>
+                                </div>
+                            </div>
+                        )) : <div className="p-10 text-center text-slate-400 font-bold text-sm">Sin movimientos hoy.</div>}
+                    </div>
+
                 </div>
             </div>
 
-            {/* MODALES */}
+            {/* ================= MODALES ================= */}
             <Transition appear show={isPosOpen} as={Fragment}>
                 <Dialog as="div" className="relative z-[150]" onClose={() => setIsPosOpen(false)}>
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity" />
-                    <div className="fixed inset-0 overflow-y-auto flex items-center justify-center p-0 sm:p-4">
-                        <Dialog.Panel className="w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-5xl rounded-none sm:rounded-3xl bg-slate-900 border-0 sm:border border-slate-800 transform transition-all overflow-hidden shadow-2xl">
+                    <div className="fixed inset-0 overflow-y-auto flex items-end sm:items-center justify-center p-0 sm:p-4">
+                        <Dialog.Panel className="w-full h-[96dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-5xl rounded-t-[2rem] sm:rounded-[2rem] bg-white dark:bg-[#0a0c10] border-0 sm:border border-slate-200 dark:border-slate-800 transform transition-all overflow-hidden shadow-2xl">
                             <RegistrarPago onCancel={() => setIsPosOpen(false)} onSuccess={handlePosSuccess} />
                         </Dialog.Panel>
                     </div>
@@ -209,47 +234,54 @@ export default function Dashboard() {
     );
 }
 
-// ================= SUBCOMPONENTES REFINADOS Y ADAPTATIVOS =================
+// ================= SUBCOMPONENTES REFINADOS =================
 
-const KpiCard = ({ title, value, icon: Icon, border, textColor, extra, extraLabel, isTextExtra }: any) => (
-    <div className={`relative overflow-hidden rounded-2xl p-5 shadow-sm dark:shadow-xl bg-white dark:bg-slate-900/90 border ${border} hover:border-slate-400 dark:hover:border-slate-600 transition-all duration-300 group`}>
-        <div className="relative z-10 flex flex-col justify-between h-full">
-            <h4 className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">{title}</h4>
-            <div className={`text-2xl md:text-3xl font-black tracking-tight ${textColor} drop-shadow-sm`}>{value}</div>
-            <div className="mt-2.5 bg-slate-50 dark:bg-slate-950/40 w-fit px-2 py-0.5 rounded border border-slate-100 dark:border-white/5 text-[9px] md:text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                {isTextExtra ? extra : <><span className={textColor}>{extra}</span> {extraLabel}</>}
+const KpiCard = ({ title, value, icon: Icon, color, bg, border, extra, extraLabel, isTextExtra }: any) => (
+    <div className={`p-4 rounded-[1.25rem] border transition-all shrink-0 min-w-[150px] snap-start flex-1 flex flex-col justify-between border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#12141a] shadow-sm relative overflow-hidden group`}>
+        <div className="flex justify-between items-start mb-2">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest relative z-10">{title}</p>
+            <div className={`p-1.5 rounded-xl border ${bg} ${border} relative z-10`}><Icon className={`w-4 h-4 ${color}`} /></div>
+        </div>
+        <div className="relative z-10">
+            <p className={`text-2xl font-black text-slate-800 dark:text-white`}>{value}</p>
+            <div className="mt-1 flex items-center gap-1 text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                {isTextExtra ? extra : <><span className={color}>{extra}</span> {extraLabel}</>}
             </div>
         </div>
-        <Icon className={`absolute right-[-10px] bottom-[-10px] w-24 h-24 opacity-[0.03] dark:opacity-5 -rotate-12 group-hover:rotate-0 group-hover:scale-105 transition-all duration-300 ease-out ${textColor}`} />
+        {/* Fondo decorativo sutil */}
+        <Icon className={`absolute -right-4 -bottom-4 w-20 h-20 opacity-5 dark:opacity-[0.03] -rotate-12 group-hover:scale-110 transition-transform duration-500 ${color}`} />
     </div>
 );
 
-const SystemListItem = ({ number, label, value, color, blink, icon }: any) => (
-    <li className="flex items-center justify-between px-3 sm:px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors group rounded-xl my-0.5">
-        <span className={`text-xs font-bold flex items-center ${blink ? 'text-rose-500 font-black' : 'text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors'}`}>
-            <span className="text-slate-400 dark:text-slate-600 mr-2.5 font-black text-[9px] bg-slate-100 dark:bg-slate-950 w-5 h-5 flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-800 font-mono">{number}</span>
-            {icon}
-            {label}
-        </span>
-        <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-black tracking-wider text-center min-w-[2.5rem] ${color} ${blink ? 'animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.3)]' : 'shadow-sm'}`}>
+const SystemListItem = ({ label, value, color, bg, blink, icon: Icon }: any) => (
+    <div className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
+        <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${bg} ${color} ${blink ? 'animate-pulse' : ''}`}>
+                <Icon className="w-4 h-4" />
+            </div>
+            <span className={`text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors`}>
+                {label}
+            </span>
+        </div>
+        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black tracking-widest min-w-[2.5rem] text-center border ${blink ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' : 'bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}>
             {value}
         </span>
-    </li>
+    </div>
 );
 
-const ServerMetric = ({ label, value, percent, icon: Icon, color }: any) => {
+const ServerMetric = ({ label, value, percent, color }: any) => {
     const textColors: any = { blue: 'text-blue-500', purple: 'text-purple-500', emerald: 'text-emerald-500' };
-    const barColors: any = { blue: 'bg-blue-500', purple: 'bg-purple-500', emerald: 'bg-emerald-500' };
+    const bgColors: any = { blue: 'bg-blue-500', purple: 'bg-purple-500', emerald: 'bg-emerald-500' };
+    const shadows: any = { blue: 'shadow-blue-500/40', purple: 'shadow-purple-500/40', emerald: 'shadow-emerald-500/40' };
+    
     return (
         <div className="group">
-            <div className="flex justify-between mb-1 items-end">
-                <span className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 font-black text-[9px] uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-                    <Icon className={`w-3.5 h-3.5 ${textColors[color]}`} /> {label}
-                </span>
+            <div className="flex justify-between mb-1.5 items-end">
+                <span className="text-slate-500 dark:text-slate-400 font-black text-[10px] uppercase tracking-widest">{label}</span>
                 <span className={`text-xs font-black tracking-wider ${textColors[color]}`}>{value}</span>
             </div>
-            <div className="w-full bg-slate-100 dark:bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-inner">
-                <div className={`h-full rounded-full transition-all duration-1000 ${barColors[color]} shadow-[0_0_8px_currentColor]`} style={{ width: `${percent}%` }}></div>
+            <div className="w-full bg-slate-100 dark:bg-slate-900/80 rounded-full h-1.5 overflow-hidden border border-slate-200/50 dark:border-slate-800 shadow-inner">
+                <div className={`h-full rounded-full transition-all duration-1000 ${bgColors[color]} shadow-[0_0_8px_currentColor]`} style={{ width: `${percent}%` }}></div>
             </div>
         </div>
     );

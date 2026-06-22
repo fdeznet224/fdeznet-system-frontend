@@ -27,9 +27,7 @@ export default function RadarOlt() {
         try {
             const res = await client.get('/olts/');
             setOltsDisponibles(res.data);
-            if (res.data.length > 0 && !oltSeleccionada) {
-                setOltSeleccionada(res.data[0].id);
-            }
+            // Se eliminó la auto-selección de la primera OLT para evitar escaneos no deseados
         } catch (err) {
             toast.error("Error cargando OLTs");
         }
@@ -134,7 +132,6 @@ export default function RadarOlt() {
     };
 
     return (
-        /* ✅ ADAPTADO: Fondo que transiciona entre modo claro y oscuro */
         <div className="p-4 md:p-6 max-w-[1400px] mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12 transition-colors duration-300">
             
             {/* HEADER RESPONSIVO ADAPTATIVO */}
@@ -149,7 +146,7 @@ export default function RadarOlt() {
                                 value={oltSeleccionada}
                                 onChange={(e) => setOltSeleccionada(Number(e.target.value))}
                             >
-                                <option value="" disabled>OLT...</option>
+                                <option value="" disabled>Seleccionar OLT...</option>
                                 {oltsDisponibles.map(o => <option key={o.id} value={o.id} className="bg-white dark:bg-slate-950 text-slate-900 dark:text-white">{o.nombre}</option>)}
                             </select>
                             <ChevronDownIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"/>
@@ -177,6 +174,19 @@ export default function RadarOlt() {
                     </button>
                 </div>
             </div>
+
+            {/* ESTADO VACÍO: ESPERANDO SELECCIÓN */}
+            {!oltSeleccionada && !loading && (
+                <div className="flex flex-col items-center justify-center h-64 space-y-4 bg-white dark:bg-[#12131a] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors flex-1">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-full">
+                        <ServerIcon className="w-12 h-12 text-slate-300 dark:text-slate-600" />
+                    </div>
+                    <div className="text-center px-4">
+                        <p className="text-slate-600 dark:text-slate-300 font-black tracking-widest uppercase text-sm mb-1">Radar en Espera</p>
+                        <p className="text-slate-400 text-xs font-medium">Selecciona una OLT en el menú superior para iniciar el escaneo.</p>
+                    </div>
+                </div>
+            )}
 
             {/* ESTADO DE CARGA */}
             {!datosRadar && loading && (

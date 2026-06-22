@@ -10,7 +10,7 @@ import {
     BanknotesIcon, WifiIcon, ChevronDownIcon,
     KeyIcon, CubeIcon, RocketLaunchIcon, 
     UserGroupIcon, GlobeAmericasIcon, CpuChipIcon,
-    ArchiveBoxIcon
+    ArchiveBoxIcon, ArrowRightIcon, ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 
 interface Props {
@@ -122,7 +122,7 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
         setIpsLibres([]);
 
         if (netId) {
-            const t = toast.loading("Obteniendo IPs libres...");
+            const t = toast.loading("Buscando IPs libres...");
             try {
                 const res = await client.get(`/network/redes/${netId}/ips-libres`);
                 setIpsLibres(res.data); 
@@ -134,20 +134,20 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
 
     const handleObtenerUbicacion = () => {
         if (!navigator.geolocation) return toast.error("GPS no soportado");
-        toast.loading("Buscando señal GPS...", { id: 'gps' });
+        toast.loading("Capturando GPS...", { id: 'gps' });
         navigator.geolocation.getCurrentPosition(
             (pos) => {
                 setFormData(prev => ({ ...prev, latitud: pos.coords.latitude.toString(), longitud: pos.coords.longitude.toString() }));
-                toast.success("¡Ubicación capturada!", { id: 'gps' });
+                toast.success("¡Ubicación lista!", { id: 'gps' });
             },
-            () => toast.error("Error GPS. Revisa permisos.", { id: 'gps' }),
+            () => toast.error("Error GPS. Activa permisos.", { id: 'gps' }),
             { enableHighAccuracy: true }
         );
     };
 
     const handleSubmit = async () => {
         setLoading(true);
-        const t = toast.loading(activarAhora ? "Guardando y Activando..." : "Creando Orden...");
+        const t = toast.loading(activarAhora ? "Configurando MikroTik..." : "Creando Orden...");
         
         try {
             const onuAsignada = inventarioDisponible.find(o => o.id.toString() === formData.onu_id);
@@ -165,7 +165,6 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
 
             const res = await client.post('/clientes/', payload);
             if (activarAhora) {
-                toast.loading("Configurando Mikrotik...", { id: t });
                 await client.post(`/clientes/${res.data.id}/completar-instalacion`, {
                     cedula: res.data.cedula || res.data.id.toString(), olt_id: payload.olt_id, onu_id: payload.onu_id,
                     router_id: payload.router_id, plan_id: payload.plan_id, user_pppoe: payload.user_pppoe, 
@@ -174,10 +173,14 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                 toast.success("¡Cliente ACTIVADO!", { id: t });
             } else { toast.success("Orden Generada", { id: t }); }
             
+            // CORRECCIÓN: Toma los datos de la respuesta (res.data) para asegurar que existan.
             setCreatedClient({
-                nombre: res.data.nombre, cedula: res.data.cedula || res.data.id.toString(), 
+                nombre: res.data.nombre, 
+                cedula: res.data.cedula || res.data.id.toString(), 
                 hardware_id: onuAsignada ? onuAsignada.identificador : 'SIN ASIGNAR', 
-                id: res.data.id, user_pppoe: formData.user_pppoe, pass_pppoe: formData.pass_pppoe,
+                id: res.data.id, 
+                user_pppoe: res.data.user_pppoe || formData.user_pppoe, 
+                pass_pppoe: res.data.pass_pppoe || formData.pass_pppoe,
                 estado: activarAhora ? 'Activo' : 'Pendiente'
             });
             setStep(4); onSuccess();
@@ -188,7 +191,7 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
         } finally { setLoading(false); }
     };
 
-    const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copiado"); };
+    const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copiado al portapapeles"); };
 
     const renderPuertoOptions = () => {
         if (!formData.caja_nap_id) return null;
@@ -199,7 +202,7 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
             const isTaken = puertosOcupados.includes(i);
             options.push(
                 <option key={i} value={i} disabled={isTaken} className={isTaken ? 'text-rose-400 bg-slate-100 dark:bg-slate-900' : 'text-emerald-600 dark:text-emerald-400 font-bold'}>
-                    Puerto {i} {isTaken ? '(Ocupado)' : '(Libre)'}
+                    Puerto {i} {isTaken ? '(Ocupado)' : ''}
                 </option>
             );
         }
@@ -209,152 +212,150 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
     const oltSeleccionada = olts.find(o => o.id === Number(formData.olt_id));
     const equiposCompatibles = oltSeleccionada ? inventarioDisponible.filter(eq => eq.tecnologia === oltSeleccionada.tecnologia) : inventarioDisponible;
 
-    // Clases adaptativas reutilizables
-    const inputClass = "w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 sm:p-3.5 pl-11 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-700 text-sm";
-    const labelClass = "text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 block mb-1.5 transition-colors";
+    // Clases adaptativas "App-Like"
+    const flatInputClass = "w-full bg-slate-100 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-[13px] sm:text-sm rounded-2xl focus:ring-2 focus:ring-blue-500 block p-4 pl-12 outline-none transition-all duration-200 placeholder:text-slate-400 border border-transparent appearance-none";
+    const disabledInputClass = "w-full bg-slate-50 dark:bg-slate-900/30 text-slate-500 dark:text-slate-500 text-[13px] sm:text-sm rounded-2xl block p-4 pl-12 outline-none cursor-not-allowed border border-transparent appearance-none";
+    const labelClass = "block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2 pl-1 uppercase tracking-widest";
+
+    const renderProgress = () => {
+        const totalSteps = 3;
+        const progress = Math.min((step / totalSteps) * 100, 100);
+        return (
+            <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mb-5">
+                <div className="bg-blue-600 h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
+            </div>
+        );
+    };
 
     return (
         <Transition appear show={isOpen} as={Fragment}>
             <Dialog as="div" className="relative z-50" onClose={() => {}}>
-                <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/90 backdrop-blur-sm transition-opacity" />
-                <div className="fixed inset-0 overflow-y-auto flex items-center justify-center p-2 sm:p-4">
-                    <Dialog.Panel className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[98vh] sm:max-h-[95vh] transition-colors">
+                {/* Backdrop con Blur Fuerte */}
+                <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-md transition-opacity" />
+                
+                <div className="fixed inset-0 overflow-hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    {/* Bottom Sheet en Móvil, Modal en PC */}
+                    <Dialog.Panel className="w-full h-[96dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-3xl bg-[#f8fafc] dark:bg-[#0a0c10] rounded-t-[2rem] sm:rounded-3xl shadow-2xl flex flex-col relative overflow-hidden transition-all duration-300">
                         
-                        {/* HEADER */}
+                        {/* Indicador de "arrastrar" nativo móvil */}
+                        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700/60 rounded-full mx-auto mt-3 mb-1 sm:hidden shrink-0" />
+
+                        {/* HEADER PEGAJOSO */}
                         {step < 4 && (
-                            <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 transition-colors shrink-0">
-                                <div className="flex justify-between items-center mb-6 sm:mb-8">
-                                    <div>
-                                        <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2 transition-colors">
-                                            <span className="w-2 h-5 sm:h-6 bg-blue-600 rounded-full"></span>
-                                            Nuevo Cliente
-                                        </h3>
-                                    </div>
-                                    <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-slate-900 dark:hover:text-white"><XMarkIcon className="w-6 h-6"/></button>
+                            <div className="px-5 sm:px-8 pt-2 sm:pt-6 pb-4 border-b border-slate-200/50 dark:border-slate-800/50 bg-[#f8fafc] dark:bg-[#0a0c10] z-10 shrink-0">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                        Alta de Cliente
+                                    </h3>
+                                    <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-slate-800/80 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full active:scale-95 transition-all"><XMarkIcon className="w-5 h-5"/></button>
                                 </div>
-                                <div className="flex items-center justify-between px-2 sm:px-16 relative">
-                                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-200 dark:bg-slate-800 -z-10 transition-colors"></div>
-                                    <StepIndicator num={1} curr={step} label="Personal" />
-                                    <StepIndicator num={2} curr={step} label="Cobro" />
-                                    <StepIndicator num={3} curr={step} label="Conexión" />
+                                {renderProgress()}
+                                <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
+                                    <span className={step === 1 ? "text-blue-600 dark:text-blue-400" : ""}>1. Datos</span>
+                                    <span className={step === 2 ? "text-blue-600 dark:text-blue-400" : ""}>2. Cobro</span>
+                                    <span className={step === 3 ? "text-blue-600 dark:text-blue-400" : ""}>3. Red</span>
                                 </div>
                             </div>
                         )}
 
-                        {/* BODY */}
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 custom-scrollbar transition-colors">
+                        {/* BODY SCROLL */}
+                        <div className="flex-1 overflow-y-auto p-5 sm:p-8 custom-scrollbar pb-32 sm:pb-32">
                             
-                            {/* PASO 1 */}
+                            {/* PASO 1: GENERAL */}
                             {step === 1 && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 animate-in slide-in-from-right-8">
-                                    <div className="md:col-span-2">
-                                        <label className={labelClass}>Zona / Colonia</label>
-                                        <div className="relative">
-                                            <MapPinIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500 pointer-events-none"/>
-                                            <select className={`${inputClass} border-l-4 border-l-indigo-500 appearance-none`} value={formData.zona_id} onChange={e => setFormData({...formData, zona_id: e.target.value})}>
-                                                <option value="">Seleccionar Zona...</option>
-                                                {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
-                                            </select>
-                                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
+                                <div className="space-y-5 sm:space-y-6 animate-in slide-in-from-right-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="md:col-span-2">
+                                            <label className={labelClass}>Zona / Colonia</label>
+                                            <div className="relative">
+                                                <MapPinIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500 pointer-events-none"/>
+                                                <select className={flatInputClass} value={formData.zona_id} onChange={e => setFormData({...formData, zona_id: e.target.value})}>
+                                                    <option value="">Seleccionar Zona...</option>
+                                                    {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
+                                                </select>
+                                                <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
+                                            </div>
+                                        </div>
+
+                                        <div className="md:col-span-2">
+                                            <label className={labelClass}>Nombre Completo</label>
+                                            <div className="relative">
+                                                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"/>
+                                                <input autoFocus className={flatInputClass} placeholder="Ej: Juan Pérez" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className={labelClass}>WhatsApp / Celular</label>
+                                            <div className="relative">
+                                                <PhoneIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"/>
+                                                <input className={flatInputClass} placeholder="Ej: 961 123 4567" type="tel" value={formData.telefono} onChange={e => setFormData({...formData, telefono: e.target.value})} />
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className={labelClass}>OLT Base (Opcional por ahora)</label>
+                                            <div className="relative">
+                                                <CpuChipIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500 pointer-events-none"/>
+                                                <select className={flatInputClass} value={formData.olt_id} onChange={e => setFormData({...formData, olt_id: e.target.value, onu_id: ''})}>
+                                                    <option value="">No asignar Aún...</option>
+                                                    {olts.map(o => <option key={o.id} value={o.id}>{o.nombre} ({o.tecnologia})</option>)}
+                                                </select>
+                                                <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="md:col-span-2">
-                                        <label className={labelClass}>Nombre Completo</label>
-                                        <div className="relative">
-                                            <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 pointer-events-none"/>
-                                            <input autoFocus className={inputClass} placeholder="Ej: Juan Pérez" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} />
+                                    {/* Módulo de Dirección + GPS */}
+                                    <div className="bg-white dark:bg-[#12141a] p-4 sm:p-5 rounded-[1.5rem] border border-slate-200/60 dark:border-slate-800 shadow-sm space-y-4">
+                                        <div>
+                                            <label className={labelClass}>Dirección Exacta</label>
+                                            <textarea className={`${flatInputClass} pl-4 h-20 resize-none`} placeholder="Referencia, calle, número..." value={formData.direccion} onChange={e => setFormData({...formData, direccion: e.target.value})} />
                                         </div>
-                                    </div>
-
-                                    <div>
-                                        <label className={labelClass}>Teléfono (WhatsApp)</label>
-                                        <div className="relative">
-                                            <PhoneIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 pointer-events-none"/>
-                                            <input className={inputClass} placeholder="52..." value={formData.telefono} onChange={e => setFormData({...formData, telefono: e.target.value})} />
-                                        </div>
-                                    </div>
-                                    
-                                    <div>
-                                        <label className={labelClass}>Nodo OLT (Fibra)</label>
-                                        <div className="relative">
-                                            <CpuChipIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500 pointer-events-none"/>
-                                            <select className={`${inputClass} appearance-none`} value={formData.olt_id} onChange={e => setFormData({...formData, olt_id: e.target.value, onu_id: ''})}>
-                                                <option value="">Seleccionar OLT...</option>
-                                                {olts.map(o => <option key={o.id} value={o.id}>{o.nombre} ({o.tecnologia})</option>)}
-                                            </select>
-                                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
-                                        </div>
-                                    </div>
-
-                                    <div className="md:col-span-2">
-                                        <label className="text-[10px] font-black text-emerald-600 dark:text-emerald-500 uppercase ml-1 mb-1.5 flex items-center justify-between transition-colors">
-                                            <span>Asignar Equipo (Bodega)</span>
-                                            {equiposCompatibles.length > 0 && formData.olt_id && (
-                                                <span className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/30">
-                                                    {equiposCompatibles.length} disponibles
-                                                </span>
-                                            )}
-                                        </label>
-                                        <div className="relative">
-                                            <ArchiveBoxIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-500 pointer-events-none"/>
-                                            <select className={`w-full bg-emerald-50/50 dark:bg-slate-950 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-3 sm:p-3.5 pl-11 text-emerald-700 dark:text-emerald-400 font-mono font-bold uppercase tracking-widest outline-none focus:border-emerald-500 appearance-none disabled:opacity-50 transition-colors text-sm`} value={formData.onu_id} disabled={!formData.olt_id} onChange={e => setFormData({...formData, onu_id: e.target.value})} >
-                                                <option value="">{!formData.olt_id ? "Selecciona OLT primero" : (equiposCompatibles.length === 0 ? "No hay stock compatible" : "Selecciona una ONU...")}</option>
-                                                {equiposCompatibles.map(eq => <option key={eq.id} value={eq.id}>{eq.identificador} - {eq.modelo}</option>)}
-                                            </select>
-                                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500"/>
-                                        </div>
-                                    </div>
-
-                                    <div className="md:col-span-2">
-                                        <label className={labelClass}>Dirección Exacta</label>
-                                        <textarea className={`${inputClass} h-20 resize-none pt-3`} placeholder="Calle, Número, Color de casa..." value={formData.direccion} onChange={e => setFormData({...formData, direccion: e.target.value})} />
-                                    </div>
-
-                                    <div className="md:col-span-2 space-y-3 mt-2 p-4 sm:p-5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors">
-                                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase ml-1 flex items-center gap-1 transition-colors">
-                                            <GlobeAmericasIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400"/> Coordenadas GPS
-                                        </label>
-                                        <button type="button" onClick={handleObtenerUbicacion} className="w-full bg-emerald-50 dark:bg-emerald-600/10 hover:bg-emerald-100 dark:hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/50 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2">
-                                            <MapPinIcon className="w-5 h-5"/> CAPTURAR GPS ACTUAL
-                                        </button>
-                                        <div className="flex gap-3">
-                                            <input type="text" placeholder="Latitud" value={formData.latitud} onChange={(e) => setFormData({...formData, latitud: e.target.value})} className="w-1/2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300 font-mono text-center outline-none focus:border-blue-500 transition-colors" />
-                                            <input type="text" placeholder="Longitud" value={formData.longitud} onChange={(e) => setFormData({...formData, longitud: e.target.value})} className="w-1/2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300 font-mono text-center outline-none focus:border-blue-500 transition-colors" />
+                                        
+                                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                                            <div className="flex justify-between items-center mb-3">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1"><GlobeAmericasIcon className="w-4 h-4"/> Coordenadas de Instalación</label>
+                                                <button type="button" onClick={handleObtenerUbicacion} className="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition-transform"><MapPinIcon className="w-4 h-4"/> Usar Mi GPS</button>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <input type="text" placeholder="Latitud" value={formData.latitud} onChange={(e) => setFormData({...formData, latitud: e.target.value})} className="w-1/2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-[13px] font-mono outline-none focus:border-blue-500" />
+                                                <input type="text" placeholder="Longitud" value={formData.longitud} onChange={(e) => setFormData({...formData, longitud: e.target.value})} className="w-1/2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-[13px] font-mono outline-none focus:border-blue-500" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
-                            {/* PASO 2 */}
+                            {/* PASO 2: COBRO Y STAFF */}
                             {step === 2 && (
-                                <div className="space-y-6 sm:space-y-8 animate-in slide-in-from-right-8">
-                                    <div>
-                                        <label className="text-sm font-black text-slate-900 dark:text-white mb-2 block transition-colors">Perfil de Facturación</label>
-                                        <div className="relative">
-                                            <BanknotesIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-blue-500 pointer-events-none"/>
-                                            <select className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 pl-14 text-slate-900 dark:text-white font-black text-base sm:text-lg outline-none focus:border-emerald-500 transition-colors appearance-none cursor-pointer" value={formData.plantilla_id} onChange={handlePlantillaChange}>
-                                                <option value="">Seleccionar Perfil...</option>
+                                <div className="space-y-6 sm:space-y-8 animate-in slide-in-from-right-4">
+                                    <div className="bg-white dark:bg-[#12141a] p-4 sm:p-5 rounded-[1.5rem] border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                                        <label className={labelClass}>Ciclo de Facturación</label>
+                                        <div className="relative mb-5">
+                                            <BanknotesIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none"/>
+                                            <select className={flatInputClass} value={formData.plantilla_id} onChange={handlePlantillaChange}>
+                                                <option value="">Elegir Perfil de Cobro...</option>
                                                 {plantillas.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                                             </select>
-                                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"/>
+                                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <InfoCard icon={CalendarIcon} label="Día Pago" value={selectedPlantilla ? `Día ${selectedPlantilla.dia_pago}` : '--'} color="text-indigo-500" />
+                                            <InfoCard icon={ShieldCheckIcon} label="Tolerancia" value={selectedPlantilla ? `${selectedPlantilla.dias_tolerancia} Días` : '--'} color="text-emerald-500" />
+                                            <InfoCard icon={BellAlertIcon} label="Avisos" value={selectedPlantilla ? `A los ${selectedPlantilla.dias_antes_emision} días` : '--'} color="text-amber-500" />
+                                            <InfoCard icon={PhoneIcon} label="WhatsApp" value={selectedPlantilla?.recordatorio_whatsapp ? 'Activado' : 'Inactivo'} color="text-blue-500" />
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                                        <InfoCard icon={CalendarIcon} label="Día Pago" value={selectedPlantilla ? `Día ${selectedPlantilla.dia_pago}` : '--'} color="text-indigo-600 dark:text-indigo-400" />
-                                        <InfoCard icon={ShieldCheckIcon} label="Tolerancia" value={selectedPlantilla ? `${selectedPlantilla.dias_tolerancia} Días` : '--'} color="text-emerald-600 dark:text-emerald-400" />
-                                        <InfoCard icon={BellAlertIcon} label="Aviso" value={selectedPlantilla ? `${selectedPlantilla.dias_antes_emision} días` : '--'} color="text-amber-600 dark:text-amber-400" />
-                                        <InfoCard icon={PhoneIcon} label="Medio" value={selectedPlantilla?.recordatorio_whatsapp ? 'WhatsApp' : 'Email'} color="text-blue-600 dark:text-blue-400" />
-                                    </div>
-
-                                    <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors">
-                                        <label className={labelClass}>Asignar Técnico Instalador</label>
+                                    <div>
+                                        <label className={labelClass}>Designar Técnico de Instalación</label>
                                         <div className="relative">
                                             <UserGroupIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500 pointer-events-none"/>
-                                            <select className={`${inputClass} appearance-none font-bold`} value={formData.tecnico_id} onChange={e => setFormData({...formData, tecnico_id: e.target.value})}>
-                                                <option value="">-- Sin asignar (Pool) --</option>
-                                                {tecnicos.map(t => <option key={t.id} value={t.id}>Técnico: {t.nombre_completo || t.usuario}</option>)}
+                                            <select className={flatInputClass} value={formData.tecnico_id} onChange={e => setFormData({...formData, tecnico_id: e.target.value})}>
+                                                <option value="">Dejar pendiente (Cualquiera)</option>
+                                                {tecnicos.map(t => <option key={t.id} value={t.id}>{t.nombre_completo || t.usuario}</option>)}
                                             </select>
                                             <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
                                         </div>
@@ -362,47 +363,93 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                                 </div>
                             )}
 
-                            {/* PASO 3 */}
+                            {/* PASO 3: RED Y ACTIVACIÓN */}
                             {step === 3 && (
-                                <div className="space-y-6 animate-in slide-in-from-right-8">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                <div className="space-y-6 animate-in slide-in-from-right-4">
+                                    {/* Módulo MikroTik */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
-                                            <label className={labelClass}>Nodo / Router</label>
+                                            <label className={labelClass}>Router / Servidor</label>
                                             <div className="relative">
-                                                <ServerIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 pointer-events-none"/>
-                                                <select className={`${inputClass} appearance-none`} value={formData.router_id} onChange={handleRouterChange}>
+                                                <ServerIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"/>
+                                                <select className={flatInputClass} value={formData.router_id} onChange={handleRouterChange}>
                                                     <option value="">Seleccionar Router...</option>
                                                     {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
                                                 </select>
+                                                <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
                                             </div>
                                         </div>
                                         <div>
-                                            <label className={labelClass}>Plan de Internet</label>
+                                            <label className={labelClass}>Plan Contratado</label>
                                             <div className="relative">
-                                                <WifiIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 pointer-events-none"/>
-                                                <select className={`${inputClass} appearance-none`} value={formData.plan_id} onChange={e => setFormData({...formData, plan_id: e.target.value})}>
+                                                <WifiIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"/>
+                                                <select className={flatInputClass} value={formData.plan_id} onChange={e => setFormData({...formData, plan_id: e.target.value})}>
                                                     <option value="">Seleccionar Velocidad...</option>
                                                     {planes.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                                                 </select>
+                                                <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="p-4 sm:p-5 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 space-y-4 transition-colors">
-                                        <h4 className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-                                            <CubeIcon className="w-4 h-4" /> Conexión Física (FTTH)
+                                    {/* Módulo Lógico IP/PPPoE */}
+                                    <div className="bg-white dark:bg-[#12141a] p-4 sm:p-5 rounded-[1.5rem] border border-slate-200/60 dark:border-slate-800 shadow-sm space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className={labelClass}>Segmento Red</label>
+                                                <select className={`${flatInputClass} pl-4`} value={formData.red_id} onChange={handleRedChange} disabled={!formData.router_id}>
+                                                    <option value="">Elegir Segmento...</option>
+                                                    {redes.map(r => <option key={r.id} value={r.id}>{r.nombre} ({r.cidr})</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className={labelClass}>IP Sugerida</label>
+                                                <div className="relative">
+                                                    <GlobeAmericasIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-500 pointer-events-none"/>
+                                                    <select className={`${formData.ip_asignada ? flatInputClass : disabledInputClass} text-emerald-600 dark:text-emerald-400 font-mono`} value={formData.ip_asignada} onChange={e => setFormData({...formData, ip_asignada: e.target.value})} disabled={ipsLibres.length === 0}>
+                                                        {ipsLibres.length === 0 && <option>Esperando red...</option>}
+                                                        {ipsLibres.map(ip => <option key={ip} value={ip}>{ip}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {selectedRouter?.tipo_seguridad === 'pppoe' && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                <div>
+                                                    <label className={labelClass}>User PPPoE</label>
+                                                    <div className="relative">
+                                                        <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none"/>
+                                                        <input className={`${flatInputClass} font-mono`} value={formData.user_pppoe} onChange={e => setFormData({...formData, user_pppoe: e.target.value})} />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className={labelClass}>Password PPPoE</label>
+                                                    <div className="relative">
+                                                        <KeyIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none"/>
+                                                        <input className={`${flatInputClass} font-mono`} value={formData.pass_pppoe} onChange={e => setFormData({...formData, pass_pppoe: e.target.value})} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Módulo Fibra NAP */}
+                                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-4 sm:p-5 rounded-[1.5rem] border border-indigo-100 dark:border-indigo-800/30">
+                                        <h4 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                                            <CubeIcon className="w-4 h-4" /> Asignación FTTH (Opcional)
                                         </h4>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
                                                 <label className={labelClass}>Caja NAP</label>
-                                                <select className={`${inputClass} bg-white dark:bg-slate-950 border-indigo-200 dark:border-slate-700 appearance-none disabled:opacity-50`} value={formData.caja_nap_id} onChange={e => setFormData({...formData, caja_nap_id: e.target.value, puerto_nap: ''})} disabled={!formData.zona_id}>
-                                                    <option value="">{formData.zona_id ? (naps.length ? "Seleccionar NAP..." : "Sin NAPs en zona") : "Elige Zona primero"}</option>
+                                                <select className={`${formData.zona_id ? flatInputClass : disabledInputClass} bg-white dark:bg-slate-900 pl-4`} value={formData.caja_nap_id} onChange={e => setFormData({...formData, caja_nap_id: e.target.value, puerto_nap: ''})} disabled={!formData.zona_id}>
+                                                    <option value="">{formData.zona_id ? (naps.length ? "Seleccionar NAP..." : "Sin NAPs en zona") : "Elige Zona al inicio"}</option>
                                                     {naps.map(n => <option key={n.id} value={n.id}>{n.nombre} ({n.puertos_libres} libres)</option>)}
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className={labelClass}>Puerto Asignado</label>
-                                                <select className={`${inputClass} bg-white dark:bg-slate-950 border-indigo-200 dark:border-slate-700 appearance-none disabled:opacity-50 font-bold`} value={formData.puerto_nap} onChange={e => setFormData({...formData, puerto_nap: e.target.value})} disabled={!formData.caja_nap_id}>
+                                                <label className={labelClass}>Puerto</label>
+                                                <select className={`${formData.caja_nap_id ? flatInputClass : disabledInputClass} bg-white dark:bg-slate-900 pl-4`} value={formData.puerto_nap} onChange={e => setFormData({...formData, puerto_nap: e.target.value})} disabled={!formData.caja_nap_id}>
                                                     <option value="">Seleccionar Puerto...</option>
                                                     {renderPuertoOptions()}
                                                 </select>
@@ -410,127 +457,99 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                                         </div>
                                     </div>
 
-                                    <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4 transition-colors">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className={labelClass}>Red (Segmento)</label>
-                                                <select className={`${inputClass} bg-white dark:bg-slate-950 appearance-none`} value={formData.red_id} onChange={handleRedChange} disabled={!formData.router_id}>
-                                                    <option value="">Elegir Segmento...</option>
-                                                    {redes.map(r => <option key={r.id} value={r.id}>{r.nombre} ({r.cidr})</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] uppercase font-black text-emerald-600 dark:text-emerald-500 mb-1 ml-1 tracking-widest">IP Asignada</label>
-                                                <div className="relative">
-                                                    <GlobeAmericasIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-500 pointer-events-none"/>
-                                                    <select className={`${inputClass} border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-mono font-bold appearance-none`} value={formData.ip_asignada} onChange={e => setFormData({...formData, ip_asignada: e.target.value})} disabled={ipsLibres.length === 0}>
-                                                        {ipsLibres.length === 0 ? <option>Sugerida...</option> : null}
-                                                        {ipsLibres.map(ip => <option key={ip} value={ip}>{ip}</option>)}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {selectedRouter?.tipo_seguridad === 'pppoe' && (
-                                        <div className="p-4 sm:p-5 bg-blue-50 dark:bg-blue-600/5 rounded-2xl border border-blue-100 dark:border-blue-500/20 grid grid-cols-1 sm:grid-cols-2 gap-4 transition-colors">
-                                            <div>
-                                                <label className="block text-[10px] uppercase font-black text-blue-600 dark:text-blue-400 mb-1 ml-1 tracking-widest">User PPPoE</label>
-                                                <div className="relative">
-                                                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none"/>
-                                                    <input className={`${inputClass} bg-white dark:bg-slate-950 font-mono`} value={formData.user_pppoe} onChange={e => setFormData({...formData, user_pppoe: e.target.value})} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] uppercase font-black text-blue-600 dark:text-blue-400 mb-1 ml-1 tracking-widest">Clave</label>
-                                                <div className="relative">
-                                                    <KeyIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none"/>
-                                                    <input className={`${inputClass} bg-white dark:bg-slate-950 font-mono`} value={formData.pass_pppoe} onChange={e => setFormData({...formData, pass_pppoe: e.target.value})} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Action Selector */}
-                                    <div className="p-4 sm:p-6 bg-slate-100 dark:bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-2xl border border-slate-200 dark:border-blue-500/30 mt-4 transition-colors">
-                                        <h4 className="text-sm font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2"><RocketLaunchIcon className="w-5 h-5 text-blue-600 dark:text-blue-400"/> Acción de Finalización</h4>
+                                    {/* SELECCIÓN DE ACCIÓN (Cards nativas) */}
+                                    <div className="mt-8">
+                                        <label className={labelClass}>Decisión Final</label>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                            <div onClick={() => setActivarAhora(false)} className={`cursor-pointer p-4 rounded-xl border flex items-start gap-3 transition-all ${!activarAhora ? 'bg-white dark:bg-slate-800 border-blue-500 ring-2 ring-blue-500/50 shadow-md' : 'bg-transparent border-slate-300 dark:border-slate-800 opacity-60 hover:opacity-100'}`}>
-                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${!activarAhora ? 'border-blue-600 dark:border-blue-500' : 'border-slate-400 dark:border-slate-500'}`}>
-                                                    {!activarAhora && <div className="w-2.5 h-2.5 bg-blue-600 dark:bg-blue-500 rounded-full"/>}
+                                            <div onClick={() => setActivarAhora(false)} className={`cursor-pointer p-5 rounded-[1.5rem] border transition-all ${!activarAhora ? 'bg-white dark:bg-slate-900 border-blue-500 ring-4 ring-blue-500/10 shadow-sm' : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 opacity-60 hover:opacity-100'}`}>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className={`p-2 rounded-xl ${!activarAhora ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-slate-200 text-slate-500 dark:bg-slate-800'}`}><ArchiveBoxIcon className="w-5 h-5"/></div>
+                                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${!activarAhora ? 'border-blue-500' : 'border-slate-300 dark:border-slate-700'}`}>{!activarAhora && <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"/>}</div>
                                                 </div>
-                                                <div><span className="block text-sm font-black text-slate-900 dark:text-white">Solo Crear Orden</span><span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Guarda datos. Activa después.</span></div>
+                                                <span className="block text-sm font-black text-slate-900 dark:text-white">Solo Orden</span>
+                                                <span className="text-[10px] font-bold text-slate-500">Guardar datos e instalar después.</span>
                                             </div>
-                                            <div onClick={() => setActivarAhora(true)} className={`cursor-pointer p-4 rounded-xl border flex items-start gap-3 transition-all ${activarAhora ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 ring-2 ring-emerald-500/50 shadow-md' : 'bg-transparent border-slate-300 dark:border-slate-800 opacity-60 hover:opacity-100'}`}>
-                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${activarAhora ? 'border-emerald-600 dark:border-emerald-500' : 'border-slate-400 dark:border-slate-500'}`}>
-                                                    {activarAhora && <div className="w-2.5 h-2.5 bg-emerald-600 dark:bg-emerald-500 rounded-full"/>}
+                                            
+                                            <div onClick={() => setActivarAhora(true)} className={`cursor-pointer p-5 rounded-[1.5rem] border transition-all ${activarAhora ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-500 ring-4 ring-emerald-500/10 shadow-sm' : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 opacity-60 hover:opacity-100'}`}>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className={`p-2 rounded-xl ${activarAhora ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-slate-200 text-slate-500 dark:bg-slate-800'}`}><RocketLaunchIcon className="w-5 h-5"/></div>
+                                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${activarAhora ? 'border-emerald-500' : 'border-slate-300 dark:border-slate-700'}`}>{activarAhora && <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"/>}</div>
                                                 </div>
-                                                <div><span className="block text-sm font-black text-slate-900 dark:text-white">Activar AHORA</span><span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Configura Mikrotik ya mismo.</span></div>
+                                                <span className="block text-sm font-black text-slate-900 dark:text-white">Activar Ahora</span>
+                                                <span className="text-[10px] font-bold text-slate-500">Manda IP/PPPoE al Mikrotik ya mismo.</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
-                            {/* PASO 4: RESULTADO */}
+                            {/* PASO 4: RESULTADO EXITOSO TIPO RECIBO */}
                             {step === 4 && createdClient && (
-                                <div className="flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-300 py-6">
-                                    <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ring-1 transition-colors ${createdClient.estado === 'Activo' ? 'bg-emerald-50 dark:bg-emerald-500/10 ring-emerald-200 dark:ring-emerald-500/30' : 'bg-blue-50 dark:bg-blue-500/10 ring-blue-200 dark:ring-blue-500/30'}`}>
-                                        {createdClient.estado === 'Activo' ? <RocketLaunchIcon className="w-12 h-12 text-emerald-600 dark:text-emerald-500"/> : <CheckCircleIcon className="w-12 h-12 text-blue-600 dark:text-blue-500"/>}
+                                <div className="flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-300 py-6 sm:py-10">
+                                    <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl ${createdClient.estado === 'Activo' ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-emerald-500/30' : 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-500/30'}`}>
+                                        {createdClient.estado === 'Activo' ? <RocketLaunchIcon className="w-12 h-12 text-white"/> : <CheckCircleIcon className="w-12 h-12 text-white"/>}
                                     </div>
-                                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mb-2 transition-colors">{createdClient.estado === 'Activo' ? "¡Servicio Activo!" : "¡Orden Creada!"}</h2>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 max-w-sm transition-colors">{createdClient.estado === 'Activo' ? `El cliente ${createdClient.nombre} ya tiene servicio.` : `La orden para ${createdClient.nombre} está lista.`}</p>
+                                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mb-2">{createdClient.estado === 'Activo' ? "¡Cliente en Línea!" : "¡Orden Lista!"}</h2>
+                                    <p className="text-sm text-slate-500 mb-8 max-w-sm">{createdClient.estado === 'Activo' ? `La conexión de ${createdClient.nombre} fue activada exitosamente.` : `La instalación de ${createdClient.nombre} está pendiente.`}</p>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
-                                        <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-3 transition-colors">
-                                            <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-3 mb-1">
-                                                <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg"><QrCodeIcon className="w-6 h-6 text-emerald-600 dark:text-emerald-400"/></div>
-                                                <div className="text-left"><p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Identificador</p><p className="text-slate-900 dark:text-white font-black text-sm">Cédula del Cliente</p></div>
+                                    <div className="w-full max-w-md bg-white dark:bg-[#12141a] rounded-[2rem] border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden text-left">
+                                        <div className="p-6 border-b border-dashed border-slate-200 dark:border-slate-800">
+                                            <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Cédula de Identidad</p>
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-2xl font-black font-mono text-slate-800 dark:text-slate-200 select-all">{createdClient.cedula}</p>
+                                                <button onClick={() => copyToClipboard(createdClient.cedula)} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl hover:text-blue-500"><ClipboardDocumentIcon className="w-5 h-5"/></button>
                                             </div>
-                                            <div className="bg-white dark:bg-slate-900 p-3 rounded-lg flex justify-center items-center"><span className="text-3xl sm:text-4xl text-emerald-600 dark:text-emerald-400 font-mono font-black tracking-widest select-all">{createdClient.cedula}</span></div>
-                                            <p className="text-[10px] text-slate-500 font-bold text-center mt-1 uppercase tracking-widest">Hardware ID: <span className="font-black text-slate-700 dark:text-slate-300">{createdClient.hardware_id}</span></p>
-                                            <button onClick={() => copyToClipboard(createdClient.cedula)} className="w-full mt-auto py-3 bg-emerald-100 dark:bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-xl font-black text-xs transition uppercase tracking-widest">COPIAR ID</button>
                                         </div>
 
-                                        <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-3 transition-colors">
-                                            <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-3 mb-1">
-                                                <div className="p-2 bg-blue-100 dark:bg-blue-600/20 rounded-lg"><KeyIcon className="w-6 h-6 text-blue-600 dark:text-blue-400"/></div>
-                                                <div className="text-left"><p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Acceso PPPoE</p><p className="text-slate-900 dark:text-white font-black text-sm">Credenciales Router</p></div>
+                                        {(createdClient.user_pppoe && createdClient.user_pppoe !== 'N/A') && (
+                                            <div className="p-6 bg-slate-50 dark:bg-slate-900/30 space-y-4">
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-500 flex items-center gap-2"><KeyIcon className="w-4 h-4"/> Credenciales PPPoE</h4>
+                                                <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center group">
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Usuario</p>
+                                                        <p className="font-mono font-black text-sm text-slate-800 dark:text-slate-200 select-all">{createdClient.user_pppoe}</p>
+                                                    </div>
+                                                    <button onClick={() => copyToClipboard(createdClient.user_pppoe!)} className="p-2 text-slate-300 hover:text-blue-500"><ClipboardDocumentIcon className="w-4 h-4"/></button>
+                                                </div>
+                                                <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center group">
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Contraseña</p>
+                                                        <p className="font-mono font-black text-sm text-slate-800 dark:text-slate-200 select-all">{createdClient.pass_pppoe}</p>
+                                                    </div>
+                                                    <button onClick={() => copyToClipboard(createdClient.pass_pppoe!)} className="p-2 text-slate-300 hover:text-blue-500"><ClipboardDocumentIcon className="w-4 h-4"/></button>
+                                                </div>
                                             </div>
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Usuario:</span><span className="text-sm font-mono text-slate-900 dark:text-white select-all font-black">{createdClient.user_pppoe || 'N/A'}</span></div>
-                                                <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Clave:</span><span className="text-sm font-mono text-slate-900 dark:text-white select-all font-black">{createdClient.pass_pppoe || 'N/A'}</span></div>
-                                            </div>
-                                            <button onClick={() => copyToClipboard(`PPPoE\nUser: ${createdClient.user_pppoe}\nPass: ${createdClient.pass_pppoe}`)} className="w-full mt-auto py-3 bg-blue-100 dark:bg-blue-600/10 text-blue-700 dark:text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl font-black text-xs transition uppercase tracking-widest">COPIAR DATOS</button>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* FOOTER */}
-                        <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 flex flex-col-reverse sm:flex-row justify-between items-center gap-3 shrink-0 transition-colors">
-                            {step < 4 ? (
-                                <>
-                                    <button onClick={() => step > 1 ? setStep(s => s - 1) : onClose()} className="w-full sm:w-auto px-6 py-3.5 bg-white dark:bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl font-black text-sm uppercase tracking-widest transition-colors border border-slate-200 dark:border-slate-800">
-                                        {step === 1 ? 'Cancelar' : 'Atrás'}
-                                    </button>
-                                    
-                                    <button 
-                                        onClick={step === 3 ? handleSubmit : () => setStep(s => s + 1)} 
-                                        disabled={loading || (step===1 && !formData.nombre) || (step===2 && !formData.plantilla_id) || (step===3 && (!formData.router_id || !formData.ip_asignada))}
-                                        className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-black shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 uppercase tracking-widest text-sm ${activarAhora && step === 3 ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}
-                                    >
-                                        {loading && <ArrowPathIcon className="w-5 h-5 animate-spin"/>}
-                                        {step === 3 ? (activarAhora ? 'INSTALAR Y ACTIVAR' : 'Siguiente') : 'Siguiente'}
-                                    </button>
-                                </>
-                            ) : (
-                                <button onClick={onClose} className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-xl font-black uppercase tracking-widest text-sm transition-colors border border-slate-200 dark:border-slate-700">
-                                    Cerrar Ventana
+                        {/* ================= BARRA DE NAVEGACIÓN FLOTANTE (BOTTOM BAR) ================= */}
+                        {step < 4 ? (
+                            <div className="absolute bottom-0 left-0 w-full bg-white/80 dark:bg-[#0a0c10]/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50 p-4 sm:px-8 sm:py-5 flex justify-between gap-3 shadow-[0_-20px_40px_rgba(0,0,0,0.05)]">
+                                <button 
+                                    onClick={() => step > 1 ? setStep(s => s - 1) : onClose()} 
+                                    className="flex items-center justify-center gap-2 px-6 py-4 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all"
+                                >
+                                    {step === 1 ? 'Cancelar' : <><ArrowLeftIcon className="w-4 h-4"/> Atrás</>}
                                 </button>
-                            )}
-                        </div>
+                                
+                                <button 
+                                    onClick={step === 3 ? handleSubmit : () => setStep(s => s + 1)} 
+                                    disabled={loading || (step===1 && !formData.nombre) || (step===2 && !formData.plantilla_id) || (step===3 && (!formData.router_id || !formData.ip_asignada))}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-black shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-50 transition-all uppercase tracking-widest text-[11px] text-white ${activarAhora && step === 3 ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20' : 'bg-blue-600 hover:bg-blue-500'}`}
+                                >
+                                    {loading ? <ArrowPathIcon className="w-5 h-5 animate-spin"/> : (step === 3 ? (activarAhora ? 'ACTIVAR AHORA' : 'FINALIZAR ORDEN') : <span className="flex items-center gap-2">Siguiente <ArrowRightIcon className="w-4 h-4"/></span>)}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="absolute bottom-0 left-0 w-full bg-white/80 dark:bg-[#0a0c10]/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50 p-4 sm:p-6">
+                                <button onClick={onClose} className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[11px] active:scale-95 transition-transform">
+                                    Cerrar y Volver a Lista
+                                </button>
+                            </div>
+                        )}
                     </Dialog.Panel>
                 </div>
             </Dialog>
@@ -538,19 +557,10 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
     );
 }
 
-const StepIndicator = ({ num, curr, label }: any) => (
-    <div className={`flex flex-col items-center z-10 relative transition-colors ${curr >= num ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-600'}`}>
-        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-xs sm:text-sm mb-1 sm:mb-2 transition-all duration-300 border-2 ${curr >= num ? 'bg-white dark:bg-slate-900 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 shadow-sm' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}>
-            {curr > num ? <CheckCircleIcon className="w-5 h-5 sm:w-6 sm:h-6"/> : num}
-        </div>
-        <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">{label}</span>
-    </div>
-);
-
 const InfoCard = ({ icon: Icon, label, value, color }: any) => (
-    <div className="p-3 sm:p-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl flex flex-col justify-center items-start gap-1 transition-colors">
-        <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color} mb-1 opacity-80`}/>
-        <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest">{label}</span>
-        <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate w-full transition-colors">{value}</span>
+    <div className="p-3 sm:p-4 bg-slate-50 dark:bg-slate-900 rounded-xl sm:rounded-[1.25rem] flex flex-col justify-center items-start gap-1">
+        <Icon className={`w-5 h-5 ${color} mb-1 opacity-80`}/>
+        <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest">{label}</span>
+        <span className="text-[13px] font-black text-slate-800 dark:text-slate-200 truncate w-full">{value}</span>
     </div>
 );
