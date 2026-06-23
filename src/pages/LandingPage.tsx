@@ -3,10 +3,14 @@ import { Link } from 'react-router-dom';
 import { 
     CloudArrowUpIcon, ServerIcon, CurrencyDollarIcon, 
     MapPinIcon, ChartBarIcon, ShieldCheckIcon, CheckCircleIcon,
-    RocketLaunchIcon
+    RocketLaunchIcon, ChatBubbleOvalLeftEllipsisIcon, LockClosedIcon, 
+    UserGroupIcon, DevicePhoneMobileIcon
 } from '@heroicons/react/24/outline';
 
 export default function LandingPage() {
+    // Número de WhatsApp con código de país (México) y mensaje predefinido
+    const whatsappLink = "https://wa.me/529613632496?text=Hola%20FdezNet,%20me%20interesa%20contratar%20su%20sistema%20para%20mi%20WISP.";
+
     return (
         <div className="min-h-screen bg-[#0a0c10] text-slate-200 font-sans selection:bg-indigo-500/30">
             
@@ -28,9 +32,14 @@ export default function LandingPage() {
 
                     <div className="flex items-center gap-4">
                         <Link to="/login" className="text-sm font-bold text-slate-300 hover:text-white transition-colors hidden sm:block">Iniciar Sesión</Link>
-                        <Link to="/registro" className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-sm font-black tracking-wide shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
+                        <a 
+                            href={whatsappLink} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-sm font-black tracking-wide shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                        >
                             Contratar Ahora
-                        </Link>
+                        </a>
                     </div>
                 </div>
             </nav>
@@ -56,7 +65,7 @@ export default function LandingPage() {
                         </span>
                     </h1>
                     <p className="text-lg sm:text-xl text-slate-400 mb-10 max-w-2xl mx-auto font-medium">
-                        Facturación automatizada, cortes en MikroTik, gestión de ONUs y monitoreo OLT en una plataforma ultra rápida. <strong>Nosotros nos encargamos del servidor (VPS), tú dedícate a crecer.</strong>
+                        Facturación automatizada, App móvil para técnicos, gestión de ONUs y monitoreo OLT en una plataforma ultra rápida. <strong>Nosotros nos encargamos del servidor (VPS), tú dedícate a crecer.</strong>
                     </p>
                     
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -85,20 +94,35 @@ export default function LandingPage() {
             <section id="caracteristicas" className="py-24 px-6 bg-[#0d0f14] border-y border-slate-800/50">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-4xl font-black text-white mb-4">Todo lo que tu WISP necesita</h2>
-                        <p className="text-slate-400 font-medium max-w-2xl mx-auto">Reemplaza el Excel y los sistemas anticuados por una plataforma integral alojada en servidores de alto rendimiento.</p>
+                        <h2 className="text-3xl md:text-4xl font-black text-white mb-4">Todo lo que tu WISP necesita y mucho más</h2>
+                        <p className="text-slate-400 font-medium max-w-2xl mx-auto">Te damos opciones avanzadas por las que otros sistemas cobran extra, incluidas en una sola plataforma integral.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                         <FeatureCard 
                             icon={ServerIcon} color="text-indigo-500" bg="bg-indigo-500/10" border="border-indigo-500/20"
                             title="Sincronización MikroTik" 
                             desc="Cortes automáticos, promesas de pago y control de ancho de banda directo a tus routers."
                         />
                         <FeatureCard 
-                            icon={CurrencyDollarIcon} color="text-emerald-500" bg="bg-emerald-500/10" border="border-emerald-500/20"
+                            icon={ChatBubbleOvalLeftEllipsisIcon} color="text-emerald-500" bg="bg-emerald-500/10" border="border-emerald-500/20"
+                            title="WhatsApp Gratis" 
+                            desc="Envía recordatorios de pago y alertas de corte directo al WhatsApp de tus clientes sin pagar tarifas a APIs de terceros."
+                        />
+                        <FeatureCard 
+                            icon={CurrencyDollarIcon} color="text-green-500" bg="bg-green-500/10" border="border-green-500/20"
                             title="Punto de Venta (POS)" 
-                            desc="Cobra rápido con nuestra interfaz fluida. Genera saldos a favor, tickets y alertas de pago."
+                            desc="Cobra rápido con nuestra interfaz fluida. Genera saldos a favor, tickets y cortes de caja diarios."
+                        />
+                        <FeatureCard 
+                            icon={LockClosedIcon} color="text-amber-500" bg="bg-amber-500/10" border="border-amber-500/20"
+                            title="Conexión WireGuard" 
+                            desc="Conecta tus nodos remotos de forma segura mediante túneles VPN WireGuard nativos integrados."
+                        />
+                        <FeatureCard 
+                            icon={UserGroupIcon} color="text-pink-500" bg="bg-pink-500/10" border="border-pink-500/20"
+                            title="Roles y Permisos" 
+                            desc="Crea cuentas limitadas con apps específicas para tus cobradores, técnicos de campo y administradores."
                         />
                         <FeatureCard 
                             icon={CloudArrowUpIcon} color="text-cyan-500" bg="bg-cyan-500/10" border="border-cyan-500/20"
@@ -111,7 +135,7 @@ export default function LandingPage() {
                             desc="Geolocaliza a tus clientes. Controla puertos libres y ocupados de tus cajas NAP en tiempo real."
                         />
                         <FeatureCard 
-                            icon={ShieldCheckIcon} color="text-amber-500" bg="bg-amber-500/10" border="border-amber-500/20"
+                            icon={ShieldCheckIcon} color="text-purple-500" bg="bg-purple-500/10" border="border-purple-500/20"
                             title="Inventario de Hardware" 
                             desc="Sigue el rastro de cada ONU. Desde que entra a bodega hasta que se instala o reporta falla."
                         />
@@ -121,6 +145,24 @@ export default function LandingPage() {
                             desc="No te preocupes por servidores. Tu licencia incluye alojamiento privado, seguro y administrado por nosotros."
                         />
                     </div>
+
+                    {/* 🔥 BANNER DESTACADO PARA LA PWA 🔥 */}
+                    <div className="bg-gradient-to-br from-indigo-900/40 via-[#12141a] to-blue-900/20 p-8 md:p-10 rounded-[2rem] border border-indigo-500/30 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-700"></div>
+                        <div className="w-20 h-20 rounded-3xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0 z-10 shadow-[0_0_30px_rgba(79,70,229,0.2)]">
+                            <DevicePhoneMobileIcon className="w-10 h-10 text-indigo-400" />
+                        </div>
+                        <div className="text-center md:text-left z-10">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black text-[10px] uppercase tracking-widest mb-3">
+                                <RocketLaunchIcon className="w-3 h-3" /> PWA (Progressive Web App)
+                            </div>
+                            <h3 className="text-2xl sm:text-3xl font-black text-white mb-3">App nativa en tu celular</h3>
+                            <p className="text-slate-400 text-base sm:text-lg max-w-3xl leading-relaxed font-medium">
+                                Tu equipo de trabajo no necesita descargar nada de la AppStore o PlayStore. FdezNet es instalable directamente desde el navegador, adaptándose 100% a pantallas táctiles para que tus <strong className="text-white">cobradores y técnicos en campo</strong> operen con máxima eficiencia.
+                            </p>
+                        </div>
+                    </div>
+
                 </div>
             </section>
 
@@ -147,10 +189,12 @@ export default function LandingPage() {
                             features={[
                                 'Clientes Ilimitados', 
                                 'Routers MikroTik Ilimitados', 
+                                'WhatsApp Ilimitado Gratis',
+                                'App Móvil (PWA) Incluida',
                                 'Alojamiento VPS Dedicado', 
-                                'Mantenimiento y Respaldo',
                                 'Soporte Técnico'
                             ]}
+                            link={whatsappLink}
                         />
                         <PricingCard 
                             name="Semestral" price="3,250" period="6 meses"
@@ -159,10 +203,12 @@ export default function LandingPage() {
                             features={[
                                 'Todas las funciones incluidas',
                                 'Clientes Ilimitados',
+                                'App Móvil (PWA) Incluida',
+                                'WhatsApp Ilimitado Gratis',
                                 'Alojamiento VPS Dedicado',
-                                'Actualizaciones sin costo',
                                 '¡1 mes totalmente gratis!'
                             ]}
+                            link={whatsappLink}
                         />
                         <PricingCard 
                             name="Anual" price="6,500" period="año"
@@ -171,10 +217,12 @@ export default function LandingPage() {
                             features={[
                                 'Todas las funciones incluidas',
                                 'Clientes Ilimitados',
+                                'App Móvil (PWA) Incluida',
+                                'WhatsApp Ilimitado Gratis',
                                 'Alojamiento VPS Dedicado',
-                                'Actualizaciones sin costo',
                                 '¡2 meses totalmente gratis!'
                             ]}
+                            link={whatsappLink}
                         />
                     </div>
                 </div>
@@ -201,7 +249,7 @@ export default function LandingPage() {
                         <h4 className="text-white font-black uppercase tracking-widest text-[10px] mb-4">Soporte</h4>
                         <ul className="space-y-2 text-sm text-slate-400">
                             <li><Link to="/docs" className="hover:text-indigo-400 transition-colors">Documentación</Link></li>
-                            <li><a href="#" className="hover:text-indigo-400 transition-colors">Contacto Ventas</a></li>
+                            <li><a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-400 transition-colors">Contacto Ventas</a></li>
                         </ul>
                     </div>
                 </div>
@@ -223,7 +271,7 @@ const FeatureCard = ({ icon: Icon, color, bg, border, title, desc }: any) => (
     </div>
 );
 
-const PricingCard = ({ name, price, period, clients, features, recommended, badgeText }: any) => (
+const PricingCard = ({ name, price, period, clients, features, recommended, badgeText, link }: any) => (
     <div className={`relative bg-[#12141a] p-8 rounded-[2rem] border transition-transform ${recommended ? 'border-indigo-500 shadow-[0_0_40px_rgba(79,70,229,0.15)] transform md:-translate-y-4' : 'border-slate-800/80'}`}>
         
         {badgeText && (
@@ -248,8 +296,13 @@ const PricingCard = ({ name, price, period, clients, features, recommended, badg
             ))}
         </ul>
 
-        <button className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 ${recommended ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'}`}>
+        <a 
+            href={link} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 flex justify-center ${recommended ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'}`}
+        >
             Contratar Plan
-        </button>
+        </a>
     </div>
 );

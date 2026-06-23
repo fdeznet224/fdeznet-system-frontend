@@ -9,6 +9,7 @@ import { getDesignTokens } from './theme';
 
 // Páginas Principales (Públicas y Admin)
 import LandingPage from './pages/LandingPage'; // 🔥 AQUÍ IMPORTAMOS LA LANDING PAGE
+import DocsPage from './pages/DocsPage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Layout from './components/Layout';
@@ -132,7 +133,7 @@ function App() {
           <Routes>
             {/* 🔥 RUTA RAÍZ - Ahora muestra la Landing Page 🔥 */}
             <Route path="/" element={<LandingPage />} />
-            
+            <Route path="/docs" element={<DocsPage />} /> {/* 🔥 NUEVA RUTA */}
             <Route path="/login" element={<Login />} /> 
             <Route path="/portal/cliente/:cedula" element={<PortalCliente />} />
 
