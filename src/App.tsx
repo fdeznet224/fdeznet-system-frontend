@@ -7,7 +7,8 @@ import 'leaflet/dist/leaflet.css';
 // Configuración de tokens del theme para Material UI
 import { getDesignTokens } from './theme';
 
-// Páginas Principales (Admin)
+// Páginas Principales (Públicas y Admin)
+import LandingPage from './pages/LandingPage'; // 🔥 AQUÍ IMPORTAMOS LA LANDING PAGE
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Layout from './components/Layout';
@@ -71,11 +72,11 @@ function App() {
 
   // Efecto 1: Aplica la clase para Tailwind y guarda en LocalStorage automáticamente
   useEffect(() => {
-    const root = window.document.documentElement; // Tu técnica estricta
+    const root = window.document.documentElement; 
 
     if (currentMode === 'dark') {
       root.classList.add('dark');
-      root.style.colorScheme = 'dark'; // ¡Tu excelente truco de scrollbars!
+      root.style.colorScheme = 'dark'; 
     } else {
       root.classList.remove('dark');
       root.style.colorScheme = 'light';
@@ -85,20 +86,17 @@ function App() {
 
   // Efecto 2: Escuchadores de eventos optimizados (SIN setInterval)
   useEffect(() => {
-    // 1. Escuchar si cambia el tema desde otra pestaña
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'theme') {
         setCurrentMode(e.newValue === 'light' ? 'light' : 'dark');
       }
     };
 
-    // 2. Escuchar el evento personalizado desde Layout (Botón de cambio de tema)
     const handleCustomThemeChange = (e: Event) => {
       const customEvent = e as CustomEvent;
       setCurrentMode(customEvent.detail);
     };
 
-    // 3. (Opcional) Escuchar si el usuario cambia el tema de su celular mientras usa la app
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleSystemChange = (e: MediaQueryListEvent) => {
       setCurrentMode(e.matches ? 'dark' : 'light');
@@ -115,12 +113,10 @@ function App() {
     };
   }, []);
 
-  // Creamos la instancia del objeto theme basada en la paleta de tu archivo theme.ts
   const muiTheme = createTheme(getDesignTokens(currentMode));
 
   return (
     <WhatsAppProvider>
-      {/* Envolvemos toda la topología en el ThemeProvider de Material UI conectado con React */}
       <ThemeProvider theme={muiTheme}>
         <BrowserRouter>
           <Toaster 
@@ -134,8 +130,8 @@ function App() {
           />
           
           <Routes>
-            {/* REDIRECCIÓN */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            {/* 🔥 RUTA RAÍZ - Ahora muestra la Landing Page 🔥 */}
+            <Route path="/" element={<LandingPage />} />
             
             <Route path="/login" element={<Login />} /> 
             <Route path="/portal/cliente/:cedula" element={<PortalCliente />} />
