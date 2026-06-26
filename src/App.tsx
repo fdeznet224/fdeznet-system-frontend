@@ -134,7 +134,7 @@ function App() {
             {/* 🔥 RUTA RAÍZ - Ahora muestra la Landing Page 🔥 */}
             {/*<Route path="/" element={<LandingPage />} />
             <Route path="/docs" element={<DocsPage />} /> */}
-            <Route path="/login" element={<Login />} /> 
+            <Route path="/" element={<Login />} /> 
             <Route path="/portal/cliente/:cedula" element={<PortalCliente />} />
 
             {/* ZONA TÉCNICO */}
