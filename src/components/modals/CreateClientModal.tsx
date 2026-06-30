@@ -50,13 +50,22 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
 
     useEffect(() => {
         if(isOpen) {
-            setStep(1); setActivarAhora(false); 
+            setStep(1); 
+            setActivarAhora(false);
+            setCreatedClient(null);
+
             setFormData({
                 nombre: '', telefono: '', direccion: '', olt_id: '', onu_id: '', zona_id: '',
                 plantilla_id: '', router_id: '', plan_id: '', red_id: '', ip_asignada: '', user_pppoe: '', pass_pppoe: '',
                 caja_nap_id: '', puerto_nap: '', tecnico_id: '', latitud: '', longitud: '' 
             });
-            setSelectedPlantilla(null); setIpsLibres([]); setNaps([]); setPuertosOcupados([]);
+
+            setSelectedPlantilla(null); 
+            setSelectedRouter(null);
+            setIpsLibres([]); 
+            setNaps([]); 
+            setPuertosOcupados([]);
+
             cargarCatalogosIniciales();
         }
     }, [isOpen]);
@@ -85,11 +94,21 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
     const cargarCatalogosIniciales = async () => {
         try {
             const [resZonas, resPlantillas, resUsers, resOlts, resInventario] = await Promise.all([
-                client.get('/zonas/'), client.get('/configuracion/plantillas-facturacion'), client.get('/usuarios/'), client.get('/olts/'), client.get('/inventario/?estado=DISPONIBLE')
+                client.get('/zonas/'), 
+                client.get('/configuracion/plantillas-facturacion'), 
+                client.get('/usuarios/'), 
+                client.get('/olts/'), 
+                client.get('/inventario/?estado=DISPONIBLE')
             ]);
-            setZonas(resZonas.data); setPlantillas(resPlantillas.data); setOlts(resOlts.data); setInventarioDisponible(resInventario.data); 
+
+            setZonas(resZonas.data); 
+            setPlantillas(resPlantillas.data); 
+            setOlts(resOlts.data); 
+            setInventarioDisponible(resInventario.data); 
             setTecnicos(resUsers.data.filter((u: any) => u.rol === 'tecnico'));
-        } catch (error) { toast.error("Error cargando catálogos"); }
+        } catch (error) { 
+            toast.error("Error cargando catálogos"); 
+        }
     };
 
     const handlePlantillaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -106,14 +125,29 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
 
         if (rId) {
             try {
-                const [resRedes, resPlanes] = await Promise.all([ client.get(`/network/redes/router/${rId}`), client.get(`/planes/router/${rId}`) ]);
-                setRedes(resRedes.data); setPlanes(resPlanes.data);
+                const [resRedes, resPlanes] = await Promise.all([ 
+                    client.get(`/network/redes/router/${rId}`), 
+                    client.get(`/planes/router/${rId}`) 
+                ]);
+
+                setRedes(resRedes.data); 
+                setPlanes(resPlanes.data);
+
                 if (routerObj?.tipo_seguridad === 'pppoe') {
-                     try { const resDef = await client.get('/configuracion/pppoe-default'); setFormData(prev => ({ ...prev, pass_pppoe: resDef.data.password || '123456' })); } 
-                     catch (err) { setFormData(prev => ({ ...prev, pass_pppoe: '123456' })); }
+                    try { 
+                        const resDef = await client.get('/configuracion/pppoe-default'); 
+                        setFormData(prev => ({ ...prev, pass_pppoe: resDef.data.password || '123456' })); 
+                    } catch (err) { 
+                        setFormData(prev => ({ ...prev, pass_pppoe: '123456' })); 
+                    }
                 }
-            } catch (error) { toast.error("Error cargando router"); }
-        } else { setRedes([]); setPlanes([]); }
+            } catch (error) { 
+                toast.error("Error cargando router"); 
+            }
+        } else { 
+            setRedes([]); 
+            setPlanes([]); 
+        }
     };
 
     const handleRedChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -128,7 +162,10 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                 setIpsLibres(res.data); 
                 if (res.data.length > 0) setFormData(prev => ({ ...prev, red_id: netId, ip_asignada: res.data[0] }));
                 toast.dismiss(t);
-            } catch (error) { toast.dismiss(t); toast.error("Error obteniendo IPs"); }
+            } catch (error) { 
+                toast.dismiss(t); 
+                toast.error("Error obteniendo IPs"); 
+            }
         }
     };
 
@@ -151,53 +188,82 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
         
         try {
             const onuAsignada = inventarioDisponible.find(o => o.id.toString() === formData.onu_id);
+
             const payload = {
                 ...formData,
-                router_id: Number(formData.router_id), plan_id: Number(formData.plan_id),
-                olt_id: formData.olt_id ? Number(formData.olt_id) : null, onu_id: formData.onu_id ? Number(formData.onu_id) : null,
-                zona_id: formData.zona_id ? Number(formData.zona_id) : null, plantilla_id: formData.plantilla_id ? Number(formData.plantilla_id) : null,
-                red_id: formData.red_id ? Number(formData.red_id) : null, caja_nap_id: formData.caja_nap_id ? Number(formData.caja_nap_id) : null,
-                puerto_nap: formData.puerto_nap ? Number(formData.puerto_nap) : null, tecnico_id: formData.tecnico_id ? Number(formData.tecnico_id) : null,
-                latitud: formData.latitud ? parseFloat(formData.latitud) : null, longitud: formData.longitud ? parseFloat(formData.longitud) : null,
-                nombre: formData.nombre.trim(), user_pppoe: formData.user_pppoe?.trim() || null, pass_pppoe: formData.pass_pppoe?.trim() || null,
+                router_id: Number(formData.router_id), 
+                plan_id: Number(formData.plan_id),
+                olt_id: formData.olt_id ? Number(formData.olt_id) : null, 
+                onu_id: formData.onu_id ? Number(formData.onu_id) : null,
+                zona_id: formData.zona_id ? Number(formData.zona_id) : null, 
+                plantilla_id: formData.plantilla_id ? Number(formData.plantilla_id) : null,
+                red_id: formData.red_id ? Number(formData.red_id) : null, 
+                caja_nap_id: formData.caja_nap_id ? Number(formData.caja_nap_id) : null,
+                puerto_nap: formData.puerto_nap ? Number(formData.puerto_nap) : null, 
+                tecnico_id: formData.tecnico_id ? Number(formData.tecnico_id) : null,
+                latitud: formData.latitud ? parseFloat(formData.latitud) : null, 
+                longitud: formData.longitud ? parseFloat(formData.longitud) : null,
+                nombre: formData.nombre.trim(), 
+                user_pppoe: formData.user_pppoe?.trim() || null, 
+                pass_pppoe: formData.pass_pppoe?.trim() || null,
                 estado: 'pendiente_instalacion'
             };
 
             const res = await client.post('/clientes/', payload);
+
+            let datosCliente = res.data;
+
             if (activarAhora) {
-                await client.post(`/clientes/${res.data.id}/completar-instalacion`, {
-                    cedula: res.data.cedula || res.data.id.toString(), olt_id: payload.olt_id, onu_id: payload.onu_id,
-                    router_id: payload.router_id, plan_id: payload.plan_id, user_pppoe: payload.user_pppoe, 
-                    pass_pppoe: payload.pass_pppoe, caja_nap_id: payload.caja_nap_id, puerto_nap: payload.puerto_nap
+                const resActivacion = await client.post(`/clientes/${res.data.id}/completar-instalacion`, {
+                    cedula: res.data.cedula || res.data.id.toString(), 
+                    olt_id: payload.olt_id, 
+                    onu_id: payload.onu_id,
+                    router_id: payload.router_id, 
+                    plan_id: payload.plan_id, 
+                    user_pppoe: payload.user_pppoe, 
+                    pass_pppoe: payload.pass_pppoe, 
+                    caja_nap_id: payload.caja_nap_id, 
+                    puerto_nap: payload.puerto_nap
                 });
+
+                datosCliente = resActivacion.data?.cliente || resActivacion.data || res.data;
+
                 toast.success("¡Cliente ACTIVADO!", { id: t });
-            } else { toast.success("Orden Generada", { id: t }); }
+            } else { 
+                toast.success("Orden Generada", { id: t }); 
+            }
             
-            // CORRECCIÓN: Toma los datos de la respuesta (res.data) para asegurar que existan.
             setCreatedClient({
-                nombre: res.data.nombre, 
-                cedula: res.data.cedula || res.data.id.toString(), 
+                nombre: datosCliente.nombre || payload.nombre, 
+                cedula: datosCliente.cedula || res.data.cedula || res.data.id.toString(), 
                 hardware_id: onuAsignada ? onuAsignada.identificador : 'SIN ASIGNAR', 
-                id: res.data.id, 
-                user_pppoe: res.data.user_pppoe || formData.user_pppoe, 
-                pass_pppoe: res.data.pass_pppoe || formData.pass_pppoe,
+                id: datosCliente.id || res.data.id, 
+                user_pppoe: datosCliente.user_pppoe || payload.user_pppoe || undefined, 
+                pass_pppoe: datosCliente.pass_pppoe || payload.pass_pppoe || undefined,
                 estado: activarAhora ? 'Activo' : 'Pendiente'
             });
-            setStep(4); onSuccess();
+
+            setStep(4);
 
         } catch (error: any) {
             toast.dismiss(t);
             toast.error(typeof error.response?.data?.detail === 'string' ? error.response.data.detail : "Verifica campos obligatorios");
-        } finally { setLoading(false); }
+        } finally { 
+            setLoading(false); 
+        }
     };
 
-    const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copiado al portapapeles"); };
+    const copyToClipboard = (text: string) => { 
+        navigator.clipboard.writeText(text); 
+        toast.success("Copiado al portapapeles"); 
+    };
 
     const renderPuertoOptions = () => {
         if (!formData.caja_nap_id) return null;
         const caja = naps.find(n => n.id === Number(formData.caja_nap_id));
         const capacidad = caja?.capacidad || 16;
         const options = [];
+
         for (let i = 1; i <= capacidad; i++) {
             const isTaken = puertosOcupados.includes(i);
             options.push(
@@ -206,13 +272,13 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                 </option>
             );
         }
+
         return options;
     };
 
     const oltSeleccionada = olts.find(o => o.id === Number(formData.olt_id));
     const equiposCompatibles = oltSeleccionada ? inventarioDisponible.filter(eq => eq.tecnologia === oltSeleccionada.tecnologia) : inventarioDisponible;
 
-    // Clases adaptativas "App-Like"
     const flatInputClass = "w-full bg-slate-100 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-[13px] sm:text-sm rounded-2xl focus:ring-2 focus:ring-blue-500 block p-4 pl-12 outline-none transition-all duration-200 placeholder:text-slate-400 border border-transparent appearance-none";
     const disabledInputClass = "w-full bg-slate-50 dark:bg-slate-900/30 text-slate-500 dark:text-slate-500 text-[13px] sm:text-sm rounded-2xl block p-4 pl-12 outline-none cursor-not-allowed border border-transparent appearance-none";
     const labelClass = "block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2 pl-1 uppercase tracking-widest";
@@ -230,17 +296,13 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
     return (
         <Transition appear show={isOpen} as={Fragment}>
             <Dialog as="div" className="relative z-50" onClose={() => {}}>
-                {/* Backdrop con Blur Fuerte */}
                 <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-md transition-opacity" />
                 
                 <div className="fixed inset-0 overflow-hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-                    {/* Bottom Sheet en Móvil, Modal en PC */}
                     <Dialog.Panel className="w-full h-[96dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-3xl bg-[#f8fafc] dark:bg-[#0a0c10] rounded-t-[2rem] sm:rounded-3xl shadow-2xl flex flex-col relative overflow-hidden transition-all duration-300">
                         
-                        {/* Indicador de "arrastrar" nativo móvil */}
                         <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700/60 rounded-full mx-auto mt-3 mb-1 sm:hidden shrink-0" />
 
-                        {/* HEADER PEGAJOSO */}
                         {step < 4 && (
                             <div className="px-5 sm:px-8 pt-2 sm:pt-6 pb-4 border-b border-slate-200/50 dark:border-slate-800/50 bg-[#f8fafc] dark:bg-[#0a0c10] z-10 shrink-0">
                                 <div className="flex justify-between items-center mb-4">
@@ -258,10 +320,8 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                             </div>
                         )}
 
-                        {/* BODY SCROLL */}
                         <div className="flex-1 overflow-y-auto p-5 sm:p-8 custom-scrollbar pb-32 sm:pb-32">
                             
-                            {/* PASO 1: GENERAL */}
                             {step === 1 && (
                                 <div className="space-y-5 sm:space-y-6 animate-in slide-in-from-right-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -306,7 +366,6 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                                         </div>
                                     </div>
 
-                                    {/* Módulo de Dirección + GPS */}
                                     <div className="bg-white dark:bg-[#12141a] p-4 sm:p-5 rounded-[1.5rem] border border-slate-200/60 dark:border-slate-800 shadow-sm space-y-4">
                                         <div>
                                             <label className={labelClass}>Dirección Exacta</label>
@@ -327,7 +386,6 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                                 </div>
                             )}
 
-                            {/* PASO 2: COBRO Y STAFF */}
                             {step === 2 && (
                                 <div className="space-y-6 sm:space-y-8 animate-in slide-in-from-right-4">
                                     <div className="bg-white dark:bg-[#12141a] p-4 sm:p-5 rounded-[1.5rem] border border-slate-200/60 dark:border-slate-800 shadow-sm">
@@ -363,10 +421,8 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                                 </div>
                             )}
 
-                            {/* PASO 3: RED Y ACTIVACIÓN */}
                             {step === 3 && (
                                 <div className="space-y-6 animate-in slide-in-from-right-4">
-                                    {/* Módulo MikroTik */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label className={labelClass}>Router / Servidor</label>
@@ -392,7 +448,6 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                                         </div>
                                     </div>
 
-                                    {/* Módulo Lógico IP/PPPoE */}
                                     <div className="bg-white dark:bg-[#12141a] p-4 sm:p-5 rounded-[1.5rem] border border-slate-200/60 dark:border-slate-800 shadow-sm space-y-4">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
@@ -434,7 +489,6 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                                         )}
                                     </div>
 
-                                    {/* Módulo Fibra NAP */}
                                     <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-4 sm:p-5 rounded-[1.5rem] border border-indigo-100 dark:border-indigo-800/30">
                                         <h4 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2 mb-4">
                                             <CubeIcon className="w-4 h-4" /> Asignación FTTH (Opcional)
@@ -457,7 +511,6 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                                         </div>
                                     </div>
 
-                                    {/* SELECCIÓN DE ACCIÓN (Cards nativas) */}
                                     <div className="mt-8">
                                         <label className={labelClass}>Decisión Final</label>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -483,7 +536,6 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                                 </div>
                             )}
 
-                            {/* PASO 4: RESULTADO EXITOSO TIPO RECIBO */}
                             {step === 4 && createdClient && (
                                 <div className="flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-300 py-6 sm:py-10">
                                     <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl ${createdClient.estado === 'Activo' ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-emerald-500/30' : 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-500/30'}`}>
@@ -525,7 +577,6 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                             )}
                         </div>
 
-                        {/* ================= BARRA DE NAVEGACIÓN FLOTANTE (BOTTOM BAR) ================= */}
                         {step < 4 ? (
                             <div className="absolute bottom-0 left-0 w-full bg-white/80 dark:bg-[#0a0c10]/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50 p-4 sm:px-8 sm:py-5 flex justify-between gap-3 shadow-[0_-20px_40px_rgba(0,0,0,0.05)]">
                                 <button 
@@ -545,7 +596,13 @@ export default function CreateClientModal({ isOpen, onClose, onSuccess, routers 
                             </div>
                         ) : (
                             <div className="absolute bottom-0 left-0 w-full bg-white/80 dark:bg-[#0a0c10]/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50 p-4 sm:p-6">
-                                <button onClick={onClose} className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[11px] active:scale-95 transition-transform">
+                                <button 
+                                    onClick={() => {
+                                        onSuccess();
+                                        onClose();
+                                    }} 
+                                    className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[11px] active:scale-95 transition-transform"
+                                >
                                     Cerrar y Volver a Lista
                                 </button>
                             </div>
