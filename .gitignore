@@ -1,1 +1,12 @@
 node_modules/
+# Build
+dist/
+
+# Backups locales
+backups/
+
+# Paquetes temporales
+*.zip
+fix_ip_ppoe_asignada*/
+fix_ip_pppoe_asignada*/
+frontend_CreateClientModal_facturacion_isp_v2_directo*/
