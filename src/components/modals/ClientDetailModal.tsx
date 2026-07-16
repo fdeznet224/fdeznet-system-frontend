@@ -33,6 +33,8 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [addingSaldo, setAddingSaldo] = useState(false);
     const [montoSaldo, setMontoSaldo] = useState('');
     const [facturas, setFacturas] = useState<any[]>([]);
+    const [resumenComercial, setResumenComercial] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<'resumen' | 'facturacion' | 'red' | 'instalacion' | 'facturas'>('resumen'); // FACTURACION_ISP_V2_CLIENT_DETAIL_TABS_FRONTEND // FACTURACION_ISP_V2_CLIENT_DETAIL_FRONTEND
     const [loadingData, setLoadingData] = useState(false);
 
     // CATALOGOS
@@ -61,6 +63,8 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             cargarDatosCompletos(clienteInicial.id);
             setIsEditing(false);
             setAddingSaldo(false);
+            setResumenComercial(null);
+            setActiveTab('resumen');
             setIsSwapOpen(false);
         }
     }, [isOpen, clienteInicial]);
@@ -68,11 +72,13 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const cargarDatosCompletos = async (id: number) => {
         setLoadingData(true);
         try {
-            const [resCliente, resFacturas] = await Promise.all([
+            const [resCliente, resFacturas, resResumen] = await Promise.all([
                 client.get(`/clientes/${id}`),
-                client.get(`/finanzas/listado-completo?cliente_id=${id}`)
+                client.get(`/finanzas/listado-completo?cliente_id=${id}`),
+                client.get(`/clientes/${id}/resumen-comercial`).catch(() => ({ data: null }))
             ]);
             setCliente(resCliente.data);
+            setResumenComercial(resResumen.data || null);
             const itemsFacturas = resFacturas.data?.items || resFacturas.data || [];
             setFacturas(Array.isArray(itemsFacturas) ? itemsFacturas : []);
         } catch (error) {
@@ -269,6 +275,43 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const equiposCompatibles = formData.olt_id ? equiposDisponibles.filter(eq => tecOltActual ? eq.tecnologia?.toUpperCase() === tecOltActual : true) : [];
     const isPPPoE = cliente?.router?.tipo_seguridad === 'pppoe' || formData.router_id !== 0;
 
+    const servicioActual = resumenComercial?.servicio_actual || null;
+    const facturaActual = resumenComercial?.factura_actual || facturas.find((f) => ['pendiente', 'vencida'].includes(f.estado)) || facturas[0] || null;
+    const resumenDeuda = resumenComercial?.resumen_deuda || null;
+
+    const formatDate = (value?: any) => {
+        if (!value) return 'N/A';
+        try {
+            const date = new Date(`${value}`.slice(0, 10) + 'T00:00:00');
+            return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' });
+        } catch {
+            return value;
+        }
+    };
+
+    const formatMoney = (value?: any) => {
+        const numberValue = Number(value || 0);
+        return numberValue.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    };
+
+    const estadoVisual = (estado?: string) => {
+        const normalizado = (estado || 'N/A').toLowerCase();
+        if (normalizado === 'activo' || normalizado === 'pagada') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
+        if (normalizado === 'suspendido' || normalizado === 'vencida') return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300';
+        if (normalizado === 'pendiente') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+        return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+    };
+
+    const tieneFacturaActual = Boolean(facturaActual?.id);
+
+    const detalleTabs = [
+        { id: 'resumen', label: 'Resumen' },
+        { id: 'facturacion', label: 'Facturación' },
+        { id: 'red', label: 'Red' },
+        { id: 'instalacion', label: 'Instalación' },
+        { id: 'facturas', label: 'Facturas' },
+    ] as const;
+
     return (
         <Transition appear show={isOpen} as={Fragment}>
             <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -302,11 +345,21 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         ) : (
                                             <>
                                                 <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight">{cliente?.nombre}</h2>
-                                                <div className="flex items-center gap-2 mt-1">
+                                                <div className="flex flex-wrap items-center gap-2 mt-1">
                                                     {cliente?.estado === 'activo' ? (
                                                         <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-md"><CheckCircleIcon className="w-3.5 h-3.5" /> Activo</span>
                                                     ) : (
                                                         <span className="flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 px-2 py-0.5 rounded-md"><ExclamationCircleIcon className="w-3.5 h-3.5" /> Suspendido</span>
+                                                    )}
+                                                    {Number(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente || 0) > 0 && (
+                                                        <span className="text-[11px] font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-md">
+                                                            Debe {formatMoney(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente)}
+                                                        </span>
+                                                    )}
+                                                    {(resumenDeuda?.proximo_corte || facturaActual?.fecha_limite_corte) && (
+                                                        <span className="text-[11px] font-black text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                                                            Corte {formatDate(resumenDeuda?.proximo_corte || facturaActual?.fecha_limite_corte)}
+                                                        </span>
                                                     )}
                                                 </div>
                                             </>
@@ -339,6 +392,54 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                 </div>
                             )}
 
+
+                            {!loadingData && !isEditing && cliente && (
+                                <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-2 pb-3 bg-slate-100/95 dark:bg-[#07080a]/95 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60">
+                                    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                                        {detalleTabs.map((tab) => (
+                                            <button
+                                                key={tab.id}
+                                                onClick={() => setActiveTab(tab.id)}
+                                                className={classNames(
+                                                    "shrink-0 px-4 py-2.5 rounded-full text-[11px] font-black uppercase transition-all",
+                                                    activeTab === tab.id
+                                                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-lg"
+                                                        : "bg-white dark:bg-[#0f1115] text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800"
+                                                )}
+                                            >
+                                                {tab.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {!loadingData && !isEditing && cliente && activeTab === 'resumen' && (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <SectionCard title="Resumen operativo" icon={CheckCircleIcon}>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <DetailTile label="Estado cliente" value={cliente?.estado || 'N/A'} />
+                                            <DetailTile label="Estado servicio" value={servicioActual?.estado || 'N/A'} />
+                                            <DetailTile label="Plan" value={servicioActual?.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
+                                            <DetailTile label="Router" value={cliente?.router?.nombre || 'N/A'} />
+                                            <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight />
+                                            <DetailTile label="Usuario PPPoE" value={cliente?.user_pppoe || 'N/A'} />
+                                        </div>
+                                    </SectionCard>
+
+                                    <SectionCard title="Cobro y corte" icon={DocumentTextIcon}>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <DetailTile label="Próxima facturación" value={formatDate(servicioActual?.proxima_facturacion)} highlight />
+                                            <DetailTile label="Inicio de cobro" value={formatDate(servicioActual?.fecha_inicio_cobro)} />
+                                            <DetailTile label="Saldo pendiente" value={formatMoney(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente)} danger={Number(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente || 0) > 0} />
+                                            <DetailTile label="Fecha de corte" value={formatDate(resumenDeuda?.proximo_corte || facturaActual?.fecha_limite_corte)} danger={facturaActual?.estado === 'vencida'} />
+                                            <DetailTile label="Periodo actual" value={tieneFacturaActual ? `${formatDate(facturaActual.periodo_desde)} - ${formatDate(facturaActual.periodo_hasta)}` : 'Sin factura actual'} />
+                                            <DetailTile label="Estado factura" value={facturaActual?.estado || 'N/A'} />
+                                        </div>
+                                    </SectionCard>
+                                </div>
+                            )}
+
                             {addingSaldo && !isEditing && (
                                 <div className="p-4 bg-white dark:bg-[#0f1115] rounded-[1.5rem] shadow-sm flex gap-3">
                                     <input type="number" placeholder="Monto a abonar..." className="flex-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500" value={montoSaldo} onChange={e => setMontoSaldo(e.target.value)} />
@@ -346,6 +447,8 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                 </div>
                             )}
 
+                            {(isEditing || activeTab === 'instalacion') && (
+                                <Fragment>
                             {/* SECCIÓN 1: CONTACTO */}
                             <SectionCard title="Contacto y Ubicación" icon={IdentificationIcon}>
                                 {isEditing ? (
@@ -398,6 +501,11 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                 )}
                             </SectionCard>
 
+                                </Fragment>
+                            )}
+
+                            {(isEditing || activeTab === 'red') && (
+                                <Fragment>
                             {/* SECCIÓN 2: RED */}
                             <SectionCard title="Infraestructura y Red" icon={SignalIcon}>
                                 {isEditing ? (
@@ -479,8 +587,82 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                 )}
                             </SectionCard>
 
+
+                                </Fragment>
+                            )}
+
+                            {/* SECCIÓN NUEVA: SERVICIO Y FACTURACIÓN ISP V2 */}
+                            {!isEditing && activeTab === 'facturacion' && (
+                                <SectionCard title="Servicio y Facturación" icon={DocumentTextIcon}>
+                                    {servicioActual ? (
+                                        <div className="space-y-4">
+                                            <div className="flex flex-wrap gap-2">
+                                                <StatusPill label="Cliente" value={cliente?.estado || 'N/A'} className={estadoVisual(cliente?.estado)} />
+                                                <StatusPill label="Servicio" value={servicioActual.estado || 'N/A'} className={estadoVisual(servicioActual.estado)} />
+                                                <StatusPill label="Tipo" value={servicioActual.tipo_facturacion || 'N/A'} className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" />
+                                                <StatusPill label="Ciclo" value={servicioActual.ciclo_facturacion || 'N/A'} className="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300" />
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <DetailTile label="Plan" value={servicioActual.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
+                                                <DetailTile label="Plantilla" value={servicioActual.plantilla_nombre || cliente?.plantilla?.nombre || 'N/A'} />
+                                                <DetailTile label="Instalación" value={formatDate(servicioActual.fecha_instalacion)} />
+                                                <DetailTile label="Activación" value={formatDate(servicioActual.fecha_activacion)} />
+                                                <DetailTile label="Fin periodo gratis" value={formatDate(servicioActual.fecha_fin_periodo_gratis)} />
+                                                <DetailTile label="Inicio de cobro" value={formatDate(servicioActual.fecha_inicio_cobro)} />
+                                                <DetailTile label="Próxima facturación" value={formatDate(servicioActual.proxima_facturacion)} highlight />
+                                                <DetailTile label="Día de pago / corte" value={`Día ${servicioActual.dia_vencimiento || servicioActual.dia_pago || 'N/A'} + ${servicioActual.dias_tolerancia ?? servicioActual.plantilla_dias_tolerancia ?? 0} días`} />
+                                                <DetailTile label="Meses gratis" value={`${servicioActual.meses_gratis ?? 0}`} />
+                                                <DetailTile label="Prorrateo" value={servicioActual.politica_prorrateo || 'N/A'} />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-center font-bold text-slate-400 py-4">Sin servicio comercial asociado.</p>
+                                    )}
+                                </SectionCard>
+                            )}
+
+                            {/* SECCIÓN NUEVA: FACTURA ACTUAL Y CORTE */}
+                            {!isEditing && activeTab === 'facturacion' && (
+                                <SectionCard title="Factura actual y corte" icon={ClipboardDocumentIcon}>
+                                    {tieneFacturaActual ? (
+                                        <div className="space-y-4">
+                                            <div className="flex flex-wrap gap-2">
+                                                <StatusPill label="Factura" value={facturaActual.estado || 'N/A'} className={estadoVisual(facturaActual.estado)} />
+                                                {facturaActual.es_prorrateada ? (
+                                                    <StatusPill label="Tipo" value="Prorrateada" className="bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-300" />
+                                                ) : (
+                                                    <StatusPill label="Tipo" value="Ciclo normal" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" />
+                                                )}
+                                                <StatusPill label="Modalidad" value={facturaActual.tipo_facturacion_snapshot || servicioActual?.tipo_facturacion || 'N/A'} className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" />
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <DetailTile label="Periodo" value={`${formatDate(facturaActual.periodo_desde)} - ${formatDate(facturaActual.periodo_hasta)}`} highlight />
+                                                <DetailTile label="Días facturados" value={`${facturaActual.dias_facturados || 0} de ${facturaActual.dias_periodo || 0}`} />
+                                                <DetailTile label="Total factura" value={formatMoney(facturaActual.total)} />
+                                                <DetailTile label="Saldo pendiente" value={formatMoney(facturaActual.saldo_pendiente)} danger={Number(facturaActual.saldo_pendiente || 0) > 0} />
+                                                <DetailTile label="Vencimiento" value={formatDate(facturaActual.fecha_vencimiento)} />
+                                                <DetailTile label="Fecha de corte" value={formatDate(facturaActual.fecha_limite_corte)} danger={facturaActual.estado === 'vencida'} />
+                                            </div>
+
+                                            {Number(resumenDeuda?.saldo_pendiente_total || 0) > 0 && (
+                                                <div className="rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/20 p-4">
+                                                    <p className="text-[10px] uppercase font-black text-amber-600 dark:text-amber-300">Resumen de deuda</p>
+                                                    <p className="text-sm font-black text-amber-700 dark:text-amber-200">
+                                                        {resumenDeuda.facturas_abiertas || 0} factura(s) abierta(s) · {formatMoney(resumenDeuda.saldo_pendiente_total)}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-center font-bold text-slate-400 py-4">Sin factura actual.</p>
+                                    )}
+                                </SectionCard>
+                            )}
+
                             {/* SECCIÓN 3: FACTURAS */}
-                            {!isEditing && (
+                            {!isEditing && activeTab === 'facturas' && (
                                 <SectionCard title="Últimas Facturas" icon={DocumentTextIcon}>
                                     {facturas.length === 0 ? (
                                         <p className="text-sm text-center font-bold text-slate-400 py-4">Sin facturas generadas.</p>
@@ -572,6 +754,27 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 }
 
 // ================= SUBCOMPONENTES VISUALES =================
+
+
+const DetailTile = ({ label, value, highlight, danger }: any) => (
+    <div className={classNames(
+        "bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border",
+        highlight ? "border-blue-200 dark:border-blue-500/30" : "border-transparent",
+        danger ? "border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-900/10" : ""
+    )}>
+        <p className="text-[10px] uppercase font-black text-slate-400 mb-1">{label}</p>
+        <p className={classNames(
+            "text-sm font-black break-words",
+            danger ? "text-rose-700 dark:text-rose-300" : "text-slate-800 dark:text-slate-200"
+        )}>{value || 'N/A'}</p>
+    </div>
+);
+
+const StatusPill = ({ label, value, className }: any) => (
+    <span className={classNames("inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-black uppercase", className)}>
+        <span className="opacity-70">{label}:</span> {value || 'N/A'}
+    </span>
+);
 
 const StatCard = ({ icon: Icon, title, value, copy, color }: any) => (
     <div className="bg-white dark:bg-[#0f1115] p-4 rounded-[1.5rem] shadow-sm flex flex-col justify-between relative group">
