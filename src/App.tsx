@@ -21,7 +21,6 @@ import Configuracion from './pages/Configuracion';
 import Orders from './pages/admin/Orders'; 
 import MapaClientes from './components/MapaClientes';
 import MensajesCRM from './pages/admin/MensajesCRM';
-import RadarOlt from './pages/monitoreo/RadarOlt';
 import InventarioPanel from './pages/InventarioPanel';
 
 // IMPORTAMOS EL CONTEXTO GLOBAL DE WHATSAPP
@@ -59,6 +58,7 @@ import TechSearch from './pages/technician/TechSearch';
 import TechRegister from './pages/technician/TechRegister'; 
 import TechInstallForm from './pages/technician/TechInstallForm';
 import QrScanner from './pages/tools/QrScanner';
+import OltRadarVsolPage from "./pages/OltRadarVsolPage";
 
 function App() {
   // --- 🔥 CONECTOR INTELIGENTE (LOCALSTORAGE + SISTEMA OPERATIVO) 🔥 ---
@@ -162,7 +162,8 @@ function App() {
                 <Route path="/admin/routers" element={<Routers />} />
                 <Route path="/admin/naps" element={<CajasNap />} />
                 <Route path="/admin/redes" element={<Redes />} />
-                <Route path="/admin/radar" element={<RadarOlt />} />
+                <Route path="/admin/radar" element={<OltRadarVsolPage />} />
+                <Route path="/admin/radar-vsol" element={<OltRadarVsolPage />} />
                 <Route path="/admin/inventario" element={<InventarioPanel />} />
                 
                 {/* Finanzas */}
@@ -186,7 +187,7 @@ function App() {
                 <Route path="/admin/configuracion/sistema" element={<Sistema />} />
                 <Route path="/admin/configuracion/vpn" element={<TunnelsVPN />} />
             </Route>
-          </Routes>
+        </Routes>
         </BrowserRouter>
       </ThemeProvider>
     </WhatsAppProvider>
