@@ -10,6 +10,7 @@ import {
     CheckCircleIcon, ExclamationCircleIcon, SignalIcon, WifiIcon
 } from '@heroicons/react/24/outline';
 import type { Cliente } from '../../types';
+import '../../styles/client-detail-sheet.css';
 
 interface Props {
     isOpen: boolean;
@@ -34,7 +35,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [montoSaldo, setMontoSaldo] = useState('');
     const [facturas, setFacturas] = useState<any[]>([]);
     const [resumenComercial, setResumenComercial] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<'resumen' | 'facturacion' | 'red' | 'instalacion' | 'facturas'>('resumen'); // FACTURACION_ISP_V2_CLIENT_DETAIL_TABS_FRONTEND // FACTURACION_ISP_V2_CLIENT_DETAIL_FRONTEND
+    const [activeTab, setActiveTab] = useState<'resumen' | 'red' | 'facturas' | 'instalacion'>('resumen'); // FACTURACION_ISP_V2_CLIENT_DETAIL_TABS_FRONTEND // FACTURACION_ISP_V2_CLIENT_DETAIL_FRONTEND
     const [loadingData, setLoadingData] = useState(false);
 
     // CATALOGOS
@@ -306,9 +307,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
     const detalleTabs = [
         { id: 'resumen', label: 'Resumen' },
-        { id: 'facturacion', label: 'Facturación' },
         { id: 'red', label: 'Red' },
-        { id: 'instalacion', label: 'Instalación' },
         { id: 'facturas', label: 'Facturas' },
     ] as const;
 
@@ -320,91 +319,84 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                 </Transition.Child>
 
                 <div className="fixed inset-0 flex items-end sm:items-center justify-center p-0 sm:p-4">
-                    <Dialog.Panel className="w-full h-[95dvh] sm:h-[85vh] sm:max-w-4xl bg-slate-100 dark:bg-[#07080a] sm:rounded-[2rem] rounded-t-[2rem] flex flex-col relative overflow-hidden shadow-2xl">
-                        
-                        {/* ================= HEADER PEGADO ================= */}
-                        <div className="bg-white dark:bg-[#0f1115] px-6 py-5 shrink-0 z-10 shadow-sm">
-                            <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto mb-4 sm:hidden" />
-                            <div className="flex justify-between items-start">
-                                <div className="flex gap-4">
+                    <Dialog.Panel className="client-detail-panel w-full h-[92dvh] sm:h-[88vh] sm:max-w-5xl bg-slate-100 dark:bg-[#07080a] sm:rounded-[2rem] rounded-t-[2rem] flex flex-col relative overflow-hidden shadow-2xl">
+                        {/* ================= HEADER BOTTOM SHEET ================= */}
+                        <div className="client-sheet-header">
+                            <div className="client-sheet-handle sm:hidden" />
+
+                            <div className="client-header-row">
+                                <div className="flex gap-4 min-w-0 flex-1">
                                     {loadingData ? (
-                                        <div className="w-14 h-14 bg-slate-200 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                                        <div className="client-avatar bg-slate-200 dark:bg-slate-800 animate-pulse" />
                                     ) : (
-                                        <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl font-black shadow-lg shadow-blue-600/30">
-                                            {cliente?.nombre?.charAt(0).toUpperCase()}
+                                        <div className="client-avatar">
+                                            {cliente?.nombre?.charAt(0).toUpperCase() || 'C'}
                                         </div>
                                     )}
-                                    <div className="flex flex-col justify-center">
+
+                                    <div className="min-w-0 flex-1">
                                         {loadingData ? (
                                             <>
-                                                <div className="h-5 w-40 bg-slate-200 dark:bg-slate-800 rounded mb-2 animate-pulse" />
-                                                <div className="h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                                                <div className="h-6 w-44 bg-slate-200 dark:bg-slate-800 rounded-xl mb-3 animate-pulse" />
+                                                <div className="h-6 w-64 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
                                             </>
                                         ) : isEditing ? (
-                                            <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} className="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 font-black text-lg text-slate-900 dark:text-white rounded-lg outline-none border border-transparent focus:border-blue-500 w-full" />
+                                            <input
+                                                type="text"
+                                                name="nombre"
+                                                value={formData.nombre}
+                                                onChange={handleInputChange}
+                                                className="client-header-name-input"
+                                            />
                                         ) : (
                                             <>
-                                                <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight">{cliente?.nombre}</h2>
-                                                <div className="flex flex-wrap items-center gap-2 mt-1">
-                                                    {cliente?.estado === 'activo' ? (
-                                                        <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-md"><CheckCircleIcon className="w-3.5 h-3.5" /> Activo</span>
-                                                    ) : (
-                                                        <span className="flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 px-2 py-0.5 rounded-md"><ExclamationCircleIcon className="w-3.5 h-3.5" /> Suspendido</span>
-                                                    )}
-                                                    {Number(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente || 0) > 0 && (
-                                                        <span className="text-[11px] font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-md">
-                                                            Debe {formatMoney(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente)}
-                                                        </span>
-                                                    )}
-                                                    {(resumenDeuda?.proximo_corte || facturaActual?.fecha_limite_corte) && (
-                                                        <span className="text-[11px] font-black text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                                                            Corte {formatDate(resumenDeuda?.proximo_corte || facturaActual?.fecha_limite_corte)}
-                                                        </span>
-                                                    )}
+                                                <h2 className="client-header-title">{cliente?.nombre || 'Cliente'}</h2>
+
+                                                <div className="client-tags">
+                                                    <span className={classNames('client-tag', cliente?.estado === 'activo' ? 'client-tag--ok' : 'client-tag--danger')}>
+                                                        Estado <b>{cliente?.estado === 'activo' ? 'Activo' : (cliente?.estado || 'N/A')}</b>
+                                                    </span>
+
+                                                    <span className="client-tag">Cédula <b>{cliente?.cedula || 'N/A'}</b></span>
+
+                                                    <span className="client-tag">
+                                                        Instalación <b>{formatDate(servicioActual?.fecha_inicio_cobro || cliente?.created_at)}</b>
+                                                    </span>
                                                 </div>
                                             </>
                                         )}
                                     </div>
                                 </div>
-                                <button onClick={onClose} className="p-2 text-slate-400 bg-slate-50 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"><XMarkIcon className="w-6 h-6" /></button>
+
+                                <div className="client-header-actions">
+                                    {!loadingData && !isEditing && cliente && (
+                                        <button onClick={toggleEditMode} className="client-edit-button">
+                                            <PencilSquareIcon className="w-4 h-4" />
+                                            <span>Editar</span>
+                                        </button>
+                                    )}
+
+                                    <button onClick={onClose} className="client-close-button">
+                                        <XMarkIcon className="w-6 h-6" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
+
+
                         {/* ================= SCROLL CONTENT ================= */}
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-32 space-y-6 scrollbar-hide">
-                            
-                            {/* ESTADÍSTICAS RÁPIDAS (Grid 2x2) */}
-                            {!loadingData && !isEditing && cliente && (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <StatCard icon={WifiIcon} title="Plan" value={cliente.plan?.nombre || 'N/A'} color="text-indigo-500" />
-                                    <StatCard icon={GlobeAltIcon} title="IP Asignada" value={cliente.ip_asignada || 'DHCP'} copy color="text-blue-500" />
-                                    <StatCard icon={ServerIcon} title="ONU Serial" value={cliente.onu_asignada?.identificador || 'Sin Equipo'} copy color="text-slate-500" />
-                                    <div className="bg-white dark:bg-[#0f1115] p-4 rounded-[1.5rem] shadow-sm flex flex-col justify-between">
-                                        <div className="flex justify-between items-start">
-                                            <span className="text-emerald-500"><DocumentTextIcon className="w-5 h-5" /></span>
-                                            <button onClick={() => setAddingSaldo(!addingSaldo)} className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 p-1 rounded-lg"><PlusIcon className="w-4 h-4" /></button>
-                                        </div>
-                                        <div className="mt-2">
-                                            <p className="text-[10px] uppercase font-bold text-slate-400">Saldo a favor</p>
-                                            <p className="text-sm font-black text-slate-800 dark:text-slate-200">${(cliente.saldo_a_favor || 0).toLocaleString()}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-
-                            {!loadingData && !isEditing && cliente && (
-                                <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-2 pb-3 bg-slate-100/95 dark:bg-[#07080a]/95 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60">
-                                    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                        <div className="client-scroll-body flex-1 overflow-y-auto p-4 sm:p-6 pb-8 space-y-5 scrollbar-hide">
+{!loadingData && !isEditing && cliente && (
+                                <div className="client-tabs-shell">
+                                    <div className="client-tabs-row">
                                         {detalleTabs.map((tab) => (
                                             <button
                                                 key={tab.id}
                                                 onClick={() => setActiveTab(tab.id)}
                                                 className={classNames(
-                                                    "shrink-0 px-4 py-2.5 rounded-full text-[11px] font-black uppercase transition-all",
-                                                    activeTab === tab.id
-                                                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-lg"
-                                                        : "bg-white dark:bg-[#0f1115] text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800"
+                                                    "client-tab-button",
+                                                    activeTab === tab.id && "client-tab-button--active"
                                                 )}
                                             >
                                                 {tab.label}
@@ -415,29 +407,31 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                             )}
 
                             {!loadingData && !isEditing && cliente && activeTab === 'resumen' && (
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                    <SectionCard title="Resumen operativo" icon={CheckCircleIcon}>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <DetailTile label="Estado cliente" value={cliente?.estado || 'N/A'} />
-                                            <DetailTile label="Estado servicio" value={servicioActual?.estado || 'N/A'} />
-                                            <DetailTile label="Plan" value={servicioActual?.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
-                                            <DetailTile label="Router" value={cliente?.router?.nombre || 'N/A'} />
-                                            <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight />
-                                            <DetailTile label="Usuario PPPoE" value={cliente?.user_pppoe || 'N/A'} />
-                                        </div>
-                                    </SectionCard>
+                                <SectionCard title="Resumen del cliente" icon={CheckCircleIcon}>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <DetailTile label="Fecha instalación" value={formatDate(servicioActual?.fecha_inicio_cobro || cliente?.created_at)} highlight />
+                                        <DetailTile label="Cédula" value={cliente?.cedula || 'N/A'} />
+                                        <DetailTile label="Teléfono" value={cliente?.telefono || 'N/A'} />
+                                        <DetailTile label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
+                                        <DetailTile label="Plan" value={servicioActual?.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
+                                        <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight />
+                                        <DetailTile label="ONU serial" value={cliente?.onu_asignada?.identificador || 'Sin equipo'} />
+                                        <DetailTile label="Dirección" value={cliente?.direccion || 'N/A'} />
+                                    </div>
+                                </SectionCard>
+                            )}
 
-                                    <SectionCard title="Cobro y corte" icon={DocumentTextIcon}>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <DetailTile label="Próxima facturación" value={formatDate(servicioActual?.proxima_facturacion)} highlight />
-                                            <DetailTile label="Inicio de cobro" value={formatDate(servicioActual?.fecha_inicio_cobro)} />
-                                            <DetailTile label="Saldo pendiente" value={formatMoney(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente)} danger={Number(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente || 0) > 0} />
-                                            <DetailTile label="Fecha de corte" value={formatDate(resumenDeuda?.proximo_corte || facturaActual?.fecha_limite_corte)} danger={facturaActual?.estado === 'vencida'} />
-                                            <DetailTile label="Periodo actual" value={tieneFacturaActual ? `${formatDate(facturaActual.periodo_desde)} - ${formatDate(facturaActual.periodo_hasta)}` : 'Sin factura actual'} />
-                                            <DetailTile label="Estado factura" value={facturaActual?.estado || 'N/A'} />
-                                        </div>
-                                    </SectionCard>
-                                </div>
+                            {!loadingData && !isEditing && cliente && activeTab === 'facturas' && (
+                                <SectionCard title="Resumen de facturación" icon={DocumentTextIcon}>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <DetailTile label="Saldo pendiente" value={formatMoney(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente)} danger={Number(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente || 0) > 0} />
+                                        <DetailTile label="Saldo a favor" value={formatMoney(cliente?.saldo_a_favor || 0)} />
+                                        <DetailTile label="Estado factura" value={facturaActual?.estado || 'N/A'} danger={facturaActual?.estado === 'vencida'} />
+                                        <DetailTile label="Próxima facturación" value={formatDate(servicioActual?.proxima_facturacion)} highlight />
+                                        <DetailTile label="Fecha de corte" value={formatDate(resumenDeuda?.proximo_corte || facturaActual?.fecha_limite_corte)} danger={facturaActual?.estado === 'vencida'} />
+                                        <DetailTile label="Periodo actual" value={tieneFacturaActual ? `${formatDate(facturaActual?.periodo_desde)} - ${formatDate(facturaActual?.periodo_hasta)}` : 'Sin factura actual'} />
+                                    </div>
+                                </SectionCard>
                             )}
 
                             {addingSaldo && !isEditing && (
@@ -686,29 +680,21 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                             )}
                         </div>
 
-                        {/* ================= BARRA DE ACCIÓN FLOTANTE (PÍLDORA) ================= */}
-                        {!loadingData && (
+                        {/* ================= ACCIONES DE EDICIÓN ================= */}
+                        {!loadingData && isEditing && (
                             <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-auto z-40 flex gap-2">
-                                {isEditing ? (
-                                    <div className="flex w-full gap-2 bg-slate-900/80 dark:bg-white/10 backdrop-blur-xl p-2 rounded-full shadow-2xl">
-                                        <button onClick={toggleEditMode} className="flex-1 sm:w-32 bg-slate-700 dark:bg-slate-800 text-white py-3.5 rounded-full text-[11px] font-bold uppercase">Cancelar</button>
-                                        <button onClick={handleGuardar} className="flex-1 sm:w-40 bg-blue-600 text-white py-3.5 rounded-full text-[11px] font-bold uppercase shadow-lg">Guardar Datos</button>
-                                    </div>
-                                ) : (
-                                    <div className="flex w-full gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl p-2 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.15)] dark:shadow-black/50 border border-slate-100 dark:border-slate-700">
-                                        {cliente?.estado === 'cancelado' && (
-                                            <button onClick={handleReactivarCliente} className="flex-1 sm:w-40 bg-emerald-500 text-white py-3.5 rounded-full text-[11px] font-bold uppercase flex items-center justify-center gap-2">
-                                                <ArrowPathRoundedSquareIcon className="w-4 h-4" /> Reactivar
-                                            </button>
-                                        )}
-                                        <button onClick={toggleEditMode} className="flex-1 sm:w-48 bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-3.5 rounded-full text-[11px] font-black uppercase flex items-center justify-center gap-2">
-                                            <PencilSquareIcon className="w-4 h-4" /> Modificar Cliente
-                                        </button>
-                                    </div>
-                                )}
+                                <div className="flex w-full gap-2 bg-slate-900/80 dark:bg-white/10 backdrop-blur-xl p-2 rounded-full shadow-2xl">
+                                    <button onClick={toggleEditMode} className="flex-1 sm:w-32 bg-slate-700 dark:bg-slate-800 text-white py-3.5 rounded-full text-[11px] font-bold uppercase">
+                                        Cancelar
+                                    </button>
+                                    <button onClick={handleGuardar} className="flex-1 sm:w-40 bg-blue-600 text-white py-3.5 rounded-full text-[11px] font-bold uppercase shadow-lg">
+                                        Guardar Datos
+                                    </button>
+                                </div>
                             </div>
                         )}
-                    </Dialog.Panel>
+
+</Dialog.Panel>
                 </div>
             </Dialog>
 

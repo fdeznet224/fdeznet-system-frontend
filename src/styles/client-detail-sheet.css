@@ -1,0 +1,557 @@
+/* Client Detail Bottom Sheet v1 */
+
+.client-detail-panel {
+  --client-card: #ffffff;
+  --client-soft: #f1f5f9;
+  --client-border: #e2e8f0;
+  --client-text: #0f172a;
+  --client-muted: #64748b;
+  --client-primary: #11132d;
+  --client-primary-text: #ffffff;
+  overscroll-behavior: contain;
+}
+
+.dark .client-detail-panel,
+html.dark .client-detail-panel {
+  --client-card: #0f1115;
+  --client-soft: #07080a;
+  --client-border: #1f2937;
+  --client-text: #f8fafc;
+  --client-muted: #94a3b8;
+  --client-primary: #ffffff;
+  --client-primary-text: #0f172a;
+}
+
+.client-sheet-header {
+  background:
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.12), transparent 36%),
+    var(--client-card);
+  border-bottom: 1px solid var(--client-border);
+  padding: 14px 18px 16px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 20;
+}
+
+.client-sheet-handle {
+  width: 54px;
+  height: 5px;
+  border-radius: 999px;
+  background: #dbe2ec;
+  margin: 0 auto 14px;
+}
+
+.dark .client-sheet-handle,
+html.dark .client-sheet-handle {
+  background: #263244;
+}
+
+.client-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.client-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 950;
+  font-size: 24px;
+  box-shadow: 0 16px 32px rgba(79, 70, 229, 0.28);
+  flex: 0 0 auto;
+}
+
+.client-header-title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.05;
+  font-weight: 950;
+  color: var(--client-text);
+  letter-spacing: -0.025em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.client-header-name-input {
+  width: min(420px, 100%);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--client-soft);
+  color: var(--client-text);
+  padding: 8px 11px;
+  font-weight: 950;
+  font-size: 18px;
+  outline: none;
+}
+
+.client-header-name-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+}
+
+.client-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.client-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 850;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  max-width: 100%;
+}
+
+.dark .client-tag,
+html.dark .client-tag {
+  background: rgba(15, 23, 42, 0.66);
+  color: #cbd5e1;
+  border-color: #1f2937;
+}
+
+.client-tag b {
+  color: var(--client-text);
+  font-weight: 950;
+}
+
+.client-tag--ok {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #bbf7d0;
+}
+
+.client-tag--ok b {
+  color: #065f46;
+}
+
+.client-tag--warn {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.client-tag--warn b {
+  color: #92400e;
+}
+
+.client-tag--danger {
+  background: #fff1f2;
+  color: #be123c;
+  border-color: #fecdd3;
+}
+
+.client-tag--danger b {
+  color: #9f1239;
+}
+
+.dark .client-tag--ok,
+html.dark .client-tag--ok {
+  background: rgba(16, 185, 129, 0.14);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+.dark .client-tag--ok b,
+html.dark .client-tag--ok b {
+  color: #d1fae5;
+}
+
+.dark .client-tag--warn,
+html.dark .client-tag--warn {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+.dark .client-tag--warn b,
+html.dark .client-tag--warn b {
+  color: #fde68a;
+}
+
+.dark .client-tag--danger,
+html.dark .client-tag--danger {
+  background: rgba(244, 63, 94, 0.14);
+  color: #fda4af;
+  border-color: rgba(244, 63, 94, 0.28);
+}
+
+.dark .client-tag--danger b,
+html.dark .client-tag--danger b {
+  color: #fecdd3;
+}
+
+.client-close-button {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  transition: 160ms ease;
+  flex: 0 0 auto;
+}
+
+.client-close-button:hover {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.dark .client-close-button,
+html.dark .client-close-button {
+  background: #111827;
+  color: #94a3b8;
+}
+
+.dark .client-close-button:hover,
+html.dark .client-close-button:hover {
+  background: #1f2937;
+  color: #e5e7eb;
+}
+
+.client-scroll-body {
+  -webkit-overflow-scrolling: touch;
+}
+
+.client-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.client-saldo-card {
+  background: var(--client-card);
+  border: 1px solid var(--client-border);
+  border-radius: 24px;
+  padding: 16px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 118px;
+}
+
+.dark .client-saldo-card,
+html.dark .client-saldo-card {
+  box-shadow: none;
+}
+
+.client-saldo-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.client-saldo-icon {
+  color: #10b981;
+}
+
+.client-saldo-add {
+  background: #d1fae5;
+  color: #059669;
+  border-radius: 12px;
+  padding: 6px;
+  border: 0;
+}
+
+.dark .client-saldo-add,
+html.dark .client-saldo-add {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+}
+
+.client-saldo-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 900;
+  color: var(--client-muted);
+  margin: 12px 0 3px;
+}
+
+.client-saldo-value {
+  font-size: 16px;
+  font-weight: 950;
+  color: var(--client-text);
+}
+
+.client-tabs-shell {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  margin-left: -16px;
+  margin-right: -16px;
+  padding: 8px 16px 10px;
+  background: rgba(241, 245, 249, 0.92);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.75);
+}
+
+.dark .client-tabs-shell,
+html.dark .client-tabs-shell {
+  background: rgba(7, 8, 10, 0.92);
+  border-bottom-color: rgba(31, 41, 55, 0.75);
+}
+
+.client-tabs-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.client-tabs-row::-webkit-scrollbar {
+  display: none;
+}
+
+.client-tab-button {
+  flex: 0 0 auto;
+  padding: 10px 15px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+  border: 1px solid var(--client-border);
+  background: var(--client-card);
+  color: var(--client-muted);
+  transition: 160ms ease;
+}
+
+.client-tab-button--active {
+  background: var(--client-primary);
+  color: var(--client-primary-text);
+  border-color: transparent;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.15);
+}
+
+@media (max-width: 640px) {
+  .client-detail-panel {
+    height: 92dvh !important;
+    max-height: 92dvh;
+    border-radius: 28px 28px 0 0 !important;
+    animation: clientSheetUp 220ms cubic-bezier(.2, .9, .2, 1);
+  }
+
+  .client-sheet-header {
+    padding: 12px 18px 14px;
+  }
+
+  .client-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 18px;
+    font-size: 22px;
+  }
+
+  .client-header-title {
+    font-size: 20px;
+  }
+
+  .client-tags {
+    max-height: 68px;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .client-tag {
+    font-size: 10px;
+    padding: 5px 8px;
+  }
+
+  .client-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .client-saldo-card {
+    min-height: 104px;
+    border-radius: 22px;
+    padding: 14px;
+  }
+
+  .client-tabs-shell {
+    margin-left: -16px;
+    margin-right: -16px;
+  }
+}
+
+@media (min-width: 641px) {
+  .client-detail-panel {
+    animation: clientModalIn 180ms ease-out;
+  }
+}
+
+@keyframes clientSheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes clientModalIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+
+/* ===== Client Detail mobile compact v2 =====
+   En móvil se eliminan las 4 tarjetas rápidas para que las tabs suban.
+   La información principal queda en las etiquetas superiores:
+   Estado, Cédula, Instalación y Pago.
+*/
+@media (max-width: 640px) {
+  .client-quick-grid {
+    display: none !important;
+  }
+
+  .client-scroll-body {
+    padding-top: 10px !important;
+    gap: 12px;
+  }
+
+  .client-tabs-shell {
+    margin-top: 0 !important;
+    padding-top: 4px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .client-tabs-row {
+    gap: 7px;
+  }
+
+  .client-tab-button {
+    padding: 10px 14px;
+    font-size: 10.5px;
+    box-shadow: none;
+  }
+
+  .client-tag {
+    font-size: 10px;
+    padding: 5px 8px;
+  }
+
+  .client-tags {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .client-sheet-header {
+    padding-bottom: 12px;
+  }
+}
+
+/* En tablet/desktop las tarjetas rápidas siguen visibles, pero más compactas */
+@media (min-width: 641px) {
+  .client-quick-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .client-saldo-card {
+    min-height: 104px;
+  }
+}
+
+
+/* ===== Client Detail header summary v3 ===== */
+.client-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.client-edit-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--client-border);
+  border-radius: 999px;
+  background: var(--client-card);
+  color: var(--client-text);
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 900;
+  transition: 160ms ease;
+}
+
+.client-edit-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(124, 58, 237, 0.45);
+}
+
+.client-detail-panel .client-floating-edit,
+.client-detail-panel .client-bottom-edit,
+.client-detail-panel .client-fixed-edit {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .client-tags {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .client-header-actions {
+    gap: 8px;
+  }
+
+  .client-edit-button {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+
+  .client-edit-button span {
+    display: none;
+  }
+
+  .client-tabs-shell {
+    padding-top: 2px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .client-scroll-body {
+    padding-top: 10px !important;
+    padding-bottom: 28px !important;
+  }
+
+  .client-tab-button {
+    padding: 10px 15px;
+  }
+}
+
+
+/* ===== Client Detail action footer v5 ===== */
+@media (max-width: 640px) {
+  .client-scroll-body {
+    padding-bottom: 28px !important;
+  }
+}
+
+
+/* ===== Client Detail edit load data v6 ===== */
+@media (max-width: 640px) {
+  .client-detail-panel [class*="bottom-4"] button {
+    min-height: 44px;
+  }
+}
+
