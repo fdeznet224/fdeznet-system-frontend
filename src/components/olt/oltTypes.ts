@@ -4,10 +4,15 @@ export interface OltConfigItem {
   id: number;
   nombre?: string;
   ip?: string;
+  comunidad?: string;
   tecnologia?: string;
   modelo?: string;
   tipo_integracion?: string;
   api_enabled?: boolean;
+  api_protocol?: string;
+  api_port?: number;
+  api_user?: string;
+  api_verify_ssl?: boolean;
   is_active?: boolean;
 }
 

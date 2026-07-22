@@ -52,14 +52,23 @@ export default function RadarOlt() {
         if (!silencioso) setLoading(true);
         
         try {
-            const res = await client.get(`/olts/${oltSeleccionada}/monitoreo-vivo`);
+            const oltActual = oltsDisponibles.find((o) => Number(o.id) === Number(oltSeleccionada));
+            const tipoIntegracion = String(oltActual?.tipo_integracion || "snmp").toLowerCase();
+            const usarApiVsol = Boolean(oltActual?.api_enabled) || tipoIntegracion === "vsol_api" || tipoIntegracion === "auto";
+
+            const endpoint = usarApiVsol
+                ? `/olts/${oltSeleccionada}/monitoreo-api`
+                : `/olts/${oltSeleccionada}/monitoreo-vivo`;
+
+            const res = await client.get(endpoint);
             const now = new Date();
+            const payload = res.data?.data || res.data?.results || res.data;
             
-            setDatosRadar(res.data.data);
+            setDatosRadar(payload);
             setUltimaActualizacion(now);
             
-            cacheRadar[oltSeleccionada as number] = { data: res.data.data, timestamp: now };
-            if (!silencioso) toast.success("Escaneo óptico completado");
+            cacheRadar[oltSeleccionada as number] = { data: payload, timestamp: now };
+            if (!silencioso) toast.success(usarApiVsol ? "Escaneo VSOL API completado" : "Escaneo SNMP completado");
         } catch (error) {
             if (!silencioso) toast.error("Error de conexión con OLT");
         } finally {
@@ -147,7 +156,11 @@ export default function RadarOlt() {
                                 onChange={(e) => setOltSeleccionada(Number(e.target.value))}
                             >
                                 <option value="" disabled>Seleccionar OLT...</option>
-                                {oltsDisponibles.map(o => <option key={o.id} value={o.id} className="bg-white dark:bg-slate-950 text-slate-900 dark:text-white">{o.nombre}</option>)}
+                                {oltsDisponibles.map(o => (
+                                    <option key={o.id} value={o.id} className="bg-white dark:bg-slate-950 text-slate-900 dark:text-white">
+                                        {o.nombre} · {(o.tipo_integracion || 'snmp').toUpperCase()}
+                                    </option>
+                                ))}
                             </select>
                             <ChevronDownIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"/>
                         </div>
@@ -284,43 +297,325 @@ const getBadgeStyle = (nivel: string) => {
 
 function OltFormModal({ olt, onClose, onSuccess }: any) {
     const [formData, setFormData] = useState({
-        nombre: olt?.nombre || '', ip: olt?.ip || '', comunidad: olt?.comunidad || 'public',
-        tecnologia: olt?.tecnologia || 'GPON', modelo: olt?.modelo || 'V-SOL'
+        nombre: olt?.nombre || '',
+        ip: olt?.ip || '',
+        comunidad: olt?.comunidad || 'public',
+        tecnologia: olt?.tecnologia || 'GPON',
+        modelo: olt?.modelo || 'V-SOL',
+
+        // VSOL API JSON / Web API
+        tipo_integracion: olt?.tipo_integracion || 'snmp',
+        api_enabled: Boolean(olt?.api_enabled || olt?.tipo_integracion === 'vsol_api'),
+        api_protocol: olt?.api_protocol || 'https',
+        api_port: olt?.api_port || ((olt?.api_protocol || 'https') === 'http' ? 80 : 443),
+        api_user: olt?.api_user || '',
+        api_password: '',
+        api_verify_ssl: Boolean(olt?.api_verify_ssl),
     });
+
     const [saving, setSaving] = useState(false);
+    const [testingApi, setTestingApi] = useState(false);
+
+    const inputCls = "w-full bg-slate-50 dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700/50 rounded-xl p-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors shadow-inner";
+    const labelCls = "text-[10px] uppercase font-black text-slate-400 mb-1 block";
+
+    const usaApi = formData.tipo_integracion === 'vsol_api' || formData.tipo_integracion === 'auto' || formData.api_enabled;
+
+    const setField = (field: string, value: any) => {
+        setFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const getErrorMessage = (error: any) => {
+        return error?.response?.data?.detail || error?.response?.data?.mensaje || error?.message || "Error inesperado";
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
+
         try {
-            if (olt) await client.put(`/olts/${olt.id}`, formData);
-            else await client.post('/olts/', formData);
-            toast.success("OLT Guardada");
+            const payload: any = {
+                nombre: formData.nombre.trim(),
+                ip: formData.ip.trim(),
+                comunidad: formData.comunidad?.trim() || 'public',
+                tecnologia: formData.tecnologia,
+                modelo: formData.modelo?.trim() || null,
+
+                tipo_integracion: formData.tipo_integracion,
+                api_enabled: Boolean(formData.api_enabled || formData.tipo_integracion === 'vsol_api'),
+                api_protocol: formData.api_protocol,
+                api_port: Number(formData.api_port) || (formData.api_protocol === 'http' ? 80 : 443),
+                api_user: formData.api_user?.trim() || null,
+                api_verify_ssl: Boolean(formData.api_verify_ssl),
+            };
+
+            // Si trabaja solo por SNMP, apagamos API.
+            if (payload.tipo_integracion === 'snmp') {
+                payload.api_enabled = false;
+            }
+
+            // Seguridad: si editas y dejas password vacío, NO se borra el password guardado.
+            const passwordLimpio = String(formData.api_password || '').trim();
+            if (passwordLimpio) {
+                payload.api_password = passwordLimpio;
+            }
+
+            if (olt) await client.put(`/olts/${olt.id}`, payload);
+            else await client.post('/olts/', payload);
+
+            toast.success("OLT guardada correctamente");
             onSuccess();
-        } catch (error) { toast.error("Error al guardar OLT"); } 
-        finally { setSaving(false); }
+        } catch (error: any) {
+            toast.error(getErrorMessage(error));
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const inputCls = "w-full bg-slate-50 dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700/50 rounded-xl p-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors shadow-inner";
+    const handleTestApi = async () => {
+        if (!olt?.id) {
+            toast.error("Primero guarda la OLT para poder probar la API.");
+            return;
+        }
+
+        setTestingApi(true);
+        try {
+            const res = await client.get(`/olts/${olt.id}/onus-api`);
+            const payload = res.data?.data || res.data?.results || res.data;
+            const total = payload?.total_onus ?? payload?.onus?.length ?? 0;
+            toast.success(`API VSOL conectada correctamente (${total} ONUs detectadas)`);
+        } catch (error: any) {
+            toast.error(getErrorMessage(error));
+        } finally {
+            setTestingApi(false);
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="bg-white dark:bg-[#12131a] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 transition-colors">
+            <div className="bg-white dark:bg-[#12131a] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl animate-in zoom-in-95 transition-colors">
                 <div className="p-4 bg-slate-50 dark:bg-[#16171d] border-b border-slate-200 dark:border-slate-800 flex justify-between items-center transition-colors">
-                    <h3 className="text-slate-800 dark:text-white font-black flex items-center gap-1.5 uppercase text-xs tracking-wider">📡 {olt ? 'Editar Nodo OLT' : 'Registrar OLT'}</h3>
-                    <button onClick={onClose} className="text-slate-500 hover:text-rose-500 transition-colors"><XMarkIcon className="w-5 h-5" /></button>
+                    <div>
+                        <h3 className="text-slate-800 dark:text-white font-black flex items-center gap-1.5 uppercase text-xs tracking-wider">
+                            📡 {olt ? 'Editar Nodo OLT' : 'Registrar OLT'}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1">
+                            SNMP clásico o integración VSOL API JSON.
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="text-slate-500 hover:text-rose-500 transition-colors">
+                        <XMarkIcon className="w-5 h-5" />
+                    </button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-5 space-y-4">
-                    <div><label className="text-[10px] uppercase font-black text-slate-400 mb-1 block">Nombre Identificador</label><input type="text" className={inputCls} value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-[10px] uppercase font-black text-slate-400 mb-1 block">IP Gestión</label><input type="text" className={inputCls} value={formData.ip} onChange={e => setFormData({...formData, ip: e.target.value})} required /></div>
-                        <div><label className="text-[10px] uppercase font-black text-slate-400 mb-1 block">SNMP Community</label><input type="text" className={inputCls} value={formData.comunidad} onChange={e => setFormData({...formData, comunidad: e.target.value})} required /></div>
+
+                <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto max-h-[calc(92vh-78px)] custom-scrollbar">
+                    <div>
+                        <label className={labelCls}>Nombre Identificador</label>
+                        <input
+                            type="text"
+                            className={inputCls}
+                            value={formData.nombre}
+                            onChange={e => setField('nombre', e.target.value)}
+                            placeholder="Ej: OLT Central VSOL"
+                            required
+                        />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-[10px] uppercase font-black text-slate-400 mb-1 block">Tecnología</label><select className={inputCls} value={formData.tecnologia} onChange={e => setFormData({...formData, tecnologia: e.target.value})}><option value="GPON">GPON</option><option value="EPON">EPON</option></select></div>
-                        <div><label className="text-[10px] uppercase font-black text-slate-400 mb-1 block">Marca / Modelo</label><input type="text" className={inputCls} value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value})} /></div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className={labelCls}>IP Gestión</label>
+                            <input
+                                type="text"
+                                className={inputCls}
+                                value={formData.ip}
+                                onChange={e => setField('ip', e.target.value)}
+                                placeholder="Ej: 10.10.1.2"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className={labelCls}>SNMP Community</label>
+                            <input
+                                type="text"
+                                className={inputCls}
+                                value={formData.comunidad}
+                                onChange={e => setField('comunidad', e.target.value)}
+                                placeholder="public"
+                                required
+                            />
+                        </div>
                     </div>
-                    <button type="submit" disabled={saving} className="w-full mt-1 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 uppercase text-xs tracking-widest">
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className={labelCls}>Tecnología</label>
+                            <select
+                                className={inputCls}
+                                value={formData.tecnologia}
+                                onChange={e => setField('tecnologia', e.target.value)}
+                            >
+                                <option value="GPON">GPON</option>
+                                <option value="EPON">EPON</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className={labelCls}>Marca / Modelo</label>
+                            <input
+                                type="text"
+                                className={inputCls}
+                                value={formData.modelo}
+                                onChange={e => setField('modelo', e.target.value)}
+                                placeholder="Ej: V1600GS"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0b0c10] p-4 space-y-4">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <label className={labelCls}>Tipo de integración</label>
+                                <p className="text-[10px] text-slate-400 font-bold">
+                                    SNMP para OLT antigua, VSOL API para lectura nueva por web/API.
+                                </p>
+                            </div>
+
+                            <select
+                                className="bg-white dark:bg-[#12131a] border border-slate-200 dark:border-slate-700 rounded-xl p-2 text-xs font-black text-slate-800 dark:text-white outline-none"
+                                value={formData.tipo_integracion}
+                                onChange={e => {
+                                    const value = e.target.value;
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        tipo_integracion: value,
+                                        api_enabled: value === 'vsol_api' || value === 'auto' ? true : prev.api_enabled,
+                                    }));
+                                }}
+                            >
+                                <option value="snmp">SNMP</option>
+                                <option value="vsol_api">VSOL API</option>
+                                <option value="auto">Auto</option>
+                            </select>
+                        </div>
+
+                        {usaApi && (
+                            <div className="space-y-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs font-black text-slate-700 dark:text-slate-200">API VSOL habilitada</p>
+                                        <p className="text-[10px] text-slate-400 font-bold">Usará /monitoreo-api y /onus-api.</p>
+                                    </div>
+
+                                    <label className="inline-flex items-center gap-2 text-xs font-black text-slate-600 dark:text-slate-300 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.api_enabled}
+                                            onChange={e => setField('api_enabled', e.target.checked)}
+                                            className="w-4 h-4 rounded border-slate-300"
+                                        />
+                                        Activa
+                                    </label>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={labelCls}>Protocolo API</label>
+                                        <select
+                                            className={inputCls}
+                                            value={formData.api_protocol}
+                                            onChange={e => {
+                                                const protocol = e.target.value;
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    api_protocol: protocol,
+                                                    api_port: protocol === 'http' ? 80 : 443,
+                                                }));
+                                            }}
+                                        >
+                                            <option value="https">HTTPS</option>
+                                            <option value="http">HTTP</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className={labelCls}>Puerto API</label>
+                                        <input
+                                            type="number"
+                                            className={inputCls}
+                                            value={formData.api_port}
+                                            onChange={e => setField('api_port', Number(e.target.value))}
+                                            min={1}
+                                            max={65535}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={labelCls}>Usuario API</label>
+                                        <input
+                                            type="text"
+                                            className={inputCls}
+                                            value={formData.api_user}
+                                            onChange={e => setField('api_user', e.target.value)}
+                                            placeholder="Usuario web de la OLT"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className={labelCls}>Password API</label>
+                                        <input
+                                            type="password"
+                                            className={inputCls}
+                                            value={formData.api_password}
+                                            onChange={e => setField('api_password', e.target.value)}
+                                            placeholder={olt ? "Vacío = mantener actual" : "Password API"}
+                                        />
+                                    </div>
+                                </div>
+
+                                <label className="flex items-start gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-bold">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.api_verify_ssl}
+                                        onChange={e => setField('api_verify_ssl', e.target.checked)}
+                                        className="mt-0.5 w-4 h-4 rounded border-slate-300"
+                                    />
+                                    <span>
+                                        Verificar certificado SSL. Déjalo apagado si la OLT usa certificado propio o inválido.
+                                    </span>
+                                </label>
+
+                                <button
+                                    type="button"
+                                    onClick={handleTestApi}
+                                    disabled={!olt?.id || testingApi}
+                                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black rounded-xl transition-all active:scale-95 uppercase text-[10px] tracking-widest"
+                                >
+                                    {testingApi ? 'Probando API...' : 'Probar conexión VSOL API'}
+                                </button>
+
+                                {!olt?.id && (
+                                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">
+                                        Para probar conexión primero guarda la OLT.
+                                    </p>
+                                )}
+
+                                {olt?.id && (
+                                    <p className="text-[10px] text-slate-400 font-bold">
+                                        Al editar, deja el password vacío para conservar el password API actual.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={saving}
+                        className="w-full mt-1 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 uppercase text-xs tracking-widest"
+                    >
                         {saving ? 'Guardando...' : 'Confirmar OLT'}
                     </button>
                 </form>
@@ -328,3 +623,4 @@ function OltFormModal({ olt, onClose, onSuccess }: any) {
         </div>
     );
 }
+
