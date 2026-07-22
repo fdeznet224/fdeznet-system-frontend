@@ -1,4 +1,6 @@
 import { TouchEvent, useCallback, useEffect, useMemo, useState } from "react";
+import client from "../api/axios";
+import { toast } from "react-hot-toast";
 import {
   getClientesForOltSearch,
   getOlts,
@@ -261,6 +263,343 @@ function BottomSheetDetail({
   );
 }
 
+
+type OltFormData = {
+  nombre: string;
+  ip: string;
+  comunidad: string;
+  tecnologia: string;
+  modelo: string;
+  tipo_integracion: string;
+  api_enabled: boolean;
+  api_protocol: string;
+  api_port: number;
+  api_user: string;
+  api_password: string;
+  api_verify_ssl: boolean;
+};
+
+function OltFormModal({
+  olt,
+  onClose,
+  onSuccess,
+}: {
+  olt: OltConfigItem | null;
+  onClose: () => void;
+  onSuccess: () => void | Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [testingApi, setTestingApi] = useState(false);
+
+  const [formData, setFormData] = useState<OltFormData>({
+    nombre: olt?.nombre || "",
+    ip: olt?.ip || "",
+    comunidad: olt?.comunidad || "public",
+    tecnologia: olt?.tecnologia || "GPON",
+    modelo: olt?.modelo || "V-SOL",
+    tipo_integracion: olt?.tipo_integracion || "snmp",
+    api_enabled: Boolean(olt?.api_enabled || olt?.tipo_integracion === "vsol_api"),
+    api_protocol: olt?.api_protocol || "https",
+    api_port: Number(olt?.api_port || ((olt?.api_protocol || "https") === "http" ? 80 : 443)),
+    api_user: olt?.api_user || "",
+    api_password: "",
+    api_verify_ssl: Boolean(olt?.api_verify_ssl),
+  });
+
+  const usaApi =
+    formData.tipo_integracion === "vsol_api" ||
+    formData.tipo_integracion === "auto" ||
+    formData.api_enabled;
+
+  const setField = (field: string, value: string | number | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const getErrorMessage = (error: any) => {
+    return (
+      error?.response?.data?.detail ||
+      error?.response?.data?.mensaje ||
+      error?.message ||
+      "Error inesperado"
+    );
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+
+    try {
+      const payload: any = {
+        nombre: formData.nombre.trim(),
+        ip: formData.ip.trim(),
+        comunidad: formData.comunidad.trim() || "public",
+        tecnologia: formData.tecnologia,
+        modelo: formData.modelo.trim() || null,
+        tipo_integracion: formData.tipo_integracion,
+        api_enabled: Boolean(formData.api_enabled || formData.tipo_integracion === "vsol_api"),
+        api_protocol: formData.api_protocol,
+        api_port: Number(formData.api_port) || (formData.api_protocol === "http" ? 80 : 443),
+        api_user: formData.api_user.trim() || null,
+        api_verify_ssl: Boolean(formData.api_verify_ssl),
+      };
+
+      if (payload.tipo_integracion === "snmp") {
+        payload.api_enabled = false;
+      }
+
+      const passwordLimpio = String(formData.api_password || "").trim();
+
+      // Al editar: si password queda vacío, NO se manda para no borrar el password guardado.
+      if (passwordLimpio) {
+        payload.api_password = passwordLimpio;
+      }
+
+      if (olt?.id) {
+        await client.put(`/olts/${olt.id}`, payload);
+      } else {
+        await client.post("/olts/", payload);
+      }
+
+      toast.success("OLT guardada correctamente");
+      await onSuccess();
+    } catch (error: any) {
+      toast.error(String(getErrorMessage(error)));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTestApi = async () => {
+    if (!olt?.id) {
+      toast.error("Primero guarda la OLT para poder probar la API.");
+      return;
+    }
+
+    setTestingApi(true);
+
+    try {
+      const res = await client.get(`/olts/${olt.id}/onus-api`);
+      const payload = res.data?.data || res.data?.results || res.data;
+      const total = payload?.total_onus ?? payload?.onus?.length ?? 0;
+
+      toast.success(`API VSOL conectada correctamente (${total} ONUs detectadas)`);
+    } catch (error: any) {
+      toast.error(String(getErrorMessage(error)));
+    } finally {
+      setTestingApi(false);
+    }
+  };
+
+  const inputCls =
+    "w-full rounded-xl border border-slate-700/50 bg-[#0b0c10] px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500";
+  const labelCls = "block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1";
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-800 bg-[#12131a] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-800 bg-[#16171d] p-4">
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-wider text-white">
+              📡 {olt?.id ? "Editar OLT" : "Nueva OLT"}
+            </h3>
+            <p className="mt-1 text-xs font-semibold text-slate-400">
+              Configuración SNMP y VSOL API JSON.
+            </p>
+          </div>
+
+          <button className="olt-btn olt-btn--light" type="button" onClick={onClose}>
+            Cerrar
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="max-h-[80vh] space-y-4 overflow-y-auto p-5">
+          <div>
+            <label className={labelCls}>Nombre</label>
+            <input
+              className={inputCls}
+              value={formData.nombre}
+              onChange={(event) => setField("nombre", event.target.value)}
+              placeholder="Ej: Villa de Guadalupe"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className={labelCls}>IP Gestión</label>
+              <input
+                className={inputCls}
+                value={formData.ip}
+                onChange={(event) => setField("ip", event.target.value)}
+                placeholder="Ej: 11.11.11.2"
+                required
+              />
+            </div>
+
+            <div>
+              <label className={labelCls}>SNMP Community</label>
+              <input
+                className={inputCls}
+                value={formData.comunidad}
+                onChange={(event) => setField("comunidad", event.target.value)}
+                placeholder="public"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className={labelCls}>Tecnología</label>
+              <select
+                className={inputCls}
+                value={formData.tecnologia}
+                onChange={(event) => setField("tecnologia", event.target.value)}
+              >
+                <option value="GPON">GPON</option>
+                <option value="EPON">EPON</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={labelCls}>Modelo</label>
+              <input
+                className={inputCls}
+                value={formData.modelo}
+                onChange={(event) => setField("modelo", event.target.value)}
+                placeholder="Ej: V1600GS"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className={labelCls}>Tipo de integración</label>
+                <select
+                  className={inputCls}
+                  value={formData.tipo_integracion}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      tipo_integracion: value,
+                      api_enabled: value === "vsol_api" || value === "auto" ? true : prev.api_enabled,
+                    }));
+                  }}
+                >
+                  <option value="snmp">SNMP</option>
+                  <option value="vsol_api">VSOL API</option>
+                  <option value="auto">Auto</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <label className="flex items-center gap-2 text-xs font-black text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={formData.api_enabled}
+                    onChange={(event) => setField("api_enabled", event.target.checked)}
+                  />
+                  API VSOL habilitada
+                </label>
+              </div>
+            </div>
+
+            {usaApi && (
+              <div className="mt-4 space-y-4 border-t border-violet-500/20 pt-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className={labelCls}>Protocolo API</label>
+                    <select
+                      className={inputCls}
+                      value={formData.api_protocol}
+                      onChange={(event) => {
+                        const protocol = event.target.value;
+                        setFormData((prev) => ({
+                          ...prev,
+                          api_protocol: protocol,
+                          api_port: protocol === "http" ? 80 : 443,
+                        }));
+                      }}
+                    >
+                      <option value="https">HTTPS</option>
+                      <option value="http">HTTP</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className={labelCls}>Puerto API</label>
+                    <input
+                      type="number"
+                      className={inputCls}
+                      value={formData.api_port}
+                      min={1}
+                      max={65535}
+                      onChange={(event) => setField("api_port", Number(event.target.value))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className={labelCls}>Usuario API</label>
+                    <input
+                      className={inputCls}
+                      value={formData.api_user}
+                      onChange={(event) => setField("api_user", event.target.value)}
+                      placeholder="Usuario web OLT"
+                    />
+                  </div>
+
+                  <div>
+                    <label className={labelCls}>Password API</label>
+                    <input
+                      type="password"
+                      className={inputCls}
+                      value={formData.api_password}
+                      onChange={(event) => setField("api_password", event.target.value)}
+                      placeholder={olt?.id ? "Vacío = mantener actual" : "Password API"}
+                    />
+                  </div>
+                </div>
+
+                <label className="flex items-start gap-2 text-xs font-bold text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={formData.api_verify_ssl}
+                    onChange={(event) => setField("api_verify_ssl", event.target.checked)}
+                  />
+                  Verificar SSL. Déjalo apagado si la OLT usa certificado propio o inválido.
+                </label>
+
+                <button
+                  className="olt-btn olt-btn--light w-full"
+                  type="button"
+                  onClick={handleTestApi}
+                  disabled={!olt?.id || testingApi}
+                >
+                  {testingApi ? "Probando API..." : "Probar conexión VSOL API"}
+                </button>
+
+                <p className="text-[11px] font-semibold text-slate-500">
+                  {olt?.id
+                    ? "Al editar, deja el password vacío para conservar el password API actual."
+                    : "Para probar la API primero guarda la OLT."}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <button className="olt-btn w-full" type="submit" disabled={saving}>
+            {saving ? "Guardando..." : "Guardar OLT"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
 function matchesStatus(row: RadarRow, filter: StatusFilter): boolean {
   if (filter === "todos") return true;
   if (filter === "online") return isOnuOnline(row.onu);
@@ -287,13 +626,24 @@ export default function OltRadarVsolPage() {
   const [pon, setPon] = useState("todos");
   const [status, setStatus] = useState<StatusFilter>("todos");
   const [selected, setSelected] = useState<RadarRow | null>(null);
+  const [showOltModal, setShowOltModal] = useState(false);
+  const [editingOlt, setEditingOlt] = useState<OltConfigItem | null>(null);
+  const [deletingOlt, setDeletingOlt] = useState(false);
 
   const loadOlts = useCallback(async () => {
     try {
       const items = await getOlts();
       setOlts(items);
-      const firstApi = items.find((olt) => olt.api_enabled || olt.tipo_integracion === "vsol_api") || items[0];
-      if (firstApi?.id) setOltId(Number(firstApi.id));
+
+      setOltId((current) => {
+        if (items.some((olt) => Number(olt.id) === Number(current))) return current;
+
+        const firstApi =
+          items.find((olt) => olt.api_enabled || olt.tipo_integracion === "vsol_api") ||
+          items[0];
+
+        return firstApi?.id ? Number(firstApi.id) : 1;
+      });
     } catch {
       setOlts([]);
     }
@@ -334,6 +684,63 @@ export default function OltRadarVsolPage() {
     () => olts.find((olt) => Number(olt.id) === Number(oltId)),
     [oltId, olts]
   );
+
+  const handleOpenNewOlt = () => {
+    setEditingOlt(null);
+    setShowOltModal(true);
+  };
+
+  const handleOpenEditOlt = () => {
+    if (!selectedOlt) {
+      toast.error("Selecciona una OLT primero.");
+      return;
+    }
+
+    setEditingOlt(selectedOlt);
+    setShowOltModal(true);
+  };
+
+  const handleOltSaved = async () => {
+    setShowOltModal(false);
+    setEditingOlt(null);
+    await loadOlts();
+    await load();
+  };
+
+  const handleDeleteOlt = async () => {
+    if (!selectedOlt) {
+      toast.error("Selecciona una OLT primero.");
+      return;
+    }
+
+    const ok = window.confirm(
+      `¿Eliminar la OLT "${selectedOlt.nombre || selectedOlt.ip || selectedOlt.id}"?\n\n` +
+      "Si tiene clientes o cajas NAP vinculadas, el backend puede bloquear la eliminación para proteger tus datos."
+    );
+
+    if (!ok) return;
+
+    setDeletingOlt(true);
+
+    try {
+      await client.delete(`/olts/${selectedOlt.id}`);
+      toast.success("OLT eliminada correctamente");
+
+      setMonitoreo(null);
+      setSelected(null);
+      await loadOlts();
+    } catch (error: any) {
+      const detail =
+        error?.response?.data?.detail ||
+        error?.response?.data?.mensaje ||
+        error?.message ||
+        "Error al eliminar OLT";
+
+      toast.error(String(detail));
+    } finally {
+      setDeletingOlt(false);
+    }
+  };
 
   const clientById = useMemo(() => {
     const map = new Map<number, OltClientSearchItem>();
@@ -435,6 +842,18 @@ export default function OltRadarVsolPage() {
 
           <button className="olt-btn" type="button" onClick={load} disabled={loading}>
             {loading ? "Actualizando..." : "⟳ Actualizar"}
+          </button>
+
+          <button className="olt-btn olt-btn--light" type="button" onClick={handleOpenNewOlt}>
+            + Nueva OLT
+          </button>
+
+          <button className="olt-btn olt-btn--light" type="button" onClick={handleOpenEditOlt} disabled={!selectedOlt}>
+            Editar OLT
+          </button>
+
+          <button className="olt-btn olt-btn--light" type="button" onClick={handleDeleteOlt} disabled={!selectedOlt || deletingOlt}>
+            {deletingOlt ? "Eliminando..." : "Eliminar OLT"}
           </button>
         </div>
 
@@ -618,6 +1037,17 @@ export default function OltRadarVsolPage() {
           </div>
         </div>
       </section>
+
+      {showOltModal && (
+        <OltFormModal
+          olt={editingOlt}
+          onClose={() => {
+            setShowOltModal(false);
+            setEditingOlt(null);
+          }}
+          onSuccess={handleOltSaved}
+        />
+      )}
 
       {selected && (
         <BottomSheetDetail
