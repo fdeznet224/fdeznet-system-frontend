@@ -192,6 +192,56 @@ export async function getOltMonitoreoApi(oltId: number): Promise<OltMonitoreoApi
   return apiGet<OltMonitoreoApi>(`olts/${oltId}/monitoreo-api`);
 }
 
+export async function getOltMonitoreoSnmp(oltId: number): Promise<OltMonitoreoApi> {
+  const raw = await apiGet<any>(`olts/${oltId}/monitoreo-vivo`);
+  const payload = raw?.data || raw?.results || raw || {};
+
+  const clientesActivos = Array.isArray(payload.clientes_activos) ? payload.clientes_activos : [];
+  const clientesCaidos = Array.isArray(payload.clientes_caidos) ? payload.clientes_caidos : [];
+  const onusDesconocidas = Array.isArray(payload.onus_desconocidas) ? payload.onus_desconocidas : [];
+
+  const activosNormalizados = clientesActivos.map((item: any) => ({
+    ...item,
+    identificador: item.identificador || item.serial || item.sn || "",
+    serial: item.serial || item.identificador || item.sn || "",
+    onu_id: item.onu_id || item.pon_onu || item.pon || item.puerto || "N/A",
+    estado_fisico: item.estado_fisico || item.status || "online",
+    status: item.status || item.estado_fisico || "online",
+  }));
+
+  const caidosNormalizados = clientesCaidos.map((item: any) => ({
+    ...item,
+    identificador: item.identificador || item.serial || item.sn || "",
+    serial: item.serial || item.identificador || item.sn || "",
+    onu_id: item.onu_id || item.pon_onu || item.pon || item.puerto || "N/A",
+    rx_power: item.rx_power || "LOS",
+    estado_fisico: item.estado_fisico || item.status || "offline",
+    status: item.status || item.estado_fisico || "offline",
+  }));
+
+  const desconocidasNormalizadas = onusDesconocidas.map((item: any) => ({
+    ...item,
+    identificador: item.identificador || item.serial || item.sn || "",
+    serial: item.serial || item.identificador || item.sn || "",
+    onu_id: item.onu_id || item.pon_onu || item.pon || item.puerto || "N/A",
+    estado_fisico: item.estado_fisico || item.status || "online",
+    status: item.status || item.estado_fisico || "online",
+  }));
+
+  return {
+    ...payload,
+    origen: "snmp",
+    clientes_activos: clientesActivos,
+    clientes_caidos: clientesCaidos,
+    onus_desconocidas: onusDesconocidas,
+    onus_api: [
+      ...activosNormalizados,
+      ...caidosNormalizados,
+      ...desconocidasNormalizadas,
+    ],
+  };
+}
+
 export async function getOltOnusApi(oltId: number): Promise<OltOnusResponse> {
   return apiGet<OltOnusResponse>(`olts/${oltId}/onus-api`);
 }

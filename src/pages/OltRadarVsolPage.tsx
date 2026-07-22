@@ -5,6 +5,7 @@ import {
   getClientesForOltSearch,
   getOlts,
   getOltMonitoreoApi,
+  getOltMonitoreoSnmp,
 } from "../services/oltApi";
 import {
   getPonFromOnuId,
@@ -652,12 +653,23 @@ export default function OltRadarVsolPage() {
   const load = useCallback(async () => {
     if (!oltId) return;
 
+    const oltActual = olts.find((olt) => Number(olt.id) === Number(oltId));
+
+    // Si ya cargamos catálogo de OLTs y no existe la seleccionada, no consultamos.
+    if (olts.length > 0 && !oltActual) return;
+
+    const tipoIntegracion = String(oltActual?.tipo_integracion || "vsol_api").toLowerCase();
+    const usarApiVsol =
+      Boolean(oltActual?.api_enabled) ||
+      tipoIntegracion === "vsol_api" ||
+      tipoIntegracion === "auto";
+
     setLoading(true);
     setError(null);
 
     try {
       const [monitorData, clientData] = await Promise.all([
-        getOltMonitoreoApi(oltId),
+        usarApiVsol ? getOltMonitoreoApi(oltId) : getOltMonitoreoSnmp(oltId),
         getClientesForOltSearch(),
       ]);
 
@@ -668,7 +680,7 @@ export default function OltRadarVsolPage() {
     } finally {
       setLoading(false);
     }
-  }, [oltId]);
+  }, [oltId, olts]);
 
   useEffect(() => { loadOlts(); }, [loadOlts]);
   useEffect(() => { load(); }, [load]);
