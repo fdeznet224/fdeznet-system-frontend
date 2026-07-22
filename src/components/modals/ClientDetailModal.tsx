@@ -37,6 +37,14 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [resumenComercial, setResumenComercial] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<'resumen' | 'red' | 'facturas' | 'instalacion'>('resumen'); // FACTURACION_ISP_V2_CLIENT_DETAIL_TABS_FRONTEND // FACTURACION_ISP_V2_CLIENT_DETAIL_FRONTEND
     const [loadingData, setLoadingData] = useState(false);
+    const [isManualInvoiceOpen, setIsManualInvoiceOpen] = useState(false);
+    const [manualInvoiceData, setManualInvoiceData] = useState({
+        concepto: '',
+        monto: '',
+        descripcion: '',
+        fecha_vencimiento: new Date().toISOString().slice(0, 10),
+        afecta_corte: false,
+    });
 
     // CATALOGOS
     const [routers, setRouters] = useState<any[]>([]);
@@ -67,6 +75,14 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             setResumenComercial(null);
             setActiveTab('resumen');
             setIsSwapOpen(false);
+            setIsManualInvoiceOpen(false);
+            setManualInvoiceData({
+                concepto: '',
+                monto: '',
+                descripcion: '',
+                fecha_vencimiento: new Date().toISOString().slice(0, 10),
+                afecta_corte: false,
+            });
         }
     }, [isOpen, clienteInicial]);
 
@@ -272,6 +288,73 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         }
     };
 
+    const copiarTexto = async (valor?: any) => {
+        if (!valor || valor === 'N/A') return;
+        try {
+            await navigator.clipboard.writeText(String(valor));
+            toast.success("Copiado");
+        } catch {
+            toast.error("No se pudo copiar");
+        }
+    };
+
+    const getFacturaTitulo = (f: any) => {
+        return f?.concepto || f?.detalles || f?.mes_correspondiente || `Factura #${f?.id || ''}`;
+    };
+
+    const handleManualInvoiceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target;
+        const checked = (e.target as HTMLInputElement).checked;
+
+        setManualInvoiceData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value,
+        }));
+    };
+
+    const handleCrearFacturaManual = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!cliente) return;
+
+        const monto = Number(manualInvoiceData.monto || 0);
+        if (!manualInvoiceData.concepto.trim()) {
+            toast.error("El concepto es obligatorio");
+            return;
+        }
+
+        if (monto <= 0) {
+            toast.error("El monto debe ser mayor a cero");
+            return;
+        }
+
+        const load = toast.loading("Creando factura manual...");
+        try {
+            await client.post('/finanzas/factura-manual', {
+                cliente_id: cliente.id,
+                concepto: manualInvoiceData.concepto.trim(),
+                monto,
+                descripcion: manualInvoiceData.descripcion?.trim() || null,
+                fecha_vencimiento: manualInvoiceData.fecha_vencimiento || new Date().toISOString().slice(0, 10),
+                afecta_corte: manualInvoiceData.afecta_corte,
+            });
+
+            toast.success("Factura manual creada", { id: load });
+            setIsManualInvoiceOpen(false);
+            setManualInvoiceData({
+                concepto: '',
+                monto: '',
+                descripcion: '',
+                fecha_vencimiento: new Date().toISOString().slice(0, 10),
+                afecta_corte: false,
+            });
+
+            await cargarDatosCompletos(cliente.id);
+            if (onEditSuccess) onEditSuccess();
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail || "Error creando factura manual", { id: load });
+        }
+    };
+
     const tecOltActual = olts.find(o => o.id === formData.olt_id)?.tecnologia?.toUpperCase() || null;
     const equiposCompatibles = formData.olt_id ? equiposDisponibles.filter(eq => tecOltActual ? eq.tecnologia?.toUpperCase() === tecOltActual : true) : [];
     const isPPPoE = cliente?.router?.tipo_seguridad === 'pppoe' || formData.router_id !== 0;
@@ -350,7 +433,19 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             />
                                         ) : (
                                             <>
-                                                <h2 className="client-header-title">{cliente?.nombre || 'Cliente'}</h2>
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <h2 className="client-header-title truncate">{cliente?.nombre || 'Cliente'}</h2>
+                                                    {cliente?.nombre && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => copiarTexto(cliente.nombre)}
+                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                                            title="Copiar nombre"
+                                                        >
+                                                            <ClipboardDocumentIcon className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
 
                                                 <div className="client-tags">
                                                     <span className={classNames('client-tag', cliente?.estado === 'activo' ? 'client-tag--ok' : 'client-tag--danger')}>
@@ -410,12 +505,12 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                 <SectionCard title="Resumen del cliente" icon={CheckCircleIcon}>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <DetailTile label="Fecha instalación" value={formatDate(servicioActual?.fecha_inicio_cobro || cliente?.created_at)} highlight />
-                                        <DetailTile label="Cédula" value={cliente?.cedula || 'N/A'} />
-                                        <DetailTile label="Teléfono" value={cliente?.telefono || 'N/A'} />
+                                        <DetailTile label="Cédula" value={cliente?.cedula || 'N/A'} copy />
+                                        <DetailTile label="Teléfono" value={cliente?.telefono || 'N/A'} copy />
                                         <DetailTile label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
                                         <DetailTile label="Plan" value={servicioActual?.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
-                                        <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight />
-                                        <DetailTile label="ONU serial" value={cliente?.onu_asignada?.identificador || 'Sin equipo'} />
+                                        <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight copy />
+                                        <DetailTile label="ONU serial" value={cliente?.onu_asignada?.identificador || 'Sin equipo'} copy />
                                         <DetailTile label="Dirección" value={cliente?.direccion || 'N/A'} />
                                     </div>
                                 </SectionCard>
@@ -569,12 +664,9 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{cliente?.router?.nombre || 'N/A'}</p>
                                         </div>
                                         {isPPPoE && (
-                                            <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl flex justify-between items-center">
-                                                <div>
-                                                    <p className="text-[10px] font-bold text-slate-400 mb-1">Perfil PPPoE</p>
-                                                    <p className="text-sm font-mono font-bold text-slate-800 dark:text-slate-200">{cliente?.user_pppoe || 'N/A'}</p>
-                                                </div>
-                                                {cliente?.user_pppoe && <button onClick={() => { navigator.clipboard.writeText(cliente.user_pppoe); toast.success("Copiado"); }} className="p-2 text-slate-400"><ClipboardDocumentIcon className="w-5 h-5" /></button>}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <DetailTile label="Usuario PPPoE" value={cliente?.user_pppoe || 'N/A'} copy />
+                                                <DetailTile label="Contraseña PPPoE" value={cliente?.pass_pppoe || 'N/A'} copy />
                                             </div>
                                         )}
                                     </div>
@@ -586,7 +678,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                             )}
 
                             {/* SECCIÓN NUEVA: SERVICIO Y FACTURACIÓN ISP V2 */}
-                            {!isEditing && activeTab === 'facturacion' && (
+                            {!isEditing && activeTab === 'facturas' && (
                                 <SectionCard title="Servicio y Facturación" icon={DocumentTextIcon}>
                                     {servicioActual ? (
                                         <div className="space-y-4">
@@ -617,18 +709,21 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                             )}
 
                             {/* SECCIÓN NUEVA: FACTURA ACTUAL Y CORTE */}
-                            {!isEditing && activeTab === 'facturacion' && (
+                            {!isEditing && activeTab === 'facturas' && (
                                 <SectionCard title="Factura actual y corte" icon={ClipboardDocumentIcon}>
                                     {tieneFacturaActual ? (
                                         <div className="space-y-4">
                                             <div className="flex flex-wrap gap-2">
                                                 <StatusPill label="Factura" value={facturaActual.estado || 'N/A'} className={estadoVisual(facturaActual.estado)} />
-                                                {facturaActual.es_prorrateada ? (
-                                                    <StatusPill label="Tipo" value="Prorrateada" className="bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-300" />
-                                                ) : (
-                                                    <StatusPill label="Tipo" value="Ciclo normal" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" />
-                                                )}
+                                                <StatusPill
+                                                    label="Tipo"
+                                                    value={facturaActual.tipo_factura === 'manual' ? 'Cargo manual' : facturaActual.es_prorrateada ? 'Prorrateo' : 'Ciclo normal'}
+                                                    className={facturaActual.tipo_factura === 'manual' ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300' : facturaActual.es_prorrateada ? 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}
+                                                />
                                                 <StatusPill label="Modalidad" value={facturaActual.tipo_facturacion_snapshot || servicioActual?.tipo_facturacion || 'N/A'} className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" />
+                                                {facturaActual.es_promesa_activa && (
+                                                    <StatusPill label="Promesa" value={`Hasta ${formatDate(facturaActual.fecha_promesa_pago)}`} className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" />
+                                                )}
                                             </div>
 
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -658,19 +753,59 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                             {/* SECCIÓN 3: FACTURAS */}
                             {!isEditing && activeTab === 'facturas' && (
                                 <SectionCard title="Últimas Facturas" icon={DocumentTextIcon}>
+                                    <div className="flex justify-end mb-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsManualInvoiceOpen(true)}
+                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-wider shadow-sm active:scale-95 transition"
+                                        >
+                                            <PlusIcon className="w-4 h-4" />
+                                            Cargo manual
+                                        </button>
+                                    </div>
+
                                     {facturas.length === 0 ? (
                                         <p className="text-sm text-center font-bold text-slate-400 py-4">Sin facturas generadas.</p>
                                     ) : (
                                         <div className="space-y-3">
-                                            {facturas.slice(0,5).map((f) => (
-                                                <div key={f.id} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/30 rounded-2xl">
-                                                    <div>
-                                                        <p className="text-[13px] font-bold text-slate-800 dark:text-slate-200">{f.detalles || `Mes ${f.mes_correspondiente}`}</p>
-                                                        <p className="text-[11px] text-slate-400">{new Date(f.fecha_emision).toLocaleDateString()}</p>
+                                            {facturas.slice(0, 8).map((f) => (
+                                                <div key={f.id} className="flex justify-between items-start gap-3 p-4 bg-slate-50 dark:bg-slate-900/30 rounded-2xl border border-slate-100 dark:border-slate-800/60">
+                                                    <div className="min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                            <p className="text-[13px] font-black text-slate-800 dark:text-slate-200 break-words">{getFacturaTitulo(f)}</p>
+                                                            {f.tipo_factura === 'manual' && (
+                                                                <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-md bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
+                                                                    Cargo manual
+                                                                </span>
+                                                            )}
+                                                            {f.es_promesa_activa && (
+                                                                <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-md bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                                                    Promesa hasta {formatDate(f.fecha_promesa_pago)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[11px] text-slate-400">
+                                                            Emitida: {formatDate(f.fecha_emision)} · Vence: {formatDate(f.fecha_vencimiento)}
+                                                        </p>
+                                                        {f.tipo_factura === 'manual' && (
+                                                            <p className="text-[10px] text-slate-400 mt-1">
+                                                                {f.afecta_corte ? 'Afecta corte del servicio' : 'No afecta corte del servicio'}
+                                                            </p>
+                                                        )}
                                                     </div>
-                                                    <div className="text-right">
-                                                        <p className="text-sm font-black">${f.total.toLocaleString()}</p>
-                                                        <span className={classNames("text-[9px] font-black uppercase px-2 py-1 rounded-md mt-1 inline-block", f.estado === 'pagada' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400')}>{f.estado}</span>
+                                                    <div className="text-right shrink-0">
+                                                        <p className="text-sm font-black">{formatMoney(f.total)}</p>
+                                                        <p className={classNames("text-[11px] font-black", Number(f.saldo_pendiente || 0) > 0 ? "text-rose-600 dark:text-rose-300" : "text-emerald-600 dark:text-emerald-300")}>
+                                                            Pendiente: {formatMoney(f.saldo_pendiente)}
+                                                        </p>
+                                                        <span className={classNames(
+                                                            "text-[9px] font-black uppercase px-2 py-1 rounded-md mt-1 inline-block",
+                                                            f.estado === 'pagada'
+                                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                                                : f.estado === 'vencida'
+                                                                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                                                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                                        )}>{f.estado}</span>
                                                     </div>
                                                 </div>
                                             ))}
@@ -697,6 +832,115 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 </Dialog.Panel>
                 </div>
             </Dialog>
+
+            {/* MODAL FACTURA MANUAL */}
+            <Transition appear show={isManualInvoiceOpen} as={Fragment}>
+                <Dialog as="div" className="relative z-[100]" onClose={() => setIsManualInvoiceOpen(false)}>
+                    <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm" />
+                    <div className="fixed inset-0 flex items-center justify-center p-4">
+                        <Dialog.Panel className="w-full max-w-md bg-white dark:bg-[#0f1115] rounded-[2rem] p-6 shadow-2xl">
+                            <div className="flex items-start justify-between gap-3 mb-5">
+                                <div>
+                                    <h3 className="font-black text-lg text-slate-800 dark:text-white">Crear cargo manual</h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-1">
+                                        Se sumará a la deuda del cliente. Por defecto no afecta corte.
+                                    </p>
+                                </div>
+                                <button type="button" onClick={() => setIsManualInvoiceOpen(false)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                                    <XMarkIcon className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleCrearFacturaManual} className="space-y-4">
+                                <div>
+                                    <label className={labelClass}>Concepto</label>
+                                    <select
+                                        name="concepto"
+                                        value={manualInvoiceData.concepto}
+                                        onChange={handleManualInvoiceChange}
+                                        className={flatInputClass}
+                                        required
+                                    >
+                                        <option value="">Seleccionar concepto...</option>
+                                        <option value="Cambio de contraseña">Cambio de contraseña</option>
+                                        <option value="Cambio de equipo">Cambio de equipo</option>
+                                        <option value="Cable para extensor WiFi">Cable para extensor WiFi</option>
+                                        <option value="Reubicación de equipo">Reubicación de equipo</option>
+                                        <option value="Instalación adicional">Instalación adicional</option>
+                                        <option value="Soporte técnico adicional">Soporte técnico adicional</option>
+                                        <option value="Otro cargo">Otro cargo</option>
+                                    </select>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className={labelClass}>Monto</label>
+                                        <input
+                                            name="monto"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={manualInvoiceData.monto}
+                                            onChange={handleManualInvoiceChange}
+                                            className={flatInputClass}
+                                            placeholder="0.00"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Vencimiento</label>
+                                        <input
+                                            name="fecha_vencimiento"
+                                            type="date"
+                                            value={manualInvoiceData.fecha_vencimiento}
+                                            onChange={handleManualInvoiceChange}
+                                            className={flatInputClass}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className={labelClass}>Descripción opcional</label>
+                                    <textarea
+                                        name="descripcion"
+                                        value={manualInvoiceData.descripcion}
+                                        onChange={handleManualInvoiceChange}
+                                        rows={3}
+                                        className={`${flatInputClass} resize-none`}
+                                        placeholder="Detalle del cargo..."
+                                    />
+                                </div>
+
+                                <label className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-500/20 cursor-pointer">
+                                    <input
+                                        name="afecta_corte"
+                                        type="checkbox"
+                                        checked={manualInvoiceData.afecta_corte}
+                                        onChange={handleManualInvoiceChange}
+                                        className="mt-1"
+                                    />
+                                    <span>
+                                        <span className="block text-xs font-black text-amber-700 dark:text-amber-300 uppercase">Afecta corte del servicio</span>
+                                        <span className="block text-[11px] text-amber-700/70 dark:text-amber-200/70 font-bold mt-1">
+                                            Úsalo solo si quieres que este cargo pueda suspender al cliente al vencer.
+                                        </span>
+                                    </span>
+                                </label>
+
+                                <div className="flex gap-2 pt-2">
+                                    <button type="button" onClick={() => setIsManualInvoiceOpen(false)} className="flex-1 bg-slate-100 dark:bg-slate-800 py-3 rounded-xl font-bold text-sm">
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black text-sm">
+                                        Crear factura
+                                    </button>
+                                </div>
+                            </form>
+                        </Dialog.Panel>
+                    </div>
+                </Dialog>
+            </Transition>
 
             {/* MODAL SWAP DE ONU SEGURA */}
             <Transition appear show={isSwapOpen} as={Fragment}>
@@ -742,17 +986,30 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 // ================= SUBCOMPONENTES VISUALES =================
 
 
-const DetailTile = ({ label, value, highlight, danger }: any) => (
+const DetailTile = ({ label, value, highlight, danger, copy }: any) => (
     <div className={classNames(
-        "bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border",
+        "bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border group",
         highlight ? "border-blue-200 dark:border-blue-500/30" : "border-transparent",
         danger ? "border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-900/10" : ""
     )}>
         <p className="text-[10px] uppercase font-black text-slate-400 mb-1">{label}</p>
-        <p className={classNames(
-            "text-sm font-black break-words",
-            danger ? "text-rose-700 dark:text-rose-300" : "text-slate-800 dark:text-slate-200"
-        )}>{value || 'N/A'}</p>
+        <div className="flex items-start justify-between gap-2">
+            <p className={classNames(
+                "text-sm font-black break-words min-w-0",
+                danger ? "text-rose-700 dark:text-rose-300" : "text-slate-800 dark:text-slate-200"
+            )}>{value || 'N/A'}</p>
+
+            {copy && value && value !== 'N/A' && value !== 'DHCP' && value !== 'Sin equipo' && (
+                <button
+                    type="button"
+                    onClick={() => { navigator.clipboard.writeText(String(value)); toast.success("Copiado"); }}
+                    className="shrink-0 p-1.5 text-slate-300 hover:text-blue-500 rounded-md active:bg-slate-100 dark:active:bg-slate-800 transition"
+                    title={`Copiar ${label}`}
+                >
+                    <ClipboardDocumentIcon className="w-4 h-4" />
+                </button>
+            )}
+        </div>
     </div>
 );
 
