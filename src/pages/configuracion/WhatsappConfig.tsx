@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ComponentType } from 'react';
 import QRCode from 'react-qr-code';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -8,38 +8,69 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
 
+interface WhatsAppStatus {
+    connected: boolean;
+    qr: string | null;
+    active: boolean;
+}
+
+interface WhatsAppConfigResponse {
+    intervalo_default: number;
+}
+
+type SpeedColor = 'indigo' | 'emerald' | 'amber';
+
+interface SpeedOption {
+    time: number;
+    label: string;
+    sub: string;
+    icon: ComponentType<{ className?: string }>;
+    color: SpeedColor;
+    desc: string;
+}
+
+const DISCONNECTED_STATUS: WhatsAppStatus = { connected: false, qr: null, active: false };
+
+const STYLE_MAP: Record<SpeedColor, { bg: string; border: string; text: string }> = {
+    indigo: { bg: 'bg-indigo-50 dark:bg-indigo-500/10', border: 'border-indigo-500', text: 'text-indigo-600 dark:text-indigo-400' },
+    emerald: { bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
+    amber: { bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-500', text: 'text-amber-600 dark:text-amber-400' }
+};
+
+const SPEED_OPTIONS: SpeedOption[] = [
+    { time: 180, label: "Modo Seguro", sub: "3 MINUTOS", icon: ShieldCheckIcon, color: "indigo", desc: "Recomendado para campañas masivas." },
+    { time: 60, label: "Modo Normal", sub: "1 MINUTO", icon: ClockIcon, color: "emerald", desc: "Balance ideal y seguro." },
+    { time: 20, label: "Modo Rápido", sub: "20 SEGUNDOS", icon: BoltIcon, color: "amber", desc: "Solo envíos urgentes a listas pequeñas." }
+];
+
 export default function WhatsappConfig() {
-    const [status, setStatus] = useState<any>({ connected: false, qr: null, active: false });
-    const [loading, setLoading] = useState(true);
+    const [status, setStatus] = useState<WhatsAppStatus>(DISCONNECTED_STATUS);
     const [reloading, setReloading] = useState(false);
     const [intervaloGlobal, setIntervaloGlobal] = useState(60);
     const [guardandoConfig, setGuardandoConfig] = useState(false);
 
+    const checkStatus = useCallback(async () => {
+        try {
+            const res = await client.get<WhatsAppStatus>('/whatsapp/status');
+            setStatus(previous => JSON.stringify(res.data) === JSON.stringify(previous) ? previous : res.data);
+        } catch {
+            setStatus(DISCONNECTED_STATUS);
+        }
+    }, []);
+
     useEffect(() => {
         const init = async () => {
             try {
-                const resConfig = await client.get('/whatsapp/configuracion');
+                const resConfig = await client.get<WhatsAppConfigResponse>('/whatsapp/configuracion');
                 setIntervaloGlobal(resConfig.data.intervalo_default);
                 await checkStatus();
             } catch (e) { console.error(e); }
         };
-        init();
+        void init();
 
-        const interval = setInterval(checkStatus, 3000);
+        const interval = window.setInterval(() => void checkStatus(), 3000);
         return () => clearInterval(interval);
-    }, []);
-
-    const checkStatus = async () => {
-        try {
-            const res = await client.get('/whatsapp/status');
-            if (JSON.stringify(res.data) !== JSON.stringify(status)) {
-                setStatus(res.data);
-            }
-        } catch (error) { 
-            setStatus({ connected: false, qr: null, active: false });
-        } 
-        finally { setLoading(false); }
-    };
+    }, [checkStatus]);
 
     const handleIniciarMotor = async () => {
         setReloading(true);
@@ -47,8 +78,8 @@ export default function WhatsappConfig() {
         try {
             await client.post('/whatsapp/init');
             toast.success("Motor activo. Esperando WhatsApp...", { id: loadToast });
-            setTimeout(checkStatus, 2000);
-        } catch (error) {
+            window.setTimeout(() => void checkStatus(), 2000);
+        } catch {
             toast.error("No se pudo encender el motor", { id: loadToast });
         } finally {
             setReloading(false);
@@ -61,9 +92,9 @@ export default function WhatsappConfig() {
         const loadToast = toast.loading("Cerrando sesión...");
         try {
             await client.post('/whatsapp/logout');
-            setStatus({ connected: false, qr: null, active: false });
+            setStatus(DISCONNECTED_STATUS);
             toast.success("Servicio desactivado exitosamente", { id: loadToast });
-        } catch (error) { 
+        } catch {
             toast.error("Error al desactivar el servicio", { id: loadToast });
         } finally {
             setReloading(false);
@@ -76,14 +107,8 @@ export default function WhatsappConfig() {
         try {
             await client.post('/whatsapp/configuracion', { intervalo_segundos: segundos });
             toast.success(`Velocidad actualizada: ${segundos}s`);
-        } catch (error) { toast.error("Error al guardar la configuración"); } 
+        } catch { toast.error("Error al guardar la configuración"); }
         finally { setGuardandoConfig(false); }
-    };
-
-    const styleMap: any = {
-        indigo: { bg: 'bg-indigo-50 dark:bg-indigo-500/10', border: 'border-indigo-500', text: 'text-indigo-600 dark:text-indigo-400' },
-        emerald: { bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
-        amber: { bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-500', text: 'text-amber-600 dark:text-amber-400' }
     };
 
     return (
@@ -173,13 +198,9 @@ export default function WhatsappConfig() {
                     </div>
 
                     <div className="space-y-3 sm:space-y-4 flex-1">
-                        {[
-                            { time: 180, label: "Modo Seguro", sub: "3 MINUTOS", icon: ShieldCheckIcon, color: "indigo", desc: "Recomendado para campañas masivas." },
-                            { time: 60, label: "Modo Normal", sub: "1 MINUTO", icon: ClockIcon, color: "emerald", desc: "Balance ideal y seguro." },
-                            { time: 20, label: "Modo Rápido", sub: "30 SEGUNDOS", icon: BoltIcon, color: "amber", desc: "Solo envíos urgentes a listas pequeñas." }
-                        ].map((item) => {
+                        {SPEED_OPTIONS.map((item) => {
                             const isSelected = intervaloGlobal === item.time;
-                            const activeStyles = styleMap[item.color];
+                            const activeStyles = STYLE_MAP[item.color];
 
                             return (
                                 <button 

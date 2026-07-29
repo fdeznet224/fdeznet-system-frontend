@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import client from '../../api/axios';
+import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { 
     ArrowLeftIcon, 
@@ -27,9 +27,9 @@ export default function CronjobLogs() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         try {
-            const res = await client.get('/configuracion/logs');
+            const res = await client.get<LogEntry[]>('/configuracion/logs');
             setLogs(res.data);
         } catch (error) {
             console.error(error);
@@ -37,11 +37,11 @@ export default function CronjobLogs() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, []);
 
     const handleRefresh = () => {
         setRefreshing(true);
-        fetchLogs();
+        void fetchLogs();
     };
 
     const handleClear = async () => {
@@ -50,12 +50,15 @@ export default function CronjobLogs() {
             await client.delete('/configuracion/logs');
             setLogs([]);
             toast.success("Historial limpiado");
-        } catch (error) {
+        } catch {
             toast.error("Error al limpiar");
         }
     };
 
-    useEffect(() => { fetchLogs(); }, []);
+    useEffect(() => {
+        const initialLoad = window.setTimeout(() => void fetchLogs(), 0);
+        return () => window.clearTimeout(initialLoad);
+    }, [fetchLogs]);
 
     const formatDate = (isoString: string) => {
         const date = new Date(isoString);

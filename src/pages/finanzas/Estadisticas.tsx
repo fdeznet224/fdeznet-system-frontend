@@ -1,30 +1,49 @@
 import { useState, useEffect } from 'react';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import { 
-    ArrowPathIcon,
-    MagnifyingGlassIcon,
-} from '@heroicons/react/24/outline';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+interface MonthlyIncome {
+    mes: number;
+    total: number;
+}
+
+interface ChartIncome {
+    name: string;
+    Ingresos: number;
+}
+
+interface RouterCatalog {
+    id: number;
+    nombre: string;
+}
+
 export default function Estadisticas() {
-    const [data, setData] = useState<any[]>([]);
+    const [data, setData] = useState<ChartIncome[]>([]);
     const [anio, setAnio] = useState(new Date().getFullYear());
-    const [routers, setRouters] = useState<any[]>([]);
+    const [routers, setRouters] = useState<RouterCatalog[]>([]);
     const [routerId, setRouterId] = useState('');
 
-    useEffect(() => { client.get('/network/routers/').then(r => setRouters(r.data)); }, []);
+    useEffect(() => {
+        void client.get<RouterCatalog[]>('/network/routers/')
+            .then((response) => setRouters(response.data))
+            .catch(() => toast.error('No se pudieron cargar los routers'));
+    }, []);
 
     useEffect(() => {
         const fetchStats = async () => {
             const params = new URLSearchParams({ anio: anio.toString(), ...(routerId && { router_id: routerId }) });
-            const res = await client.get(`/finanzas/estadisticas?${params}`);
-
-            const nombresMeses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-            const chartData = res.data.map((item: any) => ({
-                name: nombresMeses[item.mes - 1], Ingresos: item.total
-            }));
-            setData(chartData);
+            try {
+                const res = await client.get<MonthlyIncome[]>(`/finanzas/estadisticas?${params}`);
+                const nombresMeses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+                const chartData = res.data.map((item) => ({
+                    name: nombresMeses[item.mes - 1] ?? `Mes ${item.mes}`,
+                    Ingresos: item.total
+                }));
+                setData(chartData);
+            } catch {
+                toast.error('No se pudieron cargar las estadísticas');
+            }
         };
         fetchStats();
     }, [anio, routerId]);

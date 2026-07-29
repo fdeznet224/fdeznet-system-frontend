@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import client from '../../api/axios';
+import { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { 
     MapPinIcon, PlusIcon, ArrowLeftIcon, 
@@ -7,26 +8,41 @@ import {
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 
+interface Zone {
+    id: number;
+    nombre: string;
+}
+
+const getApiError = (error: unknown, fallback: string) => {
+    if (axios.isAxiosError<{ detail?: string }>(error)) {
+        return error.response?.data?.detail || fallback;
+    }
+    return fallback;
+};
+
 export default function Zonas() {
     const navigate = useNavigate();
-    const [zonas, setZonas] = useState<any[]>([]);
+    const [zonas, setZonas] = useState<Zone[]>([]);
     
     // Estados del formulario
     const [nombre, setNombre] = useState('');
     const [editandoId, setEditandoId] = useState<number | null>(null);
     const [procesando, setProcesando] = useState(false);
 
-    const fetchZonas = async () => {
+    const fetchZonas = useCallback(async () => {
         try {
-            const res = await client.get('/zonas/');
+            const res = await client.get<Zone[]>('/zonas/');
             setZonas(res.data);
         } catch (error) {
             console.error(error);
             toast.error("Error al cargar las zonas");
         }
-    };
+    }, []);
 
-    useEffect(() => { fetchZonas(); }, []);
+    useEffect(() => {
+        const initialLoad = window.setTimeout(() => void fetchZonas(), 0);
+        return () => window.clearTimeout(initialLoad);
+    }, [fetchZonas]);
 
     // ================= FUNCIONES DE GUARDAR / EDITAR / ELIMINAR =================
 
@@ -51,15 +67,15 @@ export default function Zonas() {
             // Limpiar formulario y recargar
             setNombre('');
             setEditandoId(null);
-            fetchZonas();
-        } catch (error: any) { 
-            toast.error(error.response?.data?.detail || "Error al procesar la solicitud", { id: load }); 
+            void fetchZonas();
+        } catch (error: unknown) {
+            toast.error(getApiError(error, "Error al procesar la solicitud"), { id: load });
         } finally {
             setProcesando(false);
         }
     };
 
-    const iniciarEdicion = (zona: any) => {
+    const iniciarEdicion = (zona: Zone) => {
         setNombre(zona.nombre);
         setEditandoId(zona.id);
     };
@@ -76,10 +92,10 @@ export default function Zonas() {
         try {
             await client.delete(`/zonas/${id}`);
             toast.success("Zona eliminada con éxito", { id: load });
-            fetchZonas();
-        } catch (error: any) {
+            void fetchZonas();
+        } catch (error: unknown) {
             // El backend lanza error 400 si hay clientes asignados
-            toast.error(error.response?.data?.detail || "No se puede eliminar la zona", { id: load });
+            toast.error(getApiError(error, "No se puede eliminar la zona"), { id: load });
         }
     };
 

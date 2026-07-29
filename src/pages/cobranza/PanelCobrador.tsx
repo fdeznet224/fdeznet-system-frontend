@@ -1,8 +1,14 @@
-import { useState, useEffect, Fragment } from 'react';
+import {
+    useState, useEffect, useCallback, Fragment,
+    type ComponentType
+} from 'react';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import { Dialog, Transition } from '@headlessui/react';
 import { useNavigate } from 'react-router-dom';
+import { useSync } from '@/context/sync/context';
+import { cachedRequest, notifySessionChanged } from '../../offline/db';
+import { submitOperation } from '../../offline/sync';
 import { 
     BanknotesIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, 
     XMarkIcon, ArrowPathIcon, ShieldExclamationIcon, ClockIcon, 
@@ -10,31 +16,74 @@ import {
     CheckCircleIcon, IdentificationIcon
 } from '@heroicons/react/24/outline';
 
+type PaymentMethod = 'efectivo' | 'transferencia';
+
+interface BillingClient {
+    nombre: string;
+    cedula?: string;
+    ip_asignada?: string;
+}
+
+interface BillingInvoice {
+    id: number;
+    cliente: BillingClient;
+    saldo_pendiente: number;
+    fecha_vencimiento: string;
+}
+
+interface InvoiceListResponse {
+    items?: BillingInvoice[];
+}
+
+interface PaymentHistoryItem {
+    factura_id: number;
+    metodo: PaymentMethod;
+    monto: number;
+    pendiente?: boolean;
+}
+
+interface PaymentReportResponse {
+    detalles?: PaymentHistoryItem[];
+}
+
+interface CollectorUser {
+    usuario?: string;
+}
+
+interface NavButtonProps {
+    active: boolean;
+    icon: ComponentType<{ className?: string }>;
+    label: string;
+    onClick: () => void;
+    badge?: number;
+}
+
 export default function PanelCobrador() {
     const navigate = useNavigate();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const { online } = useSync();
+    const user = JSON.parse(localStorage.getItem('user') || '{}') as CollectorUser;
     
     const [activeTab, setActiveTab] = useState<'cobrar' | 'promesas' | 'historial' | 'cierre'>('cobrar');
-    const [facturas, setFacturas] = useState<any[]>([]);
-    const [historial, setHistorial] = useState<any[]>([]);
-    const [promesas, setPromesas] = useState<any[]>([]);
+    const [facturas, setFacturas] = useState<BillingInvoice[]>([]);
+    const [historial, setHistorial] = useState<PaymentHistoryItem[]>([]);
+    const [promesas, setPromesas] = useState<BillingInvoice[]>([]);
     const [loading, setLoading] = useState(false);
     const [filtro, setFiltro] = useState('');
     
-    const totalCobradoHoy = historial.reduce((acc, curr) => acc + curr.monto, 0);
-    const totalEfectivo = historial.filter(h => h.metodo === 'efectivo').reduce((acc, curr) => acc + curr.monto, 0);
-    const totalTransferencia = historial.filter(h => h.metodo === 'transferencia').reduce((acc, curr) => acc + curr.monto, 0);
-    const totalRetencionPromesas = promesas.reduce((acc, curr) => acc + curr.saldo_pendiente, 0);
+    const totalCobradoHoy = historial.reduce((acc, curr) => acc + Number(curr.monto), 0);
+    const totalEfectivo = historial.filter(h => h.metodo === 'efectivo').reduce((acc, curr) => acc + Number(curr.monto), 0);
+    const totalTransferencia = historial.filter(h => h.metodo === 'transferencia').reduce((acc, curr) => acc + Number(curr.monto), 0);
+    const totalRetencionPromesas = promesas.reduce((acc, curr) => acc + Number(curr.saldo_pendiente), 0);
 
     // ESTADOS DEL MODAL
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedFactura, setSelectedFactura] = useState<any>(null);
+    const [selectedFactura, setSelectedFactura] = useState<BillingInvoice | null>(null);
     const [modo, setModo] = useState<'pagar' | 'promesa'>('pagar'); // 👈 Nuevo estado para las tabs
-    const [formCobro, setFormCobro] = useState({ metodo: 'efectivo', referencia: '', monto: 0 });
+    const [formCobro, setFormCobro] = useState<{ metodo: PaymentMethod; referencia: string; monto: number }>({ metodo: 'efectivo', referencia: '', monto: 0 });
     const [fechaPromesa, setFechaPromesa] = useState('');
     const [procesando, setProcesando] = useState(false);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const now = new Date();
@@ -42,31 +91,44 @@ export default function PanelCobrador() {
             const localISOTime = new Date(now.getTime() - offset).toISOString().split('T')[0];
 
             const [resAdeudos, resHistorial, resPromesas] = await Promise.all([
-                client.get('/finanzas/listado-completo?estado=adeudos'),
-                client.get(`/finanzas/pagos-reporte?start_date=${localISOTime}&end_date=${localISOTime}`),
-                client.get('/finanzas/listado-completo?estado=promesa')
+                cachedRequest<InvoiceListResponse>('cobranza-adeudos', async () => (
+                    await client.get<InvoiceListResponse>('/finanzas/listado-completo?estado=adeudos')
+                ).data),
+                cachedRequest<PaymentReportResponse>(`cobranza-historial-${localISOTime}`, async () => (
+                    await client.get<PaymentReportResponse>(`/finanzas/pagos-reporte?start_date=${localISOTime}&end_date=${localISOTime}`)
+                ).data),
+                cachedRequest<InvoiceListResponse>('cobranza-promesas', async () => (
+                    await client.get<InvoiceListResponse>('/finanzas/listado-completo?estado=promesa')
+                ).data),
             ]);
 
-            setFacturas(resAdeudos.data.items);
+            setFacturas(resAdeudos.data.items || []);
             setHistorial(resHistorial.data.detalles || []);
             setPromesas(resPromesas.data.items || []);
-        } catch (error) {
+            if ([resAdeudos, resHistorial, resPromesas].some(item => item.fromCache)) {
+                toast('Mostrando el último corte guardado');
+            }
+        } catch {
             toast.error("Error al refrescar datos");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        const initialLoad = window.setTimeout(() => void fetchData(), 0);
+        return () => window.clearTimeout(initialLoad);
+    }, [fetchData]);
 
     const handleLogout = () => {
         if(confirm("¿Cerrar sesión?")) {
             localStorage.clear();
+            notifySessionChanged();
             navigate('/login');
         }
     };
 
-    const handleOpenCobrar = (factura: any) => {
+    const handleOpenCobrar = (factura: BillingInvoice) => {
         setSelectedFactura(factura);
         setFormCobro({ metodo: 'efectivo', referencia: '', monto: factura.saldo_pendiente });
         setModo('pagar'); // Resetear a Pagar al abrir
@@ -78,21 +140,39 @@ export default function PanelCobrador() {
 
     const handleProcesarCobro = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!selectedFactura) return;
         setProcesando(true);
         const toastId = toast.loading("Procesando...");
         try {
-            await client.post('/finanzas/cobrar', {
-                factura_id: selectedFactura.id,
-                metodo_pago: formCobro.metodo,
-                monto_recibido: Number(formCobro.monto),
-                referencia: formCobro.referencia || `POS #${selectedFactura.id}`
-            });
-            toast.success("Pago registrado exitosamente", { id: toastId });
+            const result = await submitOperation(
+                'pago_factura',
+                {
+                    factura_id: selectedFactura.id,
+                    metodo_pago: formCobro.metodo,
+                    monto_recibido: Number(formCobro.monto),
+                    referencia: formCobro.referencia || `POS #${selectedFactura.id}`,
+                },
+                `Cobro factura #${selectedFactura.id}`,
+            );
+            toast.success(
+                result.queued ? 'Cobro guardado para sincronizar' : 'Pago registrado exitosamente',
+                { id: toastId },
+            );
             setIsModalOpen(false);
             setFiltro('');
-            fetchData();
-        } catch (error) { 
-            toast.error("Error al cobrar", { id: toastId }); 
+            if (result.queued) {
+                setFacturas((current) => current.filter((item) => item.id !== selectedFactura.id));
+                setHistorial((current) => [{
+                    factura_id: selectedFactura.id,
+                    metodo: formCobro.metodo,
+                    monto: Number(formCobro.monto),
+                    pendiente: true,
+                }, ...current]);
+            } else {
+                void fetchData();
+            }
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Error al cobrar', { id: toastId });
         } finally {
             setProcesando(false);
         }
@@ -100,6 +180,11 @@ export default function PanelCobrador() {
 
     const handleProcesarPromesa = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!selectedFactura) return;
+        if (!online) {
+            toast.error('Las promesas de pago requieren conexión');
+            return;
+        }
         setProcesando(true);
         const toastId = toast.loading("Guardando promesa...");
         try {
@@ -111,12 +196,13 @@ export default function PanelCobrador() {
             setIsModalOpen(false);
             setFiltro('');
             fetchData();
-        } catch (error) { 
+        } catch {
             toast.error("Error al guardar promesa", { id: toastId }); 
         } finally {
             setProcesando(false);
         }
     };
+
 
     const facturasFiltradas = filtro.length > 0 
         ? facturas.filter(f => f.cliente.nombre.toLowerCase().includes(filtro.toLowerCase()) || f.cliente.ip_asignada?.includes(filtro))
@@ -145,6 +231,11 @@ export default function PanelCobrador() {
 
             {/* CONTENIDO PRINCIPAL */}
             <div className="flex-1 p-4 space-y-6 overflow-y-auto pb-24">
+                {loading && (
+                    <div role="status" className="flex items-center justify-center gap-2 text-xs font-bold text-slate-500">
+                        <ArrowPathIcon className="h-4 w-4 animate-spin" /> Actualizando cobranza...
+                    </div>
+                )}
                 
                 {/* === PESTAÑA: COBRAR === */}
                 {activeTab === 'cobrar' && (
@@ -232,6 +323,7 @@ export default function PanelCobrador() {
                                         <div>
                                             <h3 className="font-bold text-sm text-slate-900 dark:text-white">Factura #{h.factura_id}</h3>
                                             <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">{h.metodo}</p>
+                                            {h.pendiente && <p className="text-[9px] font-black uppercase text-blue-500">Pendiente de sincronizar</p>}
                                         </div>
                                     </div>
                                     <span className="font-black text-slate-900 dark:text-white">+${h.monto}</span>
@@ -241,10 +333,11 @@ export default function PanelCobrador() {
                     </div>
                 )}
 
-                {/* === PESTAÑA: CIERRE === */}
+                {/* === PESTAÑA: CORTE DE COBRANZA === */}
                 {activeTab === 'cierre' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
-                        <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">Corte de Caja</h2>
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">Resumen de cobranza</h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Los cobros se liquidan por período y método de pago.</p>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4">
                                 <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
@@ -404,7 +497,7 @@ export default function PanelCobrador() {
     );
 }
 
-const NavButton = ({ active, icon: Icon, label, onClick, badge }: any) => (
+const NavButton = ({ active, icon: Icon, label, onClick, badge = 0 }: NavButtonProps) => (
     <button onClick={onClick} className={`flex flex-col items-center gap-1 p-2 w-16 transition relative ${active ? 'text-blue-600 dark:text-blue-500' : 'text-slate-400 dark:text-slate-500'}`}>
         <Icon className={`w-6 h-6`}/>
         <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>

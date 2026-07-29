@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -9,12 +9,9 @@ import {
     PencilSquareIcon, 
     TrashIcon, 
     ChatBubbleLeftRightIcon,
-    ArrowLeftIcon,
-    PaperAirplaneIcon,
-    ShieldCheckIcon,
-    ClockIcon
+    ArrowLeftIcon
 } from '@heroicons/react/24/outline';
-import CreateTemplateModal from '../../components/modals/CreateTemplateModal';
+import CreateTemplateModal from './components/CreateTemplateModal';
 
 export interface Plantilla {
     id: number;
@@ -34,24 +31,24 @@ export default function BillingTemplates() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<Plantilla | null>(null);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
-            const res = await client.get('/configuracion/plantillas-facturacion');
+            const res = await client.get<Plantilla[]>('/configuracion/plantillas-facturacion');
             setPlantillas(res.data);
-            setLoading(false);
-        } catch (error) {
+        } catch {
             toast.error("Error al cargar ciclos");
+        } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     const handleDelete = async (id: number) => {
         if (!window.confirm("¿Estás seguro? Esto afectará a los clientes asignados.")) return;
         try {
             await client.delete(`/configuracion/plantillas-facturacion/${id}`);
             toast.success("Ciclo eliminado");
-            fetchData();
-        } catch (error) {
+            void fetchData();
+        } catch {
             toast.error("No se pudo eliminar");
         }
     };
@@ -83,7 +80,10 @@ export default function BillingTemplates() {
         return dia;
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        const initialLoad = window.setTimeout(() => void fetchData(), 0);
+        return () => window.clearTimeout(initialLoad);
+    }, [fetchData]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 p-4 transition-colors duration-300">

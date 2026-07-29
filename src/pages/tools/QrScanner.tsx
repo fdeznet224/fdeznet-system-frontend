@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Scanner } from '@yudiel/react-qr-scanner';
+import type { IDetectedBarcode } from '@yudiel/react-qr-scanner';
 import { toast } from 'react-hot-toast';
 import {
     XMarkIcon, BoltIcon, QrCodeIcon,
@@ -8,14 +9,39 @@ import {
 } from '@heroicons/react/24/outline';
 import client from '../../api/axios';
 
+interface ClientLookupResult {
+    id: number;
+    nombre: string;
+    cedula: string | null;
+}
+
+const getErrorName = (error: unknown) => {
+    if (typeof error !== 'object' || error === null || !('name' in error)) return null;
+    return typeof error.name === 'string' ? error.name : null;
+};
+
 export default function QrScanner() {
     const navigate = useNavigate();
 
     const [paused, setPaused] = useState(false);
     const [loading, setLoading] = useState(false);
     const [permissionDenied, setPermissionDenied] = useState(false);
+    const resetTimerRef = useRef<number | null>(null);
 
-    const handleScan = async (result: any) => {
+    useEffect(() => () => {
+        if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
+    }, []);
+
+    const scheduleReset = (delay: number) => {
+        if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = window.setTimeout(() => {
+            setPaused(false);
+            setLoading(false);
+            resetTimerRef.current = null;
+        }, delay);
+    };
+
+    const handleScan = async (result: IDetectedBarcode[]) => {
         if (paused || !result) return;
 
         const rawValue = result[0]?.rawValue;
@@ -32,41 +58,38 @@ export default function QrScanner() {
             let codigoBusqueda = rawValue;
             // Limpiamos la URL por si el QR trae un enlace completo
             if (rawValue.includes('/')) {
-                const partes = rawValue.split('/');
-                codigoBusqueda = partes[partes.length - 1];
+                const partes = rawValue.split('/').filter(Boolean);
+                codigoBusqueda = partes.at(-1) || rawValue;
             }
 
-            const res = await client.get(`/clientes/?search=${codigoBusqueda}`);
+            const res = await client.get<ClientLookupResult[]>('/clientes/', {
+                params: { search: codigoBusqueda }
+            });
             const clientesEncontrados = res.data;
 
             if (clientesEncontrados && clientesEncontrados.length > 0) {
                 const cliente = clientesEncontrados[0];
                 toast.dismiss(toastId);
                 toast.success(`Cliente: ${cliente.nombre}`, { duration: 4000 });
-                navigate(`/tech/cliente/${cliente.cedula}`);
+                navigate(`/tech/cliente/${cliente.cedula ?? cliente.id}`);
             } else {
                 toast.dismiss(toastId);
                 toast.error(`QR no registrado: ${codigoBusqueda}`, { duration: 3000 });
-                setTimeout(() => {
-                    setPaused(false);
-                    setLoading(false);
-                }, 2500);
+                scheduleReset(2500);
             }
 
         } catch (error) {
             console.error(error);
             toast.dismiss(toastId);
             toast.error("Error de conexión");
-            setTimeout(() => {
-                setPaused(false);
-                setLoading(false);
-            }, 2000);
+            scheduleReset(2000);
         }
     };
 
-    const handleError = (error: any) => {
+    const handleError = (error: unknown) => {
         console.error("Error cámara:", error);
-        if (error?.name === 'NotAllowedError' || error?.name === 'NotFoundError') {
+        const errorName = getErrorName(error);
+        if (errorName === 'NotAllowedError' || errorName === 'NotFoundError') {
             setPermissionDenied(true);
         }
     };
@@ -116,6 +139,7 @@ export default function QrScanner() {
                         <Scanner
                             onScan={handleScan}
                             onError={handleError}
+                            paused={paused}
                             scanDelay={500}
                             formats={['qr_code']} // 🔥 SOLO BUSCA CÓDIGOS QR
                             components={{

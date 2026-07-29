@@ -5,10 +5,10 @@ import './index.css'
 import App from './App.tsx'
 
 // 1. Registro del Service Worker
-const updateSW = registerSW({
+const updateServiceWorker = registerSW({
   onNeedRefresh() {
     if (confirm('Nueva versión disponible. ¿Recargar para actualizar?')) {
-      window.location.reload();
+      void updateServiceWorker(true);
     }
   },
   onOfflineReady() {

@@ -1,64 +1,76 @@
-import { useState, useEffect } from 'react';
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider, createTheme } from '@mui/material/styles'; // 👈 INYECTORES DE MATERIAL UI
 import 'leaflet/dist/leaflet.css';
 
 // Configuración de tokens del theme para Material UI
-import { getDesignTokens } from './theme';
-
-// Páginas Principales (Públicas y Admin)
-{/*import LandingPage from './pages/LandingPage'; // 🔥 AQUÍ IMPORTAMOS LA LANDING PAGE
-import DocsPage from './pages/DocsPage';*/}
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Layout from './components/Layout';
-import Clientes from './pages/Clientes';
-import Planes from './pages/Planes';
-import Routers from './pages/Routers';
-import Redes from './pages/Redes';
-import Configuracion from './pages/Configuracion';
-import Orders from './pages/admin/Orders'; 
-import MapaClientes from './components/MapaClientes';
-import MensajesCRM from './pages/admin/MensajesCRM';
-import InventarioPanel from './pages/InventarioPanel';
+import { getDesignTokens } from '@/theme';
 
 // IMPORTAMOS EL CONTEXTO GLOBAL DE WHATSAPP
-import { WhatsAppProvider } from './context/WhatsAppContext';
+import { WhatsAppProvider } from '@/context/whatsapp/WhatsAppProvider';
+import { SyncProvider } from '@/context/sync/SyncProvider';
+import ConnectivityBanner from '@/components/app/ConnectivityBanner';
+import AppErrorBoundary from '@/components/app/AppErrorBoundary';
+import RoleGuard from '@/components/app/RoleGuard';
+import type { AppRole } from '@/utils/roles';
 
-// --- INFRAESTRUCTURA FTTH ---
-import CajasNap from './pages/infraestructura/CajasNap';
+const Login = lazy(() => import('@/pages/auth/Login'));
+const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'));
+const Layout = lazy(() => import('@/components/layout/Layout'));
+const Clientes = lazy(() => import('@/pages/clientes/Clientes'));
+const Planes = lazy(() => import('@/pages/infraestructura/planes/Planes'));
+const Routers = lazy(() => import('@/pages/infraestructura/routers/Routers'));
+const Redes = lazy(() => import('@/pages/infraestructura/redes/Redes'));
+const Configuracion = lazy(() => import('@/pages/configuracion/Configuracion'));
+const Orders = lazy(() => import('@/pages/admin/orders/Orders'));
+const ServiceTerminations = lazy(
+  () => import('@/pages/admin/bajas/ServiceTerminations'),
+);
+const MapaClientes = lazy(() => import('@/pages/monitoreo/MapaClientes'));
+const MensajesCRM = lazy(() => import('@/pages/admin/mensajes/MensajesCRM'));
+const InventarioPanel = lazy(() => import('@/pages/infraestructura/inventario/InventarioPanel'));
+const CajasNap = lazy(() => import('@/pages/infraestructura/naps/CajasNap'));
+const Facturas = lazy(() => import('@/pages/finanzas/Facturas'));
+const Transacciones = lazy(() => import('@/pages/finanzas/Transacciones'));
+const Estadisticas = lazy(() => import('@/pages/finanzas/Estadisticas'));
+const Zonas = lazy(() => import('@/pages/configuracion/Zonas'));
+const Usuarios = lazy(() => import('@/pages/configuracion/Usuarios'));
+const Pppoe = lazy(() => import('@/pages/configuracion/Pppoe'));
+const PlantillasMensajes = lazy(() => import('@/pages/configuracion/Plantillas'));
+const BillingTemplates = lazy(
+  () => import('@/pages/configuracion/BillingTemplates'),
+);
+const Importar = lazy(() => import('@/pages/configuracion/Importar'));
+const Sistema = lazy(() => import('@/pages/configuracion/Sistema'));
+const WhatsappPage = lazy(() => import('@/pages/configuracion/WhatsappPage'));
+const CronjobLogs = lazy(() => import('@/pages/configuracion/CronjobLogs'));
+const TunnelsVPN = lazy(() => import('@/pages/configuracion/TunnelsVPN'));
+const PanelCobrador = lazy(() => import('@/pages/cobranza/PanelCobrador'));
+const PortalCliente = lazy(() => import('@/pages/portal/PortalCliente'));
+const TechDashboard = lazy(() => import('@/pages/technician/TechDashboard'));
+const ClientTechView = lazy(() => import('@/pages/technician/ClientTechView'));
+const TechSearch = lazy(() => import('@/pages/technician/TechSearch'));
+const TechInstallForm = lazy(() => import('@/pages/technician/TechInstallForm'));
+const QrScanner = lazy(() => import('@/pages/tools/QrScanner'));
+const OltRadarVsolPage = lazy(() => import('@/pages/infraestructura/olts/OltRadarVsolPage'));
 
-// --- FINANZAS ---
-import Facturas from './pages/finanzas/Facturas';
-import Transacciones from './pages/finanzas/Transacciones';
-import Estadisticas from './pages/finanzas/Estadisticas';
-
-// --- CONFIGURACIÓN ---
-import Zonas from './pages/configuracion/Zonas';
-import Usuarios from './pages/configuracion/Usuarios';
-import Pppoe from './pages/configuracion/Pppoe';
-import PlantillasMensajes from './pages/configuracion/Plantillas'; 
-import BillingTemplates from './pages/configuracion/BillingTemplates';
-import Importar from './pages/configuracion/Importar';
-import Sistema from './pages/configuracion/Sistema';
-import WhatsappPage from './pages/configuracion/WhatsappPage';
-import CronjobLogs from './pages/configuracion/CronjobLogs';
-import TunnelsVPN from './pages/configuracion/TunnelsVPN';
-
-import PanelCobrador from './pages/cobranza/PanelCobrador';
-
-// VISTA PÚBLICA DEL CLIENTE (Solo QR)
-import PortalCliente from './pages/portal/PortalCliente'; 
-
-// ROL TÉCNICO (Mobile First)
-import TechDashboard from './pages/technician/TechDashboard';
-import ClientTechView from './pages/technician/ClientTechView';
-import TechSearch from './pages/technician/TechSearch';
-import TechRegister from './pages/technician/TechRegister'; 
-import TechInstallForm from './pages/technician/TechInstallForm';
-import QrScanner from './pages/tools/QrScanner';
-import OltRadarVsolPage from "./pages/OltRadarVsolPage";
+function RouteFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
+      <div className="flex items-center gap-3" role="status" aria-live="polite">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-600 border-t-cyan-400" />
+        <span>Cargando módulo…</span>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   // --- 🔥 CONECTOR INTELIGENTE (LOCALSTORAGE + SISTEMA OPERATIVO) 🔥 ---
@@ -115,11 +127,21 @@ function App() {
   }, []);
 
   const muiTheme = createTheme(getDesignTokens(currentMode));
+  const protectedPage = (
+    page: ReactNode,
+    allowedRoles: AppRole[],
+  ) => (
+    <RoleGuard allowedRoles={allowedRoles}>
+      {page}
+    </RoleGuard>
+  );
 
   return (
     <WhatsAppProvider>
       <ThemeProvider theme={muiTheme}>
-        <BrowserRouter>
+        <SyncProvider>
+          <BrowserRouter>
+          <ConnectivityBanner />
           <Toaster 
             position="top-center" 
             toastOptions={{ 
@@ -130,65 +152,89 @@ function App() {
             }} 
           />
           
+          <AppErrorBoundary>
+          <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* 🔥 RUTA RAÍZ - Ahora muestra la Landing Page 🔥 */}
             {/*<Route path="/" element={<LandingPage />} />
             <Route path="/docs" element={<DocsPage />} /> */}
             <Route path="/" element={<Login />} /> 
-            <Route path="/portal/cliente/:cedula" element={<PortalCliente />} />
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/portal/cliente/:cedula"
+              element={protectedPage(
+                <PortalCliente />,
+                ['admin', 'supervisor', 'tecnico'],
+              )}
+            />
 
             {/* ZONA TÉCNICO */}
-            <Route path="/scanner" element={<QrScanner />} />
-            <Route path="/tech/dashboard" element={<TechDashboard />} />
-            <Route path="/tech/buscar" element={<TechSearch />} />
-            <Route path="/tech/cliente/:cedula" element={<ClientTechView />} />
-            <Route path="/tech/nuevo" element={<TechRegister />} />
-            <Route path="/tech/instalar/:cedula" element={<TechInstallForm />} />
+            <Route path="/scanner" element={protectedPage(<QrScanner />, ['tecnico'])} />
+            <Route path="/tech/dashboard" element={protectedPage(<TechDashboard />, ['tecnico'])} />
+            <Route path="/tech/buscar" element={protectedPage(<TechSearch />, ['tecnico'])} />
+            <Route path="/tech/cliente/:cedula" element={protectedPage(<ClientTechView />, ['tecnico'])} />
+            <Route path="/tech/instalar/:cedula" element={protectedPage(<TechInstallForm />, ['tecnico'])} />
 
             {/* COBRANZA (MOVIL) */}
-            <Route path="/admin/cobranza" element={<PanelCobrador />} />
+            <Route
+              path="/admin/cobranza"
+              element={protectedPage(
+                <PanelCobrador />,
+                ['admin', 'supervisor', 'cajero'],
+              )}
+            />
 
             {/* ZONA ADMINISTRATIVA PRINCIPAL */}
-            <Route element={<Layout />}>
-                <Route path="/admin/dashboard" element={<Dashboard />} />
-                <Route path="/admin/ordenes" element={<Orders />} />
-                <Route path="/admin/mapa" element={<MapaClientes />} />
+            <Route
+              element={protectedPage(
+                <Layout />,
+                ['admin', 'supervisor'],
+              )}
+            >
+                <Route path="/admin/dashboard" element={protectedPage(<Dashboard />, ['admin'])} />
+                <Route path="/admin/ordenes" element={protectedPage(<Orders />, ['admin', 'supervisor'])} />
+                <Route path="/admin/bajas" element={protectedPage(<ServiceTerminations />, ['admin', 'supervisor'])} />
+                <Route path="/admin/mapa" element={protectedPage(<MapaClientes />, ['admin'])} />
                 
                 {/* Gestión Comercial */}
-                <Route path="/admin/clientes" element={<Clientes />} />
-                <Route path="/admin/planes" element={<Planes />} />
+                <Route path="/admin/clientes" element={protectedPage(<Clientes />, ['admin', 'supervisor'])} />
+                <Route path="/admin/planes" element={protectedPage(<Planes />, ['admin'])} />
                 
                 {/* Infraestructura */}
-                <Route path="/admin/routers" element={<Routers />} />
-                <Route path="/admin/naps" element={<CajasNap />} />
-                <Route path="/admin/redes" element={<Redes />} />
-                <Route path="/admin/radar" element={<OltRadarVsolPage />} />
-                <Route path="/admin/radar-vsol" element={<OltRadarVsolPage />} />
-                <Route path="/admin/inventario" element={<InventarioPanel />} />
+                <Route path="/admin/routers" element={protectedPage(<Routers />, ['admin'])} />
+                <Route path="/admin/naps" element={protectedPage(<CajasNap />, ['admin'])} />
+                <Route path="/admin/redes" element={protectedPage(<Redes />, ['admin'])} />
+                <Route path="/admin/radar" element={protectedPage(<OltRadarVsolPage />, ['admin'])} />
+                <Route path="/admin/radar-vsol" element={protectedPage(<OltRadarVsolPage />, ['admin'])} />
+                <Route path="/admin/inventario" element={protectedPage(<InventarioPanel />, ['admin'])} />
                 
                 {/* Finanzas */}
-                <Route path="/admin/facturas" element={<Facturas />} />
-                <Route path="/admin/transacciones" element={<Transacciones />} />
-                <Route path="/admin/estadisticas" element={<Estadisticas />} />
+                <Route path="/admin/facturas" element={protectedPage(<Facturas />, ['admin'])} />
+                <Route path="/admin/transacciones" element={protectedPage(<Transacciones />, ['admin'])} />
+                <Route path="/admin/estadisticas" element={protectedPage(<Estadisticas />, ['admin'])} />
 
                 {/* Configuración Principal */}
-                <Route path="/admin/configuracion" element={<Configuracion />} />
-                <Route path="/admin/mensajes" element={<MensajesCRM />} />
+                <Route path="/admin/configuracion" element={protectedPage(<Configuracion />, ['admin'])} />
+                <Route path="/admin/mensajes" element={protectedPage(<MensajesCRM />, ['admin'])} />
                 
                 {/* Sub-rutas de Configuración */}
-                <Route path="/admin/configuracion/zonas" element={<Zonas />} />
-                <Route path="/admin/configuracion/mensajes" element={<PlantillasMensajes />} /> 
-                <Route path="/admin/configuracion/plantillas-facturacion" element={<BillingTemplates />} />
-                <Route path="/admin/configuracion/importar" element={<Importar />} />
-                <Route path="/admin/configuracion/usuarios" element={<Usuarios />} />
-                <Route path="/admin/configuracion/pppoe" element={<Pppoe />} />
-                <Route path="/admin/configuracion/whatsapp-qr" element={<WhatsappPage />} />
-                <Route path="/admin/configuracion/cron" element={<CronjobLogs />} />
-                <Route path="/admin/configuracion/sistema" element={<Sistema />} />
-                <Route path="/admin/configuracion/vpn" element={<TunnelsVPN />} />
+                <Route path="/admin/configuracion/zonas" element={protectedPage(<Zonas />, ['admin'])} />
+                <Route path="/admin/configuracion/mensajes" element={protectedPage(<PlantillasMensajes />, ['admin'])} />
+                <Route path="/admin/configuracion/plantillas-facturacion" element={protectedPage(<BillingTemplates />, ['admin'])} />
+                <Route path="/admin/configuracion/importar" element={protectedPage(<Importar />, ['admin'])} />
+                <Route path="/admin/configuracion/usuarios" element={protectedPage(<Usuarios />, ['admin'])} />
+                <Route path="/admin/configuracion/pppoe" element={protectedPage(<Pppoe />, ['admin'])} />
+                <Route path="/admin/configuracion/whatsapp-qr" element={protectedPage(<WhatsappPage />, ['admin'])} />
+                <Route path="/admin/configuracion/cron" element={protectedPage(<CronjobLogs />, ['admin'])} />
+                <Route path="/admin/configuracion/sistema" element={protectedPage(<Sistema />, ['admin'])} />
+                <Route path="/admin/configuracion/vpn" element={protectedPage(<TunnelsVPN />, ['admin'])} />
             </Route>
-        </Routes>
-        </BrowserRouter>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          </Suspense>
+          </AppErrorBoundary>
+          </BrowserRouter>
+        </SyncProvider>
       </ThemeProvider>
     </WhatsAppProvider>
   );

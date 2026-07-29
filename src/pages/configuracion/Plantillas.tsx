@@ -1,36 +1,39 @@
-import { useState, useEffect } from 'react';
-import client from '../../api/axios';
+import { useState, useEffect, useCallback } from 'react';
+import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { 
     ChatBubbleLeftRightIcon, PlusIcon, PencilSquareIcon, 
      XCircleIcon, ArrowLeftIcon, SparklesIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
-import CreateMessageModal from '../../components/modals/CreateMessageModal';
+import CreateMessageModal, { type MessageTemplate } from './components/CreateMessageModal';
 
 export default function Plantillas() {
     const navigate = useNavigate();
-    const [plantillas, setPlantillas] = useState<any[]>([]);
+    const [plantillas, setPlantillas] = useState<MessageTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+    const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await client.get('/configuracion/plantillas');
+            const res = await client.get<MessageTemplate[]>('/configuracion/plantillas');
             setPlantillas(res.data);
-        } catch (error) {
-            console.error(error);
+        } catch {
+            toast.error('No se pudieron cargar las plantillas');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        const initialLoad = window.setTimeout(() => void fetchData(), 0);
+        return () => window.clearTimeout(initialLoad);
+    }, [fetchData]);
 
-    const handleEdit = (plantilla: any) => {
+    const handleEdit = (plantilla: MessageTemplate) => {
         setSelectedTemplate(plantilla);
         setIsModalOpen(true);
     };
@@ -126,10 +129,10 @@ export default function Plantillas() {
                                     <div className="absolute -top-1.5 left-5 w-3 h-3 bg-slate-50 dark:bg-[#161822] border-t border-l border-slate-200/60 dark:border-slate-800/60 transform rotate-45 transition-colors"></div>
                                     
                                     <p className="text-[13px] text-slate-800 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-medium transition-colors break-words">
-                                        {p.texto.split(/({.*?})/).map((part: string, index: number) => 
-                                            part.startsWith('{') && part.endsWith('}') ? 
-                                            <span key={index} className="text-emerald-700 dark:text-emerald-400 font-black bg-emerald-100 dark:bg-emerald-500/10 rounded px-1 text-xs py-0.5 mx-0.5 transition-colors">{part}</span> : 
-                                            part
+                                        {p.texto.split(/({.*?})/).map((part, index) =>
+                                            part.startsWith('{') && part.endsWith('}')
+                                                ? <span key={index} className="text-emerald-700 dark:text-emerald-400 font-black bg-emerald-100 dark:bg-emerald-500/10 rounded px-1 text-xs py-0.5 mx-0.5 transition-colors">{part}</span>
+                                                : part
                                         )}
                                     </p>
                                 </div>
@@ -164,7 +167,7 @@ export default function Plantillas() {
             <CreateMessageModal 
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSuccess={fetchData}
+                onSuccess={() => void fetchData()}
                 initialData={selectedTemplate}
             />
         </div>

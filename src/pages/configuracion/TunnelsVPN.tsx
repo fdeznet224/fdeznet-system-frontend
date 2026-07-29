@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
-import client from '../../api/axios';
+import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { 
     PlusIcon, ShieldCheckIcon, ArrowPathIcon, TrashIcon, 
@@ -8,7 +9,6 @@ import {
     BoltIcon, XMarkIcon, DevicePhoneMobileIcon, 
     QrCodeIcon, ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
-import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
 
 interface VpnTunnel {
     id: number;
@@ -20,6 +20,18 @@ interface VpnTunnel {
     created_at: string;
 }
 
+interface TechnicianVpnResponse {
+    archivo_conf: string;
+    nombre: string;
+}
+
+const getApiError = (error: unknown, fallback: string) => {
+    if (axios.isAxiosError<{ detail?: string }>(error)) {
+        return error.response?.data?.detail || fallback;
+    }
+    return fallback;
+};
+
 export default function TunnelsVPN() {
     const [tunnels, setTunnels] = useState<VpnTunnel[]>([]);
     const [loading, setLoading] = useState(true);
@@ -30,16 +42,16 @@ export default function TunnelsVPN() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [qrModalData, setQrModalData] = useState<{script_text: string, nombre: string} | null>(null);
 
-    const fetchTunnels = async () => {
+    const fetchTunnels = useCallback(async () => {
         try {
-            const res = await client.get('/vpn/tunnels/'); 
+            const res = await client.get<VpnTunnel[]>('/vpn/tunnels/');
             setTunnels(res.data);
-            setLoading(false);
-        } catch (error) {
+        } catch {
             toast.error("Error al cargar los túneles VPN");
+        } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     const handleCreateTunnel = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -53,7 +65,7 @@ export default function TunnelsVPN() {
                 await client.post('/vpn/tunnels/', { nombre: nuevoNombre });
                 toast.success("¡Túnel MikroTik creado!", { id: loadingToast });
             } else {
-                const res = await client.post('/vpn/tecnicos/', { nombre: nuevoNombre });
+                const res = await client.post<TechnicianVpnResponse>('/vpn/tecnicos/', { nombre: nuevoNombre });
                 toast.success("¡Acceso para Técnico creado!", { id: loadingToast });
                 setQrModalData({
                     script_text: res.data.archivo_conf,
@@ -62,9 +74,9 @@ export default function TunnelsVPN() {
             }
             setNuevoNombre("");
             setShowCreateModal(false);
-            fetchTunnels();
-        } catch (error: any) {
-            toast.error(error.response?.data?.detail || "Error al crear", { id: loadingToast });
+            void fetchTunnels();
+        } catch (error: unknown) {
+            toast.error(getApiError(error, "Error al crear"), { id: loadingToast });
         } finally {
             setIsCreating(false);
         }
@@ -76,8 +88,8 @@ export default function TunnelsVPN() {
         try {
             await client.delete(`/vpn/tunnels/${id}`);
             toast.success("Túnel eliminado", { id: toastId });
-            fetchTunnels();
-        } catch (error) {
+            void fetchTunnels();
+        } catch {
             toast.error("Error al eliminar", { id: toastId });
         }
     };
@@ -94,14 +106,19 @@ export default function TunnelsVPN() {
         if(!qrModalData) return;
         const element = document.createElement("a");
         const file = new Blob([qrModalData.script_text], {type: 'text/plain'});
-        element.href = URL.createObjectURL(file);
+        const objectUrl = URL.createObjectURL(file);
+        element.href = objectUrl;
         element.download = `${qrModalData.nombre.replace(/\s+/g, '_')}_vpn.conf`;
         document.body.appendChild(element); 
         element.click();
         document.body.removeChild(element);
+        URL.revokeObjectURL(objectUrl);
     };
 
-    useEffect(() => { fetchTunnels(); }, []);
+    useEffect(() => {
+        const initialLoad = window.setTimeout(() => void fetchTunnels(), 0);
+        return () => window.clearTimeout(initialLoad);
+    }, [fetchTunnels]);
 
     return (
         <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 transition-colors duration-300">

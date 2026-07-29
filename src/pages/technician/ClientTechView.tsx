@@ -1,13 +1,14 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import {
     ArrowLeftIcon, SignalIcon, GlobeAmericasIcon,
-    ServerIcon, XCircleIcon, CubeIcon, WrenchScrewdriverIcon,
+    ServerIcon, CubeIcon,
     ArrowPathIcon, CurrencyDollarIcon, CalendarDaysIcon,
-    IdentificationIcon, KeyIcon, MapPinIcon, ChatBubbleLeftRightIcon,
-    CpuChipIcon, XMarkIcon, PaperAirplaneIcon
+    KeyIcon, MapPinIcon, ChatBubbleLeftRightIcon,
+    XMarkIcon, PaperAirplaneIcon
 } from '@heroicons/react/24/outline';
 
 interface TechData {
@@ -35,6 +36,27 @@ interface TechData {
     potencia_optica?: string;
 }
 
+interface ChatMessage {
+    id?: number;
+    direccion: string;
+    mensaje: string;
+    fecha: string;
+}
+
+interface DiagnosticoResponse {
+    data: {
+        potencia: string;
+        recomendacion: string;
+    };
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+    if (axios.isAxiosError<{ detail?: string }>(error)) {
+        return error.response?.data?.detail || fallback;
+    }
+    return fallback;
+}
+
 export default function ClientTechView() {
     const { cedula } = useParams();
     const navigate = useNavigate();
@@ -45,18 +67,19 @@ export default function ClientTechView() {
     const [liveSignal, setLiveSignal] = useState<{ potencia: string, mensaje: string } | null>(null);
 
     const [isChatOpen, setIsChatOpen] = useState(false);
-    const [chatMessages, setChatMessages] = useState<any[]>([]);
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const clienteId = data?.id;
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const res = await client.get(`/clientes/${cedula}/portal`);
+                const res = await client.get<TechData>(`/clientes/${cedula}/portal`);
                 setData(res.data);
-            } catch (error) {
+            } catch {
                 toast.error("Cliente no encontrado");
                 navigate('/tech/dashboard');
             } finally {
@@ -71,33 +94,34 @@ export default function ClientTechView() {
         setIsDiagnosing(true);
         const t = toast.loading("Consultando OLT...");
         try {
-            const res = await client.get(`/olts/diagnostico-cliente/${data.id}`);
+            const res = await client.get<DiagnosticoResponse>(`/olts/diagnostico-cliente/${data.id}`);
             const diag = res.data.data;
             setLiveSignal({ potencia: diag.potencia, mensaje: diag.recomendacion });
             toast.success("Señal actualizada", { id: t });
-        } catch (error: any) {
-            toast.error(error.response?.data?.detail || "Error al conectar con OLT", { id: t });
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error, "Error al conectar con OLT"), { id: t });
         } finally {
             setIsDiagnosing(false);
         }
     };
 
-    const loadChat = async () => {
-        if (!data?.id) return;
+    const loadChat = useCallback(async () => {
+        if (!clienteId) return;
         try {
-            const res = await client.get(`/whatsapp/chat/${data.id}`);
+            const res = await client.get<ChatMessage[]>(`/whatsapp/chat/${clienteId}`);
             setChatMessages(res.data);
         } catch (error) { console.error(error); }
-    };
+    }, [clienteId]);
 
     useEffect(() => {
-        let interval: ReturnType<typeof setInterval>;
-        if (isChatOpen && data?.id) {
-            loadChat();
-            interval = setInterval(loadChat, 3000);
-        }
-        return () => clearInterval(interval);
-    }, [isChatOpen, data?.id]);
+        if (!isChatOpen || !clienteId) return;
+        const initialLoad = setTimeout(() => void loadChat(), 0);
+        const interval = setInterval(() => void loadChat(), 3000);
+        return () => {
+            clearTimeout(initialLoad);
+            clearInterval(interval);
+        };
+    }, [isChatOpen, clienteId, loadChat]);
 
     useEffect(() => {
         if (messagesEndRef.current) {
@@ -112,7 +136,7 @@ export default function ClientTechView() {
             await client.post(`/whatsapp/chat/${data.id}/enviar`, { mensaje: newMessage });
             setNewMessage('');
             await loadChat();
-        } catch (error) { toast.error("Error al enviar"); }
+        } catch { toast.error("Error al enviar"); }
         finally { setIsSending(false); }
     };
 
@@ -328,7 +352,7 @@ export default function ClientTechView() {
                         
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-[#0b0c10] transition-colors custom-scrollbar">
                             {chatMessages.map((msg, index) => (
-                                <div key={index} className={`flex ${msg.direccion === 'salida' ? 'justify-end' : 'justify-start'}`}>
+                                <div key={msg.id ?? index} className={`flex ${msg.direccion === 'salida' ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-md font-medium ${msg.direccion === 'salida' ? 'bg-emerald-600 text-white rounded-tr-sm' : 'bg-white dark:bg-[#1a1f2e] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-tl-sm transition-colors'}`}>
                                         <p>{msg.mensaje}</p>
                                         <p className={`text-[9px] mt-1.5 text-right font-bold uppercase tracking-widest ${msg.direccion === 'salida' ? 'text-emerald-200' : 'text-slate-400 dark:text-slate-500'}`}>
