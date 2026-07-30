@@ -21,6 +21,7 @@ interface Technician {
 interface Termination {
   id: number
   cliente_id: number
+  servicio_id?: number | null
   cliente: {
     nombre: string
     cedula?: string
@@ -43,6 +44,13 @@ interface Termination {
   mikrotik_error?: string
   solicitada_en: string
   recuperada_en?: string
+  snapshot?: {
+    ip?: string | null
+    caja_nap_id?: number | null
+    puerto_nap?: number | null
+    estado_servicio?: string | null
+    proxima_facturacion?: string | null
+  }
 }
 
 const statusLabels: Record<string, string> = {
@@ -171,17 +179,23 @@ export default function ServiceTerminations() {
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-orange-600">Expediente #{termination.id}</p>
                 <h2 className="text-lg font-black">{termination.cliente?.nombre || `Cliente #${termination.cliente_id}`}</h2>
-                <p className="text-xs text-slate-500">{termination.cliente?.direccion || 'Sin dirección'}</p>
+                <p className="text-xs text-slate-500">
+                  {termination.servicio_id ? `Servicio #${termination.servicio_id}` : 'Servicio principal'} · {termination.cliente?.direccion || 'Sin dirección'}
+                </p>
               </div>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                 {statusLabels[termination.estado] || termination.estado}
               </span>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 text-sm">
+            <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950">
                 <p className="text-[10px] font-black uppercase text-slate-400">ONU</p>
                 <p className="truncate font-mono font-black">{termination.onu?.identificador || 'Sin equipo'}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950">
+                <p className="text-[10px] font-black uppercase text-slate-400">Red retirada</p>
+                <p className="truncate font-mono font-black">{termination.snapshot?.ip || 'Sin IP'}</p>
               </div>
             </div>
 

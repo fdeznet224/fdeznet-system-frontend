@@ -21,6 +21,12 @@ interface ServiceOrder {
     zona?: { nombre?: string | null } | null;
     tecnico?: { nombre_completo?: string | null; usuario: string } | null;
     version?: number;
+    servicio?: {
+        id: number;
+        alias: string;
+        direccion?: string | null;
+        estado: string;
+    } | null;
 }
 
 interface UnreadSummary {
@@ -52,7 +58,7 @@ export default function Orders() {
         setLoading(true);
         try {
             const [resOrdenes, resUnread] = await Promise.all([
-                client.get<Array<{ id: number; version: number; estado: string; cliente?: { nombre?: string; telefono?: string; direccion?: string }; prospecto_nombre?: string; prospecto_telefono?: string; prospecto_direccion?: string; tecnico?: { nombre?: string; usuario: string } }>>('/ordenes/?tipo=instalacion'),
+                client.get<Array<{ id: number; version: number; estado: string; cliente?: { nombre?: string; telefono?: string; direccion?: string }; servicio?: { id: number; alias: string; direccion?: string | null; estado: string } | null; prospecto_nombre?: string; prospecto_telefono?: string; prospecto_direccion?: string; tecnico?: { nombre?: string; usuario: string } }>>('/ordenes/?tipo=instalacion'),
                 client.get<Record<string, UnreadSummary>>('/whatsapp/no-leidos')
             ]);
             
@@ -62,11 +68,12 @@ export default function Orders() {
                     id: orden.id,
                     nombre: orden.cliente?.nombre || orden.prospecto_nombre || 'Prospecto',
                     telefono: orden.cliente?.telefono || orden.prospecto_telefono || '',
-                    direccion: orden.cliente?.direccion || orden.prospecto_direccion || '',
+                    direccion: orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || '',
                     estado: orden.estado,
                     user_pppoe: null,
                     tecnico: orden.tecnico ? { nombre_completo: orden.tecnico.nombre, usuario: orden.tecnico.usuario } : null,
                     version: orden.version,
+                    servicio: orden.servicio,
                 }));
             setOrdenes(pendientes);
             setUnreadCounts(resUnread.data);
@@ -209,7 +216,9 @@ export default function Orders() {
                                         <tr key={orden.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="font-black text-slate-900 dark:text-white text-base transition-colors">{orden.nombre}</div>
-                                                <div className="text-blue-600 dark:text-blue-400 text-xs mt-1 font-mono">{orden.user_pppoe || 'Sin usuario'}</div>
+                                                <div className="text-blue-600 dark:text-blue-400 text-xs mt-1 font-mono">
+                                                    {orden.servicio ? `${orden.servicio.alias} · Servicio #${orden.servicio.id}` : (orden.user_pppoe || 'Prospecto')}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400 font-black text-[10px] uppercase mb-1">
@@ -251,6 +260,7 @@ export default function Orders() {
                                     {orden.tecnico && <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20">{orden.tecnico.usuario.toUpperCase()}</span>}
                                 </div>
                                 <p className="text-slate-500 dark:text-slate-400 text-xs mb-3 truncate">{orden.direccion}</p>
+                                {orden.servicio && <p className="mb-3 text-[10px] font-black uppercase text-blue-600 dark:text-blue-400">{orden.servicio.alias} · Servicio #{orden.servicio.id}</p>}
                                 <div className="flex gap-2">
                                     <button onClick={() => { setTargetCliente(orden); setShowChatModal(true); }} className="flex-1 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-black uppercase text-slate-600 dark:text-slate-300">Chat</button>
                                     <button onClick={() => handleDelete(orden.id)} className="px-4 py-2 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-lg border border-rose-100 dark:border-rose-500/20 text-[10px] font-black uppercase">Cancelar</button>

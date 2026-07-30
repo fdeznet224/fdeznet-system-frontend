@@ -16,26 +16,58 @@ import RegistrarPago from '@/pages/finanzas/components/RegistrarPago';
 import CreateClientModal from '@/pages/clientes/components/CreateClientModal';
 
 interface DashboardData {
-    resumen_clientes: { total_registrados: number; online_activos: number; offline_cortados: number; retirados: number; };
-    metricas: { total_clientes: number; navegando_ok: number; falla_tecnica: number; morosos_online: number; morosos_offline: number; };
-    finanzas: { cobrado_hoy: number; cobrado_mes: number; moneda: string; };
+    resumen_clientes: {
+        total_clientes: number;
+        total_registrados: number;
+        contratos_activos: number;
+        contratos_suspendidos: number;
+        total_servicios_actuales: number;
+        pendientes_instalacion: number;
+        retirados: number;
+        online_activos: number;
+        offline_cortados: number;
+    };
+    metricas: {
+        total_clientes: number;
+        total_clientes_directorio: number;
+        total_servicios: number;
+        clientes_online_mikrotik: number;
+        clientes_offline_mikrotik: number;
+        total_suspendidos: number;
+        navegando_ok: number;
+        falla_tecnica: number;
+        morosos_online: number;
+        morosos_offline: number;
+    };
+    finanzas: {
+        cobrado_hoy: number;
+        cobrado_mes: number;
+        clientes_cobrados_hoy: number;
+        clientes_cobrados_mes: number;
+        moneda: string;
+    };
     ultimos_pagos: Array<{ cliente: string; monto: number; cobrador: string; fecha: string; }>;
     servidor: { cpu_percent: number; ram_total_gb: number; ram_usada_percent: number; disco_libre_percent: number; };
-    facturacion?: { total: number; pagadas: number; pendientes: number; porcentaje: number; };
+    facturacion?: {
+        total: number;
+        pagadas: number;
+        pendientes: number;
+        porcentaje: number;
+        clientes_actuales: number;
+        clientes_facturados: number;
+        servicios_actuales: number;
+        servicios_facturados: number;
+        servicios_sin_factura: number;
+        clientes_cobrados: number;
+        clientes_con_saldo_pendiente: number;
+        saldo_pendiente: number;
+    };
 }
 
 interface RouterSummary {
     id: number;
     nombre: string;
     tipo_seguridad?: string;
-}
-
-interface InvoiceSummary {
-    estado: string;
-}
-
-interface InvoiceListResponse {
-    items?: InvoiceSummary[];
 }
 
 interface DashboardDetailResponse {
@@ -81,25 +113,17 @@ export default function Dashboard() {
 
     const fetchData = useCallback(async () => {
         try {
-            const [resHome, resDetalle, resFacturas, resRouters] = await Promise.all([
+            const [resHome, resDetalle, resRouters] = await Promise.all([
                 client.get<DashboardData>('/dashboard/home'),
                 client.get<DashboardDetailResponse>('/dashboard/clientes-online-detalle'),
-                client.get<InvoiceListResponse>('/finanzas/listado-completo?estado=cualquiera'),
                 client.get<RouterSummary[]>('/network/routers/')
             ]);
 
             setRoutersList(resRouters.data);
 
-            const facturas = resFacturas.data.items ?? [];
-            const totalF = facturas.length;
-            const pagadasF = facturas.filter((factura) => factura.estado === 'pagada').length;
-            const pendientesF = facturas.filter((factura) => factura.estado === 'pendiente').length;
-            const percent = totalF > 0 ? Math.round((pagadasF / totalF) * 100) : 0;
-
             setData({
                 ...resHome.data,
                 metricas: resDetalle.data.metricas,
-                facturacion: { total: totalF, pagadas: pagadasF, pendientes: pendientesF, porcentaje: percent }
             });
             setLoading(false);
         } catch (error) {
@@ -123,8 +147,9 @@ export default function Dashboard() {
     if (loading) return <div className="flex justify-center items-center h-[calc(100vh-6rem)]"><ArrowPathIcon className="w-10 h-10 text-indigo-500 animate-spin" /></div>;
     if (!data) return null;
 
-    const totalConectados = (data.metricas.navegando_ok || 0) + (data.metricas.morosos_online || 0);
-    const fallasReales = data.metricas.falla_tecnica || 0;
+    const totalConectados = data.metricas.clientes_online_mikrotik || 0;
+    const totalSinSesion = data.metricas.clientes_offline_mikrotik || 0;
+    const totalSuspendidos = data.metricas.total_suspendidos || data.resumen_clientes.contratos_suspendidos || 0;
 
     return (
         <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-5 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12 transition-colors duration-300 h-full overflow-y-auto custom-scrollbar">
@@ -158,9 +183,9 @@ export default function Dashboard() {
 
             {/* ================= CARRUSEL MÓVIL / GRID PC (KPIs FINANCIEROS) ================= */}
             <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:pb-0 scrollbar-none flex-none shrink-0 snap-x">
-                <KpiCard title="Total Clientes" value={data.resumen_clientes.total_registrados} icon={UsersIcon} color="text-blue-600 dark:text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" extra={data.resumen_clientes.online_activos} extraLabel="Activos" />
-                <KpiCard title="Ingreso Hoy" value={`$${data.finanzas.cobrado_hoy.toLocaleString()}`} icon={BanknotesIcon} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" extra="Corte Diario" isTextExtra />
-                <KpiCard title="Acumulado Mes" value={`$${data.finanzas.cobrado_mes.toLocaleString()}`} icon={CreditCardIcon} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-500/10" border="border-indigo-500/20" extra="Facturado" isTextExtra />
+                <KpiCard title="Clientes actuales" value={data.resumen_clientes.total_clientes} icon={UsersIcon} color="text-blue-600 dark:text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" extra={data.resumen_clientes.total_servicios_actuales} extraLabel="Servicios" />
+                <KpiCard title="Ingreso Hoy" value={`$${data.finanzas.cobrado_hoy.toLocaleString()}`} icon={BanknotesIcon} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" extra={`${data.finanzas.clientes_cobrados_hoy || 0} clientes`} isTextExtra />
+                <KpiCard title="Cobrado en el mes" value={`$${data.finanzas.cobrado_mes.toLocaleString()}`} icon={CreditCardIcon} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-500/10" border="border-indigo-500/20" extra={`${data.finanzas.clientes_cobrados_mes || 0} clientes`} isTextExtra />
 
                 {/* KPI ESPECIAL: Ciclo Facturación */}
                 <div className="relative overflow-hidden rounded-[1.25rem] p-4 shadow-sm bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800/80 shrink-0 min-w-[200px] snap-start flex-1 flex flex-col justify-between group transition-colors">
@@ -200,9 +225,9 @@ export default function Dashboard() {
                     </div>
                     <div className="p-3 space-y-1">
                         <SystemListItem label="Routers Conectados" value={routersList.length} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-50 dark:bg-indigo-500/10" icon={ServerIcon} />
-                        <SystemListItem label="Clientes Online (MikroTik)" value={totalConectados} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-50 dark:bg-emerald-500/10" icon={WifiIcon} />
-                        <SystemListItem label="Contratos Activos" value={data.resumen_clientes.online_activos} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-500/10" icon={UsersIcon} />
-                        <SystemListItem label="Fallas Técnicas (Caídas)" value={fallasReales} color="text-rose-600 dark:text-rose-400" bg="bg-rose-50 dark:bg-rose-500/10" icon={ExclamationTriangleIcon} blink={fallasReales > 0} />
+                        <SystemListItem label="Servicios Online (MikroTik)" value={totalConectados} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-50 dark:bg-emerald-500/10" icon={WifiIcon} />
+                        <SystemListItem label="Servicios Offline / sin sesión" value={totalSinSesion} color="text-rose-600 dark:text-rose-400" bg="bg-rose-50 dark:bg-rose-500/10" icon={ExclamationTriangleIcon} blink={totalSinSesion > 0} />
+                        <SystemListItem label="Servicios Suspendidos" value={totalSuspendidos} color="text-amber-600 dark:text-amber-400" bg="bg-amber-50 dark:bg-amber-500/10" icon={UsersIcon} />
                     </div>
                 </div>
 

@@ -34,6 +34,41 @@ async function mockApi(page: Page) {
       body = { intervalo_default: 60 }
     } else if (url.pathname.endsWith('/whatsapp/status')) {
       body = { connected: false, qr: null, active: false }
+    } else if (url.pathname.endsWith('/whatsapp/salidas')) {
+      body = {
+        items: [{
+          id: 99,
+          cliente_id: 1,
+          cliente: { id: 1, nombre: 'Cliente E2E' },
+          telefono: '5215550000000',
+          mensaje: 'Recordatorio E2E',
+          tipo_mensaje: 'texto',
+          tipo_evento: 'recordatorio',
+          lote_id: null,
+          estado_envio: 'fallido',
+          ack: -1,
+          wa_id: null,
+          intentos: 3,
+          max_intentos: 3,
+          reintentos_manuales: 0,
+          ultimo_error: 'WhatsApp desconectado',
+          fecha: '2026-07-29T10:00:00Z',
+        }],
+        total: 1,
+        pagina: 1,
+        limite: 30,
+        resumen: {
+          total: 1,
+          pendiente: 0,
+          procesando: 0,
+          enviado: 0,
+          entregado: 0,
+          leido: 0,
+          fallido: 1,
+          incierto: 0,
+        },
+        cola_memoria: 0,
+      }
     } else if (url.pathname.endsWith('/configuracion/plantillas-facturacion')) {
       body = []
     } else if (url.pathname.endsWith('/inventario/')) {
@@ -67,14 +102,38 @@ async function mockApi(page: Page) {
       }
     } else if (url.pathname.endsWith('/dashboard/home')) {
       body = {
-        resumen_clientes: { total_registrados: 1, online_activos: 1, offline_cortados: 0, retirados: 0 },
+        resumen_clientes: {
+          total_clientes: 216,
+          total_registrados: 216,
+          contratos_activos: 204,
+          contratos_suspendidos: 12,
+          total_servicios_actuales: 216,
+          pendientes_instalacion: 3,
+          retirados: 0,
+          online_activos: 204,
+          offline_cortados: 12,
+        },
         metricas: { total_clientes: 1, navegando_ok: 1, falla_tecnica: 0, morosos_online: 0, morosos_offline: 0 },
-        finanzas: { cobrado_hoy: 0, cobrado_mes: 0, moneda: 'MXN' },
+        finanzas: { cobrado_hoy: 0, cobrado_mes: 0, clientes_cobrados_hoy: 0, clientes_cobrados_mes: 0, moneda: 'MXN' },
+        facturacion: { total: 216, pagadas: 204, pendientes: 12, porcentaje: 94.4 },
         ultimos_pagos: [],
         servidor: { cpu_percent: 5, ram_total_gb: 8, ram_usada_percent: 20, disco_libre_percent: 80 },
       }
     } else if (url.pathname.endsWith('/dashboard/clientes-online-detalle')) {
-      body = { metricas: { total_clientes: 1, navegando_ok: 1, falla_tecnica: 0, morosos_online: 0, morosos_offline: 0 } }
+      body = {
+        metricas: {
+          total_clientes: 216,
+          total_clientes_directorio: 216,
+          total_servicios: 216,
+          clientes_online_mikrotik: 208,
+          clientes_offline_mikrotik: 8,
+          total_suspendidos: 12,
+          navegando_ok: 200,
+          falla_tecnica: 4,
+          morosos_online: 4,
+          morosos_offline: 0,
+        },
+      }
     } else if (url.pathname.endsWith('/dashboard/status-tabla-clientes')) {
       body = { detalle_clientes: { '1': { color: 'green', diagnostico_sistema: 'ONLINE', estado_tecnico: 'ONLINE' } } }
     } else if (url.pathname.includes('/finanzas/listado-completo')) {
@@ -172,6 +231,20 @@ async function mockApi(page: Page) {
       }]
     } else if (url.pathname.endsWith('/clientes/1')) {
       body = { id: 1, nombre: 'Cliente E2E', telefono: '5550000000', ip_asignada: '10.0.0.2', estado: 'activo' }
+    } else if (url.pathname.endsWith('/servicios/cliente/1')) {
+      body = [{
+        id: 1,
+        cliente_id: 1,
+        alias: 'Casa',
+        direccion: 'Dirección E2E',
+        ip_asignada: '10.0.0.2',
+        is_online: true,
+        estado: 'activo',
+        tipo_facturacion: 'prepago',
+        ciclo_facturacion: 'calendario',
+        meses_gratis: 0,
+        created_at: '2026-07-01T00:00:00Z',
+      }]
     } else if (url.pathname.endsWith('/clientes/buscar')) {
       body = [{
         id: 1,
@@ -277,6 +350,19 @@ test('carga el panel principal con sus contratos tipados', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Panel de Control' })).toBeVisible()
   await expect(page.getByText('Resumen de Red')).toBeVisible()
+  await expect(page.getByText('Clientes actuales')).toBeVisible()
+  await expect(page.getByText('Servicios Offline / sin sesión')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Terminal de Cobro' })).toHaveCount(0)
+})
+
+test('muestra errores y reintentos en la bandeja de WhatsApp', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.goto('/admin/whatsapp/salidas')
+
+  await expect(page.getByRole('heading', { name: 'Bandeja de WhatsApp' })).toBeVisible()
+  await expect(page.getByText('WhatsApp desconectado', { exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Reintentar', exact: true }).first()).toBeVisible()
 })
 
 test('abre herramientas y alta desde el listado unificado', async ({ page }) => {
@@ -352,6 +438,7 @@ test('el supervisor entra a clientes y no ve inventario', async ({ page }) => {
 
   await expect(page).toHaveURL(/\/admin\/clientes$/)
   await expect(page.getByText('Gestión de Clientes')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Terminal de Cobro' })).toHaveCount(0)
   if ((page.viewportSize()?.width ?? 1024) < 768) {
     await page.locator('header button').first().click()
   }
@@ -377,7 +464,7 @@ test('abre la terminal de cobro y busca un cliente', async ({ page }) => {
   await page.goto('/admin/dashboard')
 
   await page.getByRole('button', { name: 'Cobrar' }).click()
-  await expect(page.getByText('Terminal POS')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Registrar Pago' })).toBeVisible()
   await page.getByPlaceholder('Ej. Juan Perez...').fill('Cliente')
   await expect(page.getByText('Cliente E2E', { exact: true })).toBeVisible()
 })
@@ -466,7 +553,7 @@ test('carga las transacciones y sus filtros financieros', async ({ page }) => {
   await mockApi(page)
   await page.goto('/admin/transacciones')
 
-  await expect(page.getByRole('heading', { name: 'Transacciones y Caja' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Corte de Cobranza' })).toBeVisible()
   await expect(page.getByText('Total en Pantalla')).toBeVisible()
 })
 
@@ -583,6 +670,7 @@ test('inicia sesión con el contrato tipado y redirige al panel', async ({ page 
 })
 
 test('carga el portal público del cliente', async ({ page }) => {
+  await authenticateAs(page)
   await mockApi(page)
   await page.goto('/portal/cliente/TECH-1')
 

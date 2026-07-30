@@ -47,6 +47,12 @@ interface TechnicianOrder {
     prospecto_nombre?: string;
     prospecto_direccion?: string;
     cliente?: Pick<TechnicianClient, 'id' | 'nombre' | 'direccion'>;
+    servicio?: {
+        id: number;
+        alias: string;
+        direccion?: string | null;
+        estado: string;
+    } | null;
 }
 
 interface NavButtonProps {
@@ -275,8 +281,11 @@ export default function TechDashboard() {
                                         <h4 className="font-black text-slate-800 dark:text-white">{orden.cliente?.nombre || orden.prospecto_nombre || `Orden #${orden.id}`}</h4>
                                         <span className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-400">{orden.estado.replace('_', ' ')}</span>
                                     </div>
-                                    <p className="text-slate-500 text-[10px] mt-1">#{orden.id} · {orden.tipo.replace('_', ' ')}</p>
-                                    <p className="text-slate-500 text-[10px] mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5" /> {orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección'}</p>
+                                    <p className="text-slate-500 text-[10px] mt-1">
+                                        #{orden.id} · {orden.tipo.replace('_', ' ')}
+                                        {orden.servicio ? ` · ${orden.servicio.alias} (#${orden.servicio.id})` : ''}
+                                    </p>
+                                    <p className="text-slate-500 text-[10px] mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5" /> {orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección'}</p>
                                 </div>
                                 {orden.tipo === 'retiro' && orden.estado === 'trabajando' ? (
                                     <div className="ml-2 space-y-2">

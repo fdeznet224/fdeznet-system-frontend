@@ -15,7 +15,7 @@ import {
     ChevronRightIcon, ComputerDesktopIcon, CubeIcon,
     CpuChipIcon, ClipboardDocumentListIcon, MapIcon,
     ShieldCheckIcon, MagnifyingGlassIcon, ArchiveBoxIcon, BriefcaseIcon,
-    SunIcon, MoonIcon // 👈 NUEVOS ICONOS IMPORTADOS PARA EL TEMA
+    SunIcon, MoonIcon, ChatBubbleLeftRightIcon // 👈 NUEVOS ICONOS IMPORTADOS PARA EL TEMA
 } from '@heroicons/react/24/outline';
 
 import ChatModal from '@/components/chat/ChatModal';
@@ -437,13 +437,14 @@ interface MenuItem {
 
 const allMenus: MenuItem[] = [
     { name: 'Dashboard', path: '/admin/dashboard', icon: HomeIcon, roles: ['admin'] },
-    { name: 'Terminal de Cobro', path: '/admin/cobranza', icon: ComputerDesktopIcon, roles: ['admin', 'supervisor', 'cajero'] },
+    { name: 'Terminal de Cobro', path: '/admin/cobranza', icon: ComputerDesktopIcon, roles: ['cajero'] },
     { name: 'Clientes', path: '/admin/clientes', icon: UsersIcon, roles: ['admin', 'supervisor'], hasBadge: true },
     {
         name: 'Operaciones', icon: BriefcaseIcon, roles: ['admin', 'supervisor'],
         submenu: [
             { name: 'Órdenes / Instalaciones', path: '/admin/ordenes', icon: ClipboardDocumentListIcon, roles: ['admin', 'supervisor'] },
             { name: 'Bajas / Recuperación', path: '/admin/bajas', icon: ArchiveBoxIcon, roles: ['admin', 'supervisor'] },
+            { name: 'Bandeja WhatsApp', path: '/admin/whatsapp/salidas', icon: ChatBubbleLeftRightIcon, roles: ['admin', 'supervisor'] },
             { name: 'Inventario / Bodega', path: '/admin/inventario', icon: ArchiveBoxIcon, roles: ['admin'] },
         ]
     },

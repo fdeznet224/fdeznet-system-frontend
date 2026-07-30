@@ -51,6 +51,9 @@ interface NetworkCatalog extends NamedCatalog {
 
 interface NapCatalog extends NamedCatalog {
   capacidad?: number;
+  zona_nombre?: string | null;
+  olt_nombre?: string | null;
+  router_nombre?: string | null;
 }
 
 interface TechnicianCatalog extends NamedCatalog {
@@ -204,6 +207,8 @@ export default function CreateClientModal({
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [activarAhora, setActivarAhora] = useState(false);
+  const [pendingActivationClient, setPendingActivationClient] =
+    useState<CreatedClientRecord | null>(null);
   const [createdClient, setCreatedClient] = useState<{
     nombre: string;
     cedula: string;
@@ -232,6 +237,7 @@ export default function CreateClientModal({
 
     setStep(1);
     setActivarAhora(false);
+    setPendingActivationClient(null);
     setCreatedClient(null);
     setFormData(createInitialFormData());
     setSelectedPlantilla(null);
@@ -259,16 +265,27 @@ export default function CreateClientModal({
   }, [formData.nombre, step]);
 
   useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      caja_nap_id: '',
+      puerto_nap: '',
+    }));
     if (!formData.zona_id) {
       setNaps([]);
       return;
     }
 
+    const params = new URLSearchParams({
+      zona_id: formData.zona_id,
+    });
+    if (formData.router_id) params.set('router_id', formData.router_id);
+    if (formData.olt_id) params.set('olt_id', formData.olt_id);
+
     client
-      .get<NapCatalog[]>(`/infraestructura/naps?zona_id=${formData.zona_id}`)
+      .get<NapCatalog[]>(`/infraestructura/naps?${params.toString()}`)
       .then((res) => setNaps(res.data))
       .catch(() => setNaps([]));
-  }, [formData.zona_id]);
+  }, [formData.olt_id, formData.router_id, formData.zona_id]);
 
   useEffect(() => {
     if (!formData.caja_nap_id) {
@@ -456,7 +473,14 @@ export default function CreateClientModal({
 
   const handleSubmit = async () => {
     setLoading(true);
-    const t = toast.loading(activarAhora ? 'Configurando MikroTik...' : 'Creando Orden...');
+    const t = toast.loading(
+      pendingActivationClient
+        ? 'Reintentando activación en MikroTik...'
+        : activarAhora
+          ? 'Creando y configurando en MikroTik...'
+          : 'Creando orden...',
+    );
+    let clienteRegistrado = pendingActivationClient;
 
     try {
       const onuAsignada = inventarioDisponible.find(
@@ -503,14 +527,25 @@ export default function CreateClientModal({
         return;
       }
 
-      const res = await client.post<CreatedClientRecord>('/clientes/', payload);
-      let datosCliente: Partial<CreatedClientRecord> = res.data;
+      if (!clienteRegistrado) {
+        const res = await client.post<CreatedClientRecord>(
+          '/clientes/',
+          payload,
+        );
+        clienteRegistrado = res.data;
+        if (activarAhora) {
+          setPendingActivationClient(res.data);
+        }
+      }
+      let datosCliente: Partial<CreatedClientRecord> = clienteRegistrado;
 
       if (activarAhora) {
         const resActivacion = await client.post<ActivationResponse>(
-          `/clientes/${res.data.id}/completar-instalacion`,
+          `/clientes/${clienteRegistrado.id}/completar-instalacion`,
           {
-            cedula: res.data.cedula || res.data.id.toString(),
+            cedula:
+              clienteRegistrado.cedula
+              || clienteRegistrado.id.toString(),
             olt_id: payload.olt_id,
             onu_id: payload.onu_id,
             router_id: payload.router_id,
@@ -531,7 +566,11 @@ export default function CreateClientModal({
           },
         );
 
-        datosCliente = resActivacion.data?.cliente || resActivacion.data || res.data;
+        datosCliente =
+          resActivacion.data?.cliente
+          || resActivacion.data
+          || clienteRegistrado;
+        setPendingActivationClient(null);
         toast.success('¡Cliente ACTIVADO!', {
           id: t,
         });
@@ -543,9 +582,12 @@ export default function CreateClientModal({
 
       setCreatedClient({
         nombre: datosCliente.nombre || payload.nombre,
-        cedula: datosCliente.cedula || res.data.cedula || res.data.id.toString(),
+        cedula:
+          datosCliente.cedula
+          || clienteRegistrado.cedula
+          || clienteRegistrado.id.toString(),
         hardware_id: onuAsignada ? onuAsignada.identificador : 'SIN ASIGNAR',
-        id: datosCliente.id || res.data.id,
+        id: datosCliente.id || clienteRegistrado.id,
         user_pppoe: datosCliente.user_pppoe || payload.user_pppoe || undefined,
         pass_pppoe: datosCliente.pass_pppoe || payload.pass_pppoe || undefined,
         estado: activarAhora ? 'Activo' : 'Pendiente',
@@ -553,7 +595,31 @@ export default function CreateClientModal({
       setStep(4);
     } catch (error: unknown) {
       toast.dismiss(t);
-      toast.error(apiErrorMessage(error, 'Verifica campos obligatorios'));
+      const message = apiErrorMessage(error, 'Verifica campos obligatorios');
+      if (clienteRegistrado && activarAhora) {
+        setPendingActivationClient(clienteRegistrado);
+        toast.error(
+          `El cliente ID ${clienteRegistrado.id} quedó creado, pero no se activó: ${message}. Corrige el dato y pulsa “Reintentar activación”.`,
+          { duration: 8000 },
+        );
+      } else {
+        toast.error(message);
+      }
+      if (formData.onu_id && !clienteRegistrado) {
+        try {
+          const response = await client.get<InventoryCatalog[]>(
+            '/inventario/?estado=DISPONIBLE',
+          );
+          setInventarioDisponible(response.data);
+          if (!response.data.some(
+            (item) => item.id.toString() === formData.onu_id,
+          )) {
+            setFormData((current) => ({ ...current, onu_id: '' }));
+          }
+        } catch {
+          // Conservamos el error original; el catálogo se recargará al abrir.
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -836,7 +902,7 @@ export default function CreateClientModal({
                             <option value="">Seleccionar plan...</option>
                             {planes.map((p) => (
                               <option key={p.id} value={p.id}>
-                                {p.nombre} - ${p.precio}
+                                {p.nombre} — ${Number(p.precio).toFixed(2)}/mes
                               </option>
                             ))}
                           </select>
@@ -1040,6 +1106,8 @@ export default function CreateClientModal({
                             {naps.map((n) => (
                               <option key={n.id} value={n.id}>
                                 {n.nombre}
+                                {n.router_nombre ? ` · ${n.router_nombre}` : ''}
+                                {n.olt_nombre ? ` · ${n.olt_nombre}` : ''}
                               </option>
                             ))}
                           </select>
@@ -1090,23 +1158,65 @@ export default function CreateClientModal({
                         </button>
                       </div>
 
-                      <div className="md:col-span-2 rounded-3xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-200 dark:border-slate-700">
-                        <label className="flex items-start gap-3 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={activarAhora}
-                            onChange={(e) => setActivarAhora(e.target.checked)}
-                            className="mt-1 h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span>
+                      <div className="md:col-span-2">
+                        <p className={labelClass}>¿Cómo deseas registrar?</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <label
+                            className={`cursor-pointer rounded-3xl p-5 border-2 transition ${
+                              !activarAhora
+                                ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/30'
+                                : 'border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="registrationMode"
+                              checked={!activarAhora}
+                              disabled={Boolean(pendingActivationClient)}
+                              onChange={() => setActivarAhora(false)}
+                              className="sr-only"
+                            />
                             <span className="block font-black text-slate-900 dark:text-white">
-                              Activar ahora
+                              Solo crear orden
                             </span>
                             <span className="block text-sm text-slate-500 mt-1">
-                              Crea el cliente, completa la instalación y manda las fechas nuevas de facturación al backend.
+                              Deja el servicio pendiente para que un técnico
+                              complete la instalación después.
                             </span>
-                          </span>
-                        </label>
+                          </label>
+
+                          <label
+                            className={`cursor-pointer rounded-3xl p-5 border-2 transition ${
+                              activarAhora
+                                ? 'border-green-600 bg-green-50 dark:bg-green-950/30'
+                                : 'border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="registrationMode"
+                              checked={activarAhora}
+                              onChange={() => setActivarAhora(true)}
+                              className="sr-only"
+                            />
+                            <span>
+                              <span className="block font-black text-slate-900 dark:text-white">
+                                Crear y activar ahora
+                              </span>
+                              <span className="block text-sm text-slate-500 mt-1">
+                                Configura IP, PPPoE y MikroTik inmediatamente.
+                                Como administrador no necesitas asignar técnico.
+                              </span>
+                            </span>
+                          </label>
+                        </div>
+                        {pendingActivationClient && (
+                          <p className="mt-3 text-sm font-bold text-amber-700 dark:text-amber-300">
+                            El cliente ID {pendingActivationClient.id} ya fue
+                            creado. El siguiente intento solo reanudará la
+                            activación; no lo registrará nuevamente.
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1207,7 +1317,13 @@ export default function CreateClientModal({
                       disabled={loading || !canSubmit}
                       className="px-6 py-3 rounded-2xl bg-green-600 text-white font-black disabled:opacity-40 flex items-center justify-center gap-2"
                     >
-                      {loading ? 'Procesando...' : activarAhora ? 'Crear y activar' : 'Crear orden'}
+                      {loading
+                        ? 'Procesando...'
+                        : pendingActivationClient
+                          ? 'Reintentar activación'
+                          : activarAhora
+                            ? 'Crear y activar ahora'
+                            : 'Solo crear orden'}
                       <CheckCircleIcon className="w-5 h-5" />
                     </button>
                   )}

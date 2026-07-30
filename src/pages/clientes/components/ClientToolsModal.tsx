@@ -4,6 +4,8 @@ import {
 } from 'react';
 import axios from 'axios';
 import client from '@/api/axios';
+import type { ClientService } from '@/types/services';
+import { serviceDisplayName } from '@/types/services';
 import { toast } from 'react-hot-toast';
 import {
     XMarkIcon, WrenchScrewdriverIcon, ServerIcon,
@@ -114,6 +116,8 @@ export default function ClientToolsModal(props: Props) {
 function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unreadCount = 0, onActionSuccess }: ContentProps) {
     const [mode, setMode] = useState<ToolMode>('menu');
     const [clienteActual, setClienteActual] = useState<ClientReference>(clienteProp);
+    const [servicios, setServicios] = useState<ClientService[]>([]);
+    const [servicioSeleccionadoId, setServicioSeleccionadoId] = useState<number | null>(null);
     const [dataEstado, setDataEstado] = useState<NetworkStatus | null>(null);
     const [dataConsumo, setDataConsumo] = useState<TrafficStatus | null>(null);
     const [showChatModal, setShowChatModal] = useState(false);
@@ -130,8 +134,17 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
 
     const refreshClienteData = useCallback(async () => {
         try {
-            const res = await client.get<ClientReference>(`/clientes/${clientId}`);
-            setClienteActual(res.data);
+            const [clientResponse, servicesResponse] = await Promise.all([
+                client.get<ClientReference>(`/clientes/${clientId}`),
+                client.get<ClientService[]>(`/servicios/cliente/${clientId}`),
+            ]);
+            setClienteActual(clientResponse.data);
+            setServicios(servicesResponse.data);
+            setServicioSeleccionadoId((current) => {
+                if (current && servicesResponse.data.some((item) => item.id === current)) return current;
+                const preferred = servicesResponse.data.find((item) => ['activo', 'suspendido'].includes(item.estado));
+                return preferred?.id ?? servicesResponse.data[0]?.id ?? null;
+            });
         } catch (error) {
             console.error("Error actualizando datos", error);
         }
@@ -142,8 +155,14 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
         return () => window.clearTimeout(initialLoad);
     }, [refreshClienteData]);
 
-    const estadoRaw = (clienteActual.estado || clienteActual.servicio?.estado_servicio || '').toLowerCase();
-    const currentIp = clienteActual.ip_asignada || clienteActual.servicio?.ip_asignada || 'Sin IP';
+    const servicioSeleccionado = servicios.find((item) => item.id === servicioSeleccionadoId) || null;
+    const estadoRaw = (
+        servicioSeleccionado?.estado
+        || clienteActual.estado
+        || clienteActual.servicio?.estado_servicio
+        || ''
+    ).toLowerCase();
+    const currentIp = servicioSeleccionado?.ip_asignada || clienteActual.ip_asignada || clienteActual.servicio?.ip_asignada || 'Sin IP';
     const isSuspended = ['suspendido', 'cortado', 'retirado', 'inactivo'].includes(estadoRaw);
     const isCancelled = estadoRaw === 'cancelado';
 
@@ -160,7 +179,10 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
             if (mode === 'estado_real') {
                 const fetchEstado = async () => {
                     try {
-                        const res = await client.get<NetworkStatus>(`/network/diagnostico/conexion/${clienteActual.id}`);
+                        const endpoint = servicioSeleccionado
+                            ? `/network/diagnostico/servicios/${servicioSeleccionado.id}/conexion`
+                            : `/network/diagnostico/conexion/${clienteActual.id}`;
+                        const res = await client.get<NetworkStatus>(endpoint);
                         setDataEstado(res.data);
                     } catch {
                         setDataEstado({ online: false, metodo: "ERROR", datos: { info: "Sin respuesta" } });
@@ -171,7 +193,10 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
             if (mode === 'consumo_vivo') {
                 const fetchConsumo = async () => {
                     try {
-                        const res = await client.get<TrafficStatus>(`/network/diagnostico/trafico/${clienteActual.id}`);
+                        const endpoint = servicioSeleccionado
+                            ? `/network/diagnostico/servicios/${servicioSeleccionado.id}/trafico`
+                            : `/network/diagnostico/trafico/${clienteActual.id}`;
+                        const res = await client.get<TrafficStatus>(endpoint);
                         setDataConsumo(res.data);
                     } catch (e) { console.error(e); }
                 };
@@ -182,14 +207,18 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [mode, isOpen, clienteActual]);
+    }, [mode, isOpen, clienteActual, servicioSeleccionado]);
 
     const handleToggleSuspension = async () => {
         if (!clienteActual) return;
         const nuevoEstado = isSuspended ? 'activo' : 'suspendido';
         const loadToast = toast.loading(isSuspended ? "Reactivando..." : "Suspendiendo...");
         try {
-            await client.put(`/clientes/${clienteActual.id}/estado`, { nuevo_estado: nuevoEstado });
+            if (servicioSeleccionado) {
+                await client.put(`/servicios/${servicioSeleccionado.id}/estado`, { estado: nuevoEstado });
+            } else {
+                await client.put(`/clientes/${clienteActual.id}/estado`, { nuevo_estado: nuevoEstado });
+            }
             toast.dismiss(loadToast);
             toast.success(isSuspended ? "¡Servicio Reactivado!" : "Servicio Suspendido");
             await refreshClienteData();
@@ -210,6 +239,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
         const loadToast = toast.loading("Procesando baja y liberando MikroTik...");
         try {
             const response = await client.post<TerminationResponse>(`/bajas/clientes/${clienteActual.id}`, {
+                servicio_id: servicioSeleccionado?.id ?? null,
                 motivo: bajaForm.motivo.trim(),
                 observaciones: bajaForm.observaciones.trim() || null,
                 tecnico_id: bajaForm.tecnico_id ? Number(bajaForm.tecnico_id) : null,
@@ -277,6 +307,29 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
 
                     {/* BODY */}
                     <div className="p-6 overflow-y-auto custom-scrollbar bg-white dark:bg-slate-900 transition-colors">
+                        {servicios.length > 0 && (
+                            <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
+                                <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    Servicio sobre el que vas a trabajar
+                                </label>
+                                <select
+                                    value={servicioSeleccionadoId ?? ''}
+                                    onChange={(event) => {
+                                        setServicioSeleccionadoId(Number(event.target.value));
+                                        setDataEstado(null);
+                                        setDataConsumo(null);
+                                        setMode('menu');
+                                    }}
+                                    className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-black text-slate-900 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                >
+                                    {servicios.map((servicio) => (
+                                        <option key={servicio.id} value={servicio.id}>
+                                            {serviceDisplayName(servicio)} ({servicio.estado})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
                         {mode === 'menu' && (
                             <div className="grid grid-cols-2 gap-3">
@@ -347,7 +400,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
                                 <div>
                                     <h4 className="text-slate-900 dark:text-white text-xl font-black mb-2">Dar de Baja Definitiva</h4>
                                     <p className="text-slate-500 dark:text-slate-400 text-sm px-4">
-                                        Se detendrá la facturación, se liberará el puerto NAP y la ONU <span className="font-mono font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 rounded">{clienteActual.identificador_onu || 'N/A'}</span> pasará a <strong>Por Recoger</strong>. Los adeudos se conservarán.
+                                        Se dará de baja únicamente <strong>{servicioSeleccionado?.alias || 'el servicio principal'}</strong>, se detendrá su facturación y se liberarán sus recursos de red. Los demás domicilios y los adeudos se conservarán.
                                     </p>
                                 </div>
                                 <div className="space-y-3 text-left">

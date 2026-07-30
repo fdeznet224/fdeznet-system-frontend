@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface Zona { id: number; nombre: string; }
+interface Olt { id: number; nombre: string; router_id?: number | null; }
 
 interface NapToEdit {
     id: number;
@@ -16,6 +17,8 @@ interface NapToEdit {
     capacidad: number;
     zona_id: number;
     coordenadas?: string | null;
+    olt_id?: number | null;
+    puerto_olt?: number | null;
 }
 
 interface Props {
@@ -23,6 +26,7 @@ interface Props {
     onClose: () => void;
     onSuccess: () => void;
     zonas: Zona[];
+    olts: Olt[];
     napToEdit?: NapToEdit;
 }
 
@@ -34,9 +38,10 @@ const getErrorMessage = (error: unknown) => {
     return "Error al guardar";
 };
 
-export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napToEdit }: Props) {
+export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, olts, napToEdit }: Props) {
     const [formData, setFormData] = useState({
-        nombre: '', ubicacion: '', coordenadas: '', capacidad: '16', zona_id: ''
+        nombre: '', ubicacion: '', coordenadas: '', capacidad: '16',
+        zona_id: '', olt_id: '', puerto_olt: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -48,10 +53,16 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napT
                     ubicacion: napToEdit.ubicacion,
                     coordenadas: napToEdit.coordenadas || '',
                     capacidad: napToEdit.capacidad.toString(),
-                    zona_id: napToEdit.zona_id.toString()
+                    zona_id: napToEdit.zona_id.toString(),
+                    olt_id: napToEdit.olt_id?.toString() || '',
+                    puerto_olt: napToEdit.puerto_olt?.toString() || '',
                 });
             } else {
-                setFormData({ nombre: '', ubicacion: '', coordenadas: '', capacidad: '16', zona_id: '' });
+                setFormData({
+                    nombre: '', ubicacion: '', coordenadas: '',
+                    capacidad: '16', zona_id: '', olt_id: '',
+                    puerto_olt: '',
+                });
             }
         }
     }, [isOpen, napToEdit]);
@@ -65,7 +76,11 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napT
             const payload = {
                 ...formData,
                 capacidad: Number(formData.capacidad),
-                zona_id: Number(formData.zona_id)
+                zona_id: Number(formData.zona_id),
+                olt_id: formData.olt_id ? Number(formData.olt_id) : null,
+                puerto_olt: formData.puerto_olt
+                    ? Number(formData.puerto_olt)
+                    : null,
             };
 
             if (napToEdit) {
@@ -91,7 +106,7 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napT
     return (
         /* ✅ ADAPTADO: Backdrop y contenedor adaptativos */
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-colors duration-300">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden transition-colors">
+            <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl transition-colors dark:border-slate-800 dark:bg-slate-900">
                 
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 transition-colors">
@@ -119,6 +134,40 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, napT
                             <option value="">Selecciona Zona...</option>
                             {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
                         </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="mb-2 block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">
+                                OLT / MikroTik
+                            </label>
+                            <select
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-900 outline-none transition-colors focus:border-emerald-500 dark:border-slate-700 dark:bg-[#0b0c10] dark:text-white"
+                                required
+                                value={formData.olt_id}
+                                onChange={e => setFormData({...formData, olt_id: e.target.value})}
+                            >
+                                <option value="">Selecciona OLT...</option>
+                                {olts.map(olt => (
+                                    <option key={olt.id} value={olt.id}>
+                                        {olt.nombre}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="mb-2 block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">
+                                Puerto PON
+                            </label>
+                            <input
+                                type="number"
+                                min="1"
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-900 outline-none transition-colors focus:border-emerald-500 dark:border-slate-700 dark:bg-[#0b0c10] dark:text-white"
+                                placeholder="Ej: 1"
+                                value={formData.puerto_olt}
+                                onChange={e => setFormData({...formData, puerto_olt: e.target.value})}
+                            />
+                        </div>
                     </div>
 
                     {/* Nombre */}

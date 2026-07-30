@@ -24,8 +24,11 @@ interface CajaNap {
     coordenadas?: string | null;
     olt_id?: number | null;
     puerto_olt?: number | null;
+    olt_nombre?: string | null;
+    router_nombre?: string | null;
 }
 interface Zona { id: number; nombre: string; }
+interface Olt { id: number; nombre: string; router_id?: number | null; }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
     if (axios.isAxiosError<{ detail?: string }>(error)) {
@@ -39,6 +42,7 @@ export default function CajasNap() {
     const navigate = useNavigate();
     const [naps, setNaps] = useState<CajaNap[]>([]);
     const [zonas, setZonas] = useState<Zona[]>([]);
+    const [olts, setOlts] = useState<Olt[]>([]);
     const [selectedZona, setSelectedZona] = useState('all');
     const [loading, setLoading] = useState(true);
 
@@ -63,8 +67,12 @@ export default function CajasNap() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const resZonas = await client.get<Zona[]>('/zonas'); 
+            const [resZonas, resOlts] = await Promise.all([
+                client.get<Zona[]>('/zonas'),
+                client.get<Olt[]>('/olts/'),
+            ]);
             setZonas(resZonas.data);
+            setOlts(resOlts.data);
             
             let url = '/infraestructura/naps';
             if (selectedZona !== 'all') url += `?zona_id=${selectedZona}`;
@@ -197,6 +205,9 @@ export default function CajasNap() {
                                         <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-1 truncate">
                                             <MapPinIcon className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"/> {nap.ubicacion}
                                         </p>
+                                        <p className="mt-1 truncate text-[10px] font-bold text-indigo-500">
+                                            {nap.router_nombre || 'MikroTik sin relacionar'} · {nap.olt_nombre || 'OLT sin relacionar'}
+                                        </p>
                                     </div>
                                     <div className="text-right bg-slate-50 dark:bg-slate-950/60 p-2 rounded-xl border border-slate-100 dark:border-slate-800/80 shrink-0">
                                         <span className="text-[8px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-wider block">Ocupación</span>
@@ -246,6 +257,7 @@ export default function CajasNap() {
                 onClose={() => setModalConfig({isOpen: false, nap: undefined})} 
                 onSuccess={() => void fetchData()} 
                 zonas={zonas}
+                olts={olts}
                 napToEdit={modalConfig.nap}
             />
 

@@ -24,6 +24,7 @@ interface ClientInstallation {
     puerto_nap?: number;
     plan_id?: number;
     router_id?: number;
+    zona_id?: number;
     latitud?: number | string;
     longitud?: number | string;
     identificador_onu?: string;
@@ -152,8 +153,19 @@ export default function TechInstallForm() {
                 }
 
                 if (!c.caja_nap_id || !c.puerto_nap) {
-                    const resNaps = await cachedRequest<NapOption[]>('catalogo-cajas-nap', async () => (
-                        await client.get<NapOption[]>('/infraestructura/naps')
+                    const napParams = new URLSearchParams();
+                    if (c.zona_id) napParams.set('zona_id', String(c.zona_id));
+                    if (c.router_id) napParams.set('router_id', String(c.router_id));
+                    if (c.olt_id) napParams.set('olt_id', String(c.olt_id));
+                    const napUrl = `/infraestructura/naps?${napParams.toString()}`;
+                    const napCacheKey = [
+                        'catalogo-cajas-nap',
+                        c.zona_id || 'todas',
+                        c.router_id || 'todos',
+                        c.olt_id || 'todas',
+                    ].join('-');
+                    const resNaps = await cachedRequest<NapOption[]>(napCacheKey, async () => (
+                        await client.get<NapOption[]>(napUrl)
                     ).data);
                     setCajasNap(resNaps.data);
                     

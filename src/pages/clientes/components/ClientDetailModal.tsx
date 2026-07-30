@@ -16,6 +16,8 @@ import {
     CheckCircleIcon, SignalIcon
 } from '@heroicons/react/24/outline';
 import type { Cliente } from '@/types';
+import type { ClientService } from '@/types/services';
+import ClientServicesPanel from './ClientServicesPanel';
 import './client-detail-sheet.css';
 
 interface Props {
@@ -32,6 +34,10 @@ interface NamedItem {
 
 interface NapItem extends NamedItem {
     capacidad?: number;
+    zona_nombre?: string | null;
+    olt_nombre?: string | null;
+    router_id?: number | null;
+    router_nombre?: string | null;
 }
 
 interface OltItem extends NamedItem {
@@ -53,6 +59,7 @@ interface DetailedClient extends Omit<Cliente, 'estado'> {
 
 interface ClientInvoice {
     id: number;
+    servicio_id?: number | null;
     estado: string;
     concepto?: string;
     detalles?: string;
@@ -153,11 +160,13 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [addingSaldo, setAddingSaldo] = useState(false);
     const [montoSaldo, setMontoSaldo] = useState('');
     const [facturas, setFacturas] = useState<ClientInvoice[]>([]);
+    const [servicios, setServicios] = useState<ClientService[]>([]);
     const [resumenComercial, setResumenComercial] = useState<CommercialSummary | null>(null);
-    const [activeTab, setActiveTab] = useState<'resumen' | 'red' | 'facturas' | 'instalacion'>('resumen'); // FACTURACION_ISP_V2_CLIENT_DETAIL_TABS_FRONTEND // FACTURACION_ISP_V2_CLIENT_DETAIL_FRONTEND
+    const [activeTab, setActiveTab] = useState<'resumen' | 'servicios' | 'red' | 'facturas' | 'instalacion'>('resumen'); // FACTURACION_ISP_V2_CLIENT_DETAIL_TABS_FRONTEND // FACTURACION_ISP_V2_CLIENT_DETAIL_FRONTEND
     const [loadingData, setLoadingData] = useState(false);
     const [isManualInvoiceOpen, setIsManualInvoiceOpen] = useState(false);
     const [manualInvoiceData, setManualInvoiceData] = useState({
+        servicio_id: '',
         concepto: '',
         monto: '',
         descripcion: '',
@@ -167,7 +176,6 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
     // CATALOGOS
     const [routers, setRouters] = useState<NamedItem[]>([]);
-    const [planes, setPlanes] = useState<NamedItem[]>([]);
     const [zonas, setZonas] = useState<NamedItem[]>([]);
     const [plantillas, setPlantillas] = useState<NamedItem[]>([]);
     const [naps, setNaps] = useState<NapItem[]>([]);
@@ -186,6 +194,18 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         latitud: '', longitud: '', identificador_onu: ''
     });
 
+    const napsUrl = (
+        zonaId: number,
+        routerId: number,
+        oltId: number,
+    ) => {
+        const params = new URLSearchParams();
+        if (zonaId) params.set('zona_id', String(zonaId));
+        if (routerId) params.set('router_id', String(routerId));
+        if (oltId) params.set('olt_id', String(oltId));
+        return `/infraestructura/naps?${params.toString()}`;
+    };
+
     useEffect(() => {
         if (isOpen && clienteInicial?.id) {
             cargarDatosCompletos(clienteInicial.id);
@@ -196,6 +216,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             setIsSwapOpen(false);
             setIsManualInvoiceOpen(false);
             setManualInvoiceData({
+                servicio_id: '',
                 concepto: '',
                 monto: '',
                 descripcion: '',
@@ -208,13 +229,15 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const cargarDatosCompletos = async (id: number) => {
         setLoadingData(true);
         try {
-            const [resCliente, resFacturas, resResumen] = await Promise.all([
+            const [resCliente, resFacturas, resResumen, resServicios] = await Promise.all([
                 client.get<DetailedClient>(`/clientes/${id}`),
                 client.get<{ items?: ClientInvoice[] } | ClientInvoice[]>(`/finanzas/listado-completo?cliente_id=${id}`),
-                client.get<CommercialSummary>(`/clientes/${id}/resumen-comercial`).catch(() => ({ data: null }))
+                client.get<CommercialSummary>(`/clientes/${id}/resumen-comercial`).catch(() => ({ data: null })),
+                client.get<ClientService[]>(`/servicios/cliente/${id}`).catch(() => ({ data: [] as ClientService[] })),
             ]);
             setCliente(resCliente.data);
             setResumenComercial(resResumen.data || null);
+            setServicios(resServicios.data);
             const itemsFacturas = resFacturas.data?.items || resFacturas.data || [];
             setFacturas(Array.isArray(itemsFacturas) ? itemsFacturas : []);
         } catch {
@@ -228,17 +251,14 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         try {
             // Evaluamos la zona inicial del cliente para pre-cargar las NAPs exactas
             const zonaActual = cliente?.zona_id || cliente?.zona?.id || 0;
+            const routerActual = cliente?.router_id || cliente?.router?.id || 0;
+            const oltActual = cliente?.olt_id || cliente?.olt?.id || 0;
             const reqNaps = zonaActual 
-                ? client.get(`/infraestructura/naps?zona_id=${zonaActual}`) 
+                ? client.get(napsUrl(zonaActual, routerActual, oltActual))
                 : Promise.resolve({ data: [] });
 
-            const routerActual = cliente?.router_id || cliente?.router?.id || 0;
-            const reqPlanes = routerActual
-                ? client.get(`/planes/router/${routerActual}`)
-                : Promise.resolve({ data: [] });
-            const [resRouters, resPlanes, resZonas, resPlantillas, resOlts, resInventario, resNaps] = await Promise.all([
+            const [resRouters, resZonas, resPlantillas, resOlts, resInventario, resNaps] = await Promise.all([
                 client.get('network/routers/'),
-                reqPlanes,
                 client.get('zonas/'),
                 client.get('configuracion/plantillas-facturacion/'),
                 client.get('olts/'),
@@ -247,7 +267,6 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             ]);
 
             setRouters(Array.isArray(resRouters.data) ? resRouters.data : []);
-            setPlanes(Array.isArray(resPlanes.data) ? resPlanes.data : []);
             setZonas(Array.isArray(resZonas.data) ? resZonas.data : []);
             setPlantillas(Array.isArray(resPlantillas.data) ? resPlantillas.data : []);
             setOlts(Array.isArray(resOlts.data) ? resOlts.data : []);
@@ -285,12 +304,9 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             const updated = { ...prev, [name]: parsedValue };
             
             // Si cambian de Zona, borramos la Caja y el Puerto seleccionados
-            if (name === 'zona_id') {
+            if (['zona_id', 'router_id', 'olt_id'].includes(name)) {
                 updated.caja_nap_id = 0;
                 updated.puerto_nap = 0;
-            }
-            if (name === 'router_id') {
-                updated.plan_id = 0;
             }
             if (name === 'caja_nap_id') {
                 updated.puerto_nap = 0;
@@ -298,23 +314,22 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             return updated;
         });
 
-        // 🔥 Petición instantánea si cambian la Zona en el selector
-        if (name === 'zona_id') {
-            if (parsedValue) {
-                client.get(`/infraestructura/naps?zona_id=${parsedValue}`)
+        if (['zona_id', 'router_id', 'olt_id'].includes(name)) {
+            const zonaId = Number(
+                name === 'zona_id' ? parsedValue : formData.zona_id,
+            );
+            const routerId = Number(
+                name === 'router_id' ? parsedValue : formData.router_id,
+            );
+            const oltId = Number(
+                name === 'olt_id' ? parsedValue : formData.olt_id,
+            );
+            if (zonaId) {
+                client.get(napsUrl(zonaId, routerId, oltId))
                     .then(res => setNaps(Array.isArray(res.data) ? res.data : []))
                     .catch(() => setNaps([]));
             } else {
                 setNaps([]);
-            }
-        }
-        if (name === 'router_id') {
-            if (parsedValue) {
-                client.get(`/planes/router/${parsedValue}`)
-                    .then(res => setPlanes(Array.isArray(res.data) ? res.data : []))
-                    .catch(() => setPlanes([]));
-            } else {
-                setPlanes([]);
             }
         }
     };
@@ -331,18 +346,21 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         if (!cliente) return;
         const load = toast.loading("Guardando...");
         try {
-            const payload = {
+            const payload: Record<string, unknown> = {
                 ...formData,
                 mac_address: !cliente.onu_asignada ? formData.identificador_onu : undefined,
                 latitud: formData.latitud ? parseFloat(formData.latitud) : null,
                 longitud: formData.longitud ? parseFloat(formData.longitud) : null
             };
+            delete payload.plan_id;
             await client.put(`/clientes/${cliente.id}`, payload);
             toast.success("Información Actualizada", { id: load });
             cargarDatosCompletos(cliente.id);
             setIsEditing(false);
             if (onEditSuccess) onEditSuccess();
-        } catch { toast.error("Error al guardar", { id: load }); }
+        } catch (error) {
+            toast.error(apiErrorMessage(error, "Error al guardar"), { id: load });
+        }
     };
 
     const handleAgregarSaldo = async () => {
@@ -454,6 +472,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         try {
             await client.post('/finanzas/factura-manual', {
                 cliente_id: cliente.id,
+                servicio_id: manualInvoiceData.servicio_id ? Number(manualInvoiceData.servicio_id) : null,
                 concepto: manualInvoiceData.concepto.trim(),
                 monto,
                 descripcion: manualInvoiceData.descripcion?.trim() || null,
@@ -464,6 +483,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             toast.success("Factura manual creada", { id: load });
             setIsManualInvoiceOpen(false);
             setManualInvoiceData({
+                servicio_id: '',
                 concepto: '',
                 monto: '',
                 descripcion: '',
@@ -513,6 +533,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
     const detalleTabs = [
         { id: 'resumen', label: 'Resumen' },
+        { id: 'servicios', label: `Servicios (${servicios.length})` },
         { id: 'red', label: 'Red' },
         { id: 'facturas', label: 'Facturas' },
     ] as const;
@@ -639,6 +660,18 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                 </SectionCard>
                             )}
 
+                            {!loadingData && !isEditing && cliente && activeTab === 'servicios' && (
+                                <SectionCard title="Servicios del cliente" icon={SignalIcon}>
+                                    <ClientServicesPanel
+                                        clientId={cliente.id}
+                                        onChanged={() => {
+                                            void cargarDatosCompletos(cliente.id);
+                                            onEditSuccess?.();
+                                        }}
+                                    />
+                                </SectionCard>
+                            )}
+
                             {!loadingData && !isEditing && cliente && activeTab === 'facturas' && (
                                 <SectionCard title="Resumen de facturación" icon={DocumentTextIcon}>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -733,7 +766,13 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                     ) : (
                                                         <>
                                                             <option value={0}>Ninguna</option>
-                                                            {naps.map(n => <option key={n.id} value={n.id}>{n.nombre}</option>)}
+                                                            {naps.map(n => (
+                                                                <option key={n.id} value={n.id}>
+                                                                    {n.nombre}
+                                                                    {n.router_nombre ? ` · ${n.router_nombre}` : ''}
+                                                                    {n.olt_nombre ? ` · ${n.olt_nombre}` : ''}
+                                                                </option>
+                                                            ))}
                                                         </>
                                                     )}
                                                 </select>
@@ -762,7 +801,24 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         </div>
                                         <hr className="border-slate-200 dark:border-slate-800 my-4"/>
                                         <div><label className={labelClass}>Router Concentrador</label><select name="router_id" value={formData.router_id} onChange={handleInputChange} className={flatInputClass}><option value={0}>Seleccionar...</option>{routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}</select></div>
-                                        <div><label className={labelClass}>Plan Contratado</label><select name="plan_id" value={formData.plan_id} onChange={handleInputChange} className={flatInputClass}><option value={0}>Seleccionar...</option>{planes.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></div>
+                                        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-500/20 dark:bg-blue-900/10">
+                                            <p className="text-xs font-black text-blue-700 dark:text-blue-300">
+                                                El plan se administra por domicilio
+                                            </p>
+                                            <p className="mt-1 text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                                                Así cada servicio conserva su propio MikroTik, precio y facturación.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsEditing(false);
+                                                    setActiveTab('servicios');
+                                                }}
+                                                className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white"
+                                            >
+                                                Ir a Servicios para cambiarlo
+                                            </button>
+                                        </div>
                                         {isPPPoE && (
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div><label className={labelClass}>User PPPoE</label><input name="user_pppoe" value={formData.user_pppoe} onChange={handleInputChange} className={flatInputClass} /></div>
@@ -975,6 +1031,30 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                             </div>
 
                             <form onSubmit={handleCrearFacturaManual} className="space-y-4">
+                                <div>
+                                    <label className={labelClass}>Servicio / domicilio</label>
+                                    <select
+                                        name="servicio_id"
+                                        value={manualInvoiceData.servicio_id}
+                                        onChange={handleManualInvoiceChange}
+                                        className={flatInputClass}
+                                        required={servicios.length > 1}
+                                    >
+                                        <option value="">
+                                            {servicios.length > 1 ? 'Seleccionar servicio...' : 'Servicio principal'}
+                                        </option>
+                                        {servicios.map((servicio) => (
+                                            <option key={servicio.id} value={servicio.id}>
+                                                {servicio.alias} · {servicio.direccion || `Servicio #${servicio.id}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {servicios.length > 1 && (
+                                        <p className="mt-2 text-[10px] font-bold text-amber-600 dark:text-amber-300">
+                                            Obligatorio porque este cliente tiene varios domicilios.
+                                        </p>
+                                    )}
+                                </div>
                                 <div>
                                     <label className={labelClass}>Concepto</label>
                                     <select
