@@ -15,7 +15,7 @@ import {
     ChevronRightIcon, ComputerDesktopIcon, CubeIcon,
     CpuChipIcon, ClipboardDocumentListIcon, MapIcon,
     ShieldCheckIcon, MagnifyingGlassIcon, ArchiveBoxIcon, BriefcaseIcon,
-    SunIcon, MoonIcon, ChatBubbleLeftRightIcon // 👈 NUEVOS ICONOS IMPORTADOS PARA EL TEMA
+    SunIcon, MoonIcon, ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 
 import ChatModal from '@/components/chat/ChatModal';
@@ -76,6 +76,7 @@ export default function Layout() {
     const navigate = useNavigate();
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
     const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
 
     // --- 🔥 NUEVO MOTOR DE MODO CLARO / OSCURO 🔥 ---
@@ -98,6 +99,7 @@ export default function Layout() {
     const [isSearching, setIsSearching] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
+    const mobileSearchRef = useRef<HTMLDivElement>(null);
 
     // --- ESTADOS PARA EL MODAL DE DETALLE DE CLIENTE ---
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -142,7 +144,12 @@ export default function Layout() {
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+            const target = e.target as Node;
+            if (
+                searchRef.current
+                && !searchRef.current.contains(target)
+                && !mobileSearchRef.current?.contains(target)
+            ) {
                 setShowDropdown(false);
             }
         };
@@ -234,13 +241,14 @@ export default function Layout() {
         }))
         .filter(item => !item.submenu || item.submenu.length > 0);
 
+    const pageTitle = getPageTitle(location.pathname);
     return (
         /* ✅ ADAPTADO: Las clases cambian dinámicamente con dark:bg-slate-950 bg-slate-50 text-slate-900 dark:text-slate-100 */
         <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-300">
-            {sidebarOpen && <div className="fixed inset-0 z-20 bg-black/40 backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)}></div>}
+            {sidebarOpen && <div className="fixed inset-0 z-20 bg-slate-950/55 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)}></div>}
 
             {/* SIDEBAR */}
-            <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-xl transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 flex flex-col`}>
+            <aside className={`fixed inset-y-0 left-0 z-30 w-[min(88vw,19rem)] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl transform transition-transform duration-300 ease-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:relative lg:w-64 lg:translate-x-0 flex flex-col`}>
                 <div className="h-20 flex items-center justify-center border-b border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-950/50">
                     <div className="flex items-center space-x-2">
                         <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20"><SignalIcon className="h-5 w-5 text-white" /></div>
@@ -299,17 +307,19 @@ export default function Layout() {
 
             {/* MAIN CONTENT */}
             <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-                <header className="h-20 bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 sticky top-0 z-50 transition-colors duration-300">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden">
-                            {sidebarOpen ? <XMarkIcon className="w-8 h-8" /> : <Bars3Icon className="w-8 h-8" />}
+                <header className="app-topbar min-h-16 sm:min-h-20 bg-white/90 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between px-3 sm:px-6 sticky top-0 z-50 transition-colors duration-300">
+                    <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+                        <button aria-label="Abrir menú" onClick={() => setSidebarOpen(!sidebarOpen)} className="app-icon-button lg:hidden">
+                            {sidebarOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
                         </button>
-                        {/* ✅ LIMPIO: Título puro sin cortes de línea toscos */}
-                        <h2 className="text-base md:text-xl font-black text-slate-900 dark:text-white hidden lg:block tracking-tight uppercase"><span className="text-blue-500 font-black"></span></h2>
+                        <div className="min-w-0 lg:hidden">
+                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">FDEZNET</p>
+                            <h2 className="truncate text-sm font-black text-slate-900 dark:text-white">{pageTitle}</h2>
+                        </div>
                     </div>
 
                     {/* BUSCADOR GLOBAL */}
-                    <div className="flex-1 max-w-md mx-4 sm:mx-8 relative" ref={searchRef}>
+                    <div className="hidden sm:block flex-1 max-w-md mx-4 sm:mx-8 relative" ref={searchRef}>
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <MagnifyingGlassIcon className={`w-4 h-4 transition-colors ${isSearching ? 'text-blue-500 animate-pulse' : 'text-slate-400 dark:text-slate-500'}`} />
@@ -364,12 +374,20 @@ export default function Layout() {
                     </div>
 
                     {/* CONTENEDOR DERECHO: INTERRUPTOR DE TEMA (SOL / LUNA) + USUARIO */}
-                    <div className="flex items-center space-x-3 sm:space-x-4 shrink-0">
+                    <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
+
+                        <button
+                            aria-label="Buscar cliente"
+                            onClick={() => setMobileSearchOpen((open) => !open)}
+                            className="app-icon-button sm:hidden"
+                        >
+                            <MagnifyingGlassIcon className="h-5 w-5" />
+                        </button>
 
                         {/* 🔥 INTERRUPTOR PREMIUM MODO CLARO / OSCURO 🔥 */}
                         <button
                             onClick={handleToggleTheme} // 👈 AQUÍ ESTÁ EL CAMBIO
-                            className="p-2.5 rounded-xl border bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all active:scale-90"
+                            className="app-icon-button"
                             title={darkMode ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
                         >
                             {darkMode ? (
@@ -383,15 +401,56 @@ export default function Layout() {
                             <p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">{user.usuario}</p>
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black ring-1 ring-inset uppercase mt-0.5 ${user.rol === 'admin' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-blue-500/20' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20'}`}>{user.rol}</span>
                         </div>
-                        <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black shadow-md border dark:border-slate-800 capitalize select-none shrink-0">{(user.usuario || '?').charAt(0)}</div>
+                        <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-black shadow-md border border-white/20 capitalize select-none shrink-0">{(user.usuario || '?').charAt(0)}</div>
                     </div>
+
+                    {mobileSearchOpen && (
+                        <div ref={mobileSearchRef} className="absolute inset-x-0 top-full border-b border-slate-200 bg-white/98 p-3 shadow-xl dark:border-slate-800 dark:bg-slate-900/98 sm:hidden">
+                            <div className="relative">
+                                <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
+                                <input
+                                    autoFocus
+                                    type="search"
+                                    className="app-field pl-10"
+                                    placeholder="Buscar cliente por nombre..."
+                                    value={busquedaGlobal}
+                                    onChange={(e) => setBusquedaGlobal(e.target.value)}
+                                    onFocus={() => busquedaGlobal.length > 2 && setShowDropdown(true)}
+                                />
+                                {showDropdown && (
+                                    <div className="absolute inset-x-0 top-full z-[70] mt-2 max-h-[60dvh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+                                        {resultadosBusqueda.map((c) => (
+                                            <button
+                                                type="button"
+                                                key={c.id}
+                                                onClick={() => {
+                                                    handleSelectCliente(c);
+                                                    setMobileSearchOpen(false);
+                                                }}
+                                                className="flex w-full items-center justify-between gap-3 rounded-xl p-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700"
+                                            >
+                                                <span className="min-w-0">
+                                                    <span className="block truncate text-sm font-black">{c.nombre}</span>
+                                                    <span className="block text-xs text-slate-500">{c.telefono || `Cliente #${c.id}`}</span>
+                                                </span>
+                                                <span className={`app-status ${c.estado === 'activo' ? 'app-status--success' : 'app-status--danger'}`}>{c.estado}</span>
+                                            </button>
+                                        ))}
+                                        {!isSearching && resultadosBusqueda.length === 0 && busquedaGlobal.length > 2 && (
+                                            <p className="p-5 text-center text-sm font-bold text-slate-500">Sin coincidencias</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </header>
 
                 {/* AREA DE RENDERIZADO PRINCIPAL */}
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#f8fafc] dark:bg-slate-950 p-4 md:p-8 relative custom-scrollbar transition-colors duration-300">
+                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#f5f7fb] dark:bg-slate-950 px-3 py-4 sm:p-6 lg:p-8 relative custom-scrollbar transition-colors duration-300">
                     {/* El reflejo de luz de fondo adaptado para no encandilar en claro */}
                     <div className="absolute top-0 left-0 w-full h-96 bg-blue-500/[0.01] dark:bg-blue-600/5 rounded-full blur-3xl pointer-events-none transform -translate-y-1/2 -translate-x-1/2"></div>
-                    <div className="relative z-10 pb-20">
+                    <div className="relative z-10 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-10">
                         <Outlet />
                     </div>
                 </main>
@@ -484,3 +543,19 @@ const allMenus: MenuItem[] = [
         ]
     },
 ];
+
+function getPageTitle(pathname: string): string {
+    const routes: Array<[string, string]> = [
+        ['/admin/dashboard', 'Inicio'],
+        ['/admin/clientes', 'Clientes'],
+        ['/admin/ordenes', 'Órdenes'],
+        ['/admin/bajas', 'Bajas'],
+        ['/admin/radar', 'Radar OLT'],
+        ['/admin/naps', 'Cajas NAP'],
+        ['/admin/inventario', 'Inventario'],
+        ['/admin/facturas', 'Facturas'],
+        ['/admin/transacciones', 'Transacciones'],
+        ['/admin/configuracion', 'Configuración'],
+    ];
+    return routes.find(([route]) => pathname.startsWith(route))?.[1] || 'FDEZNET';
+}

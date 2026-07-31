@@ -232,6 +232,50 @@ html.dark .client-close-button:hover {
   -webkit-overflow-scrolling: touch;
 }
 
+.client-contact-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+  gap: 10px;
+}
+
+.client-contact-action {
+  min-height: 58px;
+  border: 1px solid var(--client-border);
+  border-radius: 18px;
+  background: var(--client-card);
+  color: var(--client-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  transition: 160ms ease;
+}
+
+.client-contact-action:active {
+  transform: scale(0.97);
+}
+
+.client-contact-action--call {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.07);
+  border-color: rgba(37, 99, 235, 0.16);
+}
+
+.client-contact-action--whatsapp {
+  color: #059669;
+  background: rgba(5, 150, 105, 0.08);
+  border-color: rgba(5, 150, 105, 0.17);
+}
+
+.client-contact-action--map {
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.07);
+  border-color: rgba(124, 58, 237, 0.16);
+}
+
 .client-quick-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -344,6 +388,16 @@ html.dark .client-tabs-shell {
 }
 
 @media (max-width: 640px) {
+  .client-contact-actions {
+    gap: 7px;
+  }
+
+  .client-contact-action {
+    min-height: 55px;
+    border-radius: 16px;
+    font-size: 9px;
+  }
+
   .client-detail-panel {
     height: 92dvh !important;
     max-height: 92dvh;

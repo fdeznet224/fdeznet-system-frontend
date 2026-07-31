@@ -13,10 +13,11 @@ import {
     XMarkIcon,
     ClipboardDocumentIcon, DocumentTextIcon, IdentificationIcon,
     PencilSquareIcon, PlusIcon, MapPinIcon,
-    CheckCircleIcon, SignalIcon
+    CheckCircleIcon, SignalIcon, PhoneIcon, ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 import type { Cliente } from '@/types';
 import type { ClientService } from '@/types/services';
+import { openNativeMap } from '@/utils/nativeActions';
 import ClientServicesPanel from './ClientServicesPanel';
 import './client-detail-sheet.css';
 
@@ -150,8 +151,8 @@ function classNames(...classes: string[]) {
 }
 
 // Estilos Flat
-const flatInputClass = "w-full bg-slate-100 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-[13px] sm:text-sm rounded-2xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 block p-4 outline-none transition-all duration-200 placeholder:text-slate-400 border border-transparent";
-const disabledInputClass = "w-full bg-slate-50 dark:bg-slate-900/30 text-slate-500 dark:text-slate-500 text-[13px] sm:text-sm rounded-2xl block p-4 outline-none cursor-not-allowed border border-transparent";
+const flatInputClass = "w-full min-h-12 bg-slate-100 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-base sm:text-sm rounded-2xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 block p-4 outline-none transition-all duration-200 placeholder:text-slate-400 border border-transparent";
+const disabledInputClass = "w-full min-h-12 bg-slate-50 dark:bg-slate-900/30 text-slate-500 dark:text-slate-500 text-base sm:text-sm rounded-2xl block p-4 outline-none cursor-not-allowed border border-transparent";
 const labelClass = "block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2 pl-1 select-none";
 
 export default function ClientDetailModal({ isOpen, onClose, cliente: clienteInicial, onEditSuccess }: Props) {
@@ -424,8 +425,13 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     };
 
     const handleAbrirMapa = () => {
-        if (cliente?.latitud && cliente?.longitud) {
-            window.open(`https://www.google.com/maps/search/?api=1&query=${cliente.latitud},${cliente.longitud}`, '_blank');
+        if (!cliente || !openNativeMap({
+            latitude: cliente.latitud,
+            longitude: cliente.longitud,
+            address: cliente.direccion,
+            label: cliente.nombre,
+        })) {
+            toast.error("El cliente no tiene ubicación registrada");
         }
     };
 
@@ -626,7 +632,35 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
                         {/* ================= SCROLL CONTENT ================= */}
                         <div className="client-scroll-body flex-1 overflow-y-auto p-4 sm:p-6 pb-8 space-y-5 scrollbar-hide">
-{!loadingData && !isEditing && cliente && (
+                            {!loadingData && !isEditing && cliente && (
+                                <div className="client-contact-actions">
+                                    {cliente.telefono && (
+                                        <>
+                                            <a href={`tel:${cliente.telefono}`} className="client-contact-action client-contact-action--call">
+                                                <PhoneIcon className="h-5 w-5" />
+                                                <span>Llamar</span>
+                                            </a>
+                                            <a
+                                                href={`https://wa.me/${cliente.telefono.replace(/\D/g, '')}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="client-contact-action client-contact-action--whatsapp"
+                                            >
+                                                <ChatBubbleLeftRightIcon className="h-5 w-5" />
+                                                <span>WhatsApp</span>
+                                            </a>
+                                        </>
+                                    )}
+                                    {((cliente.latitud != null && cliente.longitud != null) || cliente.direccion) && (
+                                        <button type="button" onClick={handleAbrirMapa} className="client-contact-action client-contact-action--map">
+                                            <MapPinIcon className="h-5 w-5" />
+                                            <span>Ubicación</span>
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {!loadingData && !isEditing && cliente && (
                                 <div className="client-tabs-shell">
                                     <div className="client-tabs-row">
                                         {detalleTabs.map((tab) => (
@@ -653,7 +687,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         <DetailTile label="Teléfono" value={cliente?.telefono || 'N/A'} copy />
                                         <DetailTile label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
                                         <DetailTile label="Plan" value={servicioActual?.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
-                                        <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight copy />
+                                        <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight />
                                         <DetailTile label="ONU serial" value={cliente?.onu_asignada?.identificador || 'Sin equipo'} copy />
                                         <DetailTile label="Dirección" value={cliente?.direccion || 'N/A'} />
                                     </div>
@@ -737,9 +771,9 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         <InfoRow label="Teléfono" value={cliente?.telefono || 'N/A'} copy />
                                         <InfoRow label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
                                         <InfoRow label="Dirección" value={cliente?.direccion || 'N/A'} />
-                                        {cliente?.latitud && (
+                                        {((cliente?.latitud != null && cliente?.longitud != null) || cliente?.direccion) && (
                                             <div className="pt-4 mt-2">
-                                                <button onClick={handleAbrirMapa} className="w-full py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl text-sm font-bold flex justify-center items-center gap-2"><MapPinIcon className="w-5 h-5"/> Ver en Maps</button>
+                                                <button onClick={handleAbrirMapa} className="w-full py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl text-sm font-bold flex justify-center items-center gap-2"><MapPinIcon className="w-5 h-5"/> Abrir ubicación</button>
                                             </div>
                                         )}
                                     </div>

@@ -152,13 +152,14 @@ export default function Dashboard() {
     const totalSuspendidos = data.metricas.total_suspendidos || data.resumen_clientes.contratos_suspendidos || 0;
 
     return (
-        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-5 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12 transition-colors duration-300 h-full overflow-y-auto custom-scrollbar">
+        <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 pb-4 font-sans text-slate-700 transition-colors duration-300 dark:text-slate-200 md:gap-6">
 
             {/* ================= HEADER TIPO INVENTARIO (BENTO) ================= */}
-            <div className="bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800/80 rounded-[1.5rem] p-4 flex justify-between items-center shadow-sm gap-4 flex-none shrink-0 transition-colors">
+            <div className="app-card flex flex-none shrink-0 items-center justify-between gap-4 p-4 transition-colors">
                 <div>
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">Operación en vivo</p>
                     <h1 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">Panel de Control</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm mt-0.5 hidden sm:block">Monitoreo de red y finanzas en tiempo real</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm mt-0.5 hidden sm:block">Red, clientes y cobranza en un solo vistazo</p>
                 </div>
 
                 <div className="flex gap-2 items-center">

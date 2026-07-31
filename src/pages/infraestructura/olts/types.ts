@@ -83,6 +83,17 @@ export interface OltMonitoreoCliente {
   cliente_id?: number;
   id?: number;
   nombre?: string;
+  cedula?: string;
+  telefono?: string;
+  direccion?: string;
+  correo?: string;
+  ip_asignada?: string;
+  user_pppoe?: string;
+  mac_address?: string;
+  olt_id?: number;
+  onu_id_inventario?: number;
+  caja_nap_id?: number;
+  puerto_nap?: number;
   identificador?: string;
   serial?: string;
   rx_power?: string;

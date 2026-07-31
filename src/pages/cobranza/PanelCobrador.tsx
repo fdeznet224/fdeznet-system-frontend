@@ -214,9 +214,9 @@ export default function PanelCobrador() {
         <div className="min-h-screen bg-slate-50 dark:bg-[#0f1219] text-slate-800 dark:text-white font-sans flex flex-col transition-colors duration-300">
             
             {/* HEADER ADAPTATIVO */}
-            <div className="bg-white dark:bg-[#1a1f2e] border-b border-slate-200 dark:border-slate-800 px-5 py-3 flex justify-between items-center sticky top-0 z-30 shadow-sm dark:shadow-xl transition-colors">
+            <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-sm backdrop-blur-xl transition-colors dark:border-slate-800 dark:bg-[#1a1f2e]/90 dark:shadow-xl sm:px-6">
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center font-bold text-lg text-white">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center font-bold text-lg text-white shadow-lg shadow-blue-600/20">
                         {user.usuario?.charAt(0)?.toUpperCase()}
                     </div>
                     <div>
@@ -224,13 +224,13 @@ export default function PanelCobrador() {
                         <h1 className="text-sm font-black text-slate-900 dark:text-white capitalize transition-colors">{user.usuario}</h1>
                     </div>
                 </div>
-                <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                <button aria-label="Cerrar sesión" onClick={handleLogout} className="app-icon-button">
                     <ArrowRightOnRectangleIcon className="w-6 h-6" />
                 </button>
             </div>
 
             {/* CONTENIDO PRINCIPAL */}
-            <div className="flex-1 p-4 space-y-6 overflow-y-auto pb-24">
+            <div className="mx-auto w-full max-w-3xl flex-1 space-y-6 overflow-y-auto p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:p-6 sm:pb-28">
                 {loading && (
                     <div role="status" className="flex items-center justify-center gap-2 text-xs font-bold text-slate-500">
                         <ArrowPathIcon className="h-4 w-4 animate-spin" /> Actualizando cobranza...
@@ -240,9 +240,16 @@ export default function PanelCobrador() {
                 {/* === PESTAÑA: COBRAR === */}
                 {activeTab === 'cobrar' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
-                        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 shadow-md relative overflow-hidden">
-                            <span className="text-blue-100 text-[10px] font-black uppercase tracking-widest">Recaudado Hoy</span>
+                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 p-6 shadow-xl shadow-indigo-950/15">
+                            <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-xl" />
+                            <div className="relative flex items-center justify-between">
+                                <span className="text-blue-100 text-[10px] font-black uppercase tracking-widest">Recaudado Hoy</span>
+                                <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${online ? 'bg-emerald-400/20 text-emerald-100' : 'bg-amber-400/20 text-amber-100'}`}>
+                                    {online ? 'En línea' : 'Modo offline'}
+                                </span>
+                            </div>
                             <h2 className="text-4xl font-black text-white mt-1">${totalCobradoHoy.toLocaleString('es-MX')}</h2>
+                            <p className="mt-2 text-xs font-semibold text-blue-100/80">{historial.length} movimientos registrados</p>
                         </div>
 
                         <div className="space-y-4">
@@ -364,7 +371,7 @@ export default function PanelCobrador() {
             </div>
 
             {/* NAV INFERIOR ADAPTATIVO */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#161b28] border-t border-slate-200 dark:border-slate-800 px-2 py-2 flex justify-around items-center z-40 transition-colors">
+            <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-slate-200 bg-white/92 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-15px_35px_-28px_rgba(15,23,42,.55)] backdrop-blur-xl transition-colors dark:border-slate-800 dark:bg-[#161b28]/92">
                 <NavButton active={activeTab === 'cobrar'} icon={HomeIcon} label="Cobrar" onClick={() => setActiveTab('cobrar')} />
                 <NavButton active={activeTab === 'promesas'} icon={ShieldExclamationIcon} label="Promesas" onClick={() => setActiveTab('promesas')} badge={promesas.length} />
                 <NavButton active={activeTab === 'historial'} icon={ClockIcon} label="Historial" onClick={() => setActiveTab('historial')} />
@@ -498,7 +505,7 @@ export default function PanelCobrador() {
 }
 
 const NavButton = ({ active, icon: Icon, label, onClick, badge = 0 }: NavButtonProps) => (
-    <button onClick={onClick} className={`flex flex-col items-center gap-1 p-2 w-16 transition relative ${active ? 'text-blue-600 dark:text-blue-500' : 'text-slate-400 dark:text-slate-500'}`}>
+    <button onClick={onClick} className={`relative flex min-h-12 w-20 flex-col items-center justify-center gap-1 rounded-2xl p-2 transition active:scale-95 ${active ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
         <Icon className={`w-6 h-6`}/>
         <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
         {badge > 0 && <span className="absolute top-1 right-2 bg-rose-600 text-white text-[8px] px-1 rounded-full">{badge}</span>}

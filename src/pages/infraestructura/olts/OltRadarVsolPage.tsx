@@ -53,6 +53,13 @@ function getOwnerId(owner?: OltMonitoreoCliente): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+function clientValue(
+  row: RadarRow,
+  field: keyof OltClientSearchItem & keyof OltMonitoreoCliente,
+): string | number | undefined {
+  return row.client?.[field] ?? row.owner?.[field];
+}
+
 function StatusPill({ onu }: { onu: OltOnuApiItem }) {
   const online = isOnuOnline(onu);
   return (
@@ -249,10 +256,14 @@ function BottomSheetDetail({
           </div>
 
           <div className="olt-sheet-info-grid">
-            <DetailField label="Cliente" value={row.client?.nombre || row.owner?.nombre || "No registrado"} />
-            <DetailField label="Cédula" value={row.client?.cedula || "N/A"} />
-            <DetailField label="Teléfono" value={row.client?.telefono || "N/A"} />
-            <DetailField label="IP" value={row.client?.ip_asignada || "N/A"} />
+            <DetailField label="Cliente" value={clientValue(row, "nombre") || "No registrado"} />
+            <DetailField label="Cédula" value={clientValue(row, "cedula") || "N/A"} />
+            <DetailField label="Teléfono" value={clientValue(row, "telefono") || "N/A"} />
+            <DetailField label="Dirección" value={clientValue(row, "direccion") || "N/A"} />
+            <DetailField label="Correo" value={clientValue(row, "correo") || "N/A"} />
+            <DetailField label="IP" value={clientValue(row, "ip_asignada") || "N/A"} />
+            <DetailField label="Usuario PPPoE" value={clientValue(row, "user_pppoe") || "N/A"} />
+            <DetailField label="MAC" value={clientValue(row, "mac_address") || "N/A"} />
 
             <DetailField label="Serial" value={row.serial} />
             <DetailField label="PON / ONU" value={row.onu.onu_id || "N/A"} />
@@ -809,14 +820,13 @@ export default function OltRadarVsolPage() {
         row.onu.modelo,
         row.onu.rx_power,
         row.onu.tx_power,
-        row.owner?.nombre,
+        clientValue(row, "nombre"),
         row.owner?.estado_fdeznet,
-        row.client?.nombre,
-        row.client?.cedula,
-        row.client?.telefono,
-        row.client?.ip_asignada,
-        row.client?.user_pppoe,
-        row.client?.direccion,
+        clientValue(row, "cedula"),
+        clientValue(row, "telefono"),
+        clientValue(row, "ip_asignada"),
+        clientValue(row, "user_pppoe"),
+        clientValue(row, "direccion"),
       ].filter(Boolean).join(" ").toLowerCase();
 
       return haystack.includes(q);
@@ -984,8 +994,9 @@ export default function OltRadarVsolPage() {
                           <>
                             <strong>{clientName}</strong>
                             <div className="olt-muted-line">
-                              {row.client?.cedula ? `Cédula: ${row.client.cedula}` : ""}
-                              {row.client?.ip_asignada ? ` · IP: ${row.client.ip_asignada}` : ""}
+                              {clientValue(row, "cedula") ? `Cédula: ${clientValue(row, "cedula")}` : ""}
+                              {clientValue(row, "telefono") ? ` · Tel: ${clientValue(row, "telefono")}` : ""}
+                              {clientValue(row, "ip_asignada") ? ` · IP: ${clientValue(row, "ip_asignada")}` : ""}
                               {clientStatus ? ` · ${clientStatus}` : ""}
                             </div>
                           </>
@@ -1038,6 +1049,14 @@ export default function OltRadarVsolPage() {
                     </div>
 
                     <div className="olt-onu-card__foot">
+                      {clientValue(row, "telefono") && (
+                        <a
+                          href={`tel:${clientValue(row, "telefono")}`}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          Tel. {clientValue(row, "telefono")}
+                        </a>
+                      )}
                       <span>RX {parsePower(row.onu.rx_power) !== null ? `${row.onu.rx_power} dBm` : "N/A"}</span>
                       <span>TX {parsePower(row.onu.tx_power) !== null ? `${row.onu.tx_power} dBm` : "N/A"}</span>
                       <PowerPill rx={row.onu.rx_power} />

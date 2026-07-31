@@ -200,7 +200,7 @@ export default function TechDashboard() {
         <div className="min-h-screen bg-slate-50 dark:bg-[#0f1219] text-slate-900 dark:text-white font-sans flex flex-col overflow-hidden transition-colors duration-300">
 
             {/* HEADER ADAPTATIVO */}
-            <div className="bg-white/90 dark:bg-[#1a1f2e] backdrop-blur-md border-b border-slate-200 dark:border-slate-800/60 px-5 py-3 flex justify-between items-center sticky top-0 z-30 shadow-sm dark:shadow-lg transition-colors">
+            <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-sm backdrop-blur-xl transition-colors dark:border-slate-800/60 dark:bg-[#1a1f2e]/90 dark:shadow-lg sm:px-6">
                 <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center font-bold text-base text-white shadow-lg border border-purple-500/20 shrink-0">
                         {user?.usuario?.charAt(0) || 'T'}
@@ -211,15 +211,16 @@ export default function TechDashboard() {
                     </div>
                 </div>
                 <button
+                    aria-label="Cerrar sesión"
                     onClick={() => { if (confirm("¿Cerrar sesión?")) { localStorage.clear(); notifySessionChanged(); navigate('/login'); } }}
-                    className="p-2 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-rose-500 dark:hover:text-rose-500 rounded-full transition-all active:scale-95"
+                    className="app-icon-button hover:text-rose-500 dark:hover:text-rose-500"
                 >
                     <PowerIcon className="w-5 h-5" />
                 </button>
             </div>
 
             {/* CONTENIDO PRINCIPAL */}
-            <div className="flex-1 overflow-y-auto pb-28 px-4 pt-6">
+            <div className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 sm:px-6">
 
                 {/* PESTAÑA: INICIO (KPIs + Acceso a Búsqueda) */}
                 {activeTab === 'inicio' && (
@@ -362,7 +363,7 @@ export default function TechDashboard() {
             </div>
 
             {/* NAV INFERIOR ADAPTATIVO */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#161b28]/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800/80 px-4 py-2 pb-safe flex justify-between items-center z-40 transition-colors">
+            <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-slate-200 bg-white/92 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-15px_35px_-28px_rgba(15,23,42,.55)] backdrop-blur-xl transition-colors dark:border-slate-800/80 dark:bg-[#161b28]/92">
                 <NavButton icon={HomeIcon} label="Inicio" active={activeTab === 'inicio'} onClick={() => setActiveTab('inicio')} />
                 <NavButton icon={ClipboardDocumentListIcon} label="Agenda" active={activeTab === 'agenda'} onClick={() => setActiveTab('agenda')} />
                 <NavButton icon={ArchiveBoxArrowDownIcon} label="Retiros" active={activeTab === 'retiros'} onClick={() => setActiveTab('retiros')} />
@@ -374,7 +375,7 @@ export default function TechDashboard() {
 }
 
 const NavButton = ({ icon: Icon, label, active, onClick }: NavButtonProps) => (
-    <button onClick={onClick} className={`flex flex-col items-center p-2 transition-all ${active ? 'text-purple-600 dark:text-purple-500 scale-110' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400'}`}>
+    <button onClick={onClick} className={`flex min-h-12 min-w-20 flex-col items-center justify-center rounded-2xl p-2 transition-all active:scale-95 ${active ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400'}`}>
         <Icon className="w-6 h-6" />
         <span className="text-[8px] font-black uppercase tracking-widest mt-1">{label}</span>
     </button>

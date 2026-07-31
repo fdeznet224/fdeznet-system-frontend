@@ -280,12 +280,16 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
 
     return (
         <>
-            <div role="dialog" aria-label="Herramientas del cliente" aria-modal="true" className={`fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 dark:bg-black/90 backdrop-blur-sm transition-opacity duration-300 ${showChatModal ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+            <div role="dialog" aria-label="Herramientas del cliente" aria-modal="true" className={`fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm transition-opacity duration-300 dark:bg-black/90 sm:items-center sm:p-4 ${showChatModal ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                 
-                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] transition-colors">
+                <div className="flex max-h-[88dvh] w-full max-w-md animate-in flex-col overflow-hidden rounded-t-[2rem] border border-slate-200 bg-white shadow-2xl slide-in-from-bottom-8 transition-colors dark:border-slate-800 dark:bg-slate-900 sm:max-h-[90vh] sm:rounded-2xl sm:zoom-in-95">
+
+                    <div className="flex justify-center bg-slate-50 pt-3 dark:bg-slate-950 sm:hidden">
+                        <span className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-700" />
+                    </div>
 
                     {/* HEADER */}
-                    <div className="bg-slate-50 dark:bg-slate-950 p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center transition-colors">
+                    <div className="bg-slate-50 dark:bg-slate-950 p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center transition-colors">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-indigo-100 dark:bg-indigo-500/10 rounded-lg border border-indigo-200 dark:border-indigo-500/20 transition-colors">
                                 <WrenchScrewdriverIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -306,7 +310,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
                     </div>
 
                     {/* BODY */}
-                    <div className="p-6 overflow-y-auto custom-scrollbar bg-white dark:bg-slate-900 transition-colors">
+                    <div className="overflow-y-auto bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] transition-colors custom-scrollbar dark:bg-slate-900 sm:p-6">
                         {servicios.length > 0 && (
                             <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
                                 <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -534,7 +538,7 @@ const MenuButton = ({ icon: Icon, label, desc, variant = 'blue', badge = 0, onCl
     };
     const colors = colorClasses[variant] || colorClasses.blue;
     return (
-        <button onClick={onClick} className={`relative flex flex-col items-start p-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition-all group text-left w-full h-[120px] ${colors.btn}`}>
+        <button onClick={onClick} className={`relative flex h-[108px] w-full flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-left transition-all group hover:bg-slate-100 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800 sm:h-[120px] sm:p-4 ${colors.btn}`}>
             {badge > 0 && (
                 <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-[10px] font-black text-white shadow-md animate-pulse ring-4 ring-white dark:ring-slate-900 z-10">
                     {badge}

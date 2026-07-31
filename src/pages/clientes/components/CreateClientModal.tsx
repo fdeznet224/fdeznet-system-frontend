@@ -662,12 +662,12 @@ export default function CreateClientModal({
     : inventarioDisponible;
 
   const flatInputClass =
-    'w-full bg-slate-100 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-[13px] sm:text-sm rounded-2xl focus:ring-2 focus:ring-blue-500 block p-4 outline-none transition-all duration-200 placeholder:text-slate-400 border border-transparent appearance-none';
+    'w-full min-h-12 bg-slate-100 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-base sm:text-sm rounded-2xl focus:ring-2 focus:ring-blue-500 block p-4 outline-none transition-all duration-200 placeholder:text-slate-400 border border-transparent appearance-none';
 
   const labelClass =
     'block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2 pl-1 uppercase tracking-widest';
 
-  const cardClass = 'bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden';
+  const cardClass = 'bg-white dark:bg-slate-900 sm:rounded-3xl shadow-2xl border-0 sm:border border-slate-200 dark:border-slate-800 overflow-hidden';
 
   const canContinueStep1 = formData.nombre && formData.telefono && formData.zona_id;
   const canContinueStep2 = formData.plantilla_id && formData.plan_id;
@@ -677,11 +677,24 @@ export default function CreateClientModal({
     const progress = step >= 4 ? 100 : Math.min((step / 3) * 100, 100);
 
     return (
-      <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-        <div
-          className="h-full bg-blue-600 transition-all duration-300"
-          style={{ width: `${progress}%` }}
-        />
+      <div>
+        <div className="mb-2 flex justify-between gap-2">
+          {['Cliente', 'Cobranza', 'Instalación'].map((label, index) => {
+            const number = index + 1;
+            const active = step >= number;
+            return (
+              <span key={label} className={`text-[10px] font-black uppercase tracking-wider ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
+                {number}. {label}
+              </span>
+            );
+          })}
+        </div>
+        <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
       </div>
     );
   };
@@ -701,8 +714,8 @@ export default function CreateClientModal({
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
         </Transition.Child>
 
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-3 sm:p-6">
+        <div className="fixed inset-0 overflow-hidden">
+          <div className="flex min-h-full items-end justify-center sm:items-center sm:p-6">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -712,9 +725,10 @@ export default function CreateClientModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={`w-full max-w-5xl ${cardClass}`}>
-                <div className="flex items-center justify-between px-5 sm:px-8 py-5 border-b border-slate-200 dark:border-slate-800">
+              <Dialog.Panel className={`flex h-[100dvh] w-full max-w-5xl flex-col sm:h-auto sm:max-h-[92dvh] ${cardClass}`}>
+                <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] dark:border-slate-800 sm:px-8 sm:py-5">
                   <div>
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Nuevo servicio</p>
                     <Dialog.Title className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
                       {step === 4 ? 'Cliente creado' : 'Alta de Cliente'}
                     </Dialog.Title>
@@ -734,9 +748,9 @@ export default function CreateClientModal({
                   </button>
                 </div>
 
-                {step < 4 && <div className="px-5 sm:px-8 pt-5">{renderProgress()}</div>}
+                {step < 4 && <div className="shrink-0 px-5 pt-4 sm:px-8 sm:pt-5">{renderProgress()}</div>}
 
-                <div className="p-5 sm:p-8">
+                <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8">
                   {step === 1 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
@@ -1272,12 +1286,12 @@ export default function CreateClientModal({
                   )}
                 </div>
 
-                <div className="px-5 sm:px-8 py-5 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-3 sm:justify-between">
+                <div className="flex shrink-0 flex-col gap-3 border-t border-slate-200 bg-white/95 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 sm:flex-row sm:justify-between sm:px-8 sm:py-5">
                   {step > 1 && step < 4 ? (
                     <button
                       type="button"
                       onClick={() => setStep((prev) => prev - 1)}
-                      className="px-5 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center gap-2"
+                      className="min-h-12 px-5 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center gap-2"
                     >
                       <ArrowLeftIcon className="w-5 h-5" />
                       Atrás
@@ -1291,7 +1305,7 @@ export default function CreateClientModal({
                       type="button"
                       onClick={() => setStep(2)}
                       disabled={!canContinueStep1}
-                      className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-black disabled:opacity-40 flex items-center justify-center gap-2"
+                      className="min-h-12 px-6 py-3 rounded-2xl bg-blue-600 text-white font-black disabled:opacity-40 flex items-center justify-center gap-2"
                     >
                       Continuar
                       <ArrowRightIcon className="w-5 h-5" />
@@ -1303,7 +1317,7 @@ export default function CreateClientModal({
                       type="button"
                       onClick={() => setStep(3)}
                       disabled={!canContinueStep2}
-                      className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-black disabled:opacity-40 flex items-center justify-center gap-2"
+                      className="min-h-12 px-6 py-3 rounded-2xl bg-blue-600 text-white font-black disabled:opacity-40 flex items-center justify-center gap-2"
                     >
                       Continuar
                       <ArrowRightIcon className="w-5 h-5" />
@@ -1315,7 +1329,7 @@ export default function CreateClientModal({
                       type="button"
                       onClick={handleSubmit}
                       disabled={loading || !canSubmit}
-                      className="px-6 py-3 rounded-2xl bg-green-600 text-white font-black disabled:opacity-40 flex items-center justify-center gap-2"
+                      className="min-h-12 px-6 py-3 rounded-2xl bg-green-600 text-white font-black disabled:opacity-40 flex items-center justify-center gap-2"
                     >
                       {loading
                         ? 'Procesando...'
@@ -1332,7 +1346,7 @@ export default function CreateClientModal({
                     <button
                       type="button"
                       onClick={handleClose}
-                      className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-black"
+                      className="min-h-12 px-6 py-3 rounded-2xl bg-blue-600 text-white font-black"
                     >
                       Finalizar
                     </button>

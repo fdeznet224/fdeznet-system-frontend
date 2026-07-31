@@ -219,6 +219,8 @@ async function mockApi(page: Page) {
         cedula: 'E2E-1',
         telefono: '5550000000',
         direccion: 'Dirección E2E',
+        latitud: 19.4326,
+        longitud: -99.1332,
         zona: 'Centro',
         servicio: {
           plan_nombre: 'Plan E2E',
@@ -230,7 +232,16 @@ async function mockApi(page: Page) {
         finanzas: { facturas_pendientes_cant: 0, total_deuda: 0, saldo_a_favor: 0, estado_financiero: 'al_dia' },
       }]
     } else if (url.pathname.endsWith('/clientes/1')) {
-      body = { id: 1, nombre: 'Cliente E2E', telefono: '5550000000', ip_asignada: '10.0.0.2', estado: 'activo' }
+      body = {
+        id: 1,
+        nombre: 'Cliente E2E',
+        telefono: '5550000000',
+        direccion: 'Dirección E2E',
+        latitud: 19.4326,
+        longitud: -99.1332,
+        ip_asignada: '10.0.0.2',
+        estado: 'activo',
+      }
     } else if (url.pathname.endsWith('/servicios/cliente/1')) {
       body = [{
         id: 1,
@@ -371,6 +382,19 @@ test('abre herramientas y alta desde el listado unificado', async ({ page }) => 
   await page.goto('/admin/clientes')
 
   await expect(page.getByText('Gestión de Clientes')).toBeVisible()
+  if ((page.viewportSize()?.width ?? 1024) < 640) {
+    await expect(page.locator('.app-bottom-nav')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Filtrar clientes' }).click()
+    await expect(page.getByRole('dialog', { name: 'Filtros de clientes' })).toBeVisible()
+    await page.getByRole('button', { name: 'Listo' }).click()
+    await expect(page.getByRole('link', { name: 'Llamar a Cliente E2E' })).toHaveAttribute('href', 'tel:5550000000')
+    await expect(page.getByRole('link', { name: 'Abrir ubicación de Cliente E2E' })).toHaveAttribute('href', /^geo:19\.4326,-99\.1332/)
+    await page.locator('article').first().click()
+    await expect(page.locator('.client-detail-panel')).toBeVisible()
+    await expect(page.getByText('Copiar IP')).toHaveCount(0)
+    await expect(page.getByTitle('Copiar IP asignada')).toHaveCount(0)
+    await page.locator('.client-close-button').click()
+  }
   await page.getByRole('button', { name: 'Herramientas de Cliente E2E' }).click()
   const toolsDialog = page.getByRole('dialog', { name: 'Herramientas del cliente' })
   await expect(toolsDialog.getByText('10.0.0.2', { exact: true })).toBeVisible()
@@ -504,8 +528,14 @@ test('busca un cliente desde el encabezado global', async ({ page }) => {
   await mockApi(page)
   await page.goto('/admin/dashboard')
 
-  await page.getByPlaceholder('Buscar cliente por nombre...').fill('Cliente')
-  await expect(page.getByText('Cliente Global E2E')).toBeVisible()
+  if ((page.viewportSize()?.width ?? 1024) < 640) {
+    await page.getByRole('button', { name: 'Buscar cliente' }).click()
+    await page.getByRole('searchbox', { name: 'Buscar cliente por nombre...' }).fill('Cliente')
+    await expect(page.getByRole('button', { name: /Cliente Global E2E/ })).toBeVisible()
+  } else {
+    await page.getByPlaceholder('Buscar cliente por nombre...').fill('Cliente')
+    await expect(page.getByText('Cliente Global E2E')).toBeVisible()
+  }
 })
 
 test('carga facturas y su resumen financiero', async ({ page }) => {
