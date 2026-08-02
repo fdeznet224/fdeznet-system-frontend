@@ -13,6 +13,7 @@ interface Props {
     napId: number | null;
     napNombre: string;
     capacidad: number;
+    onOccupiedChange?: (occupied: number) => void;
 }
 
 interface ClienteNAP {
@@ -22,7 +23,7 @@ interface ClienteNAP {
     cedula?: string;
 }
 
-export default function NapDetailsModal({ isOpen, onClose, napId, napNombre, capacidad }: Props) {
+export default function NapDetailsModal({ isOpen, onClose, napId, napNombre, capacidad, onOccupiedChange }: Props) {
     const [clientes, setClientes] = useState<ClienteNAP[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedPortInfo, setSelectedPortInfo] = useState<{port: number, client: ClienteNAP | undefined} | null>(null);
@@ -34,12 +35,13 @@ export default function NapDetailsModal({ isOpen, onClose, napId, napNombre, cap
         try {
             const res = await client.get<ClienteNAP[]>(`/infraestructura/naps/${napId}/detalles`);
             setClientes(res.data || []);
+            onOccupiedChange?.(res.data?.length || 0);
         } catch {
             toast.error("Error cargando datos");
         } finally {
             setLoading(false);
         }
-    }, [napId]);
+    }, [napId, onOccupiedChange]);
 
     useEffect(() => {
         const syncTimer = window.setTimeout(() => {

@@ -92,6 +92,20 @@ export default function CajasNap() {
         return () => window.clearTimeout(fetchTimer);
     }, [fetchData]);
 
+    const updateOccupiedCount = useCallback((occupied: number) => {
+        const napId = detailsModal.nap?.id;
+        if (!napId) return;
+        setNaps((current) => current.map((item) => (
+            item.id === napId
+                ? {
+                    ...item,
+                    puertos_usados: occupied,
+                    puertos_libres: Math.max(item.capacidad - occupied, 0),
+                }
+                : item
+        )));
+    }, [detailsModal.nap?.id]);
+
     const handleDelete = async (id: number) => {
         if(!confirm("¿Estás seguro de eliminar esta NAP?")) return;
         try { 
@@ -269,6 +283,7 @@ export default function CajasNap() {
                 napId={detailsModal.nap?.id || null}
                 napNombre={detailsModal.nap?.nombre || ''}
                 capacidad={detailsModal.nap?.capacidad || 16}
+                onOccupiedChange={updateOccupiedCount}
             />
         </div>
     );
