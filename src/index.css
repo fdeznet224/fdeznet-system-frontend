@@ -4,6 +4,86 @@
 /* ✅ SOLUCIÓN: Cambia dinámicamente según la clase .dark del HTML raíz */
 body {
   @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300;
+  min-width: 320px;
+  min-height: 100dvh;
+  margin: 0;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+@media (min-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: inherit;
+  }
+}
+
+:root {
+  --app-primary: #2563eb;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f8fafc;
+  --app-border: #e2e8f0;
+  --app-shadow: 0 18px 45px -28px rgb(15 23 42 / 0.34);
+}
+
+.dark {
+  --app-primary: #60a5fa;
+  --app-surface: #111827;
+  --app-surface-soft: #0f172a;
+  --app-border: #263449;
+  --app-shadow: 0 22px 55px -30px rgb(0 0 0 / 0.8);
+}
+
+.app-topbar {
+  padding-top: env(safe-area-inset-top);
+}
+
+.app-icon-button {
+  @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white;
+}
+
+.app-field {
+  @apply w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-900;
+  min-height: 48px;
+}
+
+.app-status {
+  @apply inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wider;
+}
+
+.app-status--success {
+  @apply bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300;
+}
+
+.app-status--danger {
+  @apply bg-rose-500/10 text-rose-700 ring-1 ring-rose-500/20 dark:text-rose-300;
+}
+
+.app-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow);
+  @apply rounded-3xl;
 }
 
 /* =========================================================

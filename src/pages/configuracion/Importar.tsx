@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import { 
@@ -7,10 +8,35 @@ import {
     ArrowLeftIcon, 
     ArrowDownTrayIcon,
     ExclamationTriangleIcon,
-    GlobeAltIcon,
     CheckCircleIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
+
+interface CatalogOption {
+    id: number;
+    nombre: string;
+    cidr?: string;
+}
+
+interface ImportResult {
+    importados: number;
+    errores?: unknown | unknown[];
+}
+
+interface CatalogInput {
+    label: string;
+    value: string;
+    setValue: (value: string) => void;
+    options: CatalogOption[];
+    disabled?: boolean;
+}
+
+function apiErrorMessage(error: unknown, fallback: string) {
+    if (axios.isAxiosError<{ detail?: string }>(error)) {
+        return error.response?.data?.detail || fallback;
+    }
+    return fallback;
+}
 
 export default function Importar() {
     const navigate = useNavigate();
@@ -21,24 +47,24 @@ export default function Importar() {
     const [plantillaId, setPlantillaId] = useState('');
     const [planId, setPlanId] = useState(''); 
     
-    const [routers, setRouters] = useState<any[]>([]);
-    const [redes, setRedes] = useState<any[]>([]);
-    const [zonas, setZonas] = useState<any[]>([]);
-    const [plantillas, setPlantillas] = useState<any[]>([]);
-    const [planes, setPlanes] = useState<any[]>([]); 
+    const [routers, setRouters] = useState<CatalogOption[]>([]);
+    const [redes, setRedes] = useState<CatalogOption[]>([]);
+    const [zonas, setZonas] = useState<CatalogOption[]>([]);
+    const [plantillas, setPlantillas] = useState<CatalogOption[]>([]);
+    const [planes, setPlanes] = useState<CatalogOption[]>([]);
 
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
-    const [resultado, setResultado] = useState<any>(null);
+    const [resultado, setResultado] = useState<ImportResult | null>(null);
 
     useEffect(() => {
         const loadCatalogos = async () => {
             try {
                 const [r, z, p, pl] = await Promise.all([
-                    client.get('/network/routers/'),
-                    client.get('zonas'),
-                    client.get('/configuracion/plantillas-facturacion'),
-                    client.get('/planes/') 
+                    client.get<CatalogOption[]>('/network/routers/'),
+                    client.get<CatalogOption[]>('zonas'),
+                    client.get<CatalogOption[]>('/configuracion/plantillas-facturacion'),
+                    client.get<CatalogOption[]>('/planes/')
                 ]);
                 setRouters(Array.isArray(r.data) ? r.data : []);
                 setZonas(Array.isArray(z.data) ? z.data : []);
@@ -59,9 +85,9 @@ export default function Importar() {
         if (routerId) {
             const fetchRedes = async () => {
                 try {
-                    const res = await client.get(`/network/redes/router/${routerId}`);
+                    const res = await client.get<CatalogOption[]>(`/network/redes/router/${routerId}`);
                     setRedes(Array.isArray(res.data) ? res.data : []);
-                } catch (error) {
+                } catch {
                     toast.error("Error cargando redes del router");
                 }
             };
@@ -87,7 +113,7 @@ export default function Importar() {
                 plan_id: planId 
             }).toString();
 
-            const response = await client.get(`/network/importar/plantilla-inteligente?${params}`, {
+            const response = await client.get<Blob>(`/network/importar/plantilla-inteligente?${params}`, {
                 responseType: 'blob',
             });
             
@@ -118,7 +144,7 @@ export default function Importar() {
         formData.append("archivo", file);
 
         try {
-            const res = await client.post(`/network/importar/procesar-excel?router_id=${routerId}`, formData, {
+            const res = await client.post<ImportResult>(`/network/importar/procesar-excel?router_id=${routerId}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             
@@ -129,14 +155,21 @@ export default function Importar() {
             } else {
                 toast.error("No se importaron clientes. Revisa los errores.");
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
-            const msg = error.response?.data?.detail || "Error al procesar archivo";
-            toast.error(msg);
+            toast.error(apiErrorMessage(error, "Error al procesar archivo"));
         } finally {
             setLoading(false);
         }
     };
+
+    const catalogInputs: CatalogInput[] = [
+        { label: 'Router MikroTik', value: routerId, setValue: setRouterId, options: routers },
+        { label: 'Red / Pool IP', value: redId, setValue: setRedId, options: redes, disabled: !routerId },
+        { label: 'Zona Geográfica', value: zonaId, setValue: setZonaId, options: zonas },
+        { label: 'Plantilla Facturación', value: plantillaId, setValue: setPlantillaId, options: plantillas },
+        { label: 'Plan de Internet', value: planId, setValue: setPlanId, options: planes },
+    ];
 
     return (
         /* ✅ ADAPTADO: Fondo dinámico */
@@ -166,20 +199,14 @@ export default function Importar() {
                         
                         <div className="space-y-5 relative z-10">
                             {/* Inputs */}
-                            {[
-                                { label: 'Router MikroTik', val: routerId, set: setRouterId, options: routers },
-                                { label: 'Red / Pool IP', val: redId, set: setRedId, options: redes, disabled: !routerId },
-                                { label: 'Zona Geográfica', val: zonaId, set: setZonaId, options: zonas },
-                                { label: 'Plantilla Facturación', val: plantillaId, set: setPlantillaId, options: plantillas },
-                                { label: 'Plan de Internet', val: planId, set: setPlanId, options: planes }
-                            ].map((input, idx) => (
-                                <div key={idx} className={`transition-all duration-300 ${input.disabled ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                            {catalogInputs.map((input) => (
+                                <div key={input.label} className={`transition-all duration-300 ${input.disabled ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                                     <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 mb-1.5 block uppercase tracking-wider">{input.label}</label>
                                     <select className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-800 dark:text-white text-sm outline-none focus:border-blue-500 transition-colors" 
-                                        value={input.val} onChange={e => input.set(e.target.value)}>
+                                        value={input.value} onChange={event => input.setValue(event.target.value)}>
                                         <option value="">-- Seleccionar --</option>
-                                        {Array.isArray(input.options) && input.options.map((o: any) => (
-                                            <option key={o.id} value={o.id} className="bg-white dark:bg-slate-950">{o.nombre} {o.cidr ? `(${o.cidr})` : ''}</option>
+                                        {input.options.map((option) => (
+                                            <option key={option.id} value={option.id} className="bg-white dark:bg-slate-950">{option.nombre} {option.cidr ? `(${option.cidr})` : ''}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -243,9 +270,9 @@ export default function Importar() {
                                     <p className="text-xs font-black text-rose-600 dark:text-rose-400 mb-3 uppercase tracking-widest">Detalles:</p>
                                     <ul className="space-y-2">
                                         {Array.isArray(resultado.errores) ? (
-                                            resultado.errores.map((err: any, i: number) => (
-                                                <li key={i} className="text-xs text-slate-700 dark:text-slate-300 border-l-2 border-rose-500/50 pl-3 transition-colors">
-                                                    {typeof err === 'object' ? JSON.stringify(err) : String(err)}
+                                            resultado.errores.map((error, index) => (
+                                                <li key={index} className="text-xs text-slate-700 dark:text-slate-300 border-l-2 border-rose-500/50 pl-3 transition-colors">
+                                                    {typeof error === 'object' ? JSON.stringify(error) : String(error)}
                                                 </li>
                                             ))
                                         ) : (

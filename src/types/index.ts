@@ -155,7 +155,7 @@ export interface Usuario {
     id: number;
     nombre_completo: string; 
     usuario: string;
-    rol: 'admin' | 'cajero' | 'tecnico';
+    rol: 'admin' | 'supervisor' | 'cajero' | 'tecnico';
     activo: boolean;
     router_ids: number[]; 
 }

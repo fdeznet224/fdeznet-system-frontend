@@ -1,6 +1,8 @@
 node_modules/
 # Build
 dist/
+playwright-report/
+test-results/
 
 # Backups locales
 backups/

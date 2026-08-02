@@ -1,16 +1,53 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent } from 'react';
 import client from '../../api/axios'; 
 import { toast } from 'react-hot-toast';
 import { 
-    ArrowPathIcon, PlusIcon, 
+    ArrowPathIcon,
     MagnifyingGlassIcon, FunnelIcon,
     CalendarDaysIcon, UserIcon, TicketIcon, CreditCardIcon
 } from '@heroicons/react/24/outline';
 
+interface PaymentReportItem {
+    id: number;
+    cliente_nombre: string;
+    factura_id: number;
+    metodo: string;
+    fecha: string;
+    usuario_nombre: string;
+    monto: number | string;
+    zona_nombre?: string;
+    router_nombre?: string;
+}
+
+interface UserCatalog {
+    id: number;
+    nombre_completo?: string | null;
+    usuario: string;
+}
+
+interface RouterCatalog {
+    id: number;
+    nombre: string;
+}
+interface ZoneCatalog { id: number; nombre: string; }
+
+interface PaymentReportResponse {
+    detalles?: PaymentReportItem[];
+}
+
+interface TransactionFilters {
+    fechaInicio: string;
+    fechaFin: string;
+    usuarioId: string;
+    routerId: string;
+    zonaId: string;
+}
+
 export default function Transacciones() {
-    const [pagos, setPagos] = useState<any[]>([]);
-    const [usuarios, setUsuarios] = useState<any[]>([]);
-    const [routers, setRouters] = useState<any[]>([]);
+    const [pagos, setPagos] = useState<PaymentReportItem[]>([]);
+    const [usuarios, setUsuarios] = useState<UserCatalog[]>([]);
+    const [routers, setRouters] = useState<RouterCatalog[]>([]);
+    const [zonas, setZonas] = useState<ZoneCatalog[]>([]);
     const [loading, setLoading] = useState(false);
     
     // Control de filtros en móvil
@@ -24,60 +61,74 @@ export default function Transacciones() {
         return `${year}-${month}-${day}`;
     };
 
-    const [filtros, setFiltros] = useState({
+    const [filtros, setFiltros] = useState<TransactionFilters>({
         fechaInicio: getHoyLocal(),
         fechaFin: getHoyLocal(),
         usuarioId: '', 
-        routerId: ''
+        routerId: '',
+        zonaId: ''
     });
+    const filtrosRef = useRef(filtros);
+    filtrosRef.current = filtros;
+
+    const fetchPagos = useCallback(async () => {
+        setLoading(true);
+        const currentFilters = filtrosRef.current;
+        try {
+            const params = new URLSearchParams({
+                start_date: currentFilters.fechaInicio,
+                end_date: currentFilters.fechaFin,
+                ...(currentFilters.usuarioId && { usuario_id: currentFilters.usuarioId }),
+                ...(currentFilters.routerId && { router_id: currentFilters.routerId }),
+                ...(currentFilters.zonaId && { zona_id: currentFilters.zonaId })
+            }).toString();
+
+            const res = await client.get<PaymentReportResponse>(`/finanzas/pagos-reporte?${params}`);
+            const detalles = res.data.detalles ?? [];
+            setPagos(detalles);
+            setMostrarFiltrosMovil(false);
+
+            if (detalles.length === 0) {
+                toast("No hay movimientos en este rango", { icon: 'ℹ️' });
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al obtener reporte");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
         const loadMetadata = async () => {
             try {
-                const [u, r] = await Promise.all([
-                    client.get('/usuarios/'), 
-                    client.get('/network/routers/') 
+                const [u, r, z] = await Promise.all([
+                    client.get<UserCatalog[]>('/usuarios/'),
+                    client.get<RouterCatalog[]>('/network/routers/'),
+                    client.get<ZoneCatalog[]>('/zonas/')
                 ]);
                 setUsuarios(u.data); 
                 setRouters(r.data);
+                setZonas(z.data);
             } catch (e) { 
                 console.error("Error metadatos", e);
             }
-            fetchPagos();
+            void fetchPagos();
         };
-        loadMetadata();
-    }, []);
+        void loadMetadata();
+    }, [fetchPagos]);
 
-    const fetchPagos = async () => {
-        setLoading(true);
-        try {
-            const params = new URLSearchParams({
-                start_date: filtros.fechaInicio, 
-                end_date: filtros.fechaFin,
-                ...(filtros.usuarioId && { usuario_id: filtros.usuarioId }),
-                ...(filtros.routerId && { router_id: filtros.routerId })
-            }).toString();
-
-            const res = await client.get(`/finanzas/pagos-reporte?${params}`);
-            setPagos(res.data.detalles || []);
-            setMostrarFiltrosMovil(false);
-            
-            if ((res.data.detalles || []).length === 0) {
-                toast("No hay movimientos en este rango", { icon: 'ℹ️' });
-            }
-        } catch (error) { 
-            console.error(error);
-            toast.error("Error al obtener reporte"); 
-        } finally { 
-            setLoading(false); 
-        }
+    const handleFilterChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setFiltros((current) => ({ ...current, [event.target.name]: event.target.value }));
     };
-
-    const handleFilterChange = (e: any) => setFiltros({ ...filtros, [e.target.name]: e.target.value });
 
     const totalMostrado = useMemo(() => {
         return pagos.reduce((acc, curr) => acc + Number(curr.monto), 0);
     }, [pagos]);
+    const totalPorMetodo = useMemo(() => pagos.reduce<Record<string, number>>((totales, pago) => {
+        totales[pago.metodo] = (totales[pago.metodo] || 0) + Number(pago.monto);
+        return totales;
+    }, {}), [pagos]);
 
     return (
         /* ✅ ADAPTADO: Fondo base adaptativo */
@@ -86,7 +137,7 @@ export default function Transacciones() {
             {/* HEADER MINIMALISTA */}
             <div className="flex justify-between items-center px-1 md:px-0 flex-none">
                 <div>
-                    <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight transition-colors">Transacciones y Caja</h2>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight transition-colors">Corte de Cobranza</h2>
                 </div>
                 
                 <button 
@@ -95,6 +146,14 @@ export default function Transacciones() {
                 >
                     <FunnelIcon className="w-4 h-4" />
                 </button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(totalPorMetodo).map(([metodo, total]) => (
+                    <div key={metodo} className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                        <span className="text-[9px] uppercase font-black text-slate-400">{metodo}</span>
+                        <p className="text-lg font-black text-slate-900 dark:text-white">${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                ))}
             </div>
 
             {/* TOTAL EN PANTALLA ADAPTATIVO */}
@@ -113,7 +172,7 @@ export default function Transacciones() {
             </div>
             
             {/* FILTROS ESCRITORIO */}
-            <div className="hidden md:grid bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 grid-cols-5 gap-4 items-end shadow-sm flex-none transition-colors">
+            <div className="hidden md:grid bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 grid-cols-6 gap-4 items-end shadow-sm flex-none transition-colors">
                 <div>
                     <label className="text-xs font-black text-slate-400 dark:text-slate-500 block mb-1">Inicio</label>
                     <input type="date" name="fechaInicio" value={filtros.fechaInicio} onChange={handleFilterChange} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-white text-xs outline-none focus:border-indigo-500 transition-colors" />
@@ -127,6 +186,13 @@ export default function Transacciones() {
                     <select name="usuarioId" value={filtros.usuarioId} onChange={handleFilterChange} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-white text-xs outline-none focus:border-indigo-500 transition-colors cursor-pointer">
                         <option value="">-- Todos --</option>
                         {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre_completo || u.usuario}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-xs font-black text-slate-400 dark:text-slate-500 block mb-1">Zona</label>
+                    <select name="zonaId" value={filtros.zonaId} onChange={handleFilterChange} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-white text-xs outline-none focus:border-indigo-500 transition-colors cursor-pointer">
+                        <option value="">-- Todas --</option>
+                        {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
                     </select>
                 </div>
                 <div>

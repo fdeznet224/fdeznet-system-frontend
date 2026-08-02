@@ -6,13 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
+    "lint:strict": "eslint . --max-warnings 0",
+    "lint:critical": "eslint src/App.tsx src/components/app src/context/sync src/offline src/pages/admin/bajas/ServiceTerminations.tsx --max-warnings 0",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "check:release": "npm run lint && npm run lint:critical && npm run build && npm run test:e2e",
     "preview": "vite preview"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@ericblade/quagga2": "^1.12.1",
     "@fontsource/plus-jakarta-sans": "^5.2.8",
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.2.0",
@@ -33,12 +37,13 @@
     "react-hot-toast": "^2.6.0",
     "react-leaflet": "^5.0.0",
     "react-qr-code": "^2.0.18",
-    "react-router-dom": "^7.11.0",
+    "react-router-dom": "7.18.2",
     "recharts": "^3.6.0",
     "zod": "^4.2.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.62.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^24.10.1",

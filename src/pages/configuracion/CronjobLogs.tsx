@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import client from '../../api/axios';
+import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { 
     ArrowLeftIcon, 
@@ -16,7 +16,7 @@ import {
 interface LogEntry {
     id: number;
     fecha: string;
-    nivel: 'INFO' | 'ERROR' | 'WARNING';
+    nivel: 'INFO' | 'ERROR' | 'WARN' | 'WARNING';
     origen: string;
     mensaje: string;
 }
@@ -26,10 +26,11 @@ export default function CronjobLogs() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [reconciling, setReconciling] = useState(false);
 
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         try {
-            const res = await client.get('/configuracion/logs');
+            const res = await client.get<LogEntry[]>('/configuracion/logs');
             setLogs(res.data);
         } catch (error) {
             console.error(error);
@@ -37,11 +38,11 @@ export default function CronjobLogs() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, []);
 
     const handleRefresh = () => {
         setRefreshing(true);
-        fetchLogs();
+        void fetchLogs();
     };
 
     const handleClear = async () => {
@@ -50,12 +51,39 @@ export default function CronjobLogs() {
             await client.delete('/configuracion/logs');
             setLogs([]);
             toast.success("Historial limpiado");
-        } catch (error) {
+        } catch {
             toast.error("Error al limpiar");
         }
     };
 
-    useEffect(() => { fetchLogs(); }, []);
+    const handleReconcile = async () => {
+        setReconciling(true);
+        try {
+            const response = await client.post<{
+                message?: string;
+                reporte?: {
+                    reparados: number;
+                    errores: number;
+                };
+            }>('/network/conciliar-mikrotik');
+            const errores = response.data.reporte?.errores || 0;
+            if (errores > 0) {
+                toast.error(response.data.message || 'Conciliación terminada con errores');
+            } else {
+                toast.success(response.data.message || 'MikroTik conciliado');
+            }
+            await fetchLogs();
+        } catch {
+            toast.error('No se pudo ejecutar la conciliación MikroTik');
+        } finally {
+            setReconciling(false);
+        }
+    };
+
+    useEffect(() => {
+        const initialLoad = window.setTimeout(() => void fetchLogs(), 0);
+        return () => window.clearTimeout(initialLoad);
+    }, [fetchLogs]);
 
     const formatDate = (isoString: string) => {
         const date = new Date(isoString);
@@ -68,6 +96,7 @@ export default function CronjobLogs() {
     const getIcon = (nivel: string) => {
         switch(nivel) {
             case 'ERROR': return <XCircleIcon className="w-5 h-5 text-rose-500" />;
+            case 'WARN':
             case 'WARNING': return <ExclamationTriangleIcon className="w-5 h-5 text-amber-500" />;
             default: return <CheckCircleIcon className="w-5 h-5 text-emerald-500" />;
         }
@@ -93,6 +122,16 @@ export default function CronjobLogs() {
                 </div>
 
                 <div className="flex gap-3 w-full md:w-auto">
+                    <button
+                        onClick={handleReconcile}
+                        disabled={reconciling}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+                    >
+                        <ArrowPathIcon className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} />
+                        <span className="hidden sm:inline font-bold uppercase text-xs tracking-widest">
+                            {reconciling ? 'Conciliando...' : 'Conciliar MikroTik'}
+                        </span>
+                    </button>
                     <button 
                         onClick={handleRefresh}
                         className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-200 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors"
@@ -151,6 +190,7 @@ export default function CronjobLogs() {
                                     <span className={`text-[10px] font-black px-2 py-1 rounded border uppercase tracking-wider ${
                                         log.origen === 'Facturación' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30' :
                                         log.origen === 'Cortes' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/30' :
+                                        log.origen === 'ConciliacionMikroTik' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30' :
                                         'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600'
                                     }`}>
                                         {log.origen}

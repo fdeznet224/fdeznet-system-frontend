@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import client from '../../api/axios';
+import { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { 
     ArrowLeftIcon, 
@@ -14,29 +15,59 @@ import {
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 
+interface SystemUser {
+    id: number;
+    nombre_completo: string;
+    usuario: string;
+    rol: string;
+    activo: boolean;
+    router_ids?: number[];
+}
+
+interface RouterCatalog {
+    id: number;
+    nombre: string;
+}
+
+interface UserForm {
+    nombre_completo: string;
+    usuario: string;
+    password: string;
+    rol: string;
+    activo: boolean;
+    router_ids: number[];
+}
+
+const initialForm: UserForm = {
+    nombre_completo: '',
+    usuario: '',
+    password: '',
+    rol: 'cajero',
+    activo: true,
+    router_ids: []
+};
+
+const getApiError = (error: unknown, fallback: string) => {
+    if (axios.isAxiosError<{ detail?: string }>(error)) {
+        return error.response?.data?.detail || fallback;
+    }
+    return fallback;
+};
+
 export default function Usuarios() {
     const navigate = useNavigate();
     
-    const [usuarios, setUsuarios] = useState<any[]>([]);
-    const [listaRouters, setListaRouters] = useState<any[]>([]);
+    const [usuarios, setUsuarios] = useState<SystemUser[]>([]);
+    const [listaRouters, setListaRouters] = useState<RouterCatalog[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
 
-    const initialForm = { 
-        nombre_completo: '', 
-        usuario: '', 
-        password: '', 
-        rol: 'cajero', 
-        activo: true,
-        router_ids: [] as number[] 
-    };
+    const [form, setForm] = useState<UserForm>(initialForm);
 
-    const [form, setForm] = useState(initialForm);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const [resUsers, resRouters] = await Promise.all([
-                client.get('/usuarios/'),
-                client.get('/network/routers/')
+                client.get<SystemUser[]>('/usuarios/'),
+                client.get<RouterCatalog[]>('/network/routers/')
             ]);
             setUsuarios(resUsers.data);
             setListaRouters(resRouters.data);
@@ -44,11 +75,14 @@ export default function Usuarios() {
             console.error(error);
             toast.error("Error cargando datos del sistema");
         }
-    };
+    }, []);
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        const initialLoad = window.setTimeout(() => void fetchData(), 0);
+        return () => window.clearTimeout(initialLoad);
+    }, [fetchData]);
 
-    const handleEdit = (user: any) => {
+    const handleEdit = (user: SystemUser) => {
         setEditingId(user.id);
         setForm({
             nombre_completo: user.nombre_completo,
@@ -85,10 +119,10 @@ export default function Usuarios() {
                 toast.success("Usuario creado");
             }
             handleCancelEdit();
-            fetchData(); 
-        } catch (error: any) { 
+            void fetchData();
+        } catch (error: unknown) {
             console.error(error);
-            toast.error(error.response?.data?.detail || "Error al guardar usuario"); 
+            toast.error(getApiError(error, "Error al guardar usuario"));
         }
     };
 
@@ -97,7 +131,7 @@ export default function Usuarios() {
         try {
             await client.delete(`/usuarios/${id}`);
             toast.success("Eliminado");
-            fetchData();
+            void fetchData();
         } catch { toast.error("Error al eliminar"); }
     };
 

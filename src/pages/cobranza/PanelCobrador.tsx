@@ -1,8 +1,14 @@
-import { useState, useEffect, Fragment } from 'react';
+import {
+    useState, useEffect, useCallback, Fragment,
+    type ComponentType
+} from 'react';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import { Dialog, Transition } from '@headlessui/react';
 import { useNavigate } from 'react-router-dom';
+import { useSync } from '@/context/sync/context';
+import { cachedRequest, notifySessionChanged } from '../../offline/db';
+import { submitOperation } from '../../offline/sync';
 import { 
     BanknotesIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, 
     XMarkIcon, ArrowPathIcon, ShieldExclamationIcon, ClockIcon, 
@@ -10,31 +16,74 @@ import {
     CheckCircleIcon, IdentificationIcon
 } from '@heroicons/react/24/outline';
 
+type PaymentMethod = 'efectivo' | 'transferencia';
+
+interface BillingClient {
+    nombre: string;
+    cedula?: string;
+    ip_asignada?: string;
+}
+
+interface BillingInvoice {
+    id: number;
+    cliente: BillingClient;
+    saldo_pendiente: number;
+    fecha_vencimiento: string;
+}
+
+interface InvoiceListResponse {
+    items?: BillingInvoice[];
+}
+
+interface PaymentHistoryItem {
+    factura_id: number;
+    metodo: PaymentMethod;
+    monto: number;
+    pendiente?: boolean;
+}
+
+interface PaymentReportResponse {
+    detalles?: PaymentHistoryItem[];
+}
+
+interface CollectorUser {
+    usuario?: string;
+}
+
+interface NavButtonProps {
+    active: boolean;
+    icon: ComponentType<{ className?: string }>;
+    label: string;
+    onClick: () => void;
+    badge?: number;
+}
+
 export default function PanelCobrador() {
     const navigate = useNavigate();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const { online } = useSync();
+    const user = JSON.parse(localStorage.getItem('user') || '{}') as CollectorUser;
     
     const [activeTab, setActiveTab] = useState<'cobrar' | 'promesas' | 'historial' | 'cierre'>('cobrar');
-    const [facturas, setFacturas] = useState<any[]>([]);
-    const [historial, setHistorial] = useState<any[]>([]);
-    const [promesas, setPromesas] = useState<any[]>([]);
+    const [facturas, setFacturas] = useState<BillingInvoice[]>([]);
+    const [historial, setHistorial] = useState<PaymentHistoryItem[]>([]);
+    const [promesas, setPromesas] = useState<BillingInvoice[]>([]);
     const [loading, setLoading] = useState(false);
     const [filtro, setFiltro] = useState('');
     
-    const totalCobradoHoy = historial.reduce((acc, curr) => acc + curr.monto, 0);
-    const totalEfectivo = historial.filter(h => h.metodo === 'efectivo').reduce((acc, curr) => acc + curr.monto, 0);
-    const totalTransferencia = historial.filter(h => h.metodo === 'transferencia').reduce((acc, curr) => acc + curr.monto, 0);
-    const totalRetencionPromesas = promesas.reduce((acc, curr) => acc + curr.saldo_pendiente, 0);
+    const totalCobradoHoy = historial.reduce((acc, curr) => acc + Number(curr.monto), 0);
+    const totalEfectivo = historial.filter(h => h.metodo === 'efectivo').reduce((acc, curr) => acc + Number(curr.monto), 0);
+    const totalTransferencia = historial.filter(h => h.metodo === 'transferencia').reduce((acc, curr) => acc + Number(curr.monto), 0);
+    const totalRetencionPromesas = promesas.reduce((acc, curr) => acc + Number(curr.saldo_pendiente), 0);
 
     // ESTADOS DEL MODAL
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedFactura, setSelectedFactura] = useState<any>(null);
+    const [selectedFactura, setSelectedFactura] = useState<BillingInvoice | null>(null);
     const [modo, setModo] = useState<'pagar' | 'promesa'>('pagar'); // 👈 Nuevo estado para las tabs
-    const [formCobro, setFormCobro] = useState({ metodo: 'efectivo', referencia: '', monto: 0 });
+    const [formCobro, setFormCobro] = useState<{ metodo: PaymentMethod; referencia: string; monto: number }>({ metodo: 'efectivo', referencia: '', monto: 0 });
     const [fechaPromesa, setFechaPromesa] = useState('');
     const [procesando, setProcesando] = useState(false);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const now = new Date();
@@ -42,31 +91,44 @@ export default function PanelCobrador() {
             const localISOTime = new Date(now.getTime() - offset).toISOString().split('T')[0];
 
             const [resAdeudos, resHistorial, resPromesas] = await Promise.all([
-                client.get('/finanzas/listado-completo?estado=adeudos'),
-                client.get(`/finanzas/pagos-reporte?start_date=${localISOTime}&end_date=${localISOTime}`),
-                client.get('/finanzas/listado-completo?estado=promesa')
+                cachedRequest<InvoiceListResponse>('cobranza-adeudos', async () => (
+                    await client.get<InvoiceListResponse>('/finanzas/listado-completo?estado=adeudos')
+                ).data),
+                cachedRequest<PaymentReportResponse>(`cobranza-historial-${localISOTime}`, async () => (
+                    await client.get<PaymentReportResponse>(`/finanzas/pagos-reporte?start_date=${localISOTime}&end_date=${localISOTime}`)
+                ).data),
+                cachedRequest<InvoiceListResponse>('cobranza-promesas', async () => (
+                    await client.get<InvoiceListResponse>('/finanzas/listado-completo?estado=promesa')
+                ).data),
             ]);
 
-            setFacturas(resAdeudos.data.items);
+            setFacturas(resAdeudos.data.items || []);
             setHistorial(resHistorial.data.detalles || []);
             setPromesas(resPromesas.data.items || []);
-        } catch (error) {
+            if ([resAdeudos, resHistorial, resPromesas].some(item => item.fromCache)) {
+                toast('Mostrando el último corte guardado');
+            }
+        } catch {
             toast.error("Error al refrescar datos");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        const initialLoad = window.setTimeout(() => void fetchData(), 0);
+        return () => window.clearTimeout(initialLoad);
+    }, [fetchData]);
 
     const handleLogout = () => {
         if(confirm("¿Cerrar sesión?")) {
             localStorage.clear();
+            notifySessionChanged();
             navigate('/login');
         }
     };
 
-    const handleOpenCobrar = (factura: any) => {
+    const handleOpenCobrar = (factura: BillingInvoice) => {
         setSelectedFactura(factura);
         setFormCobro({ metodo: 'efectivo', referencia: '', monto: factura.saldo_pendiente });
         setModo('pagar'); // Resetear a Pagar al abrir
@@ -78,21 +140,39 @@ export default function PanelCobrador() {
 
     const handleProcesarCobro = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!selectedFactura) return;
         setProcesando(true);
         const toastId = toast.loading("Procesando...");
         try {
-            await client.post('/finanzas/cobrar', {
-                factura_id: selectedFactura.id,
-                metodo_pago: formCobro.metodo,
-                monto_recibido: Number(formCobro.monto),
-                referencia: formCobro.referencia || `POS #${selectedFactura.id}`
-            });
-            toast.success("Pago registrado exitosamente", { id: toastId });
+            const result = await submitOperation(
+                'pago_factura',
+                {
+                    factura_id: selectedFactura.id,
+                    metodo_pago: formCobro.metodo,
+                    monto_recibido: Number(formCobro.monto),
+                    referencia: formCobro.referencia || `POS #${selectedFactura.id}`,
+                },
+                `Cobro factura #${selectedFactura.id}`,
+            );
+            toast.success(
+                result.queued ? 'Cobro guardado para sincronizar' : 'Pago registrado exitosamente',
+                { id: toastId },
+            );
             setIsModalOpen(false);
             setFiltro('');
-            fetchData();
-        } catch (error) { 
-            toast.error("Error al cobrar", { id: toastId }); 
+            if (result.queued) {
+                setFacturas((current) => current.filter((item) => item.id !== selectedFactura.id));
+                setHistorial((current) => [{
+                    factura_id: selectedFactura.id,
+                    metodo: formCobro.metodo,
+                    monto: Number(formCobro.monto),
+                    pendiente: true,
+                }, ...current]);
+            } else {
+                void fetchData();
+            }
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Error al cobrar', { id: toastId });
         } finally {
             setProcesando(false);
         }
@@ -100,6 +180,11 @@ export default function PanelCobrador() {
 
     const handleProcesarPromesa = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!selectedFactura) return;
+        if (!online) {
+            toast.error('Las promesas de pago requieren conexión');
+            return;
+        }
         setProcesando(true);
         const toastId = toast.loading("Guardando promesa...");
         try {
@@ -111,12 +196,13 @@ export default function PanelCobrador() {
             setIsModalOpen(false);
             setFiltro('');
             fetchData();
-        } catch (error) { 
+        } catch {
             toast.error("Error al guardar promesa", { id: toastId }); 
         } finally {
             setProcesando(false);
         }
     };
+
 
     const facturasFiltradas = filtro.length > 0 
         ? facturas.filter(f => f.cliente.nombre.toLowerCase().includes(filtro.toLowerCase()) || f.cliente.ip_asignada?.includes(filtro))
@@ -128,9 +214,9 @@ export default function PanelCobrador() {
         <div className="min-h-screen bg-slate-50 dark:bg-[#0f1219] text-slate-800 dark:text-white font-sans flex flex-col transition-colors duration-300">
             
             {/* HEADER ADAPTATIVO */}
-            <div className="bg-white dark:bg-[#1a1f2e] border-b border-slate-200 dark:border-slate-800 px-5 py-3 flex justify-between items-center sticky top-0 z-30 shadow-sm dark:shadow-xl transition-colors">
+            <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-sm backdrop-blur-xl transition-colors dark:border-slate-800 dark:bg-[#1a1f2e]/90 dark:shadow-xl sm:px-6">
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center font-bold text-lg text-white">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center font-bold text-lg text-white shadow-lg shadow-blue-600/20">
                         {user.usuario?.charAt(0)?.toUpperCase()}
                     </div>
                     <div>
@@ -138,20 +224,32 @@ export default function PanelCobrador() {
                         <h1 className="text-sm font-black text-slate-900 dark:text-white capitalize transition-colors">{user.usuario}</h1>
                     </div>
                 </div>
-                <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                <button aria-label="Cerrar sesión" onClick={handleLogout} className="app-icon-button">
                     <ArrowRightOnRectangleIcon className="w-6 h-6" />
                 </button>
             </div>
 
             {/* CONTENIDO PRINCIPAL */}
-            <div className="flex-1 p-4 space-y-6 overflow-y-auto pb-24">
+            <div className="mx-auto w-full max-w-3xl flex-1 space-y-6 overflow-y-auto p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:p-6 sm:pb-28">
+                {loading && (
+                    <div role="status" className="flex items-center justify-center gap-2 text-xs font-bold text-slate-500">
+                        <ArrowPathIcon className="h-4 w-4 animate-spin" /> Actualizando cobranza...
+                    </div>
+                )}
                 
                 {/* === PESTAÑA: COBRAR === */}
                 {activeTab === 'cobrar' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
-                        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 shadow-md relative overflow-hidden">
-                            <span className="text-blue-100 text-[10px] font-black uppercase tracking-widest">Recaudado Hoy</span>
+                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 p-6 shadow-xl shadow-indigo-950/15">
+                            <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-xl" />
+                            <div className="relative flex items-center justify-between">
+                                <span className="text-blue-100 text-[10px] font-black uppercase tracking-widest">Recaudado Hoy</span>
+                                <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${online ? 'bg-emerald-400/20 text-emerald-100' : 'bg-amber-400/20 text-amber-100'}`}>
+                                    {online ? 'En línea' : 'Modo offline'}
+                                </span>
+                            </div>
                             <h2 className="text-4xl font-black text-white mt-1">${totalCobradoHoy.toLocaleString('es-MX')}</h2>
+                            <p className="mt-2 text-xs font-semibold text-blue-100/80">{historial.length} movimientos registrados</p>
                         </div>
 
                         <div className="space-y-4">
@@ -232,6 +330,7 @@ export default function PanelCobrador() {
                                         <div>
                                             <h3 className="font-bold text-sm text-slate-900 dark:text-white">Factura #{h.factura_id}</h3>
                                             <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">{h.metodo}</p>
+                                            {h.pendiente && <p className="text-[9px] font-black uppercase text-blue-500">Pendiente de sincronizar</p>}
                                         </div>
                                     </div>
                                     <span className="font-black text-slate-900 dark:text-white">+${h.monto}</span>
@@ -241,10 +340,11 @@ export default function PanelCobrador() {
                     </div>
                 )}
 
-                {/* === PESTAÑA: CIERRE === */}
+                {/* === PESTAÑA: CORTE DE COBRANZA === */}
                 {activeTab === 'cierre' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
-                        <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">Corte de Caja</h2>
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">Resumen de cobranza</h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Los cobros se liquidan por período y método de pago.</p>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4">
                                 <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
@@ -271,7 +371,7 @@ export default function PanelCobrador() {
             </div>
 
             {/* NAV INFERIOR ADAPTATIVO */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#161b28] border-t border-slate-200 dark:border-slate-800 px-2 py-2 flex justify-around items-center z-40 transition-colors">
+            <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-slate-200 bg-white/92 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-15px_35px_-28px_rgba(15,23,42,.55)] backdrop-blur-xl transition-colors dark:border-slate-800 dark:bg-[#161b28]/92">
                 <NavButton active={activeTab === 'cobrar'} icon={HomeIcon} label="Cobrar" onClick={() => setActiveTab('cobrar')} />
                 <NavButton active={activeTab === 'promesas'} icon={ShieldExclamationIcon} label="Promesas" onClick={() => setActiveTab('promesas')} badge={promesas.length} />
                 <NavButton active={activeTab === 'historial'} icon={ClockIcon} label="Historial" onClick={() => setActiveTab('historial')} />
@@ -404,8 +504,8 @@ export default function PanelCobrador() {
     );
 }
 
-const NavButton = ({ active, icon: Icon, label, onClick, badge }: any) => (
-    <button onClick={onClick} className={`flex flex-col items-center gap-1 p-2 w-16 transition relative ${active ? 'text-blue-600 dark:text-blue-500' : 'text-slate-400 dark:text-slate-500'}`}>
+const NavButton = ({ active, icon: Icon, label, onClick, badge = 0 }: NavButtonProps) => (
+    <button onClick={onClick} className={`relative flex min-h-12 w-20 flex-col items-center justify-center gap-1 rounded-2xl p-2 transition active:scale-95 ${active ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
         <Icon className={`w-6 h-6`}/>
         <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
         {badge > 0 && <span className="absolute top-1 right-2 bg-rose-600 text-white text-[8px] px-1 rounded-full">{badge}</span>}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
-import CreateClientModal from '../../components/modals/CreateClientModal'; 
+import CreateClientModal from '@/pages/clientes/components/CreateClientModal';
 
 export default function TechRegister() {
     const navigate = useNavigate();

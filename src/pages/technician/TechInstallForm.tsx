@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
+import { useSync } from '@/context/sync/context';
+import { cachedRequest, getCachedValue, setCachedValue } from '../../offline/db';
 import { 
     ArrowLeftIcon, QrCodeIcon, WifiIcon, 
     ServerIcon, LockClosedIcon, CheckCircleIcon,
@@ -10,14 +13,73 @@ import {
     CpuChipIcon
 } from '@heroicons/react/24/outline';
 
+interface ClientInstallation {
+    id: number;
+    nombre: string;
+    cedula?: string;
+    ip_asignada?: string;
+    olt_id?: number;
+    onu_id?: number;
+    caja_nap_id?: number;
+    puerto_nap?: number;
+    plan_id?: number;
+    router_id?: number;
+    zona_id?: number;
+    latitud?: number | string;
+    longitud?: number | string;
+    identificador_onu?: string;
+    olt_nombre?: string;
+    nap_nombre?: string;
+    suggested_user?: string;
+    suggested_pass?: string;
+    plan_nombre: string;
+}
+
+interface OltOption {
+    id: number;
+    nombre: string;
+}
+
+interface OnuOption {
+    id: number;
+    identificador: string;
+}
+
+interface NapOption {
+    id: number;
+    nombre: string;
+    capacidad?: number;
+}
+
+interface NapConnection {
+    puerto_nap?: number | string | null;
+}
+
+interface InstallationFormData {
+    olt_id: string;
+    onu_id: string;
+    caja_nap_id: string;
+    puerto_nap: string;
+    latitud: string;
+    longitud: string;
+}
+
+function apiErrorMessage(error: unknown, fallback: string) {
+    if (axios.isAxiosError<{ detail?: string }>(error)) {
+        return error.response?.data?.detail || fallback;
+    }
+    return fallback;
+}
+
 export default function TechInstallForm() {
     const { cedula } = useParams(); 
     const navigate = useNavigate();
-    const [cliente, setCliente] = useState<any>(null);
+    const { online } = useSync();
+    const [cliente, setCliente] = useState<ClientInstallation | null>(null);
     
-    const [olts, setOlts] = useState<any[]>([]); 
-    const [onusDisponibles, setOnusDisponibles] = useState<any[]>([]); 
-    const [cajasNap, setCajasNap] = useState<any[]>([]); 
+    const [olts, setOlts] = useState<OltOption[]>([]);
+    const [onusDisponibles, setOnusDisponibles] = useState<OnuOption[]>([]);
+    const [cajasNap, setCajasNap] = useState<NapOption[]>([]);
     
     const [puertosOcupados, setPuertosOcupados] = useState<number[]>([]);
     const [loadingPorts, setLoadingPorts] = useState(false);
@@ -25,7 +87,7 @@ export default function TechInstallForm() {
 
     const [loading, setLoading] = useState(false);
     
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<InstallationFormData>({
         olt_id: '', 
         onu_id: '',
         caja_nap_id: '',
@@ -34,27 +96,77 @@ export default function TechInstallForm() {
         longitud: ''
     });
 
+    const cargarPuertos = useCallback(async (napId: number | string, listaNaps: NapOption[]) => {
+        if (!napId) {
+            setFormData(prev => ({ ...prev, caja_nap_id: '', puerto_nap: '' }));
+            setPuertosOcupados([]);
+            return;
+        }
+
+        setLoadingPorts(true);
+        setFormData(prev => ({ ...prev, caja_nap_id: napId.toString(), puerto_nap: '' }));
+
+        const cajaSeleccionada = listaNaps.find(nap => nap.id === Number(napId));
+        if (cajaSeleccionada?.capacidad) {
+            setCapacidadActual(cajaSeleccionada.capacidad);
+        }
+
+        try {
+            const res = await cachedRequest<NapConnection[]>(`nap-${napId}-detalles`, async () => (
+                await client.get<NapConnection[]>(`/infraestructura/naps/${napId}/detalles`)
+            ).data);
+            const ocupados = res.data
+                .map(connection => Number(connection.puerto_nap))
+                .filter(Number.isFinite);
+
+            setPuertosOcupados(ocupados);
+        } catch {
+            toast.error("No se pudo cargar el estado de los puertos");
+        } finally {
+            setLoadingPorts(false);
+        }
+    }, []);
+
     useEffect(() => {
         const cargarDatos = async () => {
             try {
                 // 1. Cargar datos de la orden
-                const resCliente = await client.get(`/clientes/${cedula}/portal`);
+                const resCliente = await cachedRequest<ClientInstallation>(`instalacion-cliente-${cedula}`, async () => (
+                    await client.get<ClientInstallation>(`/clientes/${cedula}/portal`)
+                ).data);
                 const c = resCliente.data;
                 setCliente(c);
 
                 // 2. Cargar catálogos solo si no vienen pre-asignados (Basado en IDs)
                 if (!c.olt_id) {
-                    const resOlts = await client.get('/olts/');
+                    const resOlts = await cachedRequest<OltOption[]>('catalogo-olts', async () => (
+                        await client.get<OltOption[]>('/olts/opciones')
+                    ).data);
                     setOlts(resOlts.data);
                 }
 
                 if (!c.onu_id) {
-                    const resOnus = await client.get('/inventario/?estado=DISPONIBLE'); 
+                    const resOnus = await cachedRequest<OnuOption[]>('catalogo-onus-disponibles', async () => (
+                        await client.get<OnuOption[]>('/inventario/?estado=DISPONIBLE')
+                    ).data);
                     setOnusDisponibles(resOnus.data);
                 }
 
                 if (!c.caja_nap_id || !c.puerto_nap) {
-                    const resNaps = await client.get('/infraestructura/naps');
+                    const napParams = new URLSearchParams();
+                    if (c.zona_id) napParams.set('zona_id', String(c.zona_id));
+                    if (c.router_id) napParams.set('router_id', String(c.router_id));
+                    if (c.olt_id) napParams.set('olt_id', String(c.olt_id));
+                    const napUrl = `/infraestructura/naps?${napParams.toString()}`;
+                    const napCacheKey = [
+                        'catalogo-cajas-nap',
+                        c.zona_id || 'todas',
+                        c.router_id || 'todos',
+                        c.olt_id || 'todas',
+                    ].join('-');
+                    const resNaps = await cachedRequest<NapOption[]>(napCacheKey, async () => (
+                        await client.get<NapOption[]>(napUrl)
+                    ).data);
                     setCajasNap(resNaps.data);
                     
                     if (c.caja_nap_id && !c.puerto_nap) {
@@ -63,53 +175,26 @@ export default function TechInstallForm() {
                 }
 
                 // 3. Autocompletar el state
+                const draft = await getCachedValue<InstallationFormData>(`instalacion-borrador-${cedula}`);
                 setFormData(prev => ({
                     ...prev,
-                    olt_id: c.olt_id || '',
-                    onu_id: c.onu_id || '', 
-                    caja_nap_id: c.caja_nap_id || '',
-                    puerto_nap: c.puerto_nap || '',
-                    latitud: c.latitud || '',
-                    longitud: c.longitud || ''
+                    olt_id: c.olt_id?.toString() || '',
+                    onu_id: c.onu_id?.toString() || '',
+                    caja_nap_id: c.caja_nap_id?.toString() || '',
+                    puerto_nap: c.puerto_nap?.toString() || '',
+                    latitud: c.latitud?.toString() || '',
+                    longitud: c.longitud?.toString() || '',
+                    ...(draft || {}),
                 }));
+                if (resCliente.fromCache) toast('Orden cargada desde el dispositivo');
 
-            } catch (error) {
+            } catch {
                 toast.error("Error al cargar la orden o infraestructura");
                 navigate('/tech/dashboard');
             }
         };
         if (cedula) cargarDatos();
-    }, [cedula, navigate]);
-
-    const cargarPuertos = async (napId: number | string, listaNaps = cajasNap) => {
-        if (!napId) {
-            // Si eligen "Sin NAP", limpiamos los puertos
-            setFormData(prev => ({ ...prev, caja_nap_id: '', puerto_nap: '' }));
-            setPuertosOcupados([]);
-            return;
-        }
-        
-        setLoadingPorts(true);
-        setFormData(prev => ({ ...prev, caja_nap_id: napId.toString(), puerto_nap: '' }));
-        
-        const cajaSeleccionada = listaNaps.find(n => n.id === Number(napId));
-        if (cajaSeleccionada && cajaSeleccionada.capacidad) {
-            setCapacidadActual(cajaSeleccionada.capacidad);
-        }
-
-        try {
-            const res = await client.get(`/infraestructura/naps/${napId}/detalles`);
-            const ocupados = res.data
-                .filter((c: any) => c.puerto_nap != null)
-                .map((c: any) => c.puerto_nap);
-            
-            setPuertosOcupados(ocupados);
-        } catch (error) {
-            toast.error("No se pudo cargar el estado de los puertos");
-        } finally {
-            setLoadingPorts(false);
-        }
-    };
+    }, [cargarPuertos, cedula, navigate]);
 
     const capturarUbicacion = () => {
         if (!navigator.geolocation) {
@@ -126,7 +211,7 @@ export default function TechInstallForm() {
                 }));
                 toast.success("¡Ubicación guardada!", { id: loadGPS });
             },
-            (error) => {
+            () => {
                 toast.error("Error GPS. Activa la ubicación.", { id: loadGPS, duration: 4000 });
             },
             { enableHighAccuracy: true, timeout: 10000 }
@@ -135,6 +220,13 @@ export default function TechInstallForm() {
 
     const handleFinalizar = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!cliente) return;
+
+        if (!online) {
+            await setCachedValue(`instalacion-borrador-${cedula}`, formData);
+            toast.success('Borrador guardado. La activación requiere conexión');
+            return;
+        }
         
         const finalOltId = cliente.olt_id || formData.olt_id;
         const finalOnuId = cliente.onu_id || formData.onu_id;
@@ -166,9 +258,10 @@ export default function TechInstallForm() {
             });
 
             toast.success("¡INSTALACIÓN EXITOSA!", { id: load });
+            await setCachedValue(`instalacion-borrador-${cedula}`, null);
             setTimeout(() => navigate('/tech/dashboard'), 1500);
-        } catch (error: any) {
-            toast.error(error.response?.data?.detail || "Error en activación", { id: load });
+        } catch (error: unknown) {
+            toast.error(apiErrorMessage(error, "Error en activación"), { id: load });
         } finally {
             setLoading(false);
         }
@@ -224,14 +317,14 @@ export default function TechInstallForm() {
                                 <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Usuario</span>
                                 <code className="text-blue-600 dark:text-blue-400 font-bold font-mono text-sm">{cliente.suggested_user}</code>
                             </div>
-                            <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_user); toast.success("Copiado")}} className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-500 active:scale-90 transition-all"><ClipboardDocumentIcon className="w-5 h-5"/></button>
+                            <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_user || ''); toast.success("Copiado")}} className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-500 active:scale-90 transition-all"><ClipboardDocumentIcon className="w-5 h-5"/></button>
                         </div>
                         <div className="bg-white dark:bg-slate-900/80 p-3 rounded-2xl flex justify-between items-center border border-white/50 dark:border-slate-800 shadow-sm">
                             <div>
                                 <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Contraseña</span>
                                 <code className="text-emerald-600 dark:text-emerald-400 font-bold font-mono text-sm">{cliente.suggested_pass}</code>
                             </div>
-                            <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_pass); toast.success("Copiado")}} className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl text-emerald-500 active:scale-90 transition-all"><ClipboardDocumentIcon className="w-5 h-5"/></button>
+                            <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_pass || ''); toast.success("Copiado")}} className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl text-emerald-500 active:scale-90 transition-all"><ClipboardDocumentIcon className="w-5 h-5"/></button>
                         </div>
                     </div>
                 </div>
@@ -315,7 +408,7 @@ export default function TechInstallForm() {
                                     <select 
                                         className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-2xl p-4 pl-10 text-sm font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none transition-all shadow-inner"
                                         value={formData.caja_nap_id}
-                                        onChange={e => cargarPuertos(e.target.value)}
+                                        onChange={e => cargarPuertos(e.target.value, cajasNap)}
                                     >
                                         <option value="">-- Sin NAP asignada (Zona en registro) --</option>
                                         {cajasNap.map(nap => (
@@ -395,7 +488,7 @@ export default function TechInstallForm() {
                 {/* BOTÓN FINALIZAR */}
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-50 via-slate-50/90 dark:from-slate-950 dark:via-slate-950/90 to-transparent z-30 pb-6">
                     <button type="submit" disabled={loading} className="w-full max-w-lg mx-auto bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-sm tracking-widest uppercase shadow-xl shadow-blue-600/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                        {loading ? 'ACTIVANDO...' : 'FINALIZAR INSTALACIÓN'}
+                        {loading ? 'ACTIVANDO...' : online ? 'FINALIZAR INSTALACIÓN' : 'GUARDAR BORRADOR'}
                         {!loading && <CheckCircleIcon className="w-6 h-6"/>}
                     </button>
                 </div>

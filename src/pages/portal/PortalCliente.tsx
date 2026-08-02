@@ -1,41 +1,89 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { useParams } from 'react-router-dom';
-import client from '../../api/axios';
+import client from '@/api/axios';
 import { 
     WifiIcon, SignalIcon, 
     CurrencyDollarIcon, CheckCircleIcon, XCircleIcon,
     ServerIcon, MapPinIcon, CpuChipIcon, IdentificationIcon,
     ArrowPathIcon, PhoneIcon, ChatBubbleLeftRightIcon,
-    BoltIcon, NoSymbolIcon, BanknotesIcon, ExclamationTriangleIcon
+    BoltIcon, NoSymbolIcon, BanknotesIcon
 } from '@heroicons/react/24/solid';
 
 import { BuildingStorefrontIcon } from '@heroicons/react/24/outline';
 
+type MoneyValue = number | string;
+type HeroIcon = ComponentType<SVGProps<SVGSVGElement>>;
+
+interface ClientPortalData {
+    id: number;
+    nombre: string;
+    cedula: string | null;
+    telefono: string | null;
+    direccion: string | null;
+    ip_asignada: string | null;
+    mac_address: string | null;
+    identificador_onu: string | null;
+    olt_id: number | null;
+    onu_id: number | null;
+    caja_nap_id: number | null;
+    plan_id: number | null;
+    router_id: number | null;
+    router_nombre: string;
+    estado: string;
+    is_online: boolean;
+    olt_nombre: string | null;
+    nap_nombre: string | null;
+    puerto_nap: number | null;
+    plan_nombre: string;
+    velocidad_bajada: number;
+    velocidad_subida: number;
+    precio_plan: MoneyValue;
+    total_deuda: MoneyValue;
+    facturas_pendientes: number;
+    fecha_corte: string | null;
+    saldo_a_favor: MoneyValue;
+}
+
+interface TechnicalRowProps {
+    icon: HeroIcon;
+    label: string;
+    value: ReactNode;
+    color: string;
+    bold?: boolean;
+    monospace?: boolean;
+}
+
 export default function PortalCliente() {
     const { cedula } = useParams(); 
     
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<ClientPortalData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
-    useEffect(() => {
-        cargarDatos();
-    }, [cedula]);
+    const cargarDatos = useCallback(async () => {
+        if (!cedula) {
+            setError(true);
+            setLoading(false);
+            return;
+        }
 
-    const cargarDatos = async () => {
-        if (!cedula) return;
         setLoading(true);
         setError(false);
         try {
-            const res = await client.get(`/clientes/${cedula}/portal`);
+            const res = await client.get<ClientPortalData>(`/clientes/${cedula}/portal`);
             setData(res.data);
-        } catch (err) {
-            console.error(err);
+        } catch {
             setError(true);
         } finally {
             setLoading(false);
         }
-    };
+    }, [cedula]);
+
+    useEffect(() => {
+        const fetchTimer = window.setTimeout(() => void cargarDatos(), 0);
+        return () => window.clearTimeout(fetchTimer);
+    }, [cargarDatos]);
 
     if (loading) return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center text-slate-800 dark:text-white gap-4 transition-colors">
@@ -52,12 +100,14 @@ export default function PortalCliente() {
             <XCircleIcon className="w-20 h-20 text-rose-500 mb-4" />
             <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Cédula No Encontrada</h1>
             <p className="text-slate-500 dark:text-slate-400">No hay información para: <span className="font-mono text-slate-900 dark:text-white font-bold">{cedula}</span>.</p>
-            <button onClick={cargarDatos} className="mt-8 px-6 py-2 bg-slate-200 dark:bg-slate-800 rounded-full text-sm font-black uppercase hover:bg-slate-300 dark:hover:bg-slate-700 transition">Reintentar</button>
+            <button onClick={() => void cargarDatos()} className="mt-8 px-6 py-2 bg-slate-200 dark:bg-slate-800 rounded-full text-sm font-black uppercase hover:bg-slate-300 dark:hover:bg-slate-700 transition">Reintentar</button>
         </div>
     );
 
     const administrativoActivo = data.estado === 'activo';
     const tecnicoOnline = data.is_online; 
+    const precioPlan = Number(data.precio_plan);
+    const totalDeuda = Number(data.total_deuda);
     const formatSpeed = (kbps: number) => kbps >= 1024 ? `${Math.round(kbps/1024)} Mb` : `${kbps} Kb`;
 
     return (
@@ -97,7 +147,7 @@ export default function PortalCliente() {
                         <a href={`tel:${data.telefono}`} className="flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-white py-3 rounded-xl transition font-black text-xs border border-slate-200 dark:border-slate-800 active:scale-95 uppercase tracking-wider">
                             <PhoneIcon className="w-4 h-4 text-indigo-500" /> Llamar
                         </a>
-                        <a href={`https://wa.me/${data.telefono}`} target="_blank" className="flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-white py-3 rounded-xl transition font-black text-xs border border-slate-200 dark:border-slate-800 active:scale-95 uppercase tracking-wider">
+                        <a href={`https://wa.me/${data.telefono}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-white py-3 rounded-xl transition font-black text-xs border border-slate-200 dark:border-slate-800 active:scale-95 uppercase tracking-wider">
                             <ChatBubbleLeftRightIcon className="w-4 h-4 text-emerald-500" /> WhatsApp
                         </a>
                     </div>
@@ -113,7 +163,7 @@ export default function PortalCliente() {
                         <BuildingStorefrontIcon className="w-4 h-4"/>
                         <h3 className="text-[10px] font-black uppercase tracking-widest">Ficha Técnica</h3>
                     </div>
-                    <button onClick={cargarDatos} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition flex items-center gap-1 text-[9px] font-black bg-indigo-50 dark:bg-indigo-500/10 px-2 py-1 rounded border border-indigo-200 dark:border-indigo-500/20 active:scale-95 uppercase tracking-widest">
+                    <button onClick={() => void cargarDatos()} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition flex items-center gap-1 text-[9px] font-black bg-indigo-50 dark:bg-indigo-500/10 px-2 py-1 rounded border border-indigo-200 dark:border-indigo-500/20 active:scale-95 uppercase tracking-widest">
                         <ArrowPathIcon className="w-3 h-3" /> PING
                     </button>
                 </div>
@@ -154,9 +204,9 @@ export default function PortalCliente() {
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                         <CurrencyDollarIcon className="w-4 h-4"/> Estado de Cuenta
                     </h3>
-                    {data.precio_plan > 0 && (
+                    {precioPlan > 0 && (
                         <span className="text-[10px] font-black text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 flex items-center gap-1">
-                            <BanknotesIcon className="w-3 h-3"/> ${data.precio_plan}/mes
+                            <BanknotesIcon className="w-3 h-3"/> ${precioPlan}/mes
                         </span>
                     )}
                 </div>
@@ -164,12 +214,12 @@ export default function PortalCliente() {
                 <div className="flex justify-between items-end mb-2">
                     <div>
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Total a Pagar</span>
-                        <span className={`text-3xl font-black tracking-tight ${data.total_deuda > 0 ? 'text-slate-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-500'}`}>
-                            ${data.total_deuda}
+                        <span className={`text-3xl font-black tracking-tight ${totalDeuda > 0 ? 'text-slate-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-500'}`}>
+                            ${totalDeuda}
                         </span>
                     </div>
 
-                    {data.total_deuda > 0 ? (
+                    {totalDeuda > 0 ? (
                         <div className="text-right">
                              <span className="text-[9px] font-black text-rose-600 dark:text-rose-300 bg-rose-100 dark:bg-rose-500/20 px-2 py-1 rounded border border-rose-200 dark:border-rose-500/30 uppercase tracking-widest block mb-1">
                                 {data.facturas_pendientes} Vencido
@@ -193,7 +243,7 @@ export default function PortalCliente() {
     );
 }
 
-const RowTecnico = ({ icon: Icon, label, value, color, bold, monospace }: any) => (
+const RowTecnico = ({ icon: Icon, label, value, color, bold, monospace }: TechnicalRowProps) => (
     <div className="flex justify-between items-center transition-colors">
         <div className="flex items-center gap-3">
             <div className={`p-1.5 rounded-md bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800`}>
@@ -202,7 +252,7 @@ const RowTecnico = ({ icon: Icon, label, value, color, bold, monospace }: any) =
             <span className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest">{label}</span>
         </div>
         <span className={`text-slate-800 dark:text-slate-200 text-xs ${bold ? 'font-black' : ''} ${monospace ? 'font-mono' : ''}`}>
-            {value}
+            {value ?? '---'}
         </span>
     </div>
 );

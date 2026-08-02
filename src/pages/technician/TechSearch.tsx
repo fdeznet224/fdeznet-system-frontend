@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import client from '../../api/axios';
 import { 
@@ -7,45 +7,58 @@ import {
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 
+interface ClientSearchResult {
+    id: number;
+    nombre: string;
+    cedula: string | null;
+    direccion: string | null;
+    estado: string;
+}
+
 export default function TechSearch() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams(); 
+    const initialQuery = searchParams.get('q');
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [results, setResults] = useState<any[]>([]);
+    const [results, setResults] = useState<ClientSearchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
 
-    // 1. Detectar si venimos del Dashboard con una búsqueda pendiente
-    useEffect(() => {
-        const query = searchParams.get('q'); 
-        if (query) {
-            setSearchTerm(query); 
-            realizarBusqueda(query); 
-        }
-    }, [searchParams]);
-
     // 2. Función reutilizable para buscar en la API
-    const realizarBusqueda = async (termino: string) => {
+    const realizarBusqueda = useCallback(async (termino: string) => {
         if (!termino.trim()) return;
 
         setLoading(true);
         setHasSearched(true);
         try {
-            const res = await client.get(`/clientes/?search=${termino}`);
+            const res = await client.get<ClientSearchResult[]>('/clientes/', {
+                params: { search: termino.trim() }
+            });
             setResults(res.data);
-        } catch (error) {
-            console.error(error);
+        } catch {
             toast.error("Error al buscar clientes");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    // 1. Detectar si venimos del Dashboard con una búsqueda pendiente
+    useEffect(() => {
+        if (!initialQuery) return;
+
+        const searchTimer = window.setTimeout(() => {
+            setSearchTerm(initialQuery);
+            void realizarBusqueda(initialQuery);
+        }, 0);
+
+        return () => window.clearTimeout(searchTimer);
+    }, [initialQuery, realizarBusqueda]);
 
     // 3. Manejador del formulario (cuando el técnico busca desde esta misma pantalla)
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        realizarBusqueda(searchTerm);
+        void realizarBusqueda(searchTerm);
     };
 
     return (
@@ -72,7 +85,7 @@ export default function TechSearch() {
                         className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-2xl py-4 pl-12 pr-14 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 transition-all shadow-sm dark:shadow-lg text-base md:text-lg font-medium placeholder-slate-400 dark:placeholder-slate-500"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        autoFocus={!searchParams.get('q')}
+                        autoFocus={!initialQuery}
                     />
                     <MagnifyingGlassIcon className="w-6 h-6 text-slate-400 dark:text-slate-500 absolute left-4 top-4.5"/>
                     
@@ -98,7 +111,7 @@ export default function TechSearch() {
                             /* ✅ ADAPTADO: Tarjeta de resultados clara vs oscura */
                             <div 
                                 key={c.id}
-                                onClick={() => navigate(`/tech/cliente/${c.cedula}`)}
+                                onClick={() => navigate(`/tech/cliente/${c.cedula ?? c.id}`)}
                                 className="bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-md active:scale-[0.98] transition-all cursor-pointer flex justify-between items-center group hover:border-blue-500/40 dark:hover:border-blue-500/40"
                             >
                                 <div className="overflow-hidden pr-3">
@@ -111,7 +124,7 @@ export default function TechSearch() {
                                     </div>
                                     <div className="flex items-center gap-2 mt-2.5">
                                         <span className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300">
-                                            SN: {c.cedula}
+                                            SN: {c.cedula || 'Sin asignar'}
                                         </span>
                                         <span className={`text-[9px] font-black tracking-widest px-2 py-0.5 rounded uppercase border ${
                                             c.estado === 'activo' 

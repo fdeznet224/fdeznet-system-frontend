@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import client from '../../api/axios'; 
 import { toast } from 'react-hot-toast';
 import { 
@@ -6,47 +6,99 @@ import {
     MagnifyingGlassIcon, FunnelIcon,
     PrinterIcon, BanknotesIcon, ClockIcon, ShieldExclamationIcon
 } from '@heroicons/react/24/outline';
-import PaymentModal from '../../components/modals/PaymentModal';
+import PaymentModal, { type PaymentInvoice } from './components/PaymentModal';
 
-export default function Facturas() {
-    const [facturas, setFacturas] = useState<any[]>([]);
-    const [resumen, setResumen] = useState<any>(null);
-    const [routers, setRouters] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    
-    const [mostrarFiltrosMovil, setMostrarFiltrosMovil] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [selectedFactura, setSelectedFactura] = useState<any>(null);
+interface Factura extends PaymentInvoice {
+    servicio_id?: number | null;
+    fecha_vencimiento: string;
+    fecha_promesa_pago?: string | null;
+    es_promesa_activa?: boolean;
+    estado: string;
+    plan_snapshot?: string | null;
+    cliente?: {
+        nombre?: string | null;
+        ip_asignada?: string | null;
+    } | null;
+    servicio?: {
+        id: number;
+        alias: string;
+        direccion?: string | null;
+        estado: string;
+    } | null;
+}
 
+interface ResumenFacturas {
+    pagadas_cant: number;
+    pagadas_total: number;
+    pendientes_cant: number;
+    pendientes_total: number;
+    vencidas_cant: number;
+    vencidas_total: number;
+    anuladas_cant: number;
+    anuladas_total: number;
+}
+
+interface RouterOption {
+    id: number;
+    nombre: string;
+}
+
+interface FacturasResponse {
+    items: Factura[];
+    resumen: ResumenFacturas;
+}
+
+interface FacturaFilters {
+    inicio: string;
+    fin: string;
+    tipoFecha: string;
+    routerId: string;
+    estado: string;
+}
+
+interface ResumenCardProps {
+    label: string;
+    cantidad: number;
+    total: number;
+    color: 'emerald' | 'amber' | 'rose' | 'slate';
+}
+
+function getInitialFilters(): FacturaFilters {
     const date = new Date();
-    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
-    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0];
-
-    const [filtros, setFiltros] = useState({
-        inicio: firstDay,
-        fin: lastDay,
-        tipoFecha: 'vencimiento', // 🔥 CAMBIO: Ahora carga las del mes actual basado en Vencimiento (Prepago)
+    return {
+        inicio: new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0],
+        fin: new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0],
+        tipoFecha: 'vencimiento',
         routerId: '',
         estado: 'cualquiera'
-    });
+    };
+}
 
-    useEffect(() => {
-        client.get('/network/routers/').then(r => setRouters(r.data));
-        fetchFacturas();
-    }, []);
+const INITIAL_FILTERS = getInitialFilters();
 
-    const fetchFacturas = async () => {
+export default function Facturas() {
+    const [facturas, setFacturas] = useState<Factura[]>([]);
+    const [resumen, setResumen] = useState<ResumenFacturas | null>(null);
+    const [routers, setRouters] = useState<RouterOption[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    const [mostrarFiltrosMovil, setMostrarFiltrosMovil] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [selectedFactura, setSelectedFactura] = useState<Factura | null>(null);
+    const [filtros, setFiltros] = useState<FacturaFilters>({ ...INITIAL_FILTERS });
+
+    const fetchFacturas = useCallback(async (activeFilters: FacturaFilters) => {
         setLoading(true);
         try {
-            const params = new URLSearchParams({
-                start_date: filtros.inicio,
-                end_date: filtros.fin,
-                tipo_fecha: filtros.tipoFecha,
-                estado: filtros.estado,
-                ...(filtros.routerId && { router_id: filtros.routerId })
-            }).toString();
-
-            const res = await client.get(`/finanzas/listado-completo?${params}`);
+            const res = await client.get<FacturasResponse>('/finanzas/listado-completo', {
+                params: {
+                    start_date: activeFilters.inicio,
+                    end_date: activeFilters.fin,
+                    tipo_fecha: activeFilters.tipoFecha,
+                    estado: activeFilters.estado,
+                    router_id: activeFilters.routerId || undefined
+                }
+            });
             setFacturas(res.data.items);
             setResumen(res.data.resumen);
             setMostrarFiltrosMovil(false);
@@ -55,7 +107,17 @@ export default function Facturas() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const initialLoad = window.setTimeout(() => {
+            void client.get<RouterOption[]>('/network/routers/')
+                .then(response => setRouters(response.data))
+                .catch(() => toast.error("Error cargando routers"));
+            void fetchFacturas(INITIAL_FILTERS);
+        }, 0);
+        return () => window.clearTimeout(initialLoad);
+    }, [fetchFacturas]);
 
     return (
         <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 h-[calc(100dvh-80px)] md:h-[calc(100vh-100px)] overflow-hidden transition-colors duration-300">
@@ -106,7 +168,7 @@ export default function Facturas() {
                         <select className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 outline-none focus:border-blue-500" value={filtros.tipoFecha} onChange={e => setFiltros({ ...filtros, tipoFecha: e.target.value })}>
                             <option value="vencimiento">Fecha de Vencimiento</option>
                             <option value="emision">Fecha de Emisión</option>
-                            <option value="pago">Día Pagado en Caja</option>
+                            <option value="pago">Día del Pago</option>
                         </select>
                     </div>
 
@@ -137,7 +199,7 @@ export default function Facturas() {
                             <option value="anulada">❌ Anuladas</option>
                         </select>
                     </div>
-                    <button onClick={fetchFacturas} className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl flex items-center justify-center gap-2 font-black text-sm transition active:scale-95 shadow-md mt-2">
+                    <button onClick={() => void fetchFacturas(filtros)} className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl flex items-center justify-center gap-2 font-black text-sm transition active:scale-95 shadow-md mt-2">
                         {loading ? <ArrowPathIcon className="w-5 h-5 animate-spin"/> : <MagnifyingGlassIcon className="w-5 h-5" />}
                         Aplicar Filtros
                     </button>
@@ -180,7 +242,7 @@ export default function Facturas() {
                         <option value="anulada">❌ Anuladas</option>
                     </select>
                 </div>
-                <button onClick={fetchFacturas} className="w-full bg-blue-600 hover:bg-blue-500 text-white h-[36px] rounded-xl flex items-center justify-center gap-2 font-black text-xs transition active:scale-95 shadow-md">
+                <button onClick={() => void fetchFacturas(filtros)} className="w-full bg-blue-600 hover:bg-blue-500 text-white h-[36px] rounded-xl flex items-center justify-center gap-2 font-black text-xs transition active:scale-95 shadow-md">
                     {loading ? <ArrowPathIcon className="w-4 h-4 animate-spin"/> : <MagnifyingGlassIcon className="w-4 h-4" />}
                     Filtrar
                 </button>
@@ -212,7 +274,9 @@ export default function Facturas() {
                                         <td className="p-4 font-mono text-slate-400">#{f.id.toString().padStart(6, '0')}</td>
                                         <td className="p-4">
                                             <div className="font-black text-slate-800 dark:text-white text-sm">{f.cliente?.nombre}</div>
-                                            <div className="text-[10px] text-slate-500 font-mono">{f.cliente?.ip_asignada}</div>
+                                            <div className="text-[10px] text-slate-500 font-mono">
+                                                {f.servicio ? `${f.servicio.alias} · #${f.servicio.id}` : 'Servicio principal'} · {f.cliente?.ip_asignada}
+                                            </div>
                                         </td>
                                         <td className="p-4">
                                             <div className="flex flex-col gap-1">
@@ -270,7 +334,9 @@ export default function Facturas() {
                                         <div>
                                             <span className="text-[10px] font-mono font-black text-slate-400 dark:text-slate-500">#{f.id.toString().padStart(6, '0')}</span>
                                             <h3 className="font-black text-slate-900 dark:text-white text-base mt-0.5 leading-tight">{f.cliente?.nombre}</h3>
-                                            <span className="text-[10px] text-slate-500 font-mono mt-1 block">{f.cliente?.ip_asignada}</span>
+                                            <span className="text-[10px] text-slate-500 font-mono mt-1 block">
+                                                {f.servicio ? `${f.servicio.alias} · Servicio #${f.servicio.id}` : 'Servicio principal'} · {f.cliente?.ip_asignada}
+                                            </span>
                                         </div>
                                         <span className={`px-2 py-1 rounded text-[9px] uppercase font-black border ${f.estado === 'pagada' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' :
                                                 f.estado === 'anulada' ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700' :
@@ -317,14 +383,14 @@ export default function Facturas() {
             </div>
 
             {selectedFactura && (
-                <PaymentModal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} factura={selectedFactura} onSuccess={fetchFacturas} />
+                <PaymentModal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} factura={selectedFactura} onSuccess={() => void fetchFacturas(filtros)} />
             )}
         </div>
     );
 }
 
-const ResumenCard = ({ label, cantidad, total, color }: any) => {
-    const colors: any = {
+const ResumenCard = ({ label, cantidad, total, color }: ResumenCardProps) => {
+    const colors: Record<ResumenCardProps['color'], string> = {
         emerald: "bg-emerald-600 border-emerald-500",
         amber: "bg-amber-600 border-amber-500",
         rose: "bg-rose-600 border-rose-500",

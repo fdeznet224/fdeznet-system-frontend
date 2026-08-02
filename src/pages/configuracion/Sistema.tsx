@@ -50,9 +50,9 @@ export default function Sistema() {
     const cargarConfig = async () => {
         setLoading(true);
         try {
-            const res = await client.get('/configuracion/sistema');
+            const res = await client.get<ConfigSistema>('/configuracion/sistema');
             if (res.data) setConfig(res.data);
-        } catch (error) { 
+        } catch {
             toast.error("Error cargando configuración"); 
         } finally {
             setLoading(false);
@@ -64,14 +64,14 @@ export default function Sistema() {
         try {
             await client.put('/configuracion/sistema', config);
             toast.success("¡Configuración guardada!");
-        } catch (error) { 
+        } catch {
             toast.error("Error al guardar cambios"); 
         } finally { 
             setSaving(false); 
         }
     };
 
-    const handleChange = (campo: keyof ConfigSistema, valor: any) => {
+    const handleChange = <Key extends keyof ConfigSistema,>(campo: Key, valor: ConfigSistema[Key]) => {
         setConfig(prev => ({ ...prev, [campo]: valor }));
     };
 
@@ -112,7 +112,7 @@ export default function Sistema() {
                                     <label className="font-black block text-slate-900 dark:text-white text-sm">Activar Corte Automático</label>
                                     <p className="text-xs text-slate-500 mt-1">Suspender clientes con facturas vencidas.</p>
                                 </div>
-                                <Toggle checked={config.activar_corte_automatico} onChange={(v: any) => handleChange('activar_corte_automatico', v)} color="rose" />
+                                <Toggle checked={config.activar_corte_automatico} onChange={(value) => handleChange('activar_corte_automatico', value)} color="rose" />
                             </div>
                             
                             <div className={`p-4 bg-slate-50 dark:bg-[#151b2b] rounded-xl border border-slate-200 dark:border-slate-800 transition-all ${!config.activar_corte_automatico ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -137,7 +137,7 @@ export default function Sistema() {
                                     <label className="font-black block text-slate-900 dark:text-white text-sm">Motor de Facturación</label>
                                     <p className="text-xs text-slate-500 mt-1">Generar recibos automáticamente.</p>
                                 </div>
-                                <Toggle checked={config.generar_facturas_automaticamente} onChange={(v: any) => handleChange('generar_facturas_automaticamente', v)} color="purple" />
+                                <Toggle checked={config.generar_facturas_automaticamente} onChange={(value) => handleChange('generar_facturas_automaticamente', value)} color="purple" />
                             </div>
 
                             {/* 🔥 NUEVO: HORA DE FACTURAS 🔥 */}
@@ -166,7 +166,7 @@ export default function Sistema() {
                             <span className={`text-[10px] font-black uppercase hidden sm:block ${config.activar_notificaciones ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
                                 {config.activar_notificaciones ? 'Activo' : 'Off'}
                             </span>
-                            <Toggle checked={config.activar_notificaciones} onChange={(v: any) => handleChange('activar_notificaciones', v)} color="emerald" />
+                            <Toggle checked={config.activar_notificaciones} onChange={(value) => handleChange('activar_notificaciones', value)} color="emerald" />
                         </div>
                     </div>
 
@@ -185,9 +185,9 @@ export default function Sistema() {
                                 value={config.hora_recordatorios || ''} onChange={e => handleChange('hora_recordatorios', e.target.value)} />
                         </div>
 
-                        <CardInputRight label="1er Aviso (Preventivo)" sub="DÍAS ANTES (Oculto en masivo)" value={config.recordatorio_1_dias} onChange={(v: any) => handleChange('recordatorio_1_dias', Number(v))} textColor="text-blue-600 dark:text-blue-400" />
-                        <CardInputRight label="2do Aviso (Urgente)" sub="DÍAS ANTES" value={config.recordatorio_2_dias} onChange={(v: any) => handleChange('recordatorio_2_dias', Number(v))} textColor="text-amber-600 dark:text-amber-400" />
-                        <CardInputRight label="3er Aviso (Corte)" sub="0 = DESACTIVADO" value={config.recordatorio_3_dias} onChange={(v: any) => handleChange('recordatorio_3_dias', Number(v))} textColor="text-rose-600 dark:text-rose-400" />
+                        <CardInputRight label="1er Aviso (Preventivo)" sub="DÍAS ANTES (Oculto en masivo)" value={config.recordatorio_1_dias} onChange={(value) => handleChange('recordatorio_1_dias', value)} textColor="text-blue-600 dark:text-blue-400" />
+                        <CardInputRight label="2do Aviso (Urgente)" sub="DÍAS ANTES" value={config.recordatorio_2_dias} onChange={(value) => handleChange('recordatorio_2_dias', value)} textColor="text-amber-600 dark:text-amber-400" />
+                        <CardInputRight label="3er Aviso (Corte)" sub="0 = DESACTIVADO" value={config.recordatorio_3_dias} onChange={(value) => handleChange('recordatorio_3_dias', value)} textColor="text-rose-600 dark:text-rose-400" />
                         
                         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
                             <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">Números WhatsApp para Alertas FdezNet</label>
@@ -216,23 +216,39 @@ export default function Sistema() {
     );
 }
 
-const Toggle = ({ checked, onChange, color = 'emerald' }: any) => {
-    const colors: any = { emerald: 'bg-emerald-500', rose: 'bg-rose-500', purple: 'bg-purple-600', slate: 'bg-slate-400' };
+type ToggleColor = 'emerald' | 'rose' | 'purple' | 'slate';
+
+interface ToggleProps {
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+    color?: ToggleColor;
+}
+
+interface CardInputRightProps {
+    label: string;
+    sub: string;
+    value: number;
+    onChange: (value: number) => void;
+    textColor?: string;
+}
+
+const Toggle = ({ checked, onChange, color = 'emerald' }: ToggleProps) => {
+    const colors: Record<ToggleColor, string> = { emerald: 'bg-emerald-500', rose: 'bg-rose-500', purple: 'bg-purple-600', slate: 'bg-slate-400' };
     return (
-        <div onClick={() => onChange(!checked)} className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors shrink-0 ${checked ? colors[color] : 'bg-slate-300 dark:bg-slate-700'}`}>
+        <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors shrink-0 ${checked ? colors[color] : 'bg-slate-300 dark:bg-slate-700'}`}>
             <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`}></div>
-        </div>
+        </button>
     );
 };
 
-const CardInputRight = ({ label, sub, value, onChange, textColor }: any) => (
+const CardInputRight = ({ label, sub, value, onChange, textColor }: CardInputRightProps) => (
     <div className="bg-slate-50 dark:bg-[#151b2b] p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between transition-colors">
         <div className="pr-2">
             <label className={`text-xs sm:text-sm font-black block ${textColor || 'text-slate-900 dark:text-white'}`}>{label}</label>
             <p className="text-[9px] sm:text-[10px] text-slate-500 mt-1 uppercase tracking-widest font-black leading-tight">{sub}</p>
         </div>
         <div className="relative flex items-center shrink-0">
-            <input type="number" className="w-14 sm:w-16 bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 text-slate-900 dark:text-white font-mono text-center text-base sm:text-lg font-black outline-none focus:border-purple-500 transition-colors" value={value || 0} onChange={e => onChange(e.target.value)} />
+            <input type="number" className="w-14 sm:w-16 bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 text-slate-900 dark:text-white font-mono text-center text-base sm:text-lg font-black outline-none focus:border-purple-500 transition-colors" value={value || 0} onChange={event => onChange(Number(event.target.value))} />
         </div>
     </div>
 );
