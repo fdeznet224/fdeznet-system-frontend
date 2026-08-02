@@ -68,8 +68,10 @@ export default function CajasNap() {
         setLoading(true);
         try {
             const [resZonas, resOlts] = await Promise.all([
-                client.get<Zona[]>('/zonas'),
-                client.get<Olt[]>('/olts/'),
+                client.get<Zona[]>('/zonas/'),
+                // La pantalla sólo necesita id/nombre; el catálogo evita
+                // que un campo avanzado inválido de una OLT bloquee las NAP.
+                client.get<Olt[]>('/olts/opciones'),
             ]);
             setZonas(resZonas.data);
             setOlts(resOlts.data);
