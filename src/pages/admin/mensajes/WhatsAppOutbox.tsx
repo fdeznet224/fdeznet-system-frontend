@@ -71,6 +71,19 @@ interface WhatsAppStatus {
 
 interface CatalogOption { id: number; nombre: string }
 
+const campaignVariables = [
+  ['{nombre}', 'Nombre completo'],
+  ['{nombre_pila}', 'Primer nombre'],
+  ['{apellido}', 'Apellido(s)'],
+  ['{zona}', 'Zona'],
+  ['{router}', 'Router'],
+  ['{plan}', 'Plan'],
+  ['{telefono}', 'Teléfono'],
+  ['{cedula}', 'Cédula'],
+  ['{fecha}', 'Fecha actual'],
+  ['{hora}', 'Hora actual'],
+] as const;
+
 const statuses: Array<{ value: '' | OutboxStatus; label: string }> = [
   { value: '', label: 'Todos' },
   { value: 'fallido', label: 'Fallidos' },
@@ -260,6 +273,10 @@ export default function WhatsAppOutbox() {
     }
   };
 
+  const addCampaignVariable = (variable: string) => {
+    setCampaignMessage((current) => `${current}${current ? ' ' : ''}${variable}`);
+  };
+
   const totalPages = Math.max(1, Math.ceil((data?.total || 0) / limit));
   const failedVisible = useMemo(
     () => data?.items.filter((item) => retryable.has(item.estado_envio)).length || 0,
@@ -306,7 +323,15 @@ export default function WhatsAppOutbox() {
             <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-950"><span className="font-bold">Cada</span><input required min="1" max="3600" type="number" value={campaignInterval} onChange={(event) => setCampaignInterval(event.target.value)} className="w-full bg-transparent py-3 outline-none" /><span className="font-bold">seg.</span></label>
             <button disabled={campaignLoading} className="rounded-xl bg-blue-600 px-4 py-3 text-xs font-black text-white disabled:opacity-50">{campaignLoading ? 'Encolando…' : 'Encolar campaña'}</button>
           </div>
-          <textarea required maxLength={10000} value={campaignMessage} onChange={(event) => setCampaignMessage(event.target.value)} placeholder="Escribe el mensaje. Puedes usar {nombre}." rows={3} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950" />
+          <textarea required maxLength={10000} value={campaignMessage} onChange={(event) => setCampaignMessage(event.target.value)} placeholder="Escribe el mensaje. Puedes usar {nombre}, {zona} o {fecha}." rows={3} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950" />
+          <div className="flex flex-wrap items-center gap-2 text-[10px]">
+            <span className="font-black text-slate-500">Variables:</span>
+            {campaignVariables.map(([variable, label]) => (
+              <button key={variable} type="button" onClick={() => addCampaignVariable(variable)} title={label} className="rounded-lg border border-blue-200 bg-white px-2 py-1 font-black text-blue-700 hover:bg-blue-100 dark:border-blue-900 dark:bg-slate-950 dark:text-blue-300">
+                {variable}
+              </button>
+            ))}
+          </div>
         </form>
       )}
 
