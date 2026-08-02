@@ -73,7 +73,6 @@ interface CatalogOption { id: number; nombre: string }
 
 const campaignVariables = [
   ['{nombre}', 'Nombre completo'],
-  ['{nombre_pila}', 'Primer nombre'],
   ['{apellido}', 'Apellido(s)'],
   ['{zona}', 'Zona'],
   ['{router}', 'Router'],
