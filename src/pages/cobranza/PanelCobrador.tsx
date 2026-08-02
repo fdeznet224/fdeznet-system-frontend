@@ -29,6 +29,7 @@ interface BillingInvoice {
     cliente: BillingClient;
     saldo_pendiente: number;
     fecha_vencimiento: string;
+    fecha_maxima_promesa?: string;
 }
 
 interface InvoiceListResponse {
@@ -134,7 +135,12 @@ export default function PanelCobrador() {
         setModo('pagar'); // Resetear a Pagar al abrir
         const date = new Date();
         date.setDate(date.getDate() + 3);
-        setFechaPromesa(date.toISOString().split('T')[0]);
+        const fechaInicial = date.toISOString().split('T')[0];
+        setFechaPromesa(
+            factura.fecha_maxima_promesa && fechaInicial > factura.fecha_maxima_promesa
+                ? factura.fecha_maxima_promesa
+                : fechaInicial,
+        );
         setIsModalOpen(true);
     };
 
@@ -196,8 +202,11 @@ export default function PanelCobrador() {
             setIsModalOpen(false);
             setFiltro('');
             fetchData();
-        } catch {
-            toast.error("Error al guardar promesa", { id: toastId }); 
+        } catch (error: any) {
+            toast.error(
+                error?.response?.data?.detail || "Error al guardar promesa",
+                { id: toastId },
+            );
         } finally {
             setProcesando(false);
         }
@@ -479,10 +488,14 @@ export default function PanelCobrador() {
                                                 <div className="mb-8">
                                                     <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2 px-1">Fecha Límite de Pago</label>
                                                     <input 
-                                                        type="date" required 
+                                                        type="date" required
+                                                        max={selectedFactura?.fecha_maxima_promesa}
                                                         className="w-full bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-900 dark:text-white font-bold text-center text-lg outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 shadow-sm dark:shadow-lg" 
                                                         value={fechaPromesa} onChange={e => setFechaPromesa(e.target.value)} 
                                                     />
+                                                    <p className="mt-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                                        Fecha máxima: {selectedFactura?.fecha_maxima_promesa || 'calculando...'}
+                                                    </p>
                                                 </div>
                                                 
                                                 <div className="mt-auto pt-4">

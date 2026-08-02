@@ -198,9 +198,11 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
             toast.dismiss(t); 
             toast.success("Promesa creada y servicio reactivado ✅");
             onSuccess();
-        } catch (error: unknown) {
+        } catch (error: any) {
             toast.dismiss(t); 
-            toast.error(getErrorMessage(error, "Error al crear promesa"));
+            toast.error(
+                error?.response?.data?.detail || getErrorMessage(error, "Error al crear promesa"),
+            );
         } finally { 
             setProcesando(false); 
         }
