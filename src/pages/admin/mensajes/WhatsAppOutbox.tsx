@@ -13,6 +13,7 @@ import {
   PaperAirplaneIcon,
   QueueListIcon,
   SignalIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 
@@ -67,6 +68,8 @@ interface WhatsAppStatus {
   connected: boolean;
   active: boolean;
 }
+
+interface CatalogOption { id: number; nombre: string }
 
 const statuses: Array<{ value: '' | OutboxStatus; label: string }> = [
   { value: '', label: 'Todos' },
@@ -123,6 +126,15 @@ export default function WhatsAppOutbox() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [campaignOpen, setCampaignOpen] = useState(false);
+  const [campaignMessage, setCampaignMessage] = useState('');
+  const [campaignTarget, setCampaignTarget] = useState<'zona' | 'router'>('zona');
+  const [campaignTargetId, setCampaignTargetId] = useState('');
+  const [campaignInterval, setCampaignInterval] = useState('60');
+  const [zones, setZones] = useState<CatalogOption[]>([]);
+  const [routers, setRouters] = useState<CatalogOption[]>([]);
+  const [campaignLoading, setCampaignLoading] = useState(false);
   const limit = 30;
 
   const fetchData = useCallback(async (silent = false) => {
@@ -155,6 +167,16 @@ export default function WhatsAppOutbox() {
     const interval = window.setInterval(() => void fetchData(true), 10000);
     return () => window.clearInterval(interval);
   }, [fetchData]);
+
+  useEffect(() => {
+    void Promise.all([
+      client.get<CatalogOption[]>('/zonas/'),
+      client.get<CatalogOption[]>('/network/routers/'),
+    ]).then(([zonesResponse, routersResponse]) => {
+      setZones(zonesResponse.data);
+      setRouters(routersResponse.data);
+    }).catch(() => undefined);
+  }, []);
 
   const applyFilters = (event: React.FormEvent) => {
     event.preventDefault();
@@ -197,6 +219,47 @@ export default function WhatsAppOutbox() {
     }
   };
 
+  const deleteOne = async (message: OutboxMessage) => {
+    if (!window.confirm(`¿Borrar el mensaje #${message.id} del historial?`)) return;
+    setDeletingId(message.id);
+    try {
+      await client.delete(`/whatsapp/salidas/${message.id}`);
+      toast.success('Mensaje retirado del historial');
+      await fetchData(true);
+    } catch (error) {
+      toast.error(errorMessage(error, 'No se pudo borrar el mensaje'));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const sendCampaign = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!campaignTargetId || !campaignMessage.trim()) {
+      toast.error('Selecciona el destino y escribe el mensaje');
+      return;
+    }
+    setCampaignLoading(true);
+    try {
+      const payload = {
+        mensaje: campaignMessage.trim(),
+        zona_id: campaignTarget === 'zona' ? Number(campaignTargetId) : null,
+        router_id: campaignTarget === 'router' ? Number(campaignTargetId) : null,
+        intervalo_segundos: Number(campaignInterval),
+      };
+      const response = await client.post<{ total_mensajes: number; intervalo_segundos: number }>('/whatsapp/enviar-campana', payload);
+      toast.success(`${response.data.total_mensajes} mensajes encolados; uno cada ${response.data.intervalo_segundos} s`);
+      setCampaignMessage('');
+      setCampaignTargetId('');
+      setCampaignOpen(false);
+      await fetchData(true);
+    } catch (error) {
+      toast.error(errorMessage(error, 'No se pudo crear la campaña'));
+    } finally {
+      setCampaignLoading(false);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil((data?.total || 0) / limit));
   const failedVisible = useMemo(
     () => data?.items.filter((item) => retryable.has(item.estado_envio)).length || 0,
@@ -216,6 +279,9 @@ export default function WhatsAppOutbox() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setCampaignOpen((value) => !value)} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-black text-white">
+            <PaperAirplaneIcon className="h-4 w-4" /> Mensaje masivo
+          </button>
           <span className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black ${connection?.connected ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>
             <SignalIcon className="h-4 w-4" />
             {connection?.connected ? 'WhatsApp conectado' : 'WhatsApp desconectado'}
@@ -225,6 +291,24 @@ export default function WhatsAppOutbox() {
           </button>
         </div>
       </header>
+
+      {campaignOpen && (
+        <form onSubmit={sendCampaign} className="space-y-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm dark:border-blue-900/50 dark:bg-blue-950/20">
+          <div><h2 className="text-sm font-black">Nueva campaña</h2><p className="text-xs text-slate-500">Se enviará de forma secuencial, respetando el intervalo indicado.</p></div>
+          <div className="grid gap-3 md:grid-cols-4">
+            <select value={campaignTarget} onChange={(event) => { setCampaignTarget(event.target.value as 'zona' | 'router'); setCampaignTargetId(''); }} className="rounded-xl border border-slate-200 bg-white p-3 text-xs font-black dark:border-slate-700 dark:bg-slate-950">
+              <option value="zona">Por zona</option><option value="router">Por router</option>
+            </select>
+            <select required value={campaignTargetId} onChange={(event) => setCampaignTargetId(event.target.value)} className="rounded-xl border border-slate-200 bg-white p-3 text-xs dark:border-slate-700 dark:bg-slate-950">
+              <option value="">Selecciona destino…</option>
+              {(campaignTarget === 'zona' ? zones : routers).map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+            </select>
+            <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-950"><span className="font-bold">Cada</span><input required min="1" max="3600" type="number" value={campaignInterval} onChange={(event) => setCampaignInterval(event.target.value)} className="w-full bg-transparent py-3 outline-none" /><span className="font-bold">seg.</span></label>
+            <button disabled={campaignLoading} className="rounded-xl bg-blue-600 px-4 py-3 text-xs font-black text-white disabled:opacity-50">{campaignLoading ? 'Encolando…' : 'Encolar campaña'}</button>
+          </div>
+          <textarea required maxLength={10000} value={campaignMessage} onChange={(event) => setCampaignMessage(event.target.value)} placeholder="Escribe el mensaje. Puedes usar {nombre}." rows={3} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950" />
+        </form>
+      )}
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
         <SummaryCard label="Total" value={data?.resumen.total || 0} icon={PaperAirplaneIcon} />
@@ -273,7 +357,7 @@ export default function WhatsAppOutbox() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {data?.items.map((message) => (
-                <MessageRow key={message.id} message={message} expanded={expandedId === message.id} onExpand={() => setExpandedId(expandedId === message.id ? null : message.id)} onRetry={retryOne} retrying={retryingId === message.id} />
+                <MessageRow key={message.id} message={message} expanded={expandedId === message.id} onExpand={() => setExpandedId(expandedId === message.id ? null : message.id)} onRetry={retryOne} onDelete={deleteOne} retrying={retryingId === message.id} deleting={deletingId === message.id} />
               ))}
             </tbody>
           </table>
@@ -281,7 +365,7 @@ export default function WhatsAppOutbox() {
 
         <div className="grid gap-3 p-3 md:hidden">
           {data?.items.map((message) => (
-            <MessageCard key={message.id} message={message} onRetry={retryOne} retrying={retryingId === message.id} />
+            <MessageCard key={message.id} message={message} onRetry={retryOne} onDelete={deleteOne} retrying={retryingId === message.id} deleting={deletingId === message.id} />
           ))}
         </div>
 
@@ -323,7 +407,7 @@ function RetryButton({ message, onRetry, retrying }: { message: OutboxMessage; o
   );
 }
 
-function MessageRow({ message, expanded, onExpand, onRetry, retrying }: { message: OutboxMessage; expanded: boolean; onExpand: () => void; onRetry: (message: OutboxMessage) => void; retrying: boolean }) {
+function MessageRow({ message, expanded, onExpand, onRetry, onDelete, retrying, deleting }: { message: OutboxMessage; expanded: boolean; onExpand: () => void; onRetry: (message: OutboxMessage) => void; onDelete: (message: OutboxMessage) => void; retrying: boolean; deleting: boolean }) {
   return (
     <>
       <tr className="align-top hover:bg-slate-50 dark:hover:bg-slate-800/30">
@@ -332,7 +416,7 @@ function MessageRow({ message, expanded, onExpand, onRetry, retrying }: { messag
         <td className="max-w-sm p-4"><button type="button" onClick={onExpand} className={`text-left leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>{message.mensaje}</button>{message.ultimo_error && <p className="mt-2 rounded-lg bg-rose-50 p-2 text-[10px] font-bold text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{message.ultimo_error}</p>}</td>
         <td className="p-4"><p className="font-black">{message.intentos}/{message.max_intentos}</p><p className="mt-1 text-[10px] text-slate-500">Manual: {message.reintentos_manuales}</p></td>
         <td className="p-4 text-center"><span className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${statusStyles(message.estado_envio)}`}>{message.estado_envio}</span><p className="mt-2 text-[9px] text-slate-400">ACK {message.ack ?? 0}</p></td>
-        <td className="p-4 text-right"><RetryButton message={message} onRetry={onRetry} retrying={retrying} /></td>
+        <td className="p-4 text-right"><div className="flex justify-end gap-2"><RetryButton message={message} onRetry={onRetry} retrying={retrying} /><DeleteButton message={message} onDelete={onDelete} deleting={deleting} /></div></td>
       </tr>
       {expanded && (
         <tr className="bg-slate-50 dark:bg-slate-950/50">
@@ -345,7 +429,7 @@ function MessageRow({ message, expanded, onExpand, onRetry, retrying }: { messag
   );
 }
 
-function MessageCard({ message, onRetry, retrying }: { message: OutboxMessage; onRetry: (message: OutboxMessage) => void; retrying: boolean }) {
+function MessageCard({ message, onRetry, onDelete, retrying, deleting }: { message: OutboxMessage; onRetry: (message: OutboxMessage) => void; onDelete: (message: OutboxMessage) => void; retrying: boolean; deleting: boolean }) {
   return (
     <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
       <div className="flex items-start justify-between gap-3">
@@ -356,8 +440,13 @@ function MessageCard({ message, onRetry, retrying }: { message: OutboxMessage; o
       {message.ultimo_error && <p className="mt-3 rounded-lg bg-rose-100 p-2 text-[10px] font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">{message.ultimo_error}</p>}
       <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
         <span className="text-[10px] font-bold text-slate-500">Intentos {message.intentos}/{message.max_intentos}</span>
-        <RetryButton message={message} onRetry={onRetry} retrying={retrying} />
+        <div className="flex gap-2"><RetryButton message={message} onRetry={onRetry} retrying={retrying} /><DeleteButton message={message} onDelete={onDelete} deleting={deleting} /></div>
       </div>
     </article>
   );
+}
+
+function DeleteButton({ message, onDelete, deleting }: { message: OutboxMessage; onDelete: (message: OutboxMessage) => void; deleting: boolean }) {
+  if (message.estado_envio === 'procesando') return null;
+  return <button type="button" disabled={deleting} onClick={() => void onDelete(message)} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-[10px] font-black text-rose-600 disabled:opacity-50 dark:border-rose-900"><TrashIcon className="h-3.5 w-3.5" />{deleting ? 'Borrando…' : 'Borrar'}</button>;
 }
