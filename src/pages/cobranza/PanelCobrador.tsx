@@ -3,6 +3,7 @@ import {
     type ComponentType
 } from 'react';
 import client from '../../api/axios';
+import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Dialog, Transition } from '@headlessui/react';
 import { useNavigate } from 'react-router-dom';
@@ -30,6 +31,19 @@ interface BillingInvoice {
     saldo_pendiente: number;
     fecha_vencimiento: string;
     fecha_maxima_promesa?: string;
+    dias_con_servicio?: number | null;
+    dias_sin_servicio?: number | null;
+    ajuste_suspension?: number;
+    cargos_adicionales_total?: number;
+    servicio?: { estado?: string | null } | null;
+}
+
+interface ReactivationQuote {
+    dias_con_servicio: number;
+    dias_sin_servicio: number;
+    ajuste_suspension: number;
+    cargos_adicionales: number;
+    saldo_pendiente: number;
 }
 
 interface InvoiceListResponse {
@@ -129,9 +143,37 @@ export default function PanelCobrador() {
         }
     };
 
-    const handleOpenCobrar = (factura: BillingInvoice) => {
-        setSelectedFactura(factura);
-        setFormCobro({ metodo: 'efectivo', referencia: '', monto: factura.saldo_pendiente });
+    const handleOpenCobrar = async (factura: BillingInvoice) => {
+        let facturaActual = factura;
+        if (factura.servicio?.estado === 'suspendido') {
+            if (!online) {
+                toast.error('La reactivación requiere conexión para calcular los días reales');
+                return;
+            }
+            const toastId = toast.loading('Calculando días con servicio…');
+            try {
+                const { data } = await client.post<ReactivationQuote>(
+                    `/finanzas/facturas/${factura.id}/cotizar-reactivacion`,
+                );
+                facturaActual = {
+                    ...factura,
+                    saldo_pendiente: Number(data.saldo_pendiente),
+                    dias_con_servicio: data.dias_con_servicio,
+                    dias_sin_servicio: data.dias_sin_servicio,
+                    ajuste_suspension: Number(data.ajuste_suspension),
+                    cargos_adicionales_total: Number(data.cargos_adicionales),
+                };
+                toast.success('Factura recalculada', { id: toastId });
+            } catch (error: unknown) {
+                const detail = axios.isAxiosError<{ detail?: string }>(error)
+                    ? error.response?.data?.detail
+                    : undefined;
+                toast.error(detail || 'No se pudo calcular la reactivación', { id: toastId });
+                return;
+            }
+        }
+        setSelectedFactura(facturaActual);
+        setFormCobro({ metodo: 'efectivo', referencia: '', monto: facturaActual.saldo_pendiente });
         setModo('pagar'); // Resetear a Pagar al abrir
         const date = new Date();
         date.setDate(date.getDate() + 3);
@@ -202,9 +244,12 @@ export default function PanelCobrador() {
             setIsModalOpen(false);
             setFiltro('');
             fetchData();
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const detail = axios.isAxiosError<{ detail?: string }>(error)
+                ? error.response?.data?.detail
+                : undefined;
             toast.error(
-                error?.response?.data?.detail || "Error al guardar promesa",
+                detail || "Error al guardar promesa",
                 { id: toastId },
             );
         } finally {
@@ -273,7 +318,7 @@ export default function PanelCobrador() {
                             {facturasFiltradas.map((f) => {
                                 const isVencida = new Date(f.fecha_vencimiento) < new Date();
                                 return (
-                                    <div key={f.id} onClick={() => handleOpenCobrar(f)} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer">
+                                    <div key={f.id} onClick={() => void handleOpenCobrar(f)} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer">
                                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${isVencida ? 'bg-rose-500' : 'bg-amber-500'}`}></div>
                                         <div className="pl-2">
                                             <h3 className="font-black text-slate-900 dark:text-white text-base transition-colors">{f.cliente.nombre}</h3>
@@ -303,7 +348,7 @@ export default function PanelCobrador() {
                             </div>
                         ) : (
                             promesas.map((f) => (
-                                <div key={f.id} onClick={() => handleOpenCobrar(f)} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer">
+                                <div key={f.id} onClick={() => void handleOpenCobrar(f)} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer">
                                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500"></div>
                                     <div className="pl-2">
                                         <h3 className="font-black text-slate-900 dark:text-white text-base">{f.cliente.nombre}</h3>
@@ -423,6 +468,14 @@ export default function PanelCobrador() {
                                         <div className="w-full bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl p-4 font-bold shadow-sm dark:shadow-lg">
                                             #{selectedFactura?.id} - Vence: {selectedFactura?.fecha_vencimiento} - ${selectedFactura?.saldo_pendiente}
                                         </div>
+                                        {selectedFactura?.dias_con_servicio != null && (
+                                            <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-[10px] font-bold text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
+                                                <span>Con servicio: {selectedFactura.dias_con_servicio} días</span>
+                                                <span>Sin servicio: {selectedFactura.dias_sin_servicio ?? 0} días</span>
+                                                <span>Ajuste: -${selectedFactura.ajuste_suspension ?? 0}</span>
+                                                <span>Extras: ${selectedFactura.cargos_adicionales_total ?? 0}</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* TABS DE ACCIÓN */}

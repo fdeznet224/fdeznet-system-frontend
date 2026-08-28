@@ -750,7 +750,7 @@ export default function CreateClientModal({
 
                 {step < 4 && <div className="shrink-0 px-5 pt-4 sm:px-8 sm:pt-5">{renderProgress()}</div>}
 
-                <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8">
                   {step === 1 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
@@ -1175,21 +1175,17 @@ export default function CreateClientModal({
                       <div className="md:col-span-2">
                         <p className={labelClass}>¿Cómo deseas registrar?</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <label
-                            className={`cursor-pointer rounded-3xl p-5 border-2 transition ${
+                          <button
+                            type="button"
+                            aria-pressed={!activarAhora}
+                            disabled={Boolean(pendingActivationClient) || loading}
+                            onClick={() => setActivarAhora(false)}
+                            className={`min-h-32 cursor-pointer rounded-3xl p-5 border-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
                               !activarAhora
                                 ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/30'
                                 : 'border-slate-200 dark:border-slate-700'
                             }`}
                           >
-                            <input
-                              type="radio"
-                              name="registrationMode"
-                              checked={!activarAhora}
-                              disabled={Boolean(pendingActivationClient)}
-                              onChange={() => setActivarAhora(false)}
-                              className="sr-only"
-                            />
                             <span className="block font-black text-slate-900 dark:text-white">
                               Solo crear orden
                             </span>
@@ -1197,22 +1193,19 @@ export default function CreateClientModal({
                               Deja el servicio pendiente para que un técnico
                               complete la instalación después.
                             </span>
-                          </label>
+                          </button>
 
-                          <label
-                            className={`cursor-pointer rounded-3xl p-5 border-2 transition ${
+                          <button
+                            type="button"
+                            aria-pressed={activarAhora}
+                            disabled={loading}
+                            onClick={() => setActivarAhora(true)}
+                            className={`min-h-32 cursor-pointer rounded-3xl p-5 border-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
                               activarAhora
                                 ? 'border-green-600 bg-green-50 dark:bg-green-950/30'
                                 : 'border-slate-200 dark:border-slate-700'
                             }`}
                           >
-                            <input
-                              type="radio"
-                              name="registrationMode"
-                              checked={activarAhora}
-                              onChange={() => setActivarAhora(true)}
-                              className="sr-only"
-                            />
                             <span>
                               <span className="block font-black text-slate-900 dark:text-white">
                                 Crear y activar ahora
@@ -1222,7 +1215,7 @@ export default function CreateClientModal({
                                 Como administrador no necesitas asignar técnico.
                               </span>
                             </span>
-                          </label>
+                          </button>
                         </div>
                         {pendingActivationClient && (
                           <p className="mt-3 text-sm font-bold text-amber-700 dark:text-amber-300">
@@ -1291,7 +1284,8 @@ export default function CreateClientModal({
                     <button
                       type="button"
                       onClick={() => setStep((prev) => prev - 1)}
-                      className="min-h-12 px-5 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center gap-2"
+                      disabled={loading}
+                      className="min-h-12 px-5 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center gap-2 disabled:opacity-40"
                     >
                       <ArrowLeftIcon className="w-5 h-5" />
                       Atrás

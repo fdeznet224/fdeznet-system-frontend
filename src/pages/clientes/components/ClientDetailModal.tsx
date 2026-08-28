@@ -19,6 +19,7 @@ import type { Cliente } from '@/types';
 import type { ClientService } from '@/types/services';
 import { openNativeMap } from '@/utils/nativeActions';
 import ClientServicesPanel from './ClientServicesPanel';
+import IpAccessModal from './IpAccessModal';
 import './client-detail-sheet.css';
 
 interface Props {
@@ -74,6 +75,11 @@ interface ClientInvoice {
     periodo_hasta?: string;
     dias_facturados?: number;
     dias_periodo?: number;
+    dias_con_servicio?: number;
+    dias_sin_servicio?: number;
+    ajuste_suspension?: number;
+    cargos_adicionales_total?: number;
+    monto_servicio_original?: number;
     total?: number;
     saldo_pendiente?: number;
     fecha_emision?: string;
@@ -119,6 +125,7 @@ interface DetailTileProps {
     highlight?: boolean;
     danger?: boolean;
     copy?: boolean;
+    onClick?: () => void;
 }
 
 interface StatusPillProps {
@@ -161,6 +168,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [addingSaldo, setAddingSaldo] = useState(false);
     const [montoSaldo, setMontoSaldo] = useState('');
     const [facturas, setFacturas] = useState<ClientInvoice[]>([]);
+    const [remoteIp, setRemoteIp] = useState<string | null>(null);
     const [servicios, setServicios] = useState<ClientService[]>([]);
     const [resumenComercial, setResumenComercial] = useState<CommercialSummary | null>(null);
     const [activeTab, setActiveTab] = useState<'resumen' | 'servicios' | 'red' | 'facturas' | 'instalacion'>('resumen'); // FACTURACION_ISP_V2_CLIENT_DETAIL_TABS_FRONTEND // FACTURACION_ISP_V2_CLIENT_DETAIL_FRONTEND
@@ -476,7 +484,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
         const load = toast.loading("Creando factura manual...");
         try {
-            await client.post('/finanzas/factura-manual', {
+            const response = await client.post<{ consolidada?: boolean; mensaje?: string }>('/finanzas/factura-manual', {
                 cliente_id: cliente.id,
                 servicio_id: manualInvoiceData.servicio_id ? Number(manualInvoiceData.servicio_id) : null,
                 concepto: manualInvoiceData.concepto.trim(),
@@ -486,7 +494,12 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                 afecta_corte: manualInvoiceData.afecta_corte,
             });
 
-            toast.success("Factura manual creada", { id: load });
+            toast.success(
+                response.data.consolidada
+                    ? 'Cargo agregado a la factura mensual'
+                    : 'Factura de cargo creada',
+                { id: load },
+            );
             setIsManualInvoiceOpen(false);
             setManualInvoiceData({
                 servicio_id: '',
@@ -687,7 +700,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         <DetailTile label="Teléfono" value={cliente?.telefono || 'N/A'} copy />
                                         <DetailTile label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
                                         <DetailTile label="Plan" value={servicioActual?.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
-                                        <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight />
+                                        <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight copy onClick={cliente?.ip_asignada ? () => setRemoteIp(cliente.ip_asignada || null) : undefined} />
                                         <DetailTile label="ONU serial" value={cliente?.onu_asignada?.identificador || 'Sin equipo'} copy />
                                         <DetailTile label="Dirección" value={cliente?.direccion || 'N/A'} />
                                     </div>
@@ -942,6 +955,11 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 <DetailTile label="Periodo" value={`${formatDate(facturaActual.periodo_desde)} - ${formatDate(facturaActual.periodo_hasta)}`} highlight />
                                                 <DetailTile label="Días facturados" value={`${facturaActual.dias_facturados || 0} de ${facturaActual.dias_periodo || 0}`} />
+                                                <DetailTile label="Días con servicio" value={String(facturaActual.dias_con_servicio ?? facturaActual.dias_facturados ?? 0)} />
+                                                <DetailTile label="Días sin servicio" value={String(facturaActual.dias_sin_servicio ?? 0)} danger={Number(facturaActual.dias_sin_servicio || 0) > 0} />
+                                                <DetailTile label="Mensualidad original" value={formatMoney(facturaActual.monto_servicio_original)} />
+                                                <DetailTile label="Ajuste por suspensión" value={`-${formatMoney(facturaActual.ajuste_suspension)}`} highlight={Number(facturaActual.ajuste_suspension || 0) > 0} />
+                                                <DetailTile label="Cargos adicionales" value={formatMoney(facturaActual.cargos_adicionales_total)} />
                                                 <DetailTile label="Total factura" value={formatMoney(facturaActual.total)} />
                                                 <DetailTile label="Saldo pendiente" value={formatMoney(facturaActual.saldo_pendiente)} danger={Number(facturaActual.saldo_pendiente || 0) > 0} />
                                                 <DetailTile label="Vencimiento" value={formatDate(facturaActual.fecha_vencimiento)} />
@@ -1216,6 +1234,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                     </div>
                 </Dialog>
             </Transition>
+            <IpAccessModal ip={remoteIp} clientName={cliente?.nombre} onClose={() => setRemoteIp(null)} />
         </Transition>
     );
 }
@@ -1223,12 +1242,21 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 // ================= SUBCOMPONENTES VISUALES =================
 
 
-const DetailTile = ({ label, value, highlight, danger, copy }: DetailTileProps) => (
-    <div className={classNames(
+const DetailTile = ({ label, value, highlight, danger, copy, onClick }: DetailTileProps) => (
+    <div
+        className={classNames(
         "bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border group",
         highlight ? "border-blue-200 dark:border-blue-500/30" : "border-transparent",
-        danger ? "border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-900/10" : ""
-    )}>
+        danger ? "border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-900/10" : "",
+        onClick ? "cursor-pointer hover:border-blue-400 active:scale-[0.99] transition" : ""
+        )}
+        onClick={onClick}
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onKeyDown={onClick ? (event) => {
+            if (event.key === 'Enter' || event.key === ' ') onClick();
+        } : undefined}
+    >
         <p className="text-[10px] uppercase font-black text-slate-400 mb-1">{label}</p>
         <div className="flex items-start justify-between gap-2">
             <p className={classNames(
@@ -1239,7 +1267,7 @@ const DetailTile = ({ label, value, highlight, danger, copy }: DetailTileProps) 
             {copy && value && value !== 'N/A' && value !== 'DHCP' && value !== 'Sin equipo' && (
                 <button
                     type="button"
-                    onClick={() => { navigator.clipboard.writeText(String(value)); toast.success("Copiado"); }}
+                    onClick={(event) => { event.stopPropagation(); navigator.clipboard.writeText(String(value)); toast.success("Copiado"); }}
                     className="shrink-0 p-1.5 text-slate-300 hover:text-blue-500 rounded-md active:bg-slate-100 dark:active:bg-slate-800 transition"
                     title={`Copiar ${label}`}
                 >

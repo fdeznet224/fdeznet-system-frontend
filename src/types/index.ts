@@ -129,6 +129,13 @@ export interface Factura {
     saldo_pendiente: number;
     estado: 'pendiente' | 'pagada' | 'vencida' | 'anulada';
     detalles?: string;
+    dias_con_servicio?: number | null;
+    dias_sin_servicio?: number | null;
+    ajuste_suspension?: number;
+    cargos_adicionales_total?: number;
+    monto_servicio_original?: number | null;
+    motivo_anulacion?: string | null;
+    fecha_anulacion?: string | null;
     cliente: { 
         id: number;
         nombre: string;

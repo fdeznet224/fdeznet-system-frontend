@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import client from '../../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -10,10 +10,28 @@ import {
 export interface PaymentInvoice {
     id: number;
     total: number | string;
+    saldo_pendiente?: number | string;
+    dias_con_servicio?: number | null;
+    dias_sin_servicio?: number | null;
+    ajuste_suspension?: number | string;
+    cargos_adicionales_total?: number | string;
     plan_snapshot?: string | null;
     cliente?: {
         nombre?: string | null;
     } | null;
+    servicio?: {
+        estado?: string | null;
+    } | null;
+}
+
+interface ReactivationQuote {
+    dias_con_servicio: number;
+    dias_sin_servicio: number;
+    ajuste_suspension: number | string;
+    mensualidad_ajustada: number | string;
+    cargos_adicionales: number | string;
+    total: number | string;
+    saldo_pendiente: number | string;
 }
 
 interface Props {
@@ -34,7 +52,29 @@ export default function PaymentModal({ isOpen, onClose, factura, onSuccess }: Pr
     const [metodo, setMetodo] = useState('efectivo');
     const [referencia, setReferencia] = useState('');
     const [loading, setLoading] = useState(false);
+    const [quote, setQuote] = useState<ReactivationQuote | null>(null);
+    const [quoteLoading, setQuoteLoading] = useState(false);
     const idempotencyKey = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!isOpen || !factura || factura.servicio?.estado !== 'suspendido') {
+            setQuote(null);
+            return;
+        }
+        let active = true;
+        setQuoteLoading(true);
+        void client.post<ReactivationQuote>(`/finanzas/facturas/${factura.id}/cotizar-reactivacion`)
+            .then(({ data }) => {
+                if (active) setQuote(data);
+            })
+            .catch((error: unknown) => {
+                if (active) toast.error(getErrorMessage(error));
+            })
+            .finally(() => {
+                if (active) setQuoteLoading(false);
+            });
+        return () => { active = false; };
+    }, [factura, isOpen]);
 
     const handleCobrar = async () => {
         setLoading(true);
@@ -45,7 +85,7 @@ export default function PaymentModal({ isOpen, onClose, factura, onSuccess }: Pr
             const res = await client.post('/finanzas/cobrar', {
                 factura_id: factura.id,
                 metodo_pago: metodo,
-                monto_recibido: Number(factura.total),
+                monto_recibido: Number(quote?.saldo_pendiente ?? factura.saldo_pendiente ?? factura.total),
                 referencia: referencia || `Pago Folio #${factura.id}`,
                 clave_idempotencia: idempotencyKey.current,
             });
@@ -100,7 +140,9 @@ export default function PaymentModal({ isOpen, onClose, factura, onSuccess }: Pr
                     {/* Visualización del Monto */}
                     <div className="text-center py-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800 transition-colors">
                         <p className="text-[10px] uppercase font-black text-slate-500 dark:text-slate-400 tracking-widest mb-1">Total a recibir</p>
-                        <h2 className="text-4xl font-black text-slate-900 dark:text-white transition-colors">${factura.total}</h2>
+                        <h2 className="text-4xl font-black text-slate-900 dark:text-white transition-colors">
+                            {quoteLoading ? 'Calculando…' : `$${quote?.saldo_pendiente ?? factura.saldo_pendiente ?? factura.total}`}
+                        </h2>
                         <div className="mt-3 flex flex-col items-center">
                             <p className="text-sm font-black text-slate-700 dark:text-slate-300 truncate max-w-[250px]">{factura.cliente?.nombre}</p>
                             <span className="text-[9px] text-blue-600 dark:text-blue-400 font-black mt-1 px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 rounded border border-blue-200 dark:border-blue-500/20 transition-colors">
@@ -108,6 +150,18 @@ export default function PaymentModal({ isOpen, onClose, factura, onSuccess }: Pr
                             </span>
                         </div>
                     </div>
+
+                    {quote && (
+                        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-blue-200 bg-blue-50 p-3 text-xs dark:border-blue-500/20 dark:bg-blue-500/10">
+                            <Breakdown label="Días con servicio" value={quote.dias_con_servicio} />
+                            <Breakdown label="Días sin servicio" value={quote.dias_sin_servicio} />
+                            <Breakdown label="Servicio ajustado" value={`$${quote.mensualidad_ajustada}`} />
+                            <Breakdown label="Ajuste por corte" value={`-$${quote.ajuste_suspension}`} />
+                            {Number(quote.cargos_adicionales) > 0 && (
+                                <Breakdown label="Cargos adicionales" value={`$${quote.cargos_adicionales}`} />
+                            )}
+                        </div>
+                    )}
 
                     {/* Selector de Método */}
                     <div className="grid grid-cols-2 gap-3">
@@ -142,7 +196,7 @@ export default function PaymentModal({ isOpen, onClose, factura, onSuccess }: Pr
                     {/* Botón Principal */}
                     <button 
                         onClick={handleCobrar}
-                        disabled={loading}
+                        disabled={loading || quoteLoading}
                         className={`w-full py-4 rounded-2xl font-black text-white shadow-md transition-all active:scale-95 flex items-center justify-center gap-3
                             ${loading ? 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'}
                         `}
@@ -160,6 +214,15 @@ export default function PaymentModal({ isOpen, onClose, factura, onSuccess }: Pr
                     <div className="h-4 sm:hidden"></div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function Breakdown({ label, value }: { label: string; value: string | number }) {
+    return (
+        <div>
+            <p className="text-[9px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+            <p className="font-black text-slate-900 dark:text-white">{value}</p>
         </div>
     );
 }

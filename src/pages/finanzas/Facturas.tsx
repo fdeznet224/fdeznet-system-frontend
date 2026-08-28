@@ -4,7 +4,8 @@ import { toast } from 'react-hot-toast';
 import { 
     ArrowPathIcon,
     MagnifyingGlassIcon, FunnelIcon,
-    PrinterIcon, BanknotesIcon, ClockIcon, ShieldExclamationIcon
+    PrinterIcon, BanknotesIcon, ClockIcon, ShieldExclamationIcon,
+    XCircleIcon
 } from '@heroicons/react/24/outline';
 import PaymentModal, { type PaymentInvoice } from './components/PaymentModal';
 
@@ -15,6 +16,8 @@ interface Factura extends PaymentInvoice {
     es_promesa_activa?: boolean;
     estado: string;
     plan_snapshot?: string | null;
+    motivo_anulacion?: string | null;
+    fecha_anulacion?: string | null;
     cliente?: {
         nombre?: string | null;
         ip_asignada?: string | null;
@@ -108,6 +111,36 @@ export default function Facturas() {
             setLoading(false);
         }
     }, []);
+
+    const handleAnular = async (factura: Factura) => {
+        const motivo = window.prompt('Motivo de la anulación (mínimo 5 caracteres):');
+        if (!motivo) return;
+        if (motivo.trim().length < 5) {
+            toast.error('El motivo debe tener al menos 5 caracteres');
+            return;
+        }
+        const nuevaFecha = window.prompt(
+            'Nueva fecha de facturación (AAAA-MM-DD). Déjala vacía si no se regenerará:',
+            '',
+        );
+        if (nuevaFecha && !/^\d{4}-\d{2}-\d{2}$/.test(nuevaFecha)) {
+            toast.error('La fecha debe tener formato AAAA-MM-DD');
+            return;
+        }
+        const toastId = toast.loading('Anulando factura…');
+        try {
+            await client.post(`/finanzas/facturas/${factura.id}/anular`, {
+                motivo: motivo.trim(),
+                nueva_fecha_facturacion: nuevaFecha || null,
+            });
+            toast.success('Factura anulada correctamente', { id: toastId });
+            await fetchFacturas(filtros);
+        } catch (error: unknown) {
+            const detail = (error as { response?: { data?: { detail?: string } } })
+                ?.response?.data?.detail;
+            toast.error(detail || 'No fue posible anular la factura', { id: toastId });
+        }
+    };
 
     useEffect(() => {
         const initialLoad = window.setTimeout(() => {
@@ -291,6 +324,12 @@ export default function Facturas() {
                                         <td className="p-4">
                                             <div className="text-sm font-black text-slate-800 dark:text-white">${f.total}</div>
                                             <div className="text-[9px] text-slate-500 truncate max-w-[120px]">{f.plan_snapshot}</div>
+                                            {(f.dias_con_servicio != null || Number(f.cargos_adicionales_total || 0) > 0) && (
+                                                <div className="mt-1 text-[9px] font-bold text-blue-600 dark:text-blue-400">
+                                                    {f.dias_con_servicio ?? 0} con servicio · {f.dias_sin_servicio ?? 0} sin servicio
+                                                    {Number(f.cargos_adicionales_total || 0) > 0 && ` · Extras $${f.cargos_adicionales_total}`}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="p-4 text-center">
                                             <span className={`px-2.5 py-1 rounded-lg text-[10px] uppercase font-black border ${f.estado === 'pagada' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' :
@@ -305,6 +344,9 @@ export default function Facturas() {
                                             <div className="flex justify-end gap-2">
                                                 {f.estado !== 'pagada' && f.estado !== 'anulada' && (
                                                     <button onClick={() => { setSelectedFactura(f); setShowPaymentModal(true); }} className="text-emerald-600 dark:text-emerald-400 hover:text-white hover:bg-emerald-600 p-2 rounded-lg transition border border-emerald-200 dark:border-emerald-500/20" title="Cobrar"><BanknotesIcon className="w-4 h-4" /></button>
+                                                )}
+                                                {f.estado !== 'anulada' && (
+                                                    <button onClick={() => void handleAnular(f)} className="text-rose-600 hover:text-white hover:bg-rose-600 p-2 rounded-lg transition border border-rose-200 dark:border-rose-500/20" title="Anular factura"><XCircleIcon className="w-4 h-4" /></button>
                                                 )}
                                                 <button className="text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 p-2 rounded-lg border border-slate-200 dark:border-slate-700 transition" title="PDF"><PrinterIcon className="w-4 h-4" /></button>
                                             </div>
@@ -364,11 +406,25 @@ export default function Facturas() {
                                         </div>
                                     </div>
 
+                                    {(f.dias_con_servicio != null || Number(f.cargos_adicionales_total || 0) > 0) && (
+                                        <div className="ml-2 grid grid-cols-2 gap-2 rounded-xl bg-blue-50 p-3 text-[10px] font-bold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                                            <span>Con servicio: {f.dias_con_servicio ?? 0} días</span>
+                                            <span>Sin servicio: {f.dias_sin_servicio ?? 0} días</span>
+                                            <span>Ajuste: -${f.ajuste_suspension ?? 0}</span>
+                                            <span>Extras: ${f.cargos_adicionales_total ?? 0}</span>
+                                        </div>
+                                    )}
+
                                     {/* Bottom: Acciones */}
                                     <div className="pl-2 flex gap-2 border-t border-slate-100 dark:border-slate-800/60 pt-3 mt-2">
                                         {f.estado !== 'pagada' && f.estado !== 'anulada' && (
                                             <button onClick={() => { setSelectedFactura(f); setShowPaymentModal(true); }} className="flex-1 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
                                                 <BanknotesIcon className="w-5 h-5"/> Cobrar
+                                            </button>
+                                        )}
+                                        {f.estado !== 'anulada' && (
+                                            <button onClick={() => void handleAnular(f)} className="flex-1 bg-rose-50 text-rose-600 border border-rose-200 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition active:scale-95 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400">
+                                                <XCircleIcon className="w-5 h-5"/> Anular
                                             </button>
                                         )}
                                         <button className="flex-1 bg-slate-50 dark:bg-[#0f1219] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">

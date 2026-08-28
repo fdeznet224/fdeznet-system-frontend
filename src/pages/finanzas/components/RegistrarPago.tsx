@@ -28,6 +28,20 @@ interface FacturaPendiente {
     id: number;
     fecha_vencimiento: string;
     saldo_pendiente: number | string;
+    dias_con_servicio?: number | null;
+    dias_sin_servicio?: number | null;
+    ajuste_suspension?: number | string;
+    cargos_adicionales_total?: number | string;
+    servicio?: { estado?: string | null } | null;
+    cotizada_reactivacion?: boolean;
+}
+
+interface ReactivationQuote {
+    dias_con_servicio: number;
+    dias_sin_servicio: number;
+    ajuste_suspension: number | string;
+    cargos_adicionales: number | string;
+    saldo_pendiente: number | string;
 }
 
 interface ListadoDeudaResponse {
@@ -96,6 +110,40 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
             const d = new Date(); d.setDate(d.getDate() + 3);
             setFechaPromesa(d.toISOString().split('T')[0]);
         }
+    }, [selectedFactura]);
+
+    useEffect(() => {
+        if (
+            !selectedFactura
+            || selectedFactura.servicio?.estado !== 'suspendido'
+            || selectedFactura.cotizada_reactivacion
+        ) return;
+        let active = true;
+        setLoadingDeuda(true);
+        void client.post<ReactivationQuote>(
+            `/finanzas/facturas/${selectedFactura.id}/cotizar-reactivacion`,
+        ).then(({ data }) => {
+            if (!active) return;
+            const actualizada: FacturaPendiente = {
+                ...selectedFactura,
+                saldo_pendiente: data.saldo_pendiente,
+                dias_con_servicio: data.dias_con_servicio,
+                dias_sin_servicio: data.dias_sin_servicio,
+                ajuste_suspension: data.ajuste_suspension,
+                cargos_adicionales_total: data.cargos_adicionales,
+                cotizada_reactivacion: true,
+            };
+            setSelectedFactura(actualizada);
+            setFacturasPendientes((items) => items.map((item) => (
+                item.id === actualizada.id ? actualizada : item
+            )));
+            setMontoPagar(String(data.saldo_pendiente));
+        }).catch((error: unknown) => {
+            if (active) toast.error(getErrorMessage(error, 'No se pudo calcular la reactivación'));
+        }).finally(() => {
+            if (active) setLoadingDeuda(false);
+        });
+        return () => { active = false; };
     }, [selectedFactura]);
 
     // BUSCADOR PREDICTIVO
@@ -198,10 +246,10 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
             toast.dismiss(t); 
             toast.success("Promesa creada y servicio reactivado ✅");
             onSuccess();
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast.dismiss(t); 
             toast.error(
-                error?.response?.data?.detail || getErrorMessage(error, "Error al crear promesa"),
+                getErrorMessage(error, "Error al crear promesa"),
             );
         } finally { 
             setProcesando(false); 
@@ -383,6 +431,14 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 {/* Formulario de Acción */}
                                 {selectedFactura && (
                                     <div className="flex-1 flex flex-col">
+                                        {selectedFactura.dias_con_servicio != null && (
+                                            <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-[10px] font-black text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
+                                                <span>Con servicio: {selectedFactura.dias_con_servicio} días</span>
+                                                <span>Sin servicio: {selectedFactura.dias_sin_servicio ?? 0} días</span>
+                                                <span>Ajuste: -${selectedFactura.ajuste_suspension ?? 0}</span>
+                                                <span>Extras: ${selectedFactura.cargos_adicionales_total ?? 0}</span>
+                                            </div>
+                                        )}
                                         {/* Tabs Pagar/Promesa tipo iOS */}
                                         <div className="flex p-1 bg-slate-100 dark:bg-slate-900 rounded-[1rem] mb-6 border border-slate-200 dark:border-slate-800">
                                             <button onClick={() => setModo('pagar')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${modo === 'pagar' ? 'bg-white dark:bg-[#12141a] text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-slate-800/80' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>

@@ -9,6 +9,7 @@ import {
 import ClientToolsModal from './components/ClientToolsModal';
 import CreateClientModal from './components/CreateClientModal';
 import ClientDetailModal from './components/ClientDetailModal';
+import IpAccessModal from './components/IpAccessModal';
 import { getNativeMapHref } from '@/utils/nativeActions';
 
 interface OnlineStatus { color: string; diag: string; online: boolean; }
@@ -82,6 +83,7 @@ export default function Clientes() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [toolModal, setToolModal] = useState<ClientModalState>({ show: false, cliente: null });
     const [detailModal, setDetailModal] = useState<ClientModalState>({ show: false, cliente: null });
+    const [remoteAccess, setRemoteAccess] = useState<{ ip: string; name: string } | null>(null);
 
     const fetchData = useCallback(async () => {
         try {
@@ -378,7 +380,7 @@ export default function Clientes() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-xs text-blue-600 dark:text-blue-400 font-extrabold">{c.servicio.plan_nombre}</div>
-                                                <div className="text-slate-400 dark:text-slate-500 font-mono text-[10px] font-bold">{c.servicio.ip_asignada}</div>
+                                                <button type="button" onClick={(event) => { event.stopPropagation(); if (c.servicio.ip_asignada) setRemoteAccess({ ip: c.servicio.ip_asignada, name: c.nombre }); }} className="text-slate-400 hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400 font-mono text-[10px] font-bold underline decoration-dotted underline-offset-2">{c.servicio.ip_asignada || 'Sin IP'}</button>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase border ${c.servicio.estado_servicio === 'activo' ? 'text-emerald-500 border-emerald-500/20 bg-emerald-500/5' : 'text-rose-500 border-rose-500/20 bg-rose-500/5'}`}>
@@ -427,7 +429,10 @@ export default function Clientes() {
                                                 <div className={`mt-1 h-9 w-9 rounded-xl shrink-0 flex items-center justify-center text-xs font-black ${statusData?.online ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`}>{c.nombre.charAt(0).toUpperCase()}</div>
                                                 <div className="overflow-hidden">
                                                     <h3 className="font-black text-slate-800 dark:text-white text-sm leading-tight truncate">{c.nombre}</h3>
-                                                    <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold font-mono mt-0.5">#{c.id} · {c.servicio.ip_asignada}</p>
+                                                    <div className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                                                        <span>#{c.id} ·</span>
+                                                        <button type="button" onClick={(event) => { event.stopPropagation(); if (c.servicio.ip_asignada) setRemoteAccess({ ip: c.servicio.ip_asignada, name: c.nombre }); }} className="font-mono underline decoration-dotted underline-offset-2 hover:text-blue-600 dark:hover:text-blue-400">{c.servicio.ip_asignada || 'Sin IP'}</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <span className={`shrink-0 px-1.5 py-0.5 rounded-md text-[8px] font-extrabold uppercase border ${c.servicio.estado_servicio === 'activo' ? 'text-emerald-500 border-emerald-500/20 bg-emerald-500/10' : 'text-rose-400 border-rose-500/20 bg-rose-500/10'}`}>
@@ -488,6 +493,7 @@ export default function Clientes() {
             />
             <ClientDetailModal isOpen={detailModal.show} onClose={() => setDetailModal({ show: false, cliente: null })} cliente={detailModal.cliente} onEditSuccess={fetchData} />
             <CreateClientModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onSuccess={fetchData} routers={routers} />
+            <IpAccessModal ip={remoteAccess?.ip || null} clientName={remoteAccess?.name} onClose={() => setRemoteAccess(null)} />
         </div>
     );
 }
