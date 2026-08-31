@@ -26,6 +26,7 @@ interface ClienteBusqueda {
 
 interface FacturaPendiente {
     id: number;
+    estado?: string;
     fecha_vencimiento: string;
     saldo_pendiente: number | string;
     concepto?: string | null;
@@ -74,6 +75,14 @@ function invoiceConcept(invoice?: FacturaPendiente | null) {
         || invoice?.detalles
         || invoice?.mes_correspondiente
         || `Factura #${invoice?.id || ''}`;
+}
+
+function invoiceIsOverdue(invoice: FacturaPendiente) {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const today = new Date(now.getTime() - offset).toISOString().slice(0, 10);
+    return invoice.estado === 'vencida'
+        || invoice.fecha_vencimiento.slice(0, 10) < today;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -214,8 +223,15 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
             const res = await client.get<ListadoDeudaResponse>('/finanzas/listado-completo', {
                 params: { estado: 'adeudos', cliente_id: cliente.id }
             });
-            setFacturasPendientes(res.data.items);
-            if (res.data.items.length > 0) setSelectedFactura(res.data.items[0]);
+            const orderedInvoices = [...res.data.items].sort((left, right) => {
+                const overdueOrder = Number(invoiceIsOverdue(right))
+                    - Number(invoiceIsOverdue(left));
+                return overdueOrder
+                    || left.fecha_vencimiento.localeCompare(right.fecha_vencimiento)
+                    || left.id - right.id;
+            });
+            setFacturasPendientes(orderedInvoices);
+            if (orderedInvoices.length > 0) setSelectedFactura(orderedInvoices[0]);
         } catch {
             toast.error("Error cargando deuda del cliente"); 
         } finally { 
@@ -334,7 +350,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 <input 
                                     autoFocus 
                                     type="text" 
-                                    placeholder="Ej. Juan Perez..."
+                                    placeholder="Nombre, cédula de 4 dígitos o IP..."
                                     className="w-full bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800 rounded-[1.5rem] pl-14 pr-12 py-4 text-base sm:text-lg text-slate-900 dark:text-white font-bold focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-slate-400 shadow-sm"
                                     value={busqueda} 
                                     onChange={e => setBusqueda(e.target.value)}
@@ -444,7 +460,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                             >
                                                 {facturasPendientes.map(f => (
                                                     <option key={f.id} value={f.id}>
-                                                        {invoiceConcept(f)} — ${f.saldo_pendiente}
+                                                        {invoiceIsOverdue(f) ? 'ATRASADA' : 'ACTUAL'} — {invoiceConcept(f)} — ${f.saldo_pendiente}
                                                     </option>
                                                 ))}
                                             </select>

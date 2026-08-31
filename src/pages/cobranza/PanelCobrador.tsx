@@ -1,5 +1,5 @@
 import {
-    useState, useEffect, useCallback, Fragment,
+    useState, useEffect, useCallback, useMemo, Fragment,
     type ComponentType
 } from 'react';
 import client from '../../api/axios';
@@ -14,12 +14,13 @@ import {
     BanknotesIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, 
     XMarkIcon, ArrowPathIcon, ShieldExclamationIcon, ClockIcon, 
     ChartPieIcon, HomeIcon, CreditCardIcon, CalendarDaysIcon, 
-    CheckCircleIcon, IdentificationIcon
+    CheckCircleIcon, IdentificationIcon, ChevronDownIcon
 } from '@heroicons/react/24/outline';
 
 type PaymentMethod = 'efectivo' | 'transferencia';
 
 interface BillingClient {
+    id?: number;
     nombre: string;
     cedula?: string;
     ip_asignada?: string;
@@ -29,6 +30,7 @@ interface BillingInvoice {
     id: number;
     cliente: BillingClient;
     saldo_pendiente: number;
+    estado?: string;
     fecha_vencimiento: string;
     concepto?: string | null;
     descripcion?: string | null;
@@ -100,6 +102,14 @@ function invoiceConcept(invoice?: BillingInvoice | null) {
         || `Factura #${invoice?.id || ''}`;
 }
 
+function invoiceIsOverdue(invoice: BillingInvoice) {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const today = new Date(now.getTime() - offset).toISOString().slice(0, 10);
+    return invoice.estado === 'vencida'
+        || invoice.fecha_vencimiento.slice(0, 10) < today;
+}
+
 export default function PanelCobrador() {
     const navigate = useNavigate();
     const { online } = useSync();
@@ -111,6 +121,7 @@ export default function PanelCobrador() {
     const [promesas, setPromesas] = useState<BillingInvoice[]>([]);
     const [loading, setLoading] = useState(false);
     const [filtro, setFiltro] = useState('');
+    const [expandedClient, setExpandedClient] = useState<string | null>(null);
     
     const totalCobradoHoy = historial.reduce((acc, curr) => acc + Number(curr.monto), 0);
     const totalEfectivo = historial.filter(h => h.metodo === 'efectivo').reduce((acc, curr) => acc + Number(curr.monto), 0);
@@ -290,9 +301,40 @@ export default function PanelCobrador() {
     };
 
 
-    const facturasFiltradas = filtro.length > 0 
-        ? facturas.filter(f => f.cliente.nombre.toLowerCase().includes(filtro.toLowerCase()) || f.cliente.ip_asignada?.includes(filtro))
-        : [];
+    const clientesFiltrados = useMemo(() => {
+        const term = filtro.trim().toLowerCase();
+        if (!term) return [];
+
+        const groups = new Map<string, BillingInvoice[]>();
+        facturas.forEach((invoice) => {
+            const matches = invoice.cliente.nombre.toLowerCase().includes(term)
+                || invoice.cliente.cedula?.toLowerCase().includes(term)
+                || invoice.cliente.ip_asignada?.toLowerCase().includes(term);
+            if (!matches) return;
+            const key = invoice.cliente.id
+                ? String(invoice.cliente.id)
+                : [
+                    invoice.cliente.cedula,
+                    invoice.cliente.nombre,
+                    invoice.cliente.ip_asignada,
+                ].join('|');
+            groups.set(key, [...(groups.get(key) || []), invoice]);
+        });
+
+        return [...groups.entries()].map(([key, invoices]) => ({
+            key,
+            cliente: invoices[0].cliente,
+            facturas: invoices.sort((left, right) => {
+                const overdueOrder = Number(invoiceIsOverdue(right))
+                    - Number(invoiceIsOverdue(left));
+                return overdueOrder
+                    || left.fecha_vencimiento.localeCompare(right.fecha_vencimiento)
+                    || left.id - right.id;
+            }),
+        })).sort((left, right) => (
+            left.cliente.nombre.localeCompare(right.cliente.nombre, 'es')
+        ));
+    }, [facturas, filtro]);
 
     const saldoAFavor = formCobro.monto > selectedFactura?.saldo_pendiente ? formCobro.monto - selectedFactura.saldo_pendiente : 0;
 
@@ -342,32 +384,75 @@ export default function PanelCobrador() {
                             <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase ml-1 tracking-widest">Buscar Cliente</label>
                             <div className="bg-white dark:bg-[#1a1f2e] rounded-xl flex items-center border border-slate-200 dark:border-slate-700 shadow-sm p-1 transition-colors">
                                 <MagnifyingGlassIcon className="w-6 h-6 text-slate-400 ml-3" />
-                                <input className="w-full bg-transparent p-3 text-slate-900 dark:text-white outline-none text-lg font-bold placeholder-slate-400" placeholder="Nombre o IP..." value={filtro} onChange={e => setFiltro(e.target.value)} />
+                                <input className="w-full bg-transparent p-3 text-slate-900 dark:text-white outline-none text-lg font-bold placeholder-slate-400" placeholder="Nombre, cédula o IP..." value={filtro} onChange={e => { setFiltro(e.target.value); setExpandedClient(null); }} />
                             </div>
                         </div>
 
                         <div className="space-y-3">
-                            {facturasFiltradas.map((f) => {
-                                const isVencida = new Date(f.fecha_vencimiento) < new Date();
+                            {clientesFiltrados.map((group) => {
+                                const isExpanded = expandedClient === group.key;
+                                const overdueCount = group.facturas.filter(invoiceIsOverdue).length;
+                                const totalDebt = group.facturas.reduce(
+                                    (sum, invoice) => sum + Number(invoice.saldo_pendiente),
+                                    0,
+                                );
                                 return (
-                                    <div key={f.id} onClick={() => void handleOpenCobrar(f)} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer">
-                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${isVencida ? 'bg-rose-500' : 'bg-amber-500'}`}></div>
-                                        <div className="pl-2">
-                                            <h3 className="font-black text-slate-900 dark:text-white text-base transition-colors">{f.cliente.nombre}</h3>
-                                            <p className="mt-1 max-w-[15rem] text-xs font-bold text-slate-700 dark:text-slate-200">{invoiceConcept(f)}</p>
-                                            {f.descripcion && <p className="mt-0.5 max-w-[15rem] text-[10px] text-slate-500 dark:text-slate-400">{f.descripcion}</p>}
-                                            <p className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">Vence el {formatDateLong(f.fecha_vencimiento)}</p>
-                                            <div className="flex gap-2 mt-2">
-                                                <span className="text-[9px] font-black text-white bg-indigo-600 px-1.5 py-0.5 rounded uppercase">SN: {f.cliente.cedula}</span>
-                                                <span className="text-[9px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">{f.cliente.ip_asignada}</span>
+                                    <div key={group.key} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white transition-colors dark:border-slate-800 dark:bg-[#1a1f2e]">
+                                        <div className={`absolute bottom-0 left-0 top-0 w-1 ${overdueCount > 0 ? 'bg-rose-500' : 'bg-amber-500'}`} />
+                                        <button
+                                            type="button"
+                                            className="flex w-full items-center justify-between gap-3 p-4 pl-6 text-left active:bg-slate-50 dark:active:bg-slate-800/40"
+                                            onClick={() => setExpandedClient(isExpanded ? null : group.key)}
+                                        >
+                                            <div className="min-w-0">
+                                                <h3 className="truncate text-base font-black text-slate-900 dark:text-white">{group.cliente.nombre}</h3>
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    <span className="rounded bg-indigo-600 px-1.5 py-0.5 text-[9px] font-black uppercase text-white">Cédula: {group.cliente.cedula || 'S/N'}</span>
+                                                    {group.cliente.ip_asignada && <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">{group.cliente.ip_asignada}</span>}
+                                                    {overdueCount > 0 && <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-black uppercase text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">{overdueCount} atrasada(s)</span>}
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">${f.saldo_pendiente}</span>
-                                        </div>
+                                            <div className="shrink-0 text-right">
+                                                <span className="block text-xl font-black text-emerald-600 dark:text-emerald-400">${totalDebt.toLocaleString('es-MX')}</span>
+                                                <span className="text-[10px] font-bold text-slate-500">{group.facturas.length} factura(s)</span>
+                                                <ChevronDownIcon className={`ml-auto mt-1 h-4 w-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                            </div>
+                                        </button>
+
+                                        {isExpanded && (
+                                            <div className="space-y-2 border-t border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-[#11151f]">
+                                                {group.facturas.map((invoice, index) => {
+                                                    const overdue = invoiceIsOverdue(invoice);
+                                                    return (
+                                                        <button
+                                                            key={invoice.id}
+                                                            type="button"
+                                                            onClick={() => void handleOpenCobrar(invoice)}
+                                                            className={`w-full rounded-xl border p-3 text-left transition active:scale-[0.99] ${overdue ? 'border-rose-200 bg-rose-50 dark:border-rose-500/20 dark:bg-rose-500/10' : 'border-indigo-200 bg-white dark:border-indigo-500/20 dark:bg-indigo-500/10'}`}
+                                                        >
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="min-w-0">
+                                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                                        <span className={`rounded px-2 py-0.5 text-[9px] font-black uppercase ${overdue ? 'bg-rose-600 text-white' : 'bg-indigo-600 text-white'}`}>{overdue ? 'Atrasada' : 'Actual'}</span>
+                                                                        {overdue && index === 0 && <span className="text-[9px] font-black uppercase text-rose-700 dark:text-rose-300">Cobrar primero</span>}
+                                                                    </div>
+                                                                    <p className="mt-1 text-xs font-black text-slate-800 dark:text-white">{invoiceConcept(invoice)}</p>
+                                                                    {invoice.descripcion && <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">{invoice.descripcion}</p>}
+                                                                    <p className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">Factura #{invoice.id} · Vence el {formatDateLong(invoice.fecha_vencimiento)}</p>
+                                                                </div>
+                                                                <span className={`shrink-0 text-lg font-black ${overdue ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-600 dark:text-emerald-400'}`}>${invoice.saldo_pendiente}</span>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
-                                )
+                                );
                             })}
+                            {filtro.trim() && clientesFiltrados.length === 0 && !loading && (
+                                <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm font-bold text-slate-500 dark:border-slate-700">No encontramos clientes por nombre, cédula o IP.</div>
+                            )}
                         </div>
                     </div>
                 )}
