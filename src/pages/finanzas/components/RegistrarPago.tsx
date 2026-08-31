@@ -28,6 +28,10 @@ interface FacturaPendiente {
     id: number;
     fecha_vencimiento: string;
     saldo_pendiente: number | string;
+    concepto?: string | null;
+    descripcion?: string | null;
+    detalles?: string | null;
+    mes_correspondiente?: string | null;
     dias_con_servicio?: number | null;
     dias_sin_servicio?: number | null;
     ajuste_suspension?: number | string;
@@ -50,6 +54,26 @@ interface ListadoDeudaResponse {
 
 interface CobroResponse {
     reactivado?: boolean;
+    facturas_pendientes_cant?: number;
+}
+
+const MESES_ES = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+function formatDateLong(value?: string | null) {
+    if (!value) return 'Sin fecha';
+    const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+    if (!year || !month || !day) return value;
+    return `${day} de ${MESES_ES[month - 1]} de ${year}`;
+}
+
+function invoiceConcept(invoice?: FacturaPendiente | null) {
+    return invoice?.concepto
+        || invoice?.detalles
+        || invoice?.mes_correspondiente
+        || `Factura #${invoice?.id || ''}`;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -223,8 +247,14 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
             });
             toast.dismiss(t); toast.success("Pago registrado exitosamente");
             if (res.data.reactivado) toast.success("Servicio Reactivado 🚀");
-            onSuccess();
             idempotencyKey.current = null;
+            if ((res.data.facturas_pendientes_cant || 0) > 0 && selectedCliente) {
+                toast(`${res.data.facturas_pendientes_cant} factura(s) pendiente(s): continúa con el siguiente cobro`);
+                await seleccionarCliente(selectedCliente);
+                setReferencia('');
+            } else {
+                onSuccess();
+            }
         } catch (error: unknown) {
             toast.dismiss(t); 
             toast.error(getErrorMessage(error, "Error al procesar el pago"));
@@ -414,7 +444,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                             >
                                                 {facturasPendientes.map(f => (
                                                     <option key={f.id} value={f.id}>
-                                                        #{f.id} — Vence: {f.fecha_vencimiento} — ${f.saldo_pendiente}
+                                                        {invoiceConcept(f)} — ${f.saldo_pendiente}
                                                     </option>
                                                 ))}
                                             </select>
@@ -431,6 +461,11 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 {/* Formulario de Acción */}
                                 {selectedFactura && (
                                     <div className="flex-1 flex flex-col">
+                                        <div className="mb-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-500/20 dark:bg-indigo-500/10">
+                                            <p className="text-sm font-black text-slate-800 dark:text-white">{invoiceConcept(selectedFactura)}</p>
+                                            {selectedFactura.descripcion && <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{selectedFactura.descripcion}</p>}
+                                            <p className="mt-2 text-[11px] font-bold text-indigo-700 dark:text-indigo-300">Factura #{selectedFactura.id} · Vence el {formatDateLong(selectedFactura.fecha_vencimiento)}</p>
+                                        </div>
                                         {selectedFactura.dias_con_servicio != null && (
                                             <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-[10px] font-black text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
                                                 <span>Con servicio: {selectedFactura.dias_con_servicio} días</span>

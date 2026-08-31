@@ -30,6 +30,10 @@ interface BillingInvoice {
     cliente: BillingClient;
     saldo_pendiente: number;
     fecha_vencimiento: string;
+    concepto?: string | null;
+    descripcion?: string | null;
+    detalles?: string | null;
+    mes_correspondiente?: string | null;
     fecha_maxima_promesa?: string;
     dias_con_servicio?: number | null;
     dias_sin_servicio?: number | null;
@@ -48,6 +52,10 @@ interface ReactivationQuote {
 
 interface InvoiceListResponse {
     items?: BillingInvoice[];
+}
+
+interface CobroResultResponse {
+    facturas_pendientes_cant?: number;
 }
 
 interface PaymentHistoryItem {
@@ -71,6 +79,25 @@ interface NavButtonProps {
     label: string;
     onClick: () => void;
     badge?: number;
+}
+
+const MESES_ES = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+function formatDateLong(value?: string | null) {
+    if (!value) return 'Sin fecha';
+    const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+    if (!year || !month || !day) return value;
+    return `${day} de ${MESES_ES[month - 1]} de ${year}`;
+}
+
+function invoiceConcept(invoice?: BillingInvoice | null) {
+    return invoice?.concepto
+        || invoice?.detalles
+        || invoice?.mes_correspondiente
+        || `Factura #${invoice?.id || ''}`;
 }
 
 export default function PanelCobrador() {
@@ -203,11 +230,12 @@ export default function PanelCobrador() {
                 `Cobro factura #${selectedFactura.id}`,
             );
             toast.success(
-                result.queued ? 'Cobro guardado para sincronizar' : 'Pago registrado exitosamente',
+                result.queued
+                    ? 'Cobro guardado para sincronizar'
+                    : 'Pago registrado exitosamente',
                 { id: toastId },
             );
             setIsModalOpen(false);
-            setFiltro('');
             if (result.queued) {
                 setFacturas((current) => current.filter((item) => item.id !== selectedFactura.id));
                 setHistorial((current) => [{
@@ -217,6 +245,10 @@ export default function PanelCobrador() {
                     pendiente: true,
                 }, ...current]);
             } else {
+                const respuesta = result.response as CobroResultResponse | undefined;
+                if ((respuesta?.facturas_pendientes_cant || 0) > 0) {
+                    toast(`${respuesta?.facturas_pendientes_cant} factura(s) pendiente(s) del mismo cliente`);
+                }
                 void fetchData();
             }
         } catch (error) {
@@ -322,6 +354,9 @@ export default function PanelCobrador() {
                                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${isVencida ? 'bg-rose-500' : 'bg-amber-500'}`}></div>
                                         <div className="pl-2">
                                             <h3 className="font-black text-slate-900 dark:text-white text-base transition-colors">{f.cliente.nombre}</h3>
+                                            <p className="mt-1 max-w-[15rem] text-xs font-bold text-slate-700 dark:text-slate-200">{invoiceConcept(f)}</p>
+                                            {f.descripcion && <p className="mt-0.5 max-w-[15rem] text-[10px] text-slate-500 dark:text-slate-400">{f.descripcion}</p>}
+                                            <p className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">Vence el {formatDateLong(f.fecha_vencimiento)}</p>
                                             <div className="flex gap-2 mt-2">
                                                 <span className="text-[9px] font-black text-white bg-indigo-600 px-1.5 py-0.5 rounded uppercase">SN: {f.cliente.cedula}</span>
                                                 <span className="text-[9px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">{f.cliente.ip_asignada}</span>
@@ -352,8 +387,9 @@ export default function PanelCobrador() {
                                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500"></div>
                                     <div className="pl-2">
                                         <h3 className="font-black text-slate-900 dark:text-white text-base">{f.cliente.nombre}</h3>
+                                        <p className="mt-1 text-xs font-bold text-slate-700 dark:text-slate-200">{invoiceConcept(f)}</p>
                                         <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-1 uppercase flex items-center gap-1">
-                                            <CalendarDaysIcon className="w-3 h-3"/> Promesa: {f.fecha_vencimiento}
+                                            <CalendarDaysIcon className="w-3 h-3"/> Promesa: {formatDateLong(f.fecha_vencimiento)}
                                         </p>
                                     </div>
                                     <div className="text-right">
@@ -466,7 +502,10 @@ export default function PanelCobrador() {
                                     <div className="mb-6">
                                         <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2 px-1">Concepto a Pagar</label>
                                         <div className="w-full bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl p-4 font-bold shadow-sm dark:shadow-lg">
-                                            #{selectedFactura?.id} - Vence: {selectedFactura?.fecha_vencimiento} - ${selectedFactura?.saldo_pendiente}
+                                            <p>{invoiceConcept(selectedFactura)}</p>
+                                            {selectedFactura?.descripcion && <p className="mt-1 text-xs font-normal text-slate-500 dark:text-slate-400">{selectedFactura.descripcion}</p>}
+                                            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Factura #{selectedFactura?.id} · Vence el {formatDateLong(selectedFactura?.fecha_vencimiento)}</p>
+                                            <p className="mt-1 text-lg text-emerald-600 dark:text-emerald-400">Total a cobrar: ${selectedFactura?.saldo_pendiente}</p>
                                         </div>
                                         {selectedFactura?.dias_con_servicio != null && (
                                             <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-[10px] font-bold text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
