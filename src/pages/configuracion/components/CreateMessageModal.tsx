@@ -60,6 +60,10 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
                 { name: 'dia_corte', label: 'Día Facturación', desc: 'Día exacto en que se genera su cobro' },
                 { name: 'dia_final', label: 'Límite de Pago', desc: 'Día exacto en que se le cortará el internet' },
                 { name: 'fecha_actual', label: 'Fecha de Hoy', desc: 'Fecha exacta del envío del mensaje' },
+                { name: 'periodo_desde', label: 'Inicio Periodo', desc: 'Primer día incluido en la factura' },
+                { name: 'periodo_hasta', label: 'Fin Periodo', desc: 'Último día incluido en la factura' },
+                { name: 'dias_con_servicio', label: 'Días Cobrados', desc: 'Cantidad de días que sí tuvieron servicio' },
+                { name: 'dias_sin_servicio', label: 'Días No Cobrados', desc: 'Cantidad de días completos suspendidos' },
             ]
         },
         {
@@ -72,6 +76,11 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
                 { name: 'referencia', label: 'Restante/Ref', desc: 'Folio o saldo pendiente tras un abono' },
                 { name: 'monto_promesa', label: 'Deuda Promesa', desc: 'Saldo total a liquidar en la prórroga' },
                 { name: 'fecha_limite_promesa', label: 'Venc. Promesa', desc: 'Fecha acordada para pagar la prórroga' },
+                { name: 'detalle_cobro', label: 'Detalle Cobro', desc: 'Resumen completo de las fechas cobradas y no cobradas' },
+                { name: 'monto_servicio_original', label: 'Servicio Original', desc: 'Monto del servicio antes del ajuste por suspensión' },
+                { name: 'ajuste_suspension', label: 'Ajuste Suspensión', desc: 'Importe descontado por días sin servicio' },
+                { name: 'cargos_adicionales', label: 'Cargos Extra', desc: 'Suma de cargos adicionales de la factura' },
+                { name: 'total_factura', label: 'Total Factura', desc: 'Total final de la factura después de ajustes' },
             ]
         },
         {

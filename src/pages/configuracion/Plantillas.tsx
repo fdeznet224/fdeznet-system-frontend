@@ -64,7 +64,12 @@ export default function Plantillas() {
         { tag: '{dia_final}', desc: 'Día de Corte Real' }, { tag: '{mes_actual}', desc: 'Mes escrito' },
         { tag: '{zona}', desc: 'Sector o Colonia' }, { tag: '{monto_pagado}', desc: 'Cobro en Caja' },
         { tag: '{saldo_favor}', desc: 'Dinero Sobrante' }, { tag: '{monto_promesa}', desc: 'Deuda a pagar' },
-        { tag: '{fecha_limite_promesa}', desc: 'Día límite de la prórroga' }, { tag: '{referencia}', desc: 'Folio o Detalle' }
+        { tag: '{fecha_limite_promesa}', desc: 'Día límite de la prórroga' }, { tag: '{referencia}', desc: 'Folio o Detalle' },
+        { tag: '{detalle_cobro}', desc: 'Fechas y días cobrados' }, { tag: '{periodo_desde}', desc: 'Inicio del periodo' },
+        { tag: '{periodo_hasta}', desc: 'Fin del periodo' }, { tag: '{dias_con_servicio}', desc: 'Días cobrados' },
+        { tag: '{dias_sin_servicio}', desc: 'Días no cobrados' }, { tag: '{ajuste_suspension}', desc: 'Descuento por corte' },
+        { tag: '{monto_servicio_original}', desc: 'Servicio antes del ajuste' }, { tag: '{cargos_adicionales}', desc: 'Otros cargos' },
+        { tag: '{total_factura}', desc: 'Total de la factura' }
     ];
 
     return (
