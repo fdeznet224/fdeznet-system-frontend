@@ -45,6 +45,9 @@ interface BillingInvoice {
 }
 
 interface ReactivationQuote {
+    factura_id: number;
+    concepto?: string | null;
+    fecha_vencimiento: string;
     descripcion: string;
     dias_con_servicio: number;
     dias_sin_servicio: number;
@@ -196,6 +199,9 @@ export default function PanelCobrador() {
                 );
                 facturaActual = {
                     ...factura,
+                    id: data.factura_id,
+                    concepto: data.concepto,
+                    fecha_vencimiento: data.fecha_vencimiento,
                     descripcion: data.descripcion,
                     saldo_pendiente: Number(data.saldo_pendiente),
                     dias_con_servicio: data.dias_con_servicio,

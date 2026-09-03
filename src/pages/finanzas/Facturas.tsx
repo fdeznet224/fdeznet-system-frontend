@@ -333,19 +333,19 @@ export default function Facturas() {
                                         </td>
                                         <td className="p-4 text-center">
                                             <span className={`px-2.5 py-1 rounded-lg text-[10px] uppercase font-black border ${f.estado === 'pagada' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' :
-                                                    f.estado === 'anulada' ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700' :
+                                                    ['anulada', 'sin_cargo'].includes(f.estado) ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700' :
                                                         isVencida ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20' :
                                                             'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
                                                 }`}>
-                                                {f.estado === 'pendiente' && isVencida ? 'VENCIDA' : f.estado}
+                                                {f.estado === 'pendiente' && isVencida ? 'VENCIDA' : f.estado === 'sin_cargo' ? 'SIN CARGO' : f.estado}
                                             </span>
                                         </td>
                                         <td className="p-4 text-right">
                                             <div className="flex justify-end gap-2">
-                                                {f.estado !== 'pagada' && f.estado !== 'anulada' && (
+                                                {!['pagada', 'anulada', 'sin_cargo'].includes(f.estado) && (
                                                     <button onClick={() => { setSelectedFactura(f); setShowPaymentModal(true); }} className="text-emerald-600 dark:text-emerald-400 hover:text-white hover:bg-emerald-600 p-2 rounded-lg transition border border-emerald-200 dark:border-emerald-500/20" title="Cobrar"><BanknotesIcon className="w-4 h-4" /></button>
                                                 )}
-                                                {f.estado !== 'anulada' && (
+                                                {!['anulada', 'sin_cargo'].includes(f.estado) && (
                                                     <button onClick={() => void handleAnular(f)} className="text-rose-600 hover:text-white hover:bg-rose-600 p-2 rounded-lg transition border border-rose-200 dark:border-rose-500/20" title="Anular factura"><XCircleIcon className="w-4 h-4" /></button>
                                                 )}
                                                 <button className="text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 p-2 rounded-lg border border-slate-200 dark:border-slate-700 transition" title="PDF"><PrinterIcon className="w-4 h-4" /></button>
@@ -369,7 +369,7 @@ export default function Facturas() {
                                 <div key={f.id} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col gap-3 relative overflow-hidden shadow-sm transition-colors">
                                     
                                     {/* Indicador lateral de estado */}
-                                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${f.estado === 'pagada' ? 'bg-emerald-500' : isVencida ? 'bg-rose-500' : f.estado === 'anulada' ? 'bg-slate-400' : 'bg-amber-500'}`}></div>
+                                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${f.estado === 'pagada' ? 'bg-emerald-500' : isVencida ? 'bg-rose-500' : ['anulada', 'sin_cargo'].includes(f.estado) ? 'bg-slate-400' : 'bg-amber-500'}`}></div>
                                     
                                     {/* Top: Header / Folio & Estado */}
                                     <div className="flex justify-between items-start pl-2">
@@ -381,11 +381,11 @@ export default function Facturas() {
                                             </span>
                                         </div>
                                         <span className={`px-2 py-1 rounded text-[9px] uppercase font-black border ${f.estado === 'pagada' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' :
-                                                f.estado === 'anulada' ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700' :
+                                                ['anulada', 'sin_cargo'].includes(f.estado) ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700' :
                                                     isVencida ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20' :
                                                         'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
                                             }`}>
-                                            {f.estado === 'pendiente' && isVencida ? 'VENCIDA' : f.estado}
+                                            {f.estado === 'pendiente' && isVencida ? 'VENCIDA' : f.estado === 'sin_cargo' ? 'SIN CARGO' : f.estado}
                                         </span>
                                     </div>
 
@@ -417,12 +417,12 @@ export default function Facturas() {
 
                                     {/* Bottom: Acciones */}
                                     <div className="pl-2 flex gap-2 border-t border-slate-100 dark:border-slate-800/60 pt-3 mt-2">
-                                        {f.estado !== 'pagada' && f.estado !== 'anulada' && (
+                                        {!['pagada', 'anulada', 'sin_cargo'].includes(f.estado) && (
                                             <button onClick={() => { setSelectedFactura(f); setShowPaymentModal(true); }} className="flex-1 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
                                                 <BanknotesIcon className="w-5 h-5"/> Cobrar
                                             </button>
                                         )}
-                                        {f.estado !== 'anulada' && (
+                                        {!['anulada', 'sin_cargo'].includes(f.estado) && (
                                             <button onClick={() => void handleAnular(f)} className="flex-1 bg-rose-50 text-rose-600 border border-rose-200 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition active:scale-95 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400">
                                                 <XCircleIcon className="w-5 h-5"/> Anular
                                             </button>

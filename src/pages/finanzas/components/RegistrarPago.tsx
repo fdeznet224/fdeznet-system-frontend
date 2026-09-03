@@ -42,6 +42,9 @@ interface FacturaPendiente {
 }
 
 interface ReactivationQuote {
+    factura_id: number;
+    concepto?: string | null;
+    fecha_vencimiento: string;
     descripcion: string;
     dias_con_servicio: number;
     dias_sin_servicio: number;
@@ -160,6 +163,9 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
             if (!active) return;
             const actualizada: FacturaPendiente = {
                 ...selectedFactura,
+                id: data.factura_id,
+                concepto: data.concepto,
+                fecha_vencimiento: data.fecha_vencimiento,
                 descripcion: data.descripcion,
                 saldo_pendiente: data.saldo_pendiente,
                 dias_con_servicio: data.dias_con_servicio,
@@ -169,9 +175,13 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                 cotizada_reactivacion: true,
             };
             setSelectedFactura(actualizada);
-            setFacturasPendientes((items) => items.map((item) => (
-                item.id === actualizada.id ? actualizada : item
-            )));
+            setFacturasPendientes((items) => [
+                actualizada,
+                ...items.filter((item) => (
+                    item.id !== selectedFactura.id
+                    && item.id !== actualizada.id
+                )),
+            ]);
             setMontoPagar(String(data.saldo_pendiente));
         }).catch((error: unknown) => {
             if (active) toast.error(getErrorMessage(error, 'No se pudo calcular la reactivación'));
