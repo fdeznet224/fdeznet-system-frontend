@@ -32,6 +32,8 @@ interface BillingInvoice {
     saldo_pendiente: number;
     estado?: string;
     fecha_vencimiento: string;
+    periodo_desde?: string | null;
+    periodo_hasta?: string | null;
     concepto?: string | null;
     descripcion?: string | null;
     detalles?: string | null;
@@ -41,7 +43,8 @@ interface BillingInvoice {
     dias_sin_servicio?: number | null;
     ajuste_suspension?: number;
     cargos_adicionales_total?: number;
-    servicio?: { estado?: string | null } | null;
+    monto_servicio_original?: number | null;
+    servicio?: { id?: number; alias?: string | null; estado?: string | null } | null;
 }
 
 interface ReactivationQuote {
@@ -112,6 +115,13 @@ function invoiceIsOverdue(invoice: BillingInvoice) {
     const today = new Date(now.getTime() - offset).toISOString().slice(0, 10);
     return invoice.estado === 'vencida'
         || invoice.fecha_vencimiento.slice(0, 10) < today;
+}
+
+function formatMoney(value?: number | string | null) {
+    return Number(value || 0).toLocaleString('es-MX', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
 }
 
 export default function PanelCobrador() {
@@ -428,29 +438,76 @@ export default function PanelCobrador() {
                                         </button>
 
                                         {isExpanded && (
-                                            <div className="space-y-2 border-t border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-[#11151f]">
+                                            <div className="space-y-3 border-t border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-[#11151f]">
+                                                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-[11px] font-semibold leading-relaxed text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200">
+                                                    Abre una factura para revisar exactamente qué período y qué días se cobran. La deuda real más antigua aparece primero.
+                                                </div>
                                                 {group.facturas.map((invoice, index) => {
                                                     const overdue = invoiceIsOverdue(invoice);
                                                     return (
-                                                        <button
+                                                        <details
                                                             key={invoice.id}
-                                                            type="button"
-                                                            onClick={() => void handleOpenCobrar(invoice)}
-                                                            className={`w-full rounded-xl border p-3 text-left transition active:scale-[0.99] ${overdue ? 'border-rose-200 bg-rose-50 dark:border-rose-500/20 dark:bg-rose-500/10' : 'border-indigo-200 bg-white dark:border-indigo-500/20 dark:bg-indigo-500/10'}`}
+                                                            defaultOpen={index === 0}
+                                                            className={`group/invoice w-full overflow-hidden rounded-xl border text-left transition ${overdue ? 'border-rose-200 bg-rose-50 dark:border-rose-500/20 dark:bg-rose-500/10' : 'border-indigo-200 bg-white dark:border-indigo-500/20 dark:bg-indigo-500/10'}`}
                                                         >
-                                                            <div className="flex items-start justify-between gap-3">
+                                                            <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-3 marker:content-none">
                                                                 <div className="min-w-0">
                                                                     <div className="flex flex-wrap items-center gap-1.5">
                                                                         <span className={`rounded px-2 py-0.5 text-[9px] font-black uppercase ${overdue ? 'bg-rose-600 text-white' : 'bg-indigo-600 text-white'}`}>{overdue ? 'Atrasada' : 'Actual'}</span>
-                                                                        {overdue && index === 0 && <span className="text-[9px] font-black uppercase text-rose-700 dark:text-rose-300">Cobrar primero</span>}
+                                                                        {index === 0 && <span className="text-[9px] font-black uppercase text-rose-700 dark:text-rose-300">Cobrar primero</span>}
                                                                     </div>
-                                                                    <p className="mt-1 text-xs font-black text-slate-800 dark:text-white">{invoiceConcept(invoice)}</p>
-                                                                    {invoice.descripcion && <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">{invoice.descripcion}</p>}
-                                                                    <p className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">Factura #{invoice.id} · Vence el {formatDateLong(invoice.fecha_vencimiento)}</p>
+                                                                    <p className="mt-1 text-sm font-black text-slate-800 dark:text-white">Factura #{invoice.id} · {invoiceConcept(invoice)}</p>
+                                                                    <p className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">Toca para ver el desglose completo</p>
                                                                 </div>
-                                                                <span className={`shrink-0 text-lg font-black ${overdue ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-600 dark:text-emerald-400'}`}>${invoice.saldo_pendiente}</span>
+                                                                <div className="flex shrink-0 items-center gap-2">
+                                                                    <span className={`text-lg font-black ${overdue ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-600 dark:text-emerald-400'}`}>${formatMoney(invoice.saldo_pendiente)}</span>
+                                                                    <ChevronDownIcon className="h-4 w-4 text-slate-400 transition-transform group-open/invoice:rotate-180" />
+                                                                </div>
+                                                            </summary>
+
+                                                            <div className="space-y-3 border-t border-slate-200/70 bg-white/70 p-3 dark:border-slate-700/60 dark:bg-slate-950/20">
+                                                                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                                                    <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800/70">
+                                                                        <span className="block font-bold uppercase text-slate-400">Período facturado</span>
+                                                                        <span className="mt-1 block font-black text-slate-700 dark:text-slate-200">{formatDateLong(invoice.periodo_desde)} al {formatDateLong(invoice.periodo_hasta)}</span>
+                                                                    </div>
+                                                                    <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800/70">
+                                                                        <span className="block font-bold uppercase text-slate-400">Vencimiento</span>
+                                                                        <span className="mt-1 block font-black text-slate-700 dark:text-slate-200">{formatDateLong(invoice.fecha_vencimiento)}</span>
+                                                                    </div>
+                                                                    <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-500/10">
+                                                                        <span className="block font-bold uppercase text-emerald-600 dark:text-emerald-400">Días cobrados</span>
+                                                                        <span className="mt-1 block text-sm font-black text-emerald-700 dark:text-emerald-300">{invoice.dias_con_servicio ?? 'Por calcular'}</span>
+                                                                    </div>
+                                                                    <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800/70">
+                                                                        <span className="block font-bold uppercase text-slate-400">Días no cobrados</span>
+                                                                        <span className="mt-1 block text-sm font-black text-slate-700 dark:text-slate-200">{invoice.dias_sin_servicio ?? 'Por calcular'}</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                {invoice.descripcion && (
+                                                                    <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-[10px] font-semibold leading-relaxed text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                                                                        <span className="mb-1 block font-black uppercase text-slate-400">Qué se está cobrando</span>
+                                                                        {invoice.descripcion}
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="space-y-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                                                                    <div className="flex justify-between"><span>Servicio antes del ajuste</span><span>${formatMoney(invoice.monto_servicio_original)}</span></div>
+                                                                    <div className="flex justify-between"><span>Descuento por suspensión</span><span className="text-emerald-600 dark:text-emerald-400">−${formatMoney(invoice.ajuste_suspension)}</span></div>
+                                                                    <div className="flex justify-between"><span>Cargos adicionales</span><span>${formatMoney(invoice.cargos_adicionales_total)}</span></div>
+                                                                    <div className="flex justify-between border-t border-slate-200 pt-2 text-sm font-black text-slate-900 dark:border-slate-700 dark:text-white"><span>Saldo a cobrar</span><span>${formatMoney(invoice.saldo_pendiente)}</span></div>
+                                                                </div>
+
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => void handleOpenCobrar(invoice)}
+                                                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-500 active:scale-[0.99]"
+                                                                >
+                                                                    <BanknotesIcon className="h-5 w-5" /> Revisar y cobrar factura
+                                                                </button>
                                                             </div>
-                                                        </button>
+                                                        </details>
                                                     );
                                                 })}
                                             </div>
