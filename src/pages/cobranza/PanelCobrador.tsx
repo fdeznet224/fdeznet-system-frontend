@@ -45,6 +45,7 @@ interface BillingInvoice {
 }
 
 interface ReactivationQuote {
+    descripcion: string;
     dias_con_servicio: number;
     dias_sin_servicio: number;
     ajuste_suspension: number;
@@ -195,6 +196,7 @@ export default function PanelCobrador() {
                 );
                 facturaActual = {
                     ...factura,
+                    descripcion: data.descripcion,
                     saldo_pendiente: Number(data.saldo_pendiente),
                     dias_con_servicio: data.dias_con_servicio,
                     dias_sin_servicio: data.dias_sin_servicio,

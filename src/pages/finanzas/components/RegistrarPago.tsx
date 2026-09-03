@@ -42,6 +42,7 @@ interface FacturaPendiente {
 }
 
 interface ReactivationQuote {
+    descripcion: string;
     dias_con_servicio: number;
     dias_sin_servicio: number;
     ajuste_suspension: number | string;
@@ -159,6 +160,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
             if (!active) return;
             const actualizada: FacturaPendiente = {
                 ...selectedFactura,
+                descripcion: data.descripcion,
                 saldo_pendiente: data.saldo_pendiente,
                 dias_con_servicio: data.dias_con_servicio,
                 dias_sin_servicio: data.dias_sin_servicio,

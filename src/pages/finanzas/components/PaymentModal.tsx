@@ -15,6 +15,7 @@ export interface PaymentInvoice {
     dias_sin_servicio?: number | null;
     ajuste_suspension?: number | string;
     cargos_adicionales_total?: number | string;
+    descripcion?: string | null;
     plan_snapshot?: string | null;
     cliente?: {
         nombre?: string | null;
@@ -25,6 +26,7 @@ export interface PaymentInvoice {
 }
 
 interface ReactivationQuote {
+    descripcion: string;
     dias_con_servicio: number;
     dias_sin_servicio: number;
     ajuste_suspension: number | string;
@@ -152,14 +154,17 @@ export default function PaymentModal({ isOpen, onClose, factura, onSuccess }: Pr
                     </div>
 
                     {quote && (
-                        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-blue-200 bg-blue-50 p-3 text-xs dark:border-blue-500/20 dark:bg-blue-500/10">
-                            <Breakdown label="Días con servicio" value={quote.dias_con_servicio} />
-                            <Breakdown label="Días sin servicio" value={quote.dias_sin_servicio} />
-                            <Breakdown label="Servicio ajustado" value={`$${quote.mensualidad_ajustada}`} />
-                            <Breakdown label="Ajuste por corte" value={`-$${quote.ajuste_suspension}`} />
-                            {Number(quote.cargos_adicionales) > 0 && (
-                                <Breakdown label="Cargos adicionales" value={`$${quote.cargos_adicionales}`} />
-                            )}
+                        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-3 text-xs dark:border-blue-500/20 dark:bg-blue-500/10">
+                            <p className="mb-3 text-blue-800 dark:text-blue-200">{quote.descripcion}</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Breakdown label="Días con servicio" value={quote.dias_con_servicio} />
+                                <Breakdown label="Días sin servicio" value={quote.dias_sin_servicio} />
+                                <Breakdown label="Servicio ajustado" value={`$${quote.mensualidad_ajustada}`} />
+                                <Breakdown label="Ajuste por corte" value={`-$${quote.ajuste_suspension}`} />
+                                {Number(quote.cargos_adicionales) > 0 && (
+                                    <Breakdown label="Cargos adicionales" value={`$${quote.cargos_adicionales}`} />
+                                )}
+                            </div>
                         </div>
                     )}
 

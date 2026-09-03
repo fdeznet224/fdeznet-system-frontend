@@ -192,7 +192,7 @@ const createInitialFormData = (): FormDataState => {
     longitud: '',
     fecha_instalacion: today,
     fecha_activacion: today,
-    meses_gratis: '1',
+    meses_gratis: '0',
     tipo_facturacion: 'prepago',
     ciclo_facturacion: 'calendario',
   };
@@ -969,6 +969,9 @@ export default function CreateClientModal({
                             setFormData({ ...formData, meses_gratis: e.target.value })
                           }
                         />
+                        <p className="mt-1 text-xs text-slate-500">
+                          0 cobra desde la activación; 1 concede un mes gratis.
+                        </p>
                       </div>
 
                       <div>
