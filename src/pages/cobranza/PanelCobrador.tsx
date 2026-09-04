@@ -26,6 +26,20 @@ interface BillingClient {
     ip_asignada?: string;
 }
 
+interface BillingConcept {
+    id: number;
+    tipo: string;
+    concepto: string;
+    descripcion?: string | null;
+    monto_original: number;
+    saldo_pendiente: number;
+    estado: string;
+    afecta_corte: boolean;
+    fecha_cargo: string;
+    numero_cuota?: number | null;
+    total_cuotas?: number | null;
+}
+
 interface BillingInvoice {
     id: number;
     cliente: BillingClient;
@@ -48,6 +62,7 @@ interface BillingInvoice {
     tipo_factura?: string;
     es_prorrateada?: boolean;
     plan_snapshot?: string | null;
+    conceptos?: BillingConcept[];
     servicio?: { id?: number; alias?: string | null; estado?: string | null } | null;
 }
 
@@ -164,10 +179,24 @@ export default function PanelCobrador() {
     // ESTADOS DEL MODAL
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedFactura, setSelectedFactura] = useState<BillingInvoice | null>(null);
+    const [selectedConceptIds, setSelectedConceptIds] = useState<number[]>([]);
     const [modo, setModo] = useState<'pagar' | 'promesa'>('pagar'); // 👈 Nuevo estado para las tabs
     const [formCobro, setFormCobro] = useState<{ metodo: PaymentMethod; referencia: string; monto: number }>({ metodo: 'efectivo', referencia: '', monto: 0 });
     const [fechaPromesa, setFechaPromesa] = useState('');
     const [procesando, setProcesando] = useState(false);
+
+    const toggleConcept = (concept: BillingConcept) => {
+        setSelectedConceptIds(current => {
+            const next = current.includes(concept.id)
+                ? current.filter(id => id !== concept.id)
+                : [...current, concept.id];
+            const total = (selectedFactura?.conceptos || [])
+                .filter(item => next.includes(item.id))
+                .reduce((sum, item) => sum + Number(item.saldo_pendiente), 0);
+            setFormCobro(form => ({ ...form, monto: Number(total.toFixed(2)) }));
+            return next;
+        });
+    };
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -249,6 +278,11 @@ export default function PanelCobrador() {
             }
         }
         setSelectedFactura(facturaActual);
+        setSelectedConceptIds(
+            (facturaActual.conceptos || [])
+                .filter(concepto => Number(concepto.saldo_pendiente) > 0)
+                .map(concepto => concepto.id),
+        );
         setFormCobro({ metodo: 'efectivo', referencia: '', monto: facturaActual.saldo_pendiente });
         setModo('pagar'); // Resetear a Pagar al abrir
         const date = new Date();
@@ -316,6 +350,7 @@ export default function PanelCobrador() {
                     metodo_pago: formCobro.metodo,
                     monto_recibido: Number(formCobro.monto),
                     referencia: formCobro.referencia || `POS #${selectedFactura.id}`,
+                    concepto_ids: selectedConceptIds,
                 },
                 `Cobro factura #${selectedFactura.id}`,
             );
@@ -693,6 +728,21 @@ export default function PanelCobrador() {
                                             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{bulkInvoices.length > 1 ? `${bulkInvoices.length} períodos incluidos` : `Factura #${selectedFactura?.id} · Vence el ${formatDateLong(selectedFactura?.fecha_vencimiento)}`}</p>
                                             <p className="mt-1 text-lg text-emerald-600 dark:text-emerald-400">Total a cobrar: ${formatMoney(formCobro.monto)}</p>
                                         </div>
+                                        {bulkInvoices.length <= 1 && (selectedFactura?.conceptos?.length || 0) > 0 && (
+                                            <div className="mt-3 space-y-2">
+                                                <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Selecciona qué pagar</p>
+                                                {selectedFactura?.conceptos?.filter(item => Number(item.saldo_pendiente) > 0).map(item => (
+                                                    <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                                                        <input type="checkbox" className="h-5 w-5 rounded text-emerald-600" checked={selectedConceptIds.includes(item.id)} onChange={() => toggleConcept(item)} />
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="block truncate text-sm font-black text-slate-800 dark:text-white">{item.concepto}</span>
+                                                            <span className="text-[10px] font-bold text-slate-500">{item.afecta_corte ? 'Internet' : 'Cargo adicional'}{item.numero_cuota ? ` · Cuota ${item.numero_cuota}/${item.total_cuotas}` : ''}</span>
+                                                        </span>
+                                                        <span className="font-black text-slate-900 dark:text-white">${formatMoney(item.saldo_pendiente)}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
                                         {selectedFactura?.dias_con_servicio != null && (
                                             <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-[10px] font-bold text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
                                                 <span>Con servicio: {selectedFactura.dias_con_servicio} días</span>

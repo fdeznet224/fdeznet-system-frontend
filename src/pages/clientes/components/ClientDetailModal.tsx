@@ -181,6 +181,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         descripcion: '',
         fecha_vencimiento: new Date().toISOString().slice(0, 10),
         afecta_corte: false,
+        numero_cuotas: '1',
     });
 
     // CATALOGOS
@@ -492,12 +493,13 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                 descripcion: manualInvoiceData.descripcion?.trim() || null,
                 fecha_vencimiento: manualInvoiceData.fecha_vencimiento || new Date().toISOString().slice(0, 10),
                 afecta_corte: manualInvoiceData.afecta_corte,
+                numero_cuotas: Number(manualInvoiceData.numero_cuotas || 1),
             });
 
             toast.success(
                 response.data.consolidada
                     ? 'Cargo agregado a la factura mensual'
-                    : 'Factura de cargo creada',
+                    : 'Cargo programado para la próxima factura',
                 { id: load },
             );
             setIsManualInvoiceOpen(false);
@@ -508,6 +510,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                 descripcion: '',
                 fecha_vencimiento: new Date().toISOString().slice(0, 10),
                 afecta_corte: false,
+                numero_cuotas: '1',
             });
 
             await cargarDatosCompletos(cliente.id);
@@ -1153,6 +1156,21 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             required
                                         />
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label className={labelClass}>Número de cuotas</label>
+                                    <input
+                                        name="numero_cuotas"
+                                        type="number"
+                                        min="1"
+                                        max="24"
+                                        step="1"
+                                        value={manualInvoiceData.numero_cuotas}
+                                        onChange={handleManualInvoiceChange}
+                                        className={flatInputClass}
+                                    />
+                                    <p className="mt-1 text-[10px] font-semibold text-slate-500">Una cuota por factura mensual. Usa 1 para cobrarlo completo en la próxima.</p>
                                 </div>
 
                                 <div>
