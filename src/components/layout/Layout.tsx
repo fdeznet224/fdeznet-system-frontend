@@ -109,8 +109,7 @@ export default function Layout() {
     const [showChatModal, setShowChatModal] = useState(false);
     const [targetCliente, setTargetCliente] = useState<ClienteGlobal | null>(null);
 
-    const { wsEvent, unreadCounts, fetchUnread } = useWhatsApp();
-    const unreadTotal = Object.values(unreadCounts).reduce((acc, item) => acc + (item.count || 0), 0);
+    const { wsEvent } = useWhatsApp();
     const user = getSessionUser(localStorage.getItem('user'));
 
     useEffect(() => {
@@ -289,9 +288,6 @@ export default function Layout() {
                             <Link key={item.name} to={itemPath} onClick={() => setSidebarOpen(false)} className={`flex items-center px-4 py-3 rounded-xl transition-all duration-200 group relative ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'}`}>
                                 <item.icon className={`w-6 h-6 mr-3 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-blue-500'}`} />
                                 <span className="font-bold text-sm">{item.name}</span>
-                                {item.hasBadge && unreadTotal > 0 && (
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse shadow-md">{unreadTotal}</span>
-                                )}
                             </Link>
                         );
                     })}
@@ -490,14 +486,13 @@ interface MenuItem {
     path?: string;
     icon: ComponentType<{ className?: string }>;
     roles: AppRole[];
-    hasBadge?: boolean;
     submenu?: SubMenuItem[];
 }
 
 const allMenus: MenuItem[] = [
     { name: 'Dashboard', path: '/admin/dashboard', icon: HomeIcon, roles: ['admin'] },
     { name: 'Terminal de Cobro', path: '/admin/cobranza', icon: ComputerDesktopIcon, roles: ['cajero'] },
-    { name: 'Clientes', path: '/admin/clientes', icon: UsersIcon, roles: ['admin', 'supervisor'], hasBadge: true },
+    { name: 'Clientes', path: '/admin/clientes', icon: UsersIcon, roles: ['admin', 'supervisor'] },
     {
         name: 'Operaciones', icon: BriefcaseIcon, roles: ['admin', 'supervisor'],
         submenu: [
