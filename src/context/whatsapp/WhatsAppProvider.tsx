@@ -91,7 +91,7 @@ export const WhatsAppProvider = ({ children }: { children: React.ReactNode }) =>
             // ✅ SOLUCIÓN APLICADA: Dejamos que Nginx maneje los puertos
             const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
             const base = import.meta.env.PROD
-                ? `${protocol}://${window.location.host}/api`
+                ? `${protocol}://${window.location.host}`
                 : 'ws://127.0.0.1:8000';
             
             const wsUrl = (

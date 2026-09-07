@@ -466,9 +466,8 @@ export default function Layout() {
 
             <ChatModal
                 isOpen={showChatModal}
-                onClose={() => { setShowChatModal(false); fetchUnread(); }}
+                onClose={() => setShowChatModal(false)}
                 cliente={targetCliente}
-                onMessagesRead={fetchUnread}
             />
         </div>
     );
