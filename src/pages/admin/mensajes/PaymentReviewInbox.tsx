@@ -115,7 +115,7 @@ export default function PaymentReviewInbox() {
     setClientId(selected.cliente_id || null);
     setClientLabel(
       selected.cliente_nombre
-        ? `${selected.cliente_nombre} · ${selected.cliente_cedula || 'sin cédula'}`
+        ? `${selected.cliente_nombre} · ${selected.cliente_cedula || 'sin número de contrato'}`
         : '',
     );
     setAmount(selected.monto_detectado ? String(selected.monto_detectado) : '');
@@ -273,7 +273,7 @@ export default function PaymentReviewInbox() {
                 <div className="space-y-3">
                   <div className="relative">
                     <MagnifyingGlassIcon className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
-                    <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar cliente por nombre o cédula" className="app-input w-full pl-10" />
+                    <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar cliente por nombre o número de contrato" className="app-input w-full pl-10" />
                     {results.length > 0 && (
                       <div className="absolute z-10 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
                         {results.map((result) => (

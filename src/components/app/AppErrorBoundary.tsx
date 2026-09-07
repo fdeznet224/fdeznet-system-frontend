@@ -20,8 +20,21 @@ export default class AppErrorBoundary extends Component<Props, State> {
     console.error('No fue posible cargar la pantalla', error, info);
   }
 
-  private reload = () => {
-    window.location.reload();
+  private reload = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+      }
+      if ('caches' in window) {
+        const names = await caches.keys();
+        await Promise.all(names.map((name) => caches.delete(name)));
+      }
+    } finally {
+      const url = new URL(window.location.href);
+      url.searchParams.set('actualizar', Date.now().toString());
+      window.location.replace(url.toString());
+    }
   };
 
   render() {
@@ -41,7 +54,7 @@ export default class AppErrorBoundary extends Component<Props, State> {
             onClick={this.reload}
             className="mt-6 rounded-lg bg-cyan-500 px-5 py-2.5 font-medium text-slate-950 transition hover:bg-cyan-400"
           >
-            Recargar aplicación
+            Limpiar versión y recargar
           </button>
         </section>
       </main>

@@ -498,7 +498,7 @@ export default function PanelCobrador() {
                             <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase ml-1 tracking-widest">Buscar Cliente</label>
                             <div className="bg-white dark:bg-[#1a1f2e] rounded-xl flex items-center border border-slate-200 dark:border-slate-700 shadow-sm p-1 transition-colors">
                                 <MagnifyingGlassIcon className="w-6 h-6 text-slate-400 ml-3" />
-                                <input className="w-full bg-transparent p-3 text-slate-900 dark:text-white outline-none text-lg font-bold placeholder-slate-400" placeholder="Nombre, cédula o IP..." value={filtro} onChange={e => { setFiltro(e.target.value); setExpandedClient(null); }} />
+                                <input className="w-full bg-transparent p-3 text-slate-900 dark:text-white outline-none text-lg font-bold placeholder-slate-400" placeholder="Nombre, número de contrato o IP..." value={filtro} onChange={e => { setFiltro(e.target.value); setExpandedClient(null); }} />
                             </div>
                         </div>
 
@@ -523,7 +523,7 @@ export default function PanelCobrador() {
                                             <div className="min-w-0">
                                                 <h3 className="truncate text-base font-black text-slate-900 dark:text-white">{group.cliente.nombre}</h3>
                                                 <div className="mt-2 flex flex-wrap gap-2">
-                                                    <span className="rounded bg-indigo-600 px-1.5 py-0.5 text-[9px] font-black uppercase text-white">Cédula: {group.cliente.cedula || 'S/N'}</span>
+                                                    <span className="rounded bg-indigo-600 px-1.5 py-0.5 text-[9px] font-black uppercase text-white">Número de contrato: {group.cliente.cedula || 'S/N'}</span>
                                                     {group.cliente.ip_asignada && <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">{group.cliente.ip_asignada}</span>}
                                                     {overdueCount > 0 && <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-black uppercase text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">{overdueCount} atrasada(s)</span>}
                                                 </div>
@@ -587,7 +587,7 @@ export default function PanelCobrador() {
                                 );
                             })}
                             {filtro.trim() && clientesFiltrados.length === 0 && !loading && (
-                                <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm font-bold text-slate-500 dark:border-slate-700">No encontramos clientes por nombre, cédula o IP.</div>
+                                <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm font-bold text-slate-500 dark:border-slate-700">No encontramos clientes por nombre, número de contrato o IP.</div>
                             )}
                         </div>
                     </div>

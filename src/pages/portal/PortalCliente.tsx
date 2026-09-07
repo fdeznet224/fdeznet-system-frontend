@@ -98,7 +98,7 @@ export default function PortalCliente() {
     if (error || !data) return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center text-center p-6 transition-colors">
             <XCircleIcon className="w-20 h-20 text-rose-500 mb-4" />
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Cédula No Encontrada</h1>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Número de contrato no encontrado</h1>
             <p className="text-slate-500 dark:text-slate-400">No hay información para: <span className="font-mono text-slate-900 dark:text-white font-bold">{cedula}</span>.</p>
             <button onClick={() => void cargarDatos()} className="mt-8 px-6 py-2 bg-slate-200 dark:bg-slate-800 rounded-full text-sm font-black uppercase hover:bg-slate-300 dark:hover:bg-slate-700 transition">Reintentar</button>
         </div>
@@ -128,7 +128,7 @@ export default function PortalCliente() {
                 
                 <div className="flex gap-2 mt-4">
                      <span className="text-[10px] font-black bg-black/10 text-white px-3 py-1 rounded-full uppercase border border-white/20">ID: {data.id}</span>
-                     <span className="text-[10px] font-black bg-white/20 text-white px-3 py-1 rounded-full font-mono border border-white/10">{cedula}</span>
+                     <span className="text-[10px] font-black bg-white/20 text-white px-3 py-1 rounded-full font-mono border border-white/10">Contrato: {cedula}</span>
                 </div>
             </div>
 

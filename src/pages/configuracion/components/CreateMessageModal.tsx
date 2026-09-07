@@ -46,7 +46,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
             variables: [
                 { name: 'empresa', label: 'Empresa', desc: 'Nombre de tu ISP (FdezNet)' },
                 { name: 'nombre', label: 'Cliente', desc: 'Nombre completo del cliente' },
-                { name: 'cedula', label: 'Cédula/ID', desc: 'Número de contrato o identificación' },
+                { name: 'contrato', label: 'Número de contrato', desc: 'Contrato asignado al cliente' },
                 { name: 'telefono', label: 'Teléfono', desc: 'Número celular del cliente' },
                 { name: 'zona', label: 'Zona', desc: 'Sector o cobertura (Ej: Centro)' },
                 { name: 'direccion', label: 'Dirección', desc: 'Domicilio registrado' },
@@ -100,7 +100,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
         if (initialData) {
             setFormData({ tipo: initialData.tipo, texto: initialData.texto, activo: initialData.activo });
         } else {
-            setFormData({ tipo: 'bienvenida', texto: '¡Hola {nombre}! Bienvenido a {empresa}. Tu ID es {cedula}.', activo: true });
+            setFormData({ tipo: 'bienvenida', texto: '¡Hola {nombre}! Bienvenido a {empresa}. Tu número de contrato es {contrato}.', activo: true });
         }
     }, [initialData, isOpen]);
 

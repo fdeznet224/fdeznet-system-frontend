@@ -58,7 +58,7 @@ export default function Plantillas() {
 
     // Colección visual para el pie de página
     const diccionario = [
-        { tag: '{nombre}', desc: 'Nombre del cliente' }, { tag: '{cedula}', desc: 'Contrato/ID' },
+        { tag: '{nombre}', desc: 'Nombre del cliente' }, { tag: '{contrato}', desc: 'Número de contrato' },
         { tag: '{plan}', desc: 'Paquete de Fibra' }, { tag: '{velocidad}', desc: 'Ej: 50 Megas' },
         { tag: '{precio}', desc: 'Mensualidad' }, { tag: '{dia_corte}', desc: 'Día de Factura' },
         { tag: '{dia_final}', desc: 'Día de Corte Real' }, { tag: '{mes_actual}', desc: 'Mes escrito' },

@@ -124,7 +124,7 @@ export default function TechSearch() {
                                     </div>
                                     <div className="flex items-center gap-2 mt-2.5">
                                         <span className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300">
-                                            SN: {c.cedula || 'Sin asignar'}
+                                            Contrato: {c.cedula || 'Sin asignar'}
                                         </span>
                                         <span className={`text-[9px] font-black tracking-widest px-2 py-0.5 rounded uppercase border ${
                                             c.estado === 'activo' 

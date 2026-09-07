@@ -257,7 +257,7 @@ function BottomSheetDetail({
 
           <div className="olt-sheet-info-grid">
             <DetailField label="Cliente" value={clientValue(row, "nombre") || "No registrado"} />
-            <DetailField label="Cédula" value={clientValue(row, "cedula") || "N/A"} />
+            <DetailField label="Número de contrato" value={clientValue(row, "cedula") || "N/A"} />
             <DetailField label="Teléfono" value={clientValue(row, "telefono") || "N/A"} />
             <DetailField label="Dirección" value={clientValue(row, "direccion") || "N/A"} />
             <DetailField label="Correo" value={clientValue(row, "correo") || "N/A"} />
@@ -933,7 +933,7 @@ export default function OltRadarVsolPage() {
           <div className="olt-toolbar olt-toolbar--filters">
             <input
               className="olt-input"
-              placeholder="Buscar cliente, cédula, teléfono, IP, serial o PON..."
+              placeholder="Buscar cliente, número de contrato, teléfono, IP, serial o PON..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -994,7 +994,7 @@ export default function OltRadarVsolPage() {
                           <>
                             <strong>{clientName}</strong>
                             <div className="olt-muted-line">
-                              {clientValue(row, "cedula") ? `Cédula: ${clientValue(row, "cedula")}` : ""}
+                              {clientValue(row, "cedula") ? `Número de contrato: ${clientValue(row, "cedula")}` : ""}
                               {clientValue(row, "telefono") ? ` · Tel: ${clientValue(row, "telefono")}` : ""}
                               {clientValue(row, "ip_asignada") ? ` · IP: ${clientValue(row, "ip_asignada")}` : ""}
                               {clientStatus ? ` · ${clientStatus}` : ""}

@@ -1248,7 +1248,7 @@ export default function CreateClientModal({
                           className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                         >
                           <QrCodeIcon className="w-6 h-6 text-blue-600 mb-3" />
-                          <p className="text-xs text-slate-500 uppercase font-bold">Cédula</p>
+                          <p className="text-xs text-slate-500 uppercase font-bold">Número de contrato</p>
                           <p className="font-black text-slate-900 dark:text-white break-all">
                             {createdClient.cedula}
                           </p>

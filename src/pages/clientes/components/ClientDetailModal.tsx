@@ -618,7 +618,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                         Estado <b>{cliente?.estado === 'activo' ? 'Activo' : (cliente?.estado || 'N/A')}</b>
                                                     </span>
 
-                                                    <span className="client-tag">Cédula <b>{cliente?.cedula || 'N/A'}</b></span>
+                                                    <span className="client-tag">Número de contrato <b>{cliente?.cedula || 'N/A'}</b></span>
 
                                                     <span className="client-tag">
                                                         Instalación <b>{formatDate(servicioActual?.fecha_inicio_cobro || cliente?.created_at)}</b>
@@ -699,7 +699,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                 <SectionCard title="Resumen del cliente" icon={CheckCircleIcon}>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <DetailTile label="Fecha instalación" value={formatDate(servicioActual?.fecha_inicio_cobro || cliente?.created_at)} highlight />
-                                        <DetailTile label="Cédula" value={cliente?.cedula || 'N/A'} copy />
+                                        <DetailTile label="Número de contrato" value={cliente?.cedula || 'N/A'} copy />
                                         <DetailTile label="Teléfono" value={cliente?.telefono || 'N/A'} copy />
                                         <DetailTile label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
                                         <DetailTile label="Plan" value={servicioActual?.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
@@ -749,7 +749,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                 {isEditing ? (
                                     <div className="space-y-4">
                                         <div>
-                                            <label className={labelClass}>Cédula / ID (Solo Lectura)</label>
+                                            <label className={labelClass}>Número de contrato / ID (Solo Lectura)</label>
                                             <input value={formData.cedula} disabled className={disabledInputClass} />
                                         </div>
                                         <div>
@@ -783,7 +783,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                     </div>
                                 ) : (
                                     <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                                        <InfoRow label="Cédula" value={cliente?.cedula || 'N/A'} copy />
+                                        <InfoRow label="Número de contrato" value={cliente?.cedula || 'N/A'} copy />
                                         <InfoRow label="Teléfono" value={cliente?.telefono || 'N/A'} copy />
                                         <InfoRow label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
                                         <InfoRow label="Dirección" value={cliente?.direccion || 'N/A'} />

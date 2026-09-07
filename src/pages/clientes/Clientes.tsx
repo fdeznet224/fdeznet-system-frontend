@@ -236,7 +236,7 @@ export default function Clientes() {
                     <div className="relative min-w-[250px] flex-1">
                         <MagnifyingGlassIcon className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
                         <input
-                            type="text" placeholder="Buscar por nombre, IP, ID, cédula..."
+                            type="text" placeholder="Buscar por nombre, IP, ID, número de contrato..."
                             className="w-full bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-sm font-medium transition-colors"
                             value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
                         />

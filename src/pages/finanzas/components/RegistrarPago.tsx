@@ -353,7 +353,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 <BanknotesIcon className="w-12 h-12 text-emerald-500" />
                             </div>
                             <h3 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mb-2">¿A quién cobramos?</h3>
-                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Busca por nombre, cédula o IP del cliente</p>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Busca por nombre, número de contrato o IP del cliente</p>
                         </div>
 
                         <div className="w-full relative" ref={searchRef}>
@@ -362,7 +362,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 <input 
                                     autoFocus 
                                     type="text" 
-                                    placeholder="Nombre, cédula de 4 dígitos o IP..."
+                                    placeholder="Nombre, número de contrato de 4 dígitos o IP..."
                                     className="w-full bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800 rounded-[1.5rem] pl-14 pr-12 py-4 text-base sm:text-lg text-slate-900 dark:text-white font-bold focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-slate-400 shadow-sm"
                                     value={busqueda} 
                                     onChange={e => setBusqueda(e.target.value)}
@@ -402,7 +402,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                                             <div className="overflow-hidden pr-2">
                                                                 <p className="font-black text-slate-800 dark:text-white text-sm sm:text-base truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{c.nombre}</p>
                                                                 <div className="flex flex-wrap items-center gap-1.5 mt-1 text-slate-500">
-                                                                    {c.cedula && <span className="bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase">ID: {c.cedula}</span>}
+                                                                    {c.cedula && <span className="bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase">Contrato: {c.cedula}</span>}
                                                                     <span className="bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-500/20 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 flex items-center gap-1"><MapPinIcon className="w-3 h-3"/> {c.zona?.nombre || 'General'}</span>
                                                                 </div>
                                                             </div>
@@ -436,7 +436,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 </div>
                                 <div className="overflow-hidden pr-2">
                                     <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest mb-0.5 flex items-center gap-1">
-                                        <IdentificationIcon className="w-3 h-3"/> {selectedCliente.cedula || 'SIN CÉDULA'}
+                                        <IdentificationIcon className="w-3 h-3"/> {selectedCliente.cedula || 'SIN NÚMERO DE CONTRATO'}
                                     </p>
                                     <h3 className="font-black text-slate-800 dark:text-white text-base sm:text-lg truncate leading-tight">{selectedCliente.nombre}</h3>
                                 </div>

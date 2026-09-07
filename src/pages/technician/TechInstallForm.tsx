@@ -296,7 +296,7 @@ export default function TechInstallForm() {
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                         <div className={infoBoxStyle}>
-                            <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1"><IdentificationIcon className="w-3 h-3"/> Cédula</span>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1"><IdentificationIcon className="w-3 h-3"/> Número de contrato</span>
                             <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400 mt-1">{cliente.cedula}</span>
                         </div>
                         <div className={infoBoxStyle}>

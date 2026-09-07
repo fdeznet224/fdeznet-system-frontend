@@ -171,7 +171,7 @@ export default function ClientTechView() {
                 </button>
                 <div className="flex-1 overflow-hidden">
                     <h2 className="font-bold text-sm truncate text-slate-900 dark:text-white uppercase tracking-wider transition-colors">Detalle de Cliente</h2>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-500 truncate font-mono font-bold">ID: {data.id} • {data.cedula}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-500 truncate font-mono font-bold">Contrato: {data.cedula}</p>
                 </div>
                 <div className={`px-2 py-1 rounded-lg border text-[10px] font-bold uppercase ${estaSuspendido
                         ? 'bg-rose-50 dark:bg-rose-500 text-rose-600 dark:text-white border-rose-200 dark:border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.2)] dark:shadow-[0_0_10px_rgba(244,63,94,0.4)]'

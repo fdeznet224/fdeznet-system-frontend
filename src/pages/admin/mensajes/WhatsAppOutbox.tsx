@@ -78,7 +78,7 @@ const campaignVariables = [
   ['{router}', 'Router'],
   ['{plan}', 'Plan'],
   ['{telefono}', 'Teléfono'],
-  ['{cedula}', 'Cédula'],
+  ['{contrato}', 'Número de contrato'],
   ['{fecha}', 'Fecha actual'],
   ['{hora}', 'Hora actual'],
 ] as const;
