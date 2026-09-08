@@ -695,11 +695,11 @@ export default function PanelCobrador() {
             <Transition appear show={isModalOpen} as={Fragment}>
                 <Dialog as="div" className="relative z-50" onClose={() => setIsModalOpen(false)}>
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-                    <div className="fixed inset-0 overflow-y-auto">
-                        <div className="flex min-h-full items-end justify-center p-0 sm:items-center sm:p-4">
+                    <div className="fixed inset-0 overflow-hidden">
+                        <div className="flex h-full items-end justify-center p-0 sm:items-center sm:p-4">
                             <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="translate-y-full opacity-0" enterTo="translate-y-0 opacity-100">
                                 
-                                <Dialog.Panel className="w-full sm:max-w-md bg-white dark:bg-[#0b0e14] rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-8 transition-colors flex flex-col h-[85vh] sm:h-auto">
+                                <Dialog.Panel className="w-full bg-white dark:bg-[#0b0e14] rounded-none sm:rounded-3xl shadow-2xl p-5 sm:p-8 transition-colors flex flex-col h-[100dvh] sm:h-[92vh] sm:max-w-2xl">
                                     
                                     {/* CABECERA Y TARJETA DEL CLIENTE */}
                                     <div className="flex justify-between items-center mb-6">
@@ -736,7 +736,8 @@ export default function PanelCobrador() {
                                                         <input type="checkbox" className="h-5 w-5 rounded text-emerald-600" checked={selectedConceptIds.includes(item.id)} onChange={() => toggleConcept(item)} />
                                                         <span className="min-w-0 flex-1">
                                                             <span className="block truncate text-sm font-black text-slate-800 dark:text-white">{item.concepto}</span>
-                                                            <span className="text-[10px] font-bold text-slate-500">{item.afecta_corte ? 'Internet' : 'Cargo adicional'}{item.numero_cuota ? ` · Cuota ${item.numero_cuota}/${item.total_cuotas}` : ''}</span>
+                                                            <span className="block text-[10px] font-bold text-slate-500">{item.tipo === 'servicio_adicional' ? 'Servicio adicional' : item.tipo === 'internet_prorrateado' ? 'Prorrateo' : item.afecta_corte ? 'Internet' : 'Concepto adicional'}{item.numero_cuota ? ` · Cuota ${item.numero_cuota}/${item.total_cuotas}` : ''}</span>
+                                                            {item.descripcion && <span className="mt-1 block text-[10px] text-slate-400">{item.descripcion}</span>}
                                                         </span>
                                                         <span className="font-black text-slate-900 dark:text-white">${formatMoney(item.saldo_pendiente)}</span>
                                                     </label>
