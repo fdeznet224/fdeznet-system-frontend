@@ -412,9 +412,6 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
         }
     };
 
-    const totalDeuda = facturasPendientes.reduce(
-        (total, factura) => total + Number(factura.saldo_pendiente || 0), 0,
-    );
     const totalCobro = facturasPendientes
         .filter((factura) => facturasSeleccionadas.includes(factura.id))
         .reduce((total, factura) => total + (Number(montosPorFactura[factura.id]) || 0), 0);
@@ -560,15 +557,6 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 {/* Selección de facturas y abonos por servicio */}
                                 {facturasPendientes.length > 0 ? (
                                     <div className="mb-5">
-                                        <div className="mb-4 rounded-[1.5rem] bg-slate-900 p-5 text-white shadow-xl dark:bg-white dark:text-slate-900">
-                                            <div className="flex items-center justify-between gap-4">
-                                                <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total general</p>
-                                                    <p className="mt-1 text-xs font-bold opacity-70">{facturasPendientes.length} factura(s) pendiente(s)</p>
-                                                </div>
-                                                <p className="text-3xl font-black">${totalDeuda.toFixed(2)}</p>
-                                            </div>
-                                        </div>
                                         <div className="mb-3 flex items-center justify-between gap-4">
                                             <label className={labelClass}>Servicios y domicilios</label>
                                             <button type="button" onClick={seleccionarTodas} className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
