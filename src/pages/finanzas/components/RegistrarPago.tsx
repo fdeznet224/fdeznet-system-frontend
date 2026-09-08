@@ -6,7 +6,7 @@ import { Transition } from '@headlessui/react';
 import { 
     MagnifyingGlassIcon, XMarkIcon, UserIcon, BanknotesIcon, ArrowPathIcon,
     ShieldExclamationIcon, CreditCardIcon, CalendarDaysIcon,
-    CheckCircleIcon, ChevronLeftIcon, IdentificationIcon, MapPinIcon
+    CheckCircleIcon, ChevronLeftIcon, ChevronDownIcon, IdentificationIcon, MapPinIcon
 } from '@heroicons/react/24/outline';
 
 interface Props {
@@ -121,6 +121,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
     const [selectedFactura, setSelectedFactura] = useState<FacturaPendiente | null>(null);
     const [facturasSeleccionadas, setFacturasSeleccionadas] = useState<number[]>([]);
     const [montosPorFactura, setMontosPorFactura] = useState<Record<number, string>>({});
+    const [facturasExpandidas, setFacturasExpandidas] = useState<number[]>([]);
     const [loadingDeuda, setLoadingDeuda] = useState(false);
     
     // --- ESTADOS DEL FORMULARIO ---
@@ -238,6 +239,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
         setSelectedFactura(null);
         setFacturasSeleccionadas([]);
         setMontosPorFactura({});
+        setFacturasExpandidas([]);
 
         try {
             const res = await client.get<ListadoDeudaResponse>('/finanzas/listado-completo', {
@@ -288,6 +290,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
         setSelectedFactura(null);
         setFacturasSeleccionadas([]);
         setMontosPorFactura({});
+        setFacturasExpandidas([]);
         setBusqueda('');
     };
 
@@ -306,6 +309,15 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
     const seleccionarTodas = () => {
         const todasSeleccionadas = facturasSeleccionadas.length === facturasPendientes.length;
         setFacturasSeleccionadas(todasSeleccionadas ? [] : facturasPendientes.map((factura) => factura.id));
+    };
+
+    const toggleDetalleFactura = (factura: FacturaPendiente) => {
+        setSelectedFactura(factura);
+        setFacturasExpandidas((actual) => (
+            actual.includes(factura.id)
+                ? actual.filter((id) => id !== factura.id)
+                : [...actual, factura.id]
+        ));
     };
 
     // COBRAR
@@ -548,11 +560,17 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 {/* Selección de facturas y abonos por servicio */}
                                 {facturasPendientes.length > 0 ? (
                                     <div className="mb-5">
-                                        <div className="mb-3 flex items-end justify-between gap-4">
-                                            <div>
-                                                <label className={labelClass}>Facturas pendientes</label>
-                                                <p className="text-xs font-bold text-slate-500">Deuda total: ${totalDeuda.toFixed(2)}</p>
+                                        <div className="mb-4 rounded-[1.5rem] bg-slate-900 p-5 text-white shadow-xl dark:bg-white dark:text-slate-900">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total general</p>
+                                                    <p className="mt-1 text-xs font-bold opacity-70">{facturasPendientes.length} factura(s) pendiente(s)</p>
+                                                </div>
+                                                <p className="text-3xl font-black">${totalDeuda.toFixed(2)}</p>
                                             </div>
+                                        </div>
+                                        <div className="mb-3 flex items-center justify-between gap-4">
+                                            <label className={labelClass}>Servicios y domicilios</label>
                                             <button type="button" onClick={seleccionarTodas} className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
                                                 {facturasSeleccionadas.length === facturasPendientes.length ? 'Quitar todas' : 'Seleccionar todas'}
                                             </button>
@@ -560,6 +578,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                         <div className="space-y-3">
                                             {facturasPendientes.map((factura) => {
                                                 const seleccionada = facturasSeleccionadas.includes(factura.id);
+                                                const expandida = facturasExpandidas.includes(factura.id);
                                                 return (
                                                     <div key={factura.id} className={classNames(
                                                         'rounded-[1.35rem] border p-4 transition-all',
@@ -569,40 +588,42 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                                     )}>
                                                         <div className="flex items-start gap-3">
                                                             <input type="checkbox" checked={seleccionada} onChange={() => toggleFactura(factura)} className="mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
-                                                            <button type="button" onClick={() => {
-                                                                setSelectedFactura(factura);
-                                                                if (modo === 'pagar') toggleFactura(factura);
-                                                            }} className="min-w-0 flex-1 text-left">
+                                                            <button type="button" onClick={() => toggleDetalleFactura(factura)} aria-expanded={expandida} className="min-w-0 flex-1 text-left">
                                                                 <div className="flex items-start justify-between gap-3">
                                                                     <div className="min-w-0">
                                                                         <p className="truncate text-sm font-black text-slate-800 dark:text-white">{factura.servicio?.alias || invoiceConcept(factura)}</p>
                                                                         {factura.servicio?.direccion && <p className="mt-0.5 truncate text-[11px] text-slate-500">{factura.servicio.direccion}</p>}
-                                                                        {factura.servicio?.alias && <p className="mt-1 line-clamp-2 text-[11px] text-slate-500">{invoiceConcept(factura)}</p>}
                                                                     </div>
-                                                                    <div className="shrink-0 text-right">
+                                                                    <div className="flex shrink-0 items-center gap-2 text-right">
+                                                                        <ChevronDownIcon className={classNames('h-4 w-4 text-slate-400 transition-transform', expandida ? 'rotate-180' : '')} />
+                                                                        <div>
                                                                         <p className="text-base font-black text-slate-900 dark:text-white">${Number(factura.saldo_pendiente).toFixed(2)}</p>
                                                                         <span className={classNames('text-[9px] font-black uppercase tracking-wider', invoiceIsOverdue(factura) ? 'text-rose-500' : 'text-indigo-500')}>
                                                                             {invoiceIsOverdue(factura) ? 'Atrasada' : 'Actual'} · #{factura.id}
                                                                         </span>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                                <p className="mt-2 text-[11px] text-slate-500">Vence el {formatDateLong(factura.fecha_vencimiento)}</p>
                                                             </button>
                                                         </div>
-                                                        {(Number(factura.cargos_adicionales_total) > 0 || factura.dias_con_servicio != null) && (
-                                                            <div className="ml-8 mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-[10px] font-bold text-slate-500 dark:bg-slate-900">
-                                                                {factura.dias_con_servicio != null && <span>Internet: {factura.dias_con_servicio} días</span>}
-                                                                {Number(factura.cargos_adicionales_total) > 0 && <span>Adicionales: ${Number(factura.cargos_adicionales_total).toFixed(2)}</span>}
-                                                                {Number(factura.ajuste_suspension) > 0 && <span className="text-blue-600 dark:text-blue-400">Ajuste: -${Number(factura.ajuste_suspension).toFixed(2)}</span>}
-                                                            </div>
-                                                        )}
-                                                        {seleccionada && (
-                                                            <div className="mt-4 flex items-center justify-between gap-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+                                                        {expandida && (
+                                                            <div className="ml-8 mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+                                                                <p className="mb-1 text-xs font-bold text-slate-700 dark:text-slate-300">{invoiceConcept(factura)}</p>
+                                                                <p className="mb-3 text-[11px] text-slate-500">Vence el {formatDateLong(factura.fecha_vencimiento)}</p>
+                                                                {(Number(factura.cargos_adicionales_total) > 0 || factura.dias_con_servicio != null) && (
+                                                                    <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-[10px] font-bold text-slate-500 dark:bg-slate-900">
+                                                                        {factura.dias_con_servicio != null && <span>Internet: {factura.dias_con_servicio} días</span>}
+                                                                        {Number(factura.cargos_adicionales_total) > 0 && <span>Adicionales: ${Number(factura.cargos_adicionales_total).toFixed(2)}</span>}
+                                                                        {Number(factura.ajuste_suspension) > 0 && <span className="text-blue-600 dark:text-blue-400">Ajuste: -${Number(factura.ajuste_suspension).toFixed(2)}</span>}
+                                                                    </div>
+                                                                )}
+                                                                {seleccionada && <div className="flex items-center justify-between gap-4">
                                                                 <label htmlFor={`monto-${factura.id}`} className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pagar por esta factura</label>
                                                                 <div className="relative w-36">
                                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-emerald-500">$</span>
                                                                     <input id={`monto-${factura.id}`} type="number" min="0.01" max={Number(factura.saldo_pendiente)} step="0.01" required value={montosPorFactura[factura.id] || ''} onChange={(event) => setMontosPorFactura((actual) => ({ ...actual, [factura.id]: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-7 pr-3 text-right text-sm font-black outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
                                                                 </div>
+                                                                </div>}
                                                             </div>
                                                         )}
                                                     </div>
@@ -621,19 +642,6 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 {/* Formulario de Acción */}
                                 {selectedFactura && (
                                     <div className="flex-1 flex flex-col">
-                                        <div className="mb-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-500/20 dark:bg-indigo-500/10">
-                                            <p className="text-sm font-black text-slate-800 dark:text-white">{invoiceConcept(selectedFactura)}</p>
-                                            {selectedFactura.descripcion && <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{selectedFactura.descripcion}</p>}
-                                            <p className="mt-2 text-[11px] font-bold text-indigo-700 dark:text-indigo-300">Factura #{selectedFactura.id} · Vence el {formatDateLong(selectedFactura.fecha_vencimiento)}</p>
-                                        </div>
-                                        {selectedFactura.dias_con_servicio != null && (
-                                            <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-[10px] font-black text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
-                                                <span>Con servicio: {selectedFactura.dias_con_servicio} días</span>
-                                                <span>Sin servicio: {selectedFactura.dias_sin_servicio ?? 0} días</span>
-                                                <span>Ajuste: -${selectedFactura.ajuste_suspension ?? 0}</span>
-                                                <span>Extras: ${selectedFactura.cargos_adicionales_total ?? 0}</span>
-                                            </div>
-                                        )}
                                         {/* Tabs Pagar/Promesa tipo iOS */}
                                         <div className="flex p-1 bg-slate-100 dark:bg-slate-900 rounded-[1rem] mb-6 border border-slate-200 dark:border-slate-800">
                                             <button onClick={() => setModo('pagar')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${modo === 'pagar' ? 'bg-white dark:bg-[#12141a] text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-slate-800/80' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
