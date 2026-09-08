@@ -170,7 +170,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [facturas, setFacturas] = useState<ClientInvoice[]>([]);
     const [remoteIp, setRemoteIp] = useState<string | null>(null);
     const [servicios, setServicios] = useState<ClientService[]>([]);
-    const [serviciosAdicionales, setServiciosAdicionales] = useState<Array<{id:number; nombre:string; precio_mensual:number; activo:boolean; servicio_id?:number}>>([]);
+    const [serviciosAdicionales, setServiciosAdicionales] = useState<Array<{id:number; nombre:string; precio_mensual:number; periodicidad:'mensual'|'unico'; activo:boolean; servicio_id?:number}>>([]);
     const [resumenComercial, setResumenComercial] = useState<CommercialSummary | null>(null);
     const [activeTab, setActiveTab] = useState<'resumen' | 'servicios' | 'red' | 'facturas' | 'instalacion'>('resumen'); // FACTURACION_ISP_V2_CLIENT_DETAIL_TABS_FRONTEND // FACTURACION_ISP_V2_CLIENT_DETAIL_FRONTEND
     const [loadingData, setLoadingData] = useState(false);
@@ -183,6 +183,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         fecha_vencimiento: new Date().toISOString().slice(0, 10),
         afecta_corte: false,
         numero_cuotas: '1',
+        periodicidad: 'mensual',
     });
 
     // CATALOGOS
@@ -233,6 +234,8 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                 descripcion: '',
                 fecha_vencimiento: new Date().toISOString().slice(0, 10),
                 afecta_corte: false,
+                numero_cuotas: '1',
+                periodicidad: 'mensual',
             });
         }
     }, [isOpen, clienteInicial]);
@@ -496,9 +499,10 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                 fecha_inicio: manualInvoiceData.fecha_vencimiento || new Date().toISOString().slice(0, 10),
                 afecta_corte: manualInvoiceData.afecta_corte,
                 activo: true,
+                periodicidad: manualInvoiceData.periodicidad,
             });
 
-            toast.success('Servicio mensual agregado', { id: load });
+            toast.success('Cobro adicional agregado', { id: load });
             setIsManualInvoiceOpen(false);
             setManualInvoiceData({
                 servicio_id: '',
@@ -508,6 +512,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                 fecha_vencimiento: new Date().toISOString().slice(0, 10),
                 afecta_corte: false,
                 numero_cuotas: '1',
+                periodicidad: 'mensual',
             });
 
             await cargarDatosCompletos(cliente.id);
@@ -1088,7 +1093,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         <div key={item.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60">
                                             <div>
                                                 <p className="text-sm font-black">{item.nombre}</p>
-                                                <p className="text-xs text-slate-500">${Number(item.precio_mensual).toFixed(2)} al mes · {item.activo ? 'Activo' : 'Cancelado'}</p>
+                                                <p className="text-xs text-slate-500">${Number(item.precio_mensual).toFixed(2)} · {item.periodicidad === 'mensual' ? 'Mensual' : 'Un solo cobro'} · {item.activo ? 'Activo' : 'Finalizado'}</p>
                                             </div>
                                             {item.activo && <button type="button" onClick={async () => { await client.delete(`/finanzas/servicios-adicionales/${item.id}`); toast.success('Servicio cancelado'); if (cliente) await cargarDatosCompletos(cliente.id); }} className="text-xs font-black text-rose-600">Cancelar</button>}
                                         </div>
@@ -1122,19 +1127,22 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                     )}
                                 </div>
                                 <div>
-                                    <label className={labelClass}>Servicio adicional</label>
-                                    <select
+                                    <label className={labelClass}>Nombre del servicio o concepto</label>
+                                    <input
                                         name="concepto"
                                         value={manualInvoiceData.concepto}
                                         onChange={handleManualInvoiceChange}
                                         className={flatInputClass}
+                                        placeholder="Ej: IPTV, instalación de cámara, equipo..."
                                         required
-                                    >
-                                        <option value="">Seleccionar servicio...</option>
-                                        <option value="TV mensual">TV mensual</option>
-                                        <option value="IPTV mensual">IPTV mensual</option>
-                                        <option value="IP pública">IP pública</option>
-                                        <option value="Otro servicio mensual">Otro servicio mensual</option>
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className={labelClass}>Modalidad de cobro</label>
+                                    <select name="periodicidad" value={manualInvoiceData.periodicidad} onChange={handleManualInvoiceChange} className={flatInputClass}>
+                                        <option value="mensual">Mensual — se agrega cada mes</option>
+                                        <option value="unico">Un solo cobro — se agrega una vez</option>
                                     </select>
                                 </div>
 
