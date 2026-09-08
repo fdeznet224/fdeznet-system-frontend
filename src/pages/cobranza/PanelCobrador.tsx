@@ -14,7 +14,7 @@ import {
     BanknotesIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, 
     XMarkIcon, ArrowPathIcon, ShieldExclamationIcon, ClockIcon, 
     ChartPieIcon, HomeIcon, CreditCardIcon, CalendarDaysIcon, 
-    CheckCircleIcon, IdentificationIcon, ChevronDownIcon
+    CheckCircleIcon, IdentificationIcon
 } from '@heroicons/react/24/outline';
 
 type PaymentMethod = 'efectivo' | 'transferencia';
@@ -63,7 +63,7 @@ interface BillingInvoice {
     es_prorrateada?: boolean;
     plan_snapshot?: string | null;
     conceptos?: BillingConcept[];
-    servicio?: { id?: number; alias?: string | null; estado?: string | null } | null;
+    servicio?: { id?: number; alias?: string | null; direccion?: string | null; estado?: string | null } | null;
 }
 
 interface ReactivationQuote {
@@ -168,8 +168,9 @@ export default function PanelCobrador() {
     const [promesas, setPromesas] = useState<BillingInvoice[]>([]);
     const [loading, setLoading] = useState(false);
     const [filtro, setFiltro] = useState('');
-    const [expandedClient, setExpandedClient] = useState<string | null>(null);
     const [bulkInvoices, setBulkInvoices] = useState<BillingInvoice[]>([]);
+    const [modalInvoices, setModalInvoices] = useState<BillingInvoice[]>([]);
+    const [invoiceSelection, setInvoiceSelection] = useState<string>('');
     
     const totalCobradoHoy = historial.reduce((acc, curr) => acc + Number(curr.monto), 0);
     const totalEfectivo = historial.filter(h => h.metodo === 'efectivo').reduce((acc, curr) => acc + Number(curr.monto), 0);
@@ -243,6 +244,27 @@ export default function PanelCobrador() {
         }
     };
 
+    const selectInvoiceForPayment = (factura: BillingInvoice) => {
+        setBulkInvoices([]);
+        setInvoiceSelection(String(factura.id));
+        setSelectedFactura(factura);
+        setSelectedConceptIds(
+            (factura.conceptos || [])
+                .filter(concepto => Number(concepto.saldo_pendiente) > 0)
+                .map(concepto => concepto.id),
+        );
+        setFormCobro({ metodo: 'efectivo', referencia: '', monto: factura.saldo_pendiente });
+        setModo('pagar');
+        const date = new Date();
+        date.setDate(date.getDate() + 3);
+        const initialDate = date.toISOString().split('T')[0];
+        setFechaPromesa(
+            factura.fecha_maxima_promesa && initialDate > factura.fecha_maxima_promesa
+                ? factura.fecha_maxima_promesa
+                : initialDate,
+        );
+    };
+
     const handleOpenCobrar = async (factura: BillingInvoice) => {
         setBulkInvoices([]);
         let facturaActual = factura;
@@ -277,47 +299,77 @@ export default function PanelCobrador() {
                 return;
             }
         }
-        setSelectedFactura(facturaActual);
-        setSelectedConceptIds(
-            (facturaActual.conceptos || [])
-                .filter(concepto => Number(concepto.saldo_pendiente) > 0)
-                .map(concepto => concepto.id),
-        );
-        setFormCobro({ metodo: 'efectivo', referencia: '', monto: facturaActual.saldo_pendiente });
-        setModo('pagar'); // Resetear a Pagar al abrir
-        const date = new Date();
-        date.setDate(date.getDate() + 3);
-        const fechaInicial = date.toISOString().split('T')[0];
-        setFechaPromesa(
-            factura.fecha_maxima_promesa && fechaInicial > factura.fecha_maxima_promesa
-                ? factura.fecha_maxima_promesa
-                : fechaInicial,
-        );
+        setModalInvoices([facturaActual]);
+        selectInvoiceForPayment(facturaActual);
         setIsModalOpen(true);
     };
 
-    const handleOpenInternetTotal = (invoices: BillingInvoice[]) => {
-        const internetInvoices = invoices
-            .filter(invoice => invoice.afecta_corte !== false)
+    const handleOpenAllInvoices = async (invoices: BillingInvoice[]) => {
+        const orderedInvoices = [...invoices]
             .sort((a, b) => a.fecha_vencimiento.localeCompare(b.fecha_vencimiento) || a.id - b.id);
-        if (internetInvoices.length < 2) {
-            if (internetInvoices[0]) void handleOpenCobrar(internetInvoices[0]);
+        if (orderedInvoices.length < 2) {
+            if (orderedInvoices[0]) void handleOpenCobrar(orderedInvoices[0]);
             return;
         }
         if (!online) {
-            toast.error('El cobro conjunto requiere conexión');
+            setModalInvoices(orderedInvoices);
+            selectInvoiceForPayment(orderedInvoices[0]);
+            setIsModalOpen(true);
+            toast('Modo offline: selecciona una factura para cobrar');
             return;
         }
-        if (internetInvoices.some(invoice => invoice.servicio?.estado === 'suspendido')) {
-            toast.error('Primero abre la deuda anterior para calcular los días reales del servicio suspendido');
+        const toastId = toast.loading('Preparando facturas…');
+        try {
+            const prepared = await Promise.all(orderedInvoices.map(async (invoice) => {
+                if (invoice.servicio?.estado !== 'suspendido') return invoice;
+                const { data } = await client.post<ReactivationQuote>(
+                    `/finanzas/facturas/${invoice.id}/cotizar-reactivacion`,
+                );
+                return {
+                    ...invoice,
+                    id: data.factura_id,
+                    concepto: data.concepto,
+                    fecha_vencimiento: data.fecha_vencimiento,
+                    descripcion: data.descripcion,
+                    saldo_pendiente: Number(data.saldo_pendiente),
+                    dias_con_servicio: data.dias_con_servicio,
+                    dias_sin_servicio: data.dias_sin_servicio,
+                    ajuste_suspension: Number(data.ajuste_suspension),
+                    cargos_adicionales_total: Number(data.cargos_adicionales),
+                };
+            }));
+            const total = prepared.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
+            setModalInvoices(prepared);
+            setBulkInvoices(prepared);
+            setInvoiceSelection('all');
+            setSelectedFactura(prepared[0]);
+            setSelectedConceptIds([]);
+            setFormCobro({ metodo: 'efectivo', referencia: '', monto: Number(total.toFixed(2)) });
+            setModo('pagar');
+            setIsModalOpen(true);
+            toast.dismiss(toastId);
+        } catch (error: unknown) {
+            const detail = axios.isAxiosError<{ detail?: string }>(error)
+                ? error.response?.data?.detail
+                : undefined;
+            toast.error(detail || 'No se pudieron preparar las facturas', { id: toastId });
+        }
+    };
+
+    const handleInvoiceSelection = (value: string) => {
+        if (value === 'all') {
+            if (!online) return;
+            const total = modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
+            setBulkInvoices(modalInvoices);
+            setInvoiceSelection('all');
+            setSelectedFactura(modalInvoices[0] || null);
+            setSelectedConceptIds([]);
+            setFormCobro((current) => ({ ...current, monto: Number(total.toFixed(2)) }));
+            setModo('pagar');
             return;
         }
-        const total = internetInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
-        setBulkInvoices(internetInvoices);
-        setSelectedFactura(internetInvoices[0]);
-        setFormCobro({ metodo: 'efectivo', referencia: '', monto: Number(total.toFixed(2)) });
-        setModo('pagar');
-        setIsModalOpen(true);
+        const invoice = modalInvoices.find(item => item.id === Number(value));
+        if (invoice) selectInvoiceForPayment(invoice);
     };
 
     const handleProcesarCobro = async (e: React.FormEvent) => {
@@ -333,11 +385,11 @@ export default function PanelCobrador() {
                         factura_id: invoice.id,
                         metodo_pago: formCobro.metodo,
                         monto_recibido: Number(invoice.saldo_pendiente),
-                        referencia: formCobro.referencia || 'POS total internet',
-                        clave_idempotencia: `pos-internet-${lote}-${invoice.id}`,
+                        referencia: formCobro.referencia || 'POS total facturas',
+                        clave_idempotencia: `pos-facturas-${lote}-${invoice.id}`,
                     });
                 }
-                toast.success('Mensualidades de internet cobradas', { id: toastId });
+                toast.success('Facturas cobradas', { id: toastId });
                 setIsModalOpen(false);
                 setBulkInvoices([]);
                 void fetchData();
@@ -450,7 +502,9 @@ export default function PanelCobrador() {
         ));
     }, [facturas, filtro]);
 
-    const saldoAFavor = formCobro.monto > selectedFactura?.saldo_pendiente ? formCobro.monto - selectedFactura.saldo_pendiente : 0;
+    const saldoAFavor = bulkInvoices.length <= 1 && formCobro.monto > (selectedFactura?.saldo_pendiente || 0)
+        ? formCobro.monto - Number(selectedFactura?.saldo_pendiente || 0)
+        : 0;
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-[#0f1219] text-slate-800 dark:text-white font-sans flex flex-col transition-colors duration-300">
@@ -498,27 +552,24 @@ export default function PanelCobrador() {
                             <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase ml-1 tracking-widest">Buscar Cliente</label>
                             <div className="bg-white dark:bg-[#1a1f2e] rounded-xl flex items-center border border-slate-200 dark:border-slate-700 shadow-sm p-1 transition-colors">
                                 <MagnifyingGlassIcon className="w-6 h-6 text-slate-400 ml-3" />
-                                <input className="w-full bg-transparent p-3 text-slate-900 dark:text-white outline-none text-lg font-bold placeholder-slate-400" placeholder="Nombre, número de contrato o IP..." value={filtro} onChange={e => { setFiltro(e.target.value); setExpandedClient(null); }} />
+                                <input className="w-full bg-transparent p-3 text-slate-900 dark:text-white outline-none text-lg font-bold placeholder-slate-400" placeholder="Nombre, número de contrato o IP..." value={filtro} onChange={e => setFiltro(e.target.value)} />
                             </div>
                         </div>
 
                         <div className="space-y-3">
                             {clientesFiltrados.map((group) => {
-                                const isExpanded = expandedClient === group.key;
                                 const overdueCount = group.facturas.filter(invoiceIsOverdue).length;
                                 const totalDebt = group.facturas.reduce(
                                     (sum, invoice) => sum + Number(invoice.saldo_pendiente),
                                     0,
                                 );
-                                const internetInvoices = group.facturas.filter(invoice => invoice.afecta_corte !== false);
-                                const internetDebt = internetInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
                                 return (
                                     <div key={group.key} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white transition-colors dark:border-slate-800 dark:bg-[#1a1f2e]">
                                         <div className={`absolute bottom-0 left-0 top-0 w-1 ${overdueCount > 0 ? 'bg-rose-500' : 'bg-amber-500'}`} />
                                         <button
                                             type="button"
                                             className="flex w-full items-center justify-between gap-3 p-4 pl-6 text-left active:bg-slate-50 dark:active:bg-slate-800/40"
-                                            onClick={() => setExpandedClient(isExpanded ? null : group.key)}
+                                            onClick={() => void handleOpenAllInvoices(group.facturas)}
                                         >
                                             <div className="min-w-0">
                                                 <h3 className="truncate text-base font-black text-slate-900 dark:text-white">{group.cliente.nombre}</h3>
@@ -531,58 +582,9 @@ export default function PanelCobrador() {
                                             <div className="shrink-0 text-right">
                                                 <span className="block text-xl font-black text-emerald-600 dark:text-emerald-400">${totalDebt.toLocaleString('es-MX')}</span>
                                                 <span className="text-[10px] font-bold text-slate-500">{group.facturas.length} factura(s)</span>
-                                                <ChevronDownIcon className={`ml-auto mt-1 h-4 w-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                                <CreditCardIcon className="ml-auto mt-1 h-4 w-4 text-slate-400" />
                                             </div>
                                         </button>
-
-                                        {isExpanded && (
-                                            <div className="space-y-3 border-t border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-[#11151f]">
-                                                {internetInvoices.length > 1 && (
-                                                    <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-500/20 dark:bg-emerald-500/10">
-                                                        <div>
-                                                            <p className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300">Total pendiente de internet</p>
-                                                            <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">${formatMoney(internetDebt)}</p>
-                                                        </div>
-                                                        <button type="button" onClick={() => handleOpenInternetTotal(group.facturas)} className="rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black text-white">
-                                                            Cobrar todo internet
-                                                        </button>
-                                                    </div>
-                                                )}
-                                                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                                    Cada factura permanece separada. Los cargos adicionales no se incluyen en el total de internet.
-                                                </div>
-                                                {group.facturas.map((invoice, index) => {
-                                                    const overdue = invoiceIsOverdue(invoice);
-                                                    const current = invoiceIsCurrent(invoice);
-                                                    const suspended = invoice.afecta_corte !== false && invoice.servicio?.estado === 'suspendido';
-                                                    return (
-                                                        <div
-                                                            key={invoice.id}
-                                                            className={`w-full rounded-xl border p-3 text-left ${overdue ? 'border-rose-200 bg-rose-50 dark:border-rose-500/20 dark:bg-rose-500/10' : 'border-emerald-200 bg-white dark:border-emerald-500/20 dark:bg-emerald-500/10'}`}
-                                                        >
-                                                            <div className="flex items-start justify-between gap-3">
-                                                                <div className="min-w-0">
-                                                                    <div className="flex flex-wrap items-center gap-1.5">
-                                                                        <span className={`rounded px-2 py-0.5 text-[9px] font-black uppercase ${overdue ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'}`}>{suspended ? 'Suspendida' : current ? 'Mes actual' : 'Deuda anterior'}</span>
-                                                                        {invoice.afecta_corte === false && <span className="rounded bg-slate-600 px-2 py-0.5 text-[9px] font-black uppercase text-white">Cargo adicional</span>}
-                                                                        {index === 0 && <span className="text-[9px] font-black uppercase text-rose-700 dark:text-rose-300">Cobrar primero</span>}
-                                                                    </div>
-                                                                    <p className="mt-1 text-sm font-black text-slate-800 dark:text-white">Factura #{invoice.id} · {invoiceConcept(invoice)}</p>
-                                                                    <p className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">{invoice.plan_snapshot || invoice.mes_correspondiente || 'Sin plan'} · {formatDateLong(invoice.periodo_desde)} al {formatDateLong(invoice.periodo_hasta)}</p>
-                                                                    {invoice.afecta_corte !== false && invoice.dias_con_servicio != null && (
-                                                                        <p className="mt-1 text-[10px] font-bold text-slate-500">{invoice.dias_con_servicio} días con servicio{Number(invoice.dias_sin_servicio || 0) > 0 ? ` · ${invoice.dias_sin_servicio} sin servicio` : ''}</p>
-                                                                    )}
-                                                                </div>
-                                                                <div className="shrink-0 text-right">
-                                                                    <span className={`text-lg font-black ${overdue ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-600 dark:text-emerald-400'}`}>${formatMoney(invoice.saldo_pendiente)}</span>
-                                                                    <button type="button" onClick={() => void handleOpenCobrar(invoice)} className="mt-2 block rounded-lg bg-indigo-600 px-3 py-2 text-[10px] font-black uppercase text-white">Cobrar</button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
                                     </div>
                                 );
                             })}
@@ -721,13 +723,19 @@ export default function PanelCobrador() {
 
                                     {/* CONCEPTO A PAGAR */}
                                     <div className="mb-6">
-                                        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2 px-1">Concepto a Pagar</label>
-                                        <div className="w-full bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl p-4 font-bold shadow-sm dark:shadow-lg">
-                                            <p>{bulkInvoices.length > 1 ? 'Total de facturas de internet' : invoiceConcept(selectedFactura)}</p>
-                                            {bulkInvoices.length <= 1 && selectedFactura?.descripcion && <p className="mt-1 text-xs font-normal text-slate-500 dark:text-slate-400">{selectedFactura.descripcion}</p>}
-                                            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{bulkInvoices.length > 1 ? `${bulkInvoices.length} períodos incluidos` : `Factura #${selectedFactura?.id} · Vence el ${formatDateLong(selectedFactura?.fecha_vencimiento)}`}</p>
-                                            <p className="mt-1 text-lg text-emerald-600 dark:text-emerald-400">Total a cobrar: ${formatMoney(formCobro.monto)}</p>
-                                        </div>
+                                        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2 px-1">Comprobante a pagar</label>
+                                        <select
+                                            value={invoiceSelection}
+                                            onChange={(event) => handleInvoiceSelection(event.target.value)}
+                                            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-800 dark:bg-[#11131a] dark:text-white"
+                                        >
+                                            {modalInvoices.length > 1 && online && <option value="all">Todas las facturas — ${formatMoney(modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0))}</option>}
+                                            {modalInvoices.map((invoice) => (
+                                                <option key={invoice.id} value={invoice.id}>
+                                                    {[invoice.servicio?.alias || invoiceConcept(invoice), invoice.servicio?.direccion, invoice.mes_correspondiente || formatDateLong(invoice.periodo_desde)].filter(Boolean).join(' · ')} — ${formatMoney(invoice.saldo_pendiente)}
+                                                </option>
+                                            ))}
+                                        </select>
                                         {bulkInvoices.length <= 1 && (selectedFactura?.conceptos?.length || 0) > 0 && (
                                             <div className="mt-3 space-y-2">
                                                 <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Selecciona qué pagar</p>
@@ -742,14 +750,6 @@ export default function PanelCobrador() {
                                                         <span className="font-black text-slate-900 dark:text-white">${formatMoney(item.saldo_pendiente)}</span>
                                                     </label>
                                                 ))}
-                                            </div>
-                                        )}
-                                        {selectedFactura?.dias_con_servicio != null && (
-                                            <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-[10px] font-bold text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
-                                                <span>Con servicio: {selectedFactura.dias_con_servicio} días</span>
-                                                <span>Sin servicio: {selectedFactura.dias_sin_servicio ?? 0} días</span>
-                                                <span>Ajuste: -${selectedFactura.ajuste_suspension ?? 0}</span>
-                                                <span>Extras: ${selectedFactura.cargos_adicionales_total ?? 0}</span>
                                             </div>
                                         )}
                                     </div>
