@@ -19,6 +19,7 @@ export interface Plantilla {
     dias_antes_emision: number;
     dia_pago: number;
     dias_tolerancia: number;
+    cargo_reconexion: number;
     impuesto: number;
     recordatorio_whatsapp: boolean;
     aviso_factura?: string;
@@ -135,6 +136,9 @@ export default function BillingTemplates() {
                                         <div className="flex items-center gap-2 mt-2">
                                             <span className="text-[10px] font-black text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 transition-colors">
                                                 IVA: {p.impuesto}%
+                                            </span>
+                                            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-500/20 transition-colors">
+                                                Reconexión: ${Number(p.cargo_reconexion || 0).toFixed(2)}
                                             </span>
                                             {p.recordatorio_whatsapp && (
                                                 <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20 transition-colors">

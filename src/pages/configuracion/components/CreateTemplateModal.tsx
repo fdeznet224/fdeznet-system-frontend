@@ -10,6 +10,7 @@ interface FormState {
     dias_antes_emision: number | string;
     dia_pago: number | string;
     dias_tolerancia: number | string;
+    cargo_reconexion: number | string;
     impuesto: number | string;
     recordatorio_whatsapp: boolean;
     aviso_factura: string;
@@ -44,7 +45,8 @@ const DEFAULT_FORM: FormState = {
     nombre: '',
     dias_antes_emision: 5,
     dia_pago: 15,
-    dias_tolerancia: 5,
+    dias_tolerancia: 10,
+    cargo_reconexion: 30,
     impuesto: 0,
     recordatorio_whatsapp: true,
     aviso_factura: 'whatsapp'
@@ -75,6 +77,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                 dias_antes_emision: initialData.dias_antes_emision ?? DEFAULT_FORM.dias_antes_emision,
                 dia_pago: initialData.dia_pago ?? DEFAULT_FORM.dia_pago,
                 dias_tolerancia: initialData.dias_tolerancia ?? DEFAULT_FORM.dias_tolerancia,
+                cargo_reconexion: initialData.cargo_reconexion ?? DEFAULT_FORM.cargo_reconexion,
                 impuesto: initialData.impuesto ?? DEFAULT_FORM.impuesto,
                 recordatorio_whatsapp: initialData.recordatorio_whatsapp ?? DEFAULT_FORM.recordatorio_whatsapp,
                 aviso_factura: initialData.aviso_factura || 'whatsapp'
@@ -98,6 +101,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                 dias_antes_emision: Number(formData.dias_antes_emision || 0),
                 dia_pago: Number(formData.dia_pago || 0),
                 dias_tolerancia: Number(formData.dias_tolerancia || 0),
+                cargo_reconexion: Number(formData.cargo_reconexion || 0),
                 impuesto: Number(formData.impuesto || 0)
             };
             if (initialData?.id) {
@@ -191,6 +195,14 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                                                 </div>
                                                 <span className="text-xs font-black text-slate-400">%</span>
                                             </div>
+                                        </div>
+
+                                        <div className="bg-amber-50 dark:bg-amber-500/10 p-4 rounded-xl border border-amber-200 dark:border-amber-500/20 flex items-center justify-between transition-colors">
+                                            <div>
+                                                <label className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase block">Cargo de reconexión</label>
+                                                <input type="number" min="0" step="0.01" className="bg-transparent text-lg font-black text-slate-900 dark:text-white w-28 focus:outline-none mt-1" value={formData.cargo_reconexion} onChange={e => setFormData({...formData, cargo_reconexion: e.target.value})}/>
+                                            </div>
+                                            <span className="text-xs font-black text-amber-700 dark:text-amber-400">MXN</span>
                                         </div>
 
                                         <label className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-[#1a1f2e] rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer transition-colors">
