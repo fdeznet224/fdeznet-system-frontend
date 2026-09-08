@@ -6,7 +6,7 @@ import { Transition } from '@headlessui/react';
 import { 
     MagnifyingGlassIcon, XMarkIcon, UserIcon, BanknotesIcon, ArrowPathIcon,
     ShieldExclamationIcon, CreditCardIcon, CalendarDaysIcon,
-    CheckCircleIcon, ChevronLeftIcon, ChevronDownIcon, IdentificationIcon, MapPinIcon
+    CheckCircleIcon, ChevronLeftIcon, IdentificationIcon, MapPinIcon
 } from '@heroicons/react/24/outline';
 
 interface Props {
@@ -121,7 +121,6 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
     const [selectedFactura, setSelectedFactura] = useState<FacturaPendiente | null>(null);
     const [facturasSeleccionadas, setFacturasSeleccionadas] = useState<number[]>([]);
     const [montosPorFactura, setMontosPorFactura] = useState<Record<number, string>>({});
-    const [facturasExpandidas, setFacturasExpandidas] = useState<number[]>([]);
     const [loadingDeuda, setLoadingDeuda] = useState(false);
     
     // --- ESTADOS DEL FORMULARIO ---
@@ -239,7 +238,6 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
         setSelectedFactura(null);
         setFacturasSeleccionadas([]);
         setMontosPorFactura({});
-        setFacturasExpandidas([]);
 
         try {
             const res = await client.get<ListadoDeudaResponse>('/finanzas/listado-completo', {
@@ -290,34 +288,25 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
         setSelectedFactura(null);
         setFacturasSeleccionadas([]);
         setMontosPorFactura({});
-        setFacturasExpandidas([]);
         setBusqueda('');
     };
 
-    const toggleFactura = (factura: FacturaPendiente) => {
-        setFacturasSeleccionadas((actual) => (
-            actual.includes(factura.id)
-                ? actual.filter((id) => id !== factura.id)
-                : [...actual, factura.id]
-        ));
+    const seleccionarComprobante = (value: string) => {
+        if (value === 'all') {
+            setFacturasSeleccionadas(facturasPendientes.map((factura) => factura.id));
+            setSelectedFactura(facturasPendientes[0] || null);
+            setModo('pagar');
+            return;
+        }
+        const factura = facturasPendientes.find((item) => item.id === Number(value));
+        if (!factura) return;
+        setFacturasSeleccionadas([factura.id]);
+        setSelectedFactura(factura);
         setMontosPorFactura((actual) => ({
             ...actual,
             [factura.id]: actual[factura.id] || String(factura.saldo_pendiente),
         }));
-    };
-
-    const seleccionarTodas = () => {
-        const todasSeleccionadas = facturasSeleccionadas.length === facturasPendientes.length;
-        setFacturasSeleccionadas(todasSeleccionadas ? [] : facturasPendientes.map((factura) => factura.id));
-    };
-
-    const toggleDetalleFactura = (factura: FacturaPendiente) => {
-        setSelectedFactura(factura);
-        setFacturasExpandidas((actual) => (
-            actual.includes(factura.id)
-                ? actual.filter((id) => id !== factura.id)
-                : [...actual, factura.id]
-        ));
+        setModo('pagar');
     };
 
     // COBRAR
@@ -332,8 +321,8 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
             factura,
             monto: Number(montosPorFactura[factura.id]),
         }));
-        const invalido = pagos.find(({ factura, monto }) => (
-            !Number.isFinite(monto) || monto <= 0 || monto > Number(factura.saldo_pendiente)
+        const invalido = pagos.find(({ monto }) => (
+            !Number.isFinite(monto) || monto <= 0
         ));
         if (invalido) {
             toast.error(`Revisa el importe de la factura #${invalido.factura.id}`);
@@ -554,70 +543,22 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                             </div>
                         ) : (
                             <>
-                                {/* Selección de facturas y abonos por servicio */}
+                                {/* Selector directo de comprobante */}
                                 {facturasPendientes.length > 0 ? (
                                     <div className="mb-5">
-                                        <div className="mb-3 flex items-center justify-between gap-4">
-                                            <label className={labelClass}>Servicios y domicilios</label>
-                                            <button type="button" onClick={seleccionarTodas} className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                                                {facturasSeleccionadas.length === facturasPendientes.length ? 'Quitar todas' : 'Seleccionar todas'}
-                                            </button>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {facturasPendientes.map((factura) => {
-                                                const seleccionada = facturasSeleccionadas.includes(factura.id);
-                                                const expandida = facturasExpandidas.includes(factura.id);
-                                                return (
-                                                    <div key={factura.id} className={classNames(
-                                                        'rounded-[1.35rem] border p-4 transition-all',
-                                                        seleccionada
-                                                            ? 'border-emerald-400 bg-white ring-4 ring-emerald-500/10 dark:bg-[#12141a]'
-                                                            : 'border-slate-200 bg-slate-50 opacity-70 dark:border-slate-800 dark:bg-slate-900/40',
-                                                    )}>
-                                                        <div className="flex items-start gap-3">
-                                                            <input type="checkbox" checked={seleccionada} onChange={() => toggleFactura(factura)} className="mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
-                                                            <button type="button" onClick={() => toggleDetalleFactura(factura)} aria-expanded={expandida} className="min-w-0 flex-1 text-left">
-                                                                <div className="flex items-start justify-between gap-3">
-                                                                    <div className="min-w-0">
-                                                                        <p className="truncate text-sm font-black text-slate-800 dark:text-white">{factura.servicio?.alias || invoiceConcept(factura)}</p>
-                                                                        {factura.servicio?.direccion && <p className="mt-0.5 truncate text-[11px] text-slate-500">{factura.servicio.direccion}</p>}
-                                                                    </div>
-                                                                    <div className="flex shrink-0 items-center gap-2 text-right">
-                                                                        <ChevronDownIcon className={classNames('h-4 w-4 text-slate-400 transition-transform', expandida ? 'rotate-180' : '')} />
-                                                                        <div>
-                                                                        <p className="text-base font-black text-slate-900 dark:text-white">${Number(factura.saldo_pendiente).toFixed(2)}</p>
-                                                                        <span className={classNames('text-[9px] font-black uppercase tracking-wider', invoiceIsOverdue(factura) ? 'text-rose-500' : 'text-indigo-500')}>
-                                                                            {invoiceIsOverdue(factura) ? 'Atrasada' : 'Actual'} · #{factura.id}
-                                                                        </span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </button>
-                                                        </div>
-                                                        {expandida && (
-                                                            <div className="ml-8 mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
-                                                                <p className="mb-1 text-xs font-bold text-slate-700 dark:text-slate-300">{invoiceConcept(factura)}</p>
-                                                                <p className="mb-3 text-[11px] text-slate-500">Vence el {formatDateLong(factura.fecha_vencimiento)}</p>
-                                                                {(Number(factura.cargos_adicionales_total) > 0 || factura.dias_con_servicio != null) && (
-                                                                    <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-[10px] font-bold text-slate-500 dark:bg-slate-900">
-                                                                        {factura.dias_con_servicio != null && <span>Internet: {factura.dias_con_servicio} días</span>}
-                                                                        {Number(factura.cargos_adicionales_total) > 0 && <span>Adicionales: ${Number(factura.cargos_adicionales_total).toFixed(2)}</span>}
-                                                                        {Number(factura.ajuste_suspension) > 0 && <span className="text-blue-600 dark:text-blue-400">Ajuste: -${Number(factura.ajuste_suspension).toFixed(2)}</span>}
-                                                                    </div>
-                                                                )}
-                                                                {seleccionada && <div className="flex items-center justify-between gap-4">
-                                                                <label htmlFor={`monto-${factura.id}`} className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pagar por esta factura</label>
-                                                                <div className="relative w-36">
-                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-emerald-500">$</span>
-                                                                    <input id={`monto-${factura.id}`} type="number" min="0.01" max={Number(factura.saldo_pendiente)} step="0.01" required value={montosPorFactura[factura.id] || ''} onChange={(event) => setMontosPorFactura((actual) => ({ ...actual, [factura.id]: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-7 pr-3 text-right text-sm font-black outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
-                                                                </div>
-                                                                </div>}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                        <label className={labelClass}>Comprobante a pagar</label>
+                                        <select
+                                            value={facturasSeleccionadas.length > 1 ? 'all' : String(facturasSeleccionadas[0] || '')}
+                                            onChange={(event) => seleccionarComprobante(event.target.value)}
+                                            className={`${inputClass} appearance-auto`}
+                                        >
+                                            {facturasPendientes.length > 1 && <option value="all">Todas las facturas — ${facturasPendientes.reduce((total, factura) => total + Number(factura.saldo_pendiente), 0).toFixed(2)}</option>}
+                                            {facturasPendientes.map((factura) => (
+                                                <option key={factura.id} value={factura.id}>
+                                                    {[factura.servicio?.alias || invoiceConcept(factura), factura.servicio?.direccion, factura.mes_correspondiente || formatDateLong(factura.fecha_vencimiento)].filter(Boolean).join(' · ')} — ${Number(factura.saldo_pendiente).toFixed(2)}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                 ) : (
                                     <div className="flex-1 flex flex-col items-center justify-center text-slate-500 bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-10 mb-6 shadow-sm">
@@ -642,14 +583,26 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
 
                                         {modo === 'pagar' ? (
                                             <form onSubmit={handleCobrar} className="flex flex-col flex-1">
-                                                <div className="mb-6 rounded-[1.5rem] bg-slate-900 p-5 text-white shadow-xl dark:bg-white dark:text-slate-900">
-                                                    <div className="flex items-center justify-between gap-4">
-                                                        <div className="text-left">
-                                                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total a cobrar</p>
-                                                            <p className="mt-1 text-xs font-bold opacity-70">{facturasSeleccionadas.length} factura(s) seleccionada(s)</p>
-                                                        </div>
-                                                        <p className="text-3xl font-black">${totalCobro.toFixed(2)}</p>
+                                                <div className="mb-6 rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-[#12141a]">
+                                                    <label className="mb-3 block text-[10px] font-black uppercase tracking-widest text-slate-500">Monto recibido</label>
+                                                    <div className="relative mx-auto w-full max-w-[260px]">
+                                                        <span className="absolute left-0 top-1/2 -translate-y-1/2 text-4xl font-black text-emerald-500">$</span>
+                                                        <input
+                                                            type="number"
+                                                            min="0.01"
+                                                            step="0.01"
+                                                            required
+                                                            readOnly={facturasSeleccionadas.length > 1}
+                                                            value={facturasSeleccionadas.length > 1 ? totalCobro : (selectedFactura ? montosPorFactura[selectedFactura.id] || '' : '')}
+                                                            onChange={(event) => selectedFactura && setMontosPorFactura((actual) => ({ ...actual, [selectedFactura.id]: event.target.value }))}
+                                                            className="w-full border-b-2 border-transparent bg-transparent pb-1 pl-10 text-center text-6xl font-black text-slate-900 outline-none transition-all focus:border-emerald-500 dark:text-white sm:text-7xl"
+                                                        />
                                                     </div>
+                                                    <p className="mt-3 text-[11px] font-semibold text-slate-500">
+                                                        {facturasSeleccionadas.length > 1
+                                                            ? `${facturasSeleccionadas.length} facturas incluidas en el cobro`
+                                                            : 'Puedes editar el monto para registrar un abono o una cantidad mayor.'}
+                                                    </p>
                                                 </div>
 
                                                 <label className={labelClass}>Forma de Pago</label>

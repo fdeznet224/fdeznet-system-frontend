@@ -704,16 +704,21 @@ export default function PanelCobrador() {
                                 <Dialog.Panel className="w-full bg-white dark:bg-[#0b0e14] rounded-none sm:rounded-3xl shadow-2xl p-5 sm:p-8 transition-colors flex flex-col h-[100dvh] sm:h-[92vh] sm:max-w-2xl">
                                     
                                     {/* CABECERA Y TARJETA DEL CLIENTE */}
-                                    <div className="flex justify-between items-center mb-6">
+                                    <div className="flex justify-between items-center mb-4">
                                         <div className="flex items-center gap-3 overflow-hidden">
                                             <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-xl font-bold text-white shrink-0 shadow-lg">
                                                 {selectedFactura?.cliente.nombre.charAt(0).toUpperCase()}
                                             </div>
-                                            <div className="overflow-hidden">
+                                            <div className="min-w-0 overflow-hidden">
                                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
                                                     <IdentificationIcon className="w-3 h-3"/> {selectedFactura?.cliente.cedula || 'S/N'}
                                                 </p>
-                                                <h3 className="font-bold text-slate-900 dark:text-white text-base sm:text-lg truncate leading-none">{selectedFactura?.cliente.nombre}</h3>
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <h3 className="truncate text-base font-bold leading-none text-slate-900 dark:text-white sm:text-lg">{selectedFactura?.cliente.nombre}</h3>
+                                                    <span className={`shrink-0 rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${selectedFactura?.servicio?.estado === 'suspendido' ? 'border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400' : 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400'}`}>
+                                                        {selectedFactura?.servicio?.estado === 'suspendido' ? 'Suspendido' : 'Activo'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                         <button onClick={() => setIsModalOpen(false)} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-white">
@@ -771,11 +776,11 @@ export default function PanelCobrador() {
                                                 
                                                 <div className="mb-6 bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center shadow-sm dark:shadow-lg">
                                                     <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-4">Monto Recibido</label>
-                                                    <div className="relative inline-block w-full max-w-[200px]">
-                                                        <span className="absolute left-0 top-1/2 -translate-y-1/2 text-3xl font-bold text-emerald-500">$</span>
+                                                    <div className="relative inline-block w-full max-w-[260px]">
+                                                        <span className="absolute left-0 top-1/2 -translate-y-1/2 text-4xl font-bold text-emerald-500">$</span>
                                                         <input 
                                                             type="number" step="0.01" required
-                                                            className="bg-transparent text-5xl sm:text-6xl font-black text-slate-900 dark:text-white outline-none w-full text-center pl-8 placeholder-slate-300 dark:placeholder-slate-800 transition-all border-b-2 border-transparent focus:border-emerald-500 pb-1"
+                                                            className="w-full border-b-2 border-transparent bg-transparent pb-1 pl-10 text-center text-6xl font-black text-slate-900 outline-none transition-all placeholder-slate-300 focus:border-emerald-500 dark:text-white dark:placeholder-slate-800 sm:text-7xl"
                                                             placeholder="0.00" value={formCobro.monto || ''} readOnly={bulkInvoices.length > 1} onChange={e => setFormCobro({...formCobro, monto: Number(e.target.value)})}
                                                         />
                                                     </div>
