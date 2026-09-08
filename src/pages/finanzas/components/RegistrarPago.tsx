@@ -6,8 +6,7 @@ import { Transition } from '@headlessui/react';
 import { 
     MagnifyingGlassIcon, XMarkIcon, UserIcon, BanknotesIcon, ArrowPathIcon,
     ShieldExclamationIcon, CreditCardIcon, CalendarDaysIcon,
-    CheckCircleIcon, ChevronLeftIcon, IdentificationIcon, MapPinIcon,
-    DocumentTextIcon
+    CheckCircleIcon, ChevronLeftIcon, IdentificationIcon, MapPinIcon
 } from '@heroicons/react/24/outline';
 
 interface Props {
@@ -37,7 +36,12 @@ interface FacturaPendiente {
     dias_sin_servicio?: number | null;
     ajuste_suspension?: number | string;
     cargos_adicionales_total?: number | string;
-    servicio?: { estado?: string | null } | null;
+    servicio?: {
+        id?: number;
+        estado?: string | null;
+        alias?: string | null;
+        direccion?: string | null;
+    } | null;
     cotizada_reactivacion?: boolean;
 }
 
@@ -115,13 +119,14 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
     const [selectedCliente, setSelectedCliente] = useState<ClienteBusqueda | null>(null);
     const [facturasPendientes, setFacturasPendientes] = useState<FacturaPendiente[]>([]);
     const [selectedFactura, setSelectedFactura] = useState<FacturaPendiente | null>(null);
+    const [facturasSeleccionadas, setFacturasSeleccionadas] = useState<number[]>([]);
+    const [montosPorFactura, setMontosPorFactura] = useState<Record<number, string>>({});
     const [loadingDeuda, setLoadingDeuda] = useState(false);
     
     // --- ESTADOS DEL FORMULARIO ---
     const [modo, setModo] = useState<'pagar' | 'promesa'>('pagar');
     const [metodo, setMetodo] = useState('efectivo');
     const [referencia, setReferencia] = useState('');
-    const [montoPagar, setMontoPagar] = useState<string>(''); 
     const [fechaPromesa, setFechaPromesa] = useState('');
     const [procesando, setProcesando] = useState(false);
     const idempotencyKey = useRef<string | null>(null);
@@ -139,11 +144,9 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Pre-llenar datos al seleccionar factura
+    // La factura activa se conserva para el flujo individual de prórroga.
     useEffect(() => {
         if (selectedFactura) {
-            setMontoPagar(String(selectedFactura.saldo_pendiente));
-            setModo('pagar');
             const d = new Date(); d.setDate(d.getDate() + 3);
             setFechaPromesa(d.toISOString().split('T')[0]);
         }
@@ -182,7 +185,10 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                     && item.id !== actualizada.id
                 )),
             ]);
-            setMontoPagar(String(data.saldo_pendiente));
+            setMontosPorFactura((actual) => ({
+                ...actual,
+                [actualizada.id]: String(data.saldo_pendiente),
+            }));
         }).catch((error: unknown) => {
             if (active) toast.error(getErrorMessage(error, 'No se pudo calcular la reactivación'));
         }).finally(() => {
@@ -230,6 +236,8 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
         setSelectedCliente(cliente);
         setLoadingDeuda(true);
         setSelectedFactura(null);
+        setFacturasSeleccionadas([]);
+        setMontosPorFactura({});
 
         try {
             const res = await client.get<ListadoDeudaResponse>('/finanzas/listado-completo', {
@@ -242,8 +250,31 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                     || left.fecha_vencimiento.localeCompare(right.fecha_vencimiento)
                     || left.id - right.id;
             });
-            setFacturasPendientes(orderedInvoices);
-            if (orderedInvoices.length > 0) setSelectedFactura(orderedInvoices[0]);
+            const invoices = await Promise.all(orderedInvoices.map(async (factura) => {
+                if (factura.servicio?.estado !== 'suspendido') return factura;
+                const { data } = await client.post<ReactivationQuote>(
+                    `/finanzas/facturas/${factura.id}/cotizar-reactivacion`,
+                );
+                return {
+                    ...factura,
+                    id: data.factura_id,
+                    concepto: data.concepto,
+                    fecha_vencimiento: data.fecha_vencimiento,
+                    descripcion: data.descripcion,
+                    saldo_pendiente: data.saldo_pendiente,
+                    dias_con_servicio: data.dias_con_servicio,
+                    dias_sin_servicio: data.dias_sin_servicio,
+                    ajuste_suspension: data.ajuste_suspension,
+                    cargos_adicionales_total: data.cargos_adicionales,
+                    cotizada_reactivacion: true,
+                } satisfies FacturaPendiente;
+            }));
+            setFacturasPendientes(invoices);
+            setFacturasSeleccionadas(invoices.map((factura) => factura.id));
+            setMontosPorFactura(Object.fromEntries(
+                invoices.map((factura) => [factura.id, String(factura.saldo_pendiente)]),
+            ));
+            if (invoices.length > 0) setSelectedFactura(invoices[0]);
         } catch {
             toast.error("Error cargando deuda del cliente"); 
         } finally { 
@@ -255,37 +286,92 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
         setSelectedCliente(null);
         setFacturasPendientes([]);
         setSelectedFactura(null);
+        setFacturasSeleccionadas([]);
+        setMontosPorFactura({});
         setBusqueda('');
+    };
+
+    const toggleFactura = (factura: FacturaPendiente) => {
+        setFacturasSeleccionadas((actual) => (
+            actual.includes(factura.id)
+                ? actual.filter((id) => id !== factura.id)
+                : [...actual, factura.id]
+        ));
+        setMontosPorFactura((actual) => ({
+            ...actual,
+            [factura.id]: actual[factura.id] || String(factura.saldo_pendiente),
+        }));
+    };
+
+    const seleccionarTodas = () => {
+        const todasSeleccionadas = facturasSeleccionadas.length === facturasPendientes.length;
+        setFacturasSeleccionadas(todasSeleccionadas ? [] : facturasPendientes.map((factura) => factura.id));
     };
 
     // COBRAR
     const handleCobrar = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedFactura) return;
+        const seleccionadas = facturasPendientes.filter((factura) => facturasSeleccionadas.includes(factura.id));
+        if (seleccionadas.length === 0) {
+            toast.error('Selecciona al menos una factura');
+            return;
+        }
+        const pagos = seleccionadas.map((factura) => ({
+            factura,
+            monto: Number(montosPorFactura[factura.id]),
+        }));
+        const invalido = pagos.find(({ factura, monto }) => (
+            !Number.isFinite(monto) || monto <= 0 || monto > Number(factura.saldo_pendiente)
+        ));
+        if (invalido) {
+            toast.error(`Revisa el importe de la factura #${invalido.factura.id}`);
+            return;
+        }
+        const parcialConFacturaPosterior = pagos.find(({ factura, monto }, index) => (
+            monto < Number(factura.saldo_pendiente)
+            && factura.servicio?.id != null
+            && pagos.slice(index + 1).some(({ factura: posterior }) => (
+                posterior.servicio?.id === factura.servicio?.id
+            ))
+        ));
+        if (parcialConFacturaPosterior) {
+            toast.error(
+                `Para pagar otro periodo del servicio, primero liquida la factura #${parcialConFacturaPosterior.factura.id}`,
+            );
+            return;
+        }
         setProcesando(true);
-        const t = toast.loading("Procesando pago...");
+        const t = toast.loading(`Procesando ${pagos.length} cobro(s)...`);
+        let procesados = 0;
         try {
             idempotencyKey.current ??= crypto.randomUUID();
-            const res = await client.post<CobroResponse>('/finanzas/cobrar', {
-                factura_id: selectedFactura.id, 
-                metodo_pago: metodo, 
-                monto_recibido: Number(montoPagar), 
-                referencia: referencia || `POS #${selectedFactura.id}`,
-                clave_idempotencia: idempotencyKey.current,
-            });
-            toast.dismiss(t); toast.success("Pago registrado exitosamente");
-            if (res.data.reactivado) toast.success("Servicio Reactivado 🚀");
+            let reactivados = 0;
+            for (const { factura, monto } of pagos) {
+                const res = await client.post<CobroResponse>('/finanzas/cobrar', {
+                    factura_id: factura.id,
+                    metodo_pago: metodo,
+                    monto_recibido: monto,
+                    referencia: referencia || `Cobro agrupado #${idempotencyKey.current}`,
+                    clave_idempotencia: `${idempotencyKey.current}:${factura.id}`,
+                });
+                procesados += 1;
+                if (res.data.reactivado) reactivados += 1;
+            }
+            toast.dismiss(t);
+            toast.success(pagos.length === 1 ? 'Pago registrado exitosamente' : `${pagos.length} pagos registrados`);
+            if (reactivados > 0) toast.success(`${reactivados} servicio(s) reactivado(s) 🚀`);
             idempotencyKey.current = null;
-            if ((res.data.facturas_pendientes_cant || 0) > 0 && selectedCliente) {
-                toast(`${res.data.facturas_pendientes_cant} factura(s) pendiente(s): continúa con el siguiente cobro`);
+            if (selectedCliente) {
                 await seleccionarCliente(selectedCliente);
                 setReferencia('');
-            } else {
-                onSuccess();
             }
+            onSuccess();
         } catch (error: unknown) {
             toast.dismiss(t); 
-            toast.error(getErrorMessage(error, "Error al procesar el pago"));
+            toast.error(procesados > 0
+                ? `Se registraron ${procesados} pago(s); actualizamos los saldos antes de continuar`
+                : getErrorMessage(error, "Error al procesar el pago"));
+            if (selectedCliente) await seleccionarCliente(selectedCliente);
         } finally { 
             setProcesando(false); 
         }
@@ -314,9 +400,12 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
         }
     };
 
-    const deuda = Number(selectedFactura?.saldo_pendiente) || 0;
-    const ingreso = Number(montoPagar) || 0;
-    const saldoAFavor = ingreso > deuda ? ingreso - deuda : 0;
+    const totalDeuda = facturasPendientes.reduce(
+        (total, factura) => total + Number(factura.saldo_pendiente || 0), 0,
+    );
+    const totalCobro = facturasPendientes
+        .filter((factura) => facturasSeleccionadas.includes(factura.id))
+        .reduce((total, factura) => total + (Number(montosPorFactura[factura.id]) || 0), 0);
 
     return (
         <div className="flex flex-col h-[100dvh] sm:h-[85vh] bg-[#f8fafc] dark:bg-[#0a0c10] font-sans overflow-hidden sm:rounded-[2rem] relative transition-colors duration-300">
@@ -456,26 +545,69 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                             </div>
                         ) : (
                             <>
-                                {/* Selector de Factura a Pagar */}
+                                {/* Selección de facturas y abonos por servicio */}
                                 {facturasPendientes.length > 0 ? (
                                     <div className="mb-5">
-                                        <label className={labelClass}>Concepto a Pagar</label>
-                                        <div className="relative">
-                                            <DocumentTextIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500 pointer-events-none"/>
-                                            <select 
-                                                className={`${inputClass} pl-12 cursor-pointer appearance-none`}
-                                                value={selectedFactura?.id || ''}
-                                                onChange={(e) => {
-                                                    const f = facturasPendientes.find(fact => fact.id.toString() === e.target.value);
-                                                    setSelectedFactura(f || null);
-                                                }}
-                                            >
-                                                {facturasPendientes.map(f => (
-                                                    <option key={f.id} value={f.id}>
-                                                        {invoiceIsOverdue(f) ? 'ATRASADA' : 'ACTUAL'} — {invoiceConcept(f)} — ${f.saldo_pendiente}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                        <div className="mb-3 flex items-end justify-between gap-4">
+                                            <div>
+                                                <label className={labelClass}>Facturas pendientes</label>
+                                                <p className="text-xs font-bold text-slate-500">Deuda total: ${totalDeuda.toFixed(2)}</p>
+                                            </div>
+                                            <button type="button" onClick={seleccionarTodas} className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                                                {facturasSeleccionadas.length === facturasPendientes.length ? 'Quitar todas' : 'Seleccionar todas'}
+                                            </button>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {facturasPendientes.map((factura) => {
+                                                const seleccionada = facturasSeleccionadas.includes(factura.id);
+                                                return (
+                                                    <div key={factura.id} className={classNames(
+                                                        'rounded-[1.35rem] border p-4 transition-all',
+                                                        seleccionada
+                                                            ? 'border-emerald-400 bg-white ring-4 ring-emerald-500/10 dark:bg-[#12141a]'
+                                                            : 'border-slate-200 bg-slate-50 opacity-70 dark:border-slate-800 dark:bg-slate-900/40',
+                                                    )}>
+                                                        <div className="flex items-start gap-3">
+                                                            <input type="checkbox" checked={seleccionada} onChange={() => toggleFactura(factura)} className="mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                                                            <button type="button" onClick={() => {
+                                                                setSelectedFactura(factura);
+                                                                if (modo === 'pagar') toggleFactura(factura);
+                                                            }} className="min-w-0 flex-1 text-left">
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div className="min-w-0">
+                                                                        <p className="truncate text-sm font-black text-slate-800 dark:text-white">{factura.servicio?.alias || invoiceConcept(factura)}</p>
+                                                                        {factura.servicio?.direccion && <p className="mt-0.5 truncate text-[11px] text-slate-500">{factura.servicio.direccion}</p>}
+                                                                        {factura.servicio?.alias && <p className="mt-1 line-clamp-2 text-[11px] text-slate-500">{invoiceConcept(factura)}</p>}
+                                                                    </div>
+                                                                    <div className="shrink-0 text-right">
+                                                                        <p className="text-base font-black text-slate-900 dark:text-white">${Number(factura.saldo_pendiente).toFixed(2)}</p>
+                                                                        <span className={classNames('text-[9px] font-black uppercase tracking-wider', invoiceIsOverdue(factura) ? 'text-rose-500' : 'text-indigo-500')}>
+                                                                            {invoiceIsOverdue(factura) ? 'Atrasada' : 'Actual'} · #{factura.id}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="mt-2 text-[11px] text-slate-500">Vence el {formatDateLong(factura.fecha_vencimiento)}</p>
+                                                            </button>
+                                                        </div>
+                                                        {(Number(factura.cargos_adicionales_total) > 0 || factura.dias_con_servicio != null) && (
+                                                            <div className="ml-8 mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-[10px] font-bold text-slate-500 dark:bg-slate-900">
+                                                                {factura.dias_con_servicio != null && <span>Internet: {factura.dias_con_servicio} días</span>}
+                                                                {Number(factura.cargos_adicionales_total) > 0 && <span>Adicionales: ${Number(factura.cargos_adicionales_total).toFixed(2)}</span>}
+                                                                {Number(factura.ajuste_suspension) > 0 && <span className="text-blue-600 dark:text-blue-400">Ajuste: -${Number(factura.ajuste_suspension).toFixed(2)}</span>}
+                                                            </div>
+                                                        )}
+                                                        {seleccionada && (
+                                                            <div className="mt-4 flex items-center justify-between gap-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+                                                                <label htmlFor={`monto-${factura.id}`} className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pagar por esta factura</label>
+                                                                <div className="relative w-36">
+                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-emerald-500">$</span>
+                                                                    <input id={`monto-${factura.id}`} type="number" min="0.01" max={Number(factura.saldo_pendiente)} step="0.01" required value={montosPorFactura[factura.id] || ''} onChange={(event) => setMontosPorFactura((actual) => ({ ...actual, [factura.id]: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-7 pr-3 text-right text-sm font-black outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 ) : (
@@ -514,22 +646,14 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
 
                                         {modo === 'pagar' ? (
                                             <form onSubmit={handleCobrar} className="flex flex-col flex-1">
-                                                {/* Input de Monto Estilo Fintech */}
-                                                <div className="mb-6 bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800/80 rounded-[1.5rem] p-8 text-center shadow-sm">
-                                                    <label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-4">Monto Entregado</label>
-                                                    <div className="relative inline-block w-full max-w-[240px]">
-                                                        <span className="absolute left-0 top-1/2 -translate-y-1/2 text-4xl sm:text-5xl font-black text-emerald-500 pointer-events-none">$</span>
-                                                        <input 
-                                                            type="number" step="0.01" required
-                                                            className="bg-transparent text-5xl sm:text-6xl font-black text-slate-800 dark:text-white outline-none w-full text-center pl-10 placeholder-slate-300 dark:placeholder-slate-800 transition-all border-b-2 border-transparent focus:border-emerald-500 pb-1 appearance-none"
-                                                            placeholder="0.00" value={montoPagar} onChange={e => setMontoPagar(e.target.value)}
-                                                        />
-                                                    </div>
-                                                    {saldoAFavor > 0 && (
-                                                        <div className="mt-5 text-emerald-600 dark:text-emerald-400 text-xs font-black bg-emerald-50 dark:bg-emerald-500/10 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-emerald-200 dark:border-emerald-500/20 animate-in fade-in slide-in-from-bottom-2 uppercase tracking-wide">
-                                                            Abono a favor: +${saldoAFavor.toFixed(2)}
+                                                <div className="mb-6 rounded-[1.5rem] bg-slate-900 p-5 text-white shadow-xl dark:bg-white dark:text-slate-900">
+                                                    <div className="flex items-center justify-between gap-4">
+                                                        <div className="text-left">
+                                                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total a cobrar</p>
+                                                            <p className="mt-1 text-xs font-bold opacity-70">{facturasSeleccionadas.length} factura(s) seleccionada(s)</p>
                                                         </div>
-                                                    )}
+                                                        <p className="text-3xl font-black">${totalCobro.toFixed(2)}</p>
+                                                    </div>
                                                 </div>
 
                                                 <label className={labelClass}>Forma de Pago</label>
@@ -550,8 +674,8 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                                 )}
 
                                                 <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 sm:static bg-white/90 dark:bg-[#0a0c10]/90 sm:bg-transparent backdrop-blur-xl sm:backdrop-blur-none border-t border-slate-200 dark:border-slate-800 sm:border-0 z-10">
-                                                    <button type="submit" disabled={procesando || !montoPagar} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-[1.25rem] shadow-lg shadow-emerald-600/30 active:scale-95 transition-all disabled:opacity-50 text-sm uppercase tracking-widest flex justify-center items-center gap-2">
-                                                        {procesando ? <ArrowPathIcon className="w-5 h-5 animate-spin"/> : <><CheckCircleIcon className="w-5 h-5" /> Confirmar Cobro</>}
+                                                    <button type="submit" disabled={procesando || totalCobro <= 0} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-[1.25rem] shadow-lg shadow-emerald-600/30 active:scale-95 transition-all disabled:opacity-50 text-sm uppercase tracking-widest flex justify-center items-center gap-2">
+                                                        {procesando ? <ArrowPathIcon className="w-5 h-5 animate-spin"/> : <><CheckCircleIcon className="w-5 h-5" /> Cobrar ${totalCobro.toFixed(2)}</>}
                                                     </button>
                                                 </div>
                                             </form>
