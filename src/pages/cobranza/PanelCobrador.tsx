@@ -180,6 +180,7 @@ export default function PanelCobrador() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedFactura, setSelectedFactura] = useState<BillingInvoice | null>(null);
     const [selectedConceptIds, setSelectedConceptIds] = useState<number[]>([]);
+    const [showInvoiceDetails, setShowInvoiceDetails] = useState(false);
     const [modo, setModo] = useState<'pagar' | 'promesa'>('pagar'); // 👈 Nuevo estado para las tabs
     const [formCobro, setFormCobro] = useState<{ metodo: PaymentMethod; referencia: string; monto: number }>({ metodo: 'efectivo', referencia: '', monto: 0 });
     const [fechaPromesa, setFechaPromesa] = useState('');
@@ -245,6 +246,7 @@ export default function PanelCobrador() {
 
     const handleOpenCobrar = async (factura: BillingInvoice) => {
         setBulkInvoices([]);
+        setShowInvoiceDetails(false);
         let facturaActual = factura;
         if (factura.servicio?.estado === 'suspendido') {
             if (!online) {
@@ -314,6 +316,7 @@ export default function PanelCobrador() {
         }
         const total = internetInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
         setBulkInvoices(internetInvoices);
+        setShowInvoiceDetails(false);
         setSelectedFactura(internetInvoices[0]);
         setFormCobro({ metodo: 'efectivo', referencia: '', monto: Number(total.toFixed(2)) });
         setModo('pagar');
@@ -721,14 +724,16 @@ export default function PanelCobrador() {
 
                                     {/* CONCEPTO A PAGAR */}
                                     <div className="mb-6">
-                                        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2 px-1">Concepto a Pagar</label>
-                                        <div className="w-full bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl p-4 font-bold shadow-sm dark:shadow-lg">
-                                            <p>{bulkInvoices.length > 1 ? 'Total de facturas de internet' : invoiceConcept(selectedFactura)}</p>
-                                            {bulkInvoices.length <= 1 && selectedFactura?.descripcion && <p className="mt-1 text-xs font-normal text-slate-500 dark:text-slate-400">{selectedFactura.descripcion}</p>}
-                                            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{bulkInvoices.length > 1 ? `${bulkInvoices.length} períodos incluidos` : `Factura #${selectedFactura?.id} · Vence el ${formatDateLong(selectedFactura?.fecha_vencimiento)}`}</p>
-                                            <p className="mt-1 text-lg text-emerald-600 dark:text-emerald-400">Total a cobrar: ${formatMoney(formCobro.monto)}</p>
-                                        </div>
-                                        {bulkInvoices.length <= 1 && (selectedFactura?.conceptos?.length || 0) > 0 && (
+                                        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2 px-1">Servicio a cobrar</label>
+                                        <button type="button" onClick={() => setShowInvoiceDetails((current) => !current)} aria-expanded={showInvoiceDetails} className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left font-bold text-slate-900 shadow-sm dark:border-slate-800 dark:bg-[#11131a] dark:text-white dark:shadow-lg">
+                                            <div className="min-w-0">
+                                                <p className="truncate">{bulkInvoices.length > 1 ? 'Mensualidades de internet' : selectedFactura?.servicio?.alias || invoiceConcept(selectedFactura)}</p>
+                                                <p className="mt-1 text-xs font-normal text-slate-500 dark:text-slate-400">{bulkInvoices.length > 1 ? `${bulkInvoices.length} períodos incluidos` : `Factura #${selectedFactura?.id} · Vence el ${formatDateLong(selectedFactura?.fecha_vencimiento)}`}</p>
+                                            </div>
+                                            <ChevronDownIcon className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${showInvoiceDetails ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {showInvoiceDetails && bulkInvoices.length <= 1 && selectedFactura?.descripcion && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-500 dark:bg-[#11131a] dark:text-slate-400">{selectedFactura.descripcion}</p>}
+                                        {showInvoiceDetails && bulkInvoices.length <= 1 && (selectedFactura?.conceptos?.length || 0) > 0 && (
                                             <div className="mt-3 space-y-2">
                                                 <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Selecciona qué pagar</p>
                                                 {selectedFactura?.conceptos?.filter(item => Number(item.saldo_pendiente) > 0).map(item => (
@@ -744,7 +749,7 @@ export default function PanelCobrador() {
                                                 ))}
                                             </div>
                                         )}
-                                        {selectedFactura?.dias_con_servicio != null && (
+                                        {showInvoiceDetails && selectedFactura?.dias_con_servicio != null && (
                                             <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-[10px] font-bold text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
                                                 <span>Con servicio: {selectedFactura.dias_con_servicio} días</span>
                                                 <span>Sin servicio: {selectedFactura.dias_sin_servicio ?? 0} días</span>
