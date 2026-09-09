@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "audit:security": "npm audit --audit-level=high",
     "lint": "eslint . --max-warnings 0",
     "lint:strict": "eslint . --max-warnings 0",
     "lint:critical": "eslint src/App.tsx src/components/app src/context/sync src/offline src/pages/admin/bajas/ServiceTerminations.tsx --max-warnings 0",
