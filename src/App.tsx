@@ -53,6 +53,7 @@ const BillingTemplates = lazy(
 const Importar = lazy(() => import('@/pages/configuracion/Importar'));
 const Sistema = lazy(() => import('@/pages/configuracion/Sistema'));
 const MarcaBlanca = lazy(() => import('@/pages/configuracion/MarcaBlanca'));
+const LicenciasVersiones = lazy(() => import('@/pages/configuracion/LicenciasVersiones'));
 const WhatsappPage = lazy(() => import('@/pages/configuracion/WhatsappPage'));
 const CronjobLogs = lazy(() => import('@/pages/configuracion/CronjobLogs'));
 const TunnelsVPN = lazy(() => import('@/pages/configuracion/TunnelsVPN'));
@@ -221,6 +222,7 @@ function App() {
                 {/* Configuración Principal */}
                 <Route path="/admin/configuracion" element={protectedPage(<Configuracion />, ['admin'])} />
                 <Route path="/admin/configuracion/marca" element={protectedPage(<MarcaBlanca />, ['admin'])} />
+                <Route path="/admin/configuracion/licencias" element={protectedPage(<LicenciasVersiones />, ['admin'])} />
                 <Route path="/admin/mensajes" element={protectedPage(<MensajesCRM />, ['admin'])} />
                 <Route path="/admin/whatsapp/salidas" element={protectedPage(<WhatsAppOutbox />, ['admin', 'supervisor'])} />
                 <Route path="/admin/whatsapp/comprobantes" element={protectedPage(<PaymentReviewInbox />, ['admin', 'supervisor'])} />

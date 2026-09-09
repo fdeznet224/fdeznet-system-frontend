@@ -4,7 +4,7 @@ import {
     MapPinIcon, ChatBubbleLeftRightIcon, ArrowUpTrayIcon, 
     UsersIcon, AdjustmentsHorizontalIcon, KeyIcon, 
     DocumentTextIcon, Cog6ToothIcon, QrCodeIcon,
-    CommandLineIcon, ShieldCheckIcon, PaintBrushIcon
+    CommandLineIcon, ShieldCheckIcon, PaintBrushIcon, CloudArrowUpIcon
 } from '@heroicons/react/24/outline';
 
 export default function Configuracion() {
@@ -18,6 +18,14 @@ export default function Configuracion() {
             color: "text-blue-500",
             bg: "bg-blue-500/10",
             path: "/admin/configuracion/marca"
+        },
+        {
+            titulo: "Licencias y versiones",
+            descripcion: "Registra instalaciones, revisa versiones y envía avisos de actualización.",
+            icon: CloudArrowUpIcon,
+            color: "text-cyan-500",
+            bg: "bg-cyan-500/10",
+            path: "/admin/configuracion/licencias"
         },
         {
             titulo: "Conexión WhatsApp",
