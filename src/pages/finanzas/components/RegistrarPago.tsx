@@ -53,6 +53,8 @@ interface ReactivationQuote {
     factura_id: number;
     concepto?: string | null;
     fecha_vencimiento: string;
+    periodo_desde?: string | null;
+    periodo_hasta?: string | null;
     descripcion: string;
     dias_con_servicio: number;
     dias_sin_servicio: number;
@@ -256,16 +258,20 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                     || left.fecha_vencimiento.localeCompare(right.fecha_vencimiento)
                     || left.id - right.id;
             });
-            const invoices = await Promise.all(orderedInvoices.map(async (factura) => {
-                if (factura.servicio?.estado !== 'suspendido') return factura;
-                const { data } = await client.post<ReactivationQuote>(
-                    `/finanzas/facturas/${factura.id}/cotizar-reactivacion`,
-                );
-                return {
+            const invoices: FacturaPendiente[] = [];
+            for (const factura of orderedInvoices) {
+                if (factura.servicio?.estado !== 'suspendido') {
+                    invoices.push(factura);
+                    continue;
+                }
+                const { data } = await client.post<ReactivationQuote>(`/finanzas/facturas/${factura.id}/cotizar-reactivacion`);
+                const actualizada = {
                     ...factura,
                     id: data.factura_id,
                     concepto: data.concepto,
                     fecha_vencimiento: data.fecha_vencimiento,
+                    periodo_desde: data.periodo_desde,
+                    periodo_hasta: data.periodo_hasta,
                     descripcion: data.descripcion,
                     saldo_pendiente: data.saldo_pendiente,
                     dias_con_servicio: data.dias_con_servicio,
@@ -274,7 +280,8 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                     cargos_adicionales_total: data.cargos_adicionales,
                     cotizada_reactivacion: true,
                 } satisfies FacturaPendiente;
-            }));
+                if (Number(actualizada.saldo_pendiente) > 0) invoices.push(actualizada);
+            }
             setFacturasPendientes(invoices);
             setFacturasSeleccionadas(invoices.map((factura) => factura.id));
             setMontosPorFactura(Object.fromEntries(

@@ -70,6 +70,8 @@ interface ReactivationQuote {
     factura_id: number;
     concepto?: string | null;
     fecha_vencimiento: string;
+    periodo_desde?: string | null;
+    periodo_hasta?: string | null;
     descripcion: string;
     dias_con_servicio: number;
     dias_sin_servicio: number;
@@ -329,16 +331,20 @@ export default function PanelCobrador() {
         }
         const toastId = toast.loading('Preparando facturas…');
         try {
-            const prepared = await Promise.all(orderedInvoices.map(async (invoice) => {
-                if (invoice.servicio?.estado !== 'suspendido') return invoice;
-                const { data } = await client.post<ReactivationQuote>(
-                    `/finanzas/facturas/${invoice.id}/cotizar-reactivacion`,
-                );
-                return {
+            const prepared: BillingInvoice[] = [];
+            for (const invoice of orderedInvoices) {
+                if (invoice.servicio?.estado !== 'suspendido') {
+                    prepared.push(invoice);
+                    continue;
+                }
+                const { data } = await client.post<ReactivationQuote>(`/finanzas/facturas/${invoice.id}/cotizar-reactivacion`);
+                const actualizada = {
                     ...invoice,
                     id: data.factura_id,
                     concepto: data.concepto,
                     fecha_vencimiento: data.fecha_vencimiento,
+                    periodo_desde: data.periodo_desde,
+                    periodo_hasta: data.periodo_hasta,
                     descripcion: data.descripcion,
                     saldo_pendiente: Number(data.saldo_pendiente),
                     dias_con_servicio: data.dias_con_servicio,
@@ -346,7 +352,13 @@ export default function PanelCobrador() {
                     ajuste_suspension: Number(data.ajuste_suspension),
                     cargos_adicionales_total: Number(data.cargos_adicionales),
                 };
-            }));
+                if (Number(actualizada.saldo_pendiente) > 0) prepared.push(actualizada);
+            }
+            if (prepared.length === 0) {
+                toast.success('El cliente no tiene facturas pendientes', { id: toastId });
+                void fetchData();
+                return;
+            }
             const total = prepared.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
             setModalInvoices(prepared);
             setBulkInvoices(prepared);
