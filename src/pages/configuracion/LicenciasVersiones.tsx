@@ -7,6 +7,7 @@ import {
   CheckCircleIcon,
   ClipboardDocumentIcon,
   CloudArrowUpIcon,
+  CircleStackIcon,
   CommandLineIcon,
   KeyIcon,
   PlusIcon,
@@ -41,6 +42,11 @@ interface Installation {
   notas_actualizacion: string | null;
   ultima_conexion: string | null;
   creada_en: string;
+  actualizacion_automatica: boolean;
+  actualizacion_estado: string;
+  actualizacion_mensaje: string | null;
+  actualizacion_fecha: string | null;
+  ultimo_respaldo: string | null;
 }
 
 interface InstallCommand extends Installation {
@@ -49,7 +55,9 @@ interface InstallCommand extends Installation {
 }
 interface InstallationCreated extends InstallCommand { licencia: string; }
 interface BootstrapToken { token_instalacion: string; token_expira: string; }
-interface Draft { estado: string; version_objetivo: string; notas_actualizacion: string; }
+interface Draft { estado: string; version_objetivo: string; notas_actualizacion: string; actualizacion_automatica: boolean; }
+interface Release { id: number; version: string; backend_commit: string; frontend_commit: string; notas: string | null; creada_en: string; }
+interface Maintenance { estado: string; mensaje: string; fecha: string | null; version: string | null; respaldo: string | null; actualizacion_automatica: boolean; respaldo_automatico: boolean; }
 
 const card = 'rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900';
 const input = 'w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
@@ -58,10 +66,13 @@ export default function LicenciasVersiones() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<LicenseStatus | null>(null);
   const [installations, setInstallations] = useState<Installation[]>([]);
+  const [releases, setReleases] = useState<Release[]>([]);
+  const [maintenance, setMaintenance] = useState<Maintenance | null>(null);
   const [isCentral, setIsCentral] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [showRelease, setShowRelease] = useState(false);
   const [installCommand, setInstallCommand] = useState<InstallCommand | null>(null);
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
 
@@ -70,15 +81,20 @@ export default function LicenciasVersiones() {
     try {
       const { data } = await client.get<LicenseStatus>('/configuracion/licencia');
       setStatus(data);
+      const maintenanceResponse = await client.get<Maintenance>('/configuracion/mantenimiento');
+      setMaintenance(maintenanceResponse.data);
     } catch { toast.error('No se pudo consultar la licencia local'); }
     try {
       const { data } = await client.get<Installation[]>('/control/instalaciones');
       setInstallations(data);
+      const releaseResponse = await client.get<Release[]>('/control/versiones');
+      setReleases(releaseResponse.data);
       setIsCentral(true);
       setDrafts(Object.fromEntries(data.map((item) => [item.id, {
         estado: item.estado,
         version_objetivo: item.version_objetivo || '',
         notas_actualizacion: item.notas_actualizacion || '',
+        actualizacion_automatica: item.actualizacion_automatica,
       }])));
     } catch { setIsCentral(false); }
     setLoading(false);
@@ -103,10 +119,19 @@ export default function LicenciasVersiones() {
         estado: draft.estado,
         version_objetivo: draft.version_objetivo || null,
         notas_actualizacion: draft.notas_actualizacion || null,
+        actualizacion_automatica: draft.actualizacion_automatica,
       });
       toast.success('Instalación actualizada');
       await load();
     } catch { toast.error('No se pudo actualizar la instalación'); }
+  };
+
+  const runMaintenance = async (action: 'respaldo' | 'actualizar') => {
+    try {
+      await client.post(`/configuracion/mantenimiento/${action}`);
+      toast.success(action === 'respaldo' ? 'Respaldo iniciado' : 'Revisión iniciada');
+      window.setTimeout(() => void load(), 2500);
+    } catch { toast.error('No se pudo iniciar la tarea'); }
   };
 
   const regenerateCommand = async (item: Installation) => {
@@ -123,7 +148,7 @@ export default function LicenciasVersiones() {
         <h1 className="flex items-center gap-2 text-xl font-black text-slate-900 dark:text-white sm:text-2xl"><ServerStackIcon className="h-6 w-6 text-blue-500" /> Licencias y versiones</h1>
         <p className="text-xs text-slate-500 sm:text-sm">Controla esta VPS y las instalaciones vendidas.</p>
       </div>
-      {isCentral && <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-black text-white sm:px-4 sm:text-sm"><PlusIcon className="h-5 w-5" /><span className="hidden sm:inline">Nueva instalación</span></button>}
+      {isCentral && <div className="flex gap-2"><button onClick={() => setShowRelease(true)} className="rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-slate-700 dark:border-slate-700 dark:text-slate-200">Publicar versión</button><button onClick={() => setShowCreate(true)} className="flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-black text-white sm:px-4 sm:text-sm"><PlusIcon className="h-5 w-5" /><span className="hidden sm:inline">Nueva instalación</span></button></div>}
     </div>
 
     {loading ? <div className="py-20 text-center text-sm font-bold text-slate-500">Cargando control de versiones…</div> : status && <section className={card}>
@@ -138,20 +163,23 @@ export default function LicenciasVersiones() {
         <button disabled={checking || !status.configurada} onClick={() => void verify()} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"><ArrowPathIcon className={`h-5 w-5 ${checking ? 'animate-spin' : ''}`} /> Verificar ahora</button>
       </div>
       {!status.configurada && <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">Para activar esta VPS agrega en su archivo <code>.env</code> las variables <strong>FDEZNET_INSTALLATION_ID</strong> y <strong>FDEZNET_LICENSE_KEY</strong>.</div>}
+      {maintenance && <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-950 sm:grid-cols-[1fr_auto]"><div><p className="text-sm font-black text-slate-800 dark:text-slate-100">Mantenimiento: {maintenance.estado.replace('_', ' ')}</p><p className="text-xs text-slate-500">{maintenance.mensaje} · {formatDate(maintenance.fecha)}</p><p className="mt-1 text-[10px] font-bold uppercase text-slate-400">Respaldo diario {maintenance.respaldo_automatico ? 'activo' : 'inactivo'} · Revisión automática {maintenance.actualizacion_automatica ? 'activa' : 'inactiva'}</p></div><div className="flex gap-2"><button onClick={() => void runMaintenance('respaldo')} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black dark:border-slate-700"><CircleStackIcon className="h-4 w-4" /> Respaldar</button><button onClick={() => void runMaintenance('actualizar')} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Revisar actualización</button></div></div>}
     </section>}
 
     {isCentral && <section className="space-y-4">
       <div className="flex items-end justify-between"><div><h2 className="text-lg font-black text-slate-900 dark:text-white">Instalaciones registradas</h2><p className="text-xs text-slate-500">{installations.length} ISP registrados</p></div></div>
       {installations.length === 0 ? <div className={`${card} py-12 text-center text-sm text-slate-500`}>Crea la primera instalación para generar sus credenciales.</div> : <div className="grid gap-4 lg:grid-cols-2">
         {installations.map((item) => {
-          const draft = drafts[item.id] || { estado: item.estado, version_objetivo: '', notas_actualizacion: '' };
+          const draft = drafts[item.id] || { estado: item.estado, version_objetivo: '', notas_actualizacion: '', actualizacion_automatica: false };
           return <article key={item.id} className={card}>
             <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-base font-black text-slate-900 dark:text-white">{item.nombre_isp}</h3><p className="truncate text-xs text-slate-500">{item.dominio || item.instalacion_id}</p></div><StatusBadge value={item.estado} /></div>
-            <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950"><Metric label="Versión instalada" value={item.version_actual ? `v${item.version_actual}` : 'Sin reporte'} /><Metric label="Última conexión" value={formatDate(item.ultima_conexion)} /></div>
+            <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950"><Metric label="Versión instalada" value={item.version_actual ? `v${item.version_actual}` : 'Sin reporte'} /><Metric label="Última conexión" value={formatDate(item.ultima_conexion)} /><Metric label="Actualización" value={item.actualizacion_estado.replace('_', ' ')} /><Metric label="Último respaldo" value={item.ultimo_respaldo || 'Sin reporte'} /></div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Estado</span><select className={input} value={draft.estado} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, estado: e.target.value } }))}><option value="activa">Activa</option><option value="suspendida">Suspendida</option><option value="revocada">Revocada</option></select></label>
-              <label><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Enviar versión</span><input className={input} placeholder="2.4.0" value={draft.version_objetivo} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, version_objetivo: e.target.value } }))} /></label>
+              <label><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Enviar versión</span><select className={input} value={draft.version_objetivo} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, version_objetivo: e.target.value } }))}><option value="">Sin versión asignada</option>{releases.map((release) => <option key={release.id} value={release.version}>v{release.version}</option>)}</select></label>
             </div>
+            <label className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300"><input type="checkbox" className="h-4 w-4" checked={draft.actualizacion_automatica} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, actualizacion_automatica: e.target.checked } }))} /> Instalar automáticamente después del respaldo y las verificaciones</label>
+            {item.actualizacion_mensaje && <p className="mt-2 text-xs text-slate-500">{item.actualizacion_mensaje} · {formatDate(item.actualizacion_fecha)}</p>}
             <label className="mt-3 block"><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Nota de actualización</span><textarea rows={2} className={input} placeholder="Cambios incluidos…" value={draft.notas_actualizacion} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, notas_actualizacion: e.target.value } }))} /></label>
             <div className="mt-3 grid gap-2 sm:grid-cols-2"><button disabled={item.estado !== 'activa'} onClick={() => void regenerateCommand(item)} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"><CommandLineIcon className="h-5 w-5" /> Nuevo comando</button><button onClick={() => void saveInstallation(item)} className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white dark:bg-blue-600"><CloudArrowUpIcon className="h-5 w-5" /> Guardar y enviar aviso</button></div>
           </article>;
@@ -160,8 +188,21 @@ export default function LicenciasVersiones() {
     </section>}
 
     {showCreate && <CreateDialog onClose={() => setShowCreate(false)} onCreated={(created) => { setInstallCommand(created); setShowCreate(false); void load(); }} />}
+    {showRelease && <ReleaseDialog onClose={() => setShowRelease(false)} onCreated={() => { setShowRelease(false); void load(); }} />}
     {installCommand && <CredentialDialog installation={installCommand} onClose={() => setInstallCommand(null)} />}
   </div>;
+}
+
+function ReleaseDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [form, setForm] = useState({ version: '', backend_commit: '', frontend_commit: '', notas: '' });
+  const [saving, setSaving] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); setSaving(true);
+    try { await client.post('/control/versiones', { ...form, notas: form.notas || null }); toast.success('Versión publicada'); onCreated(); }
+    catch { toast.error('No se pudo publicar; verifica versión y commits'); }
+    finally { setSaving(false); }
+  };
+  return <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:items-center"><form onSubmit={(e) => void submit(e)} className="w-full max-w-xl space-y-4 rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><h2 className="text-xl font-black text-slate-900 dark:text-white">Publicar versión segura</h2><p className="text-xs text-slate-500">Los dos commits deben ser SHA completos de 40 caracteres. Cada VPS verificará la firma antes de instalarlos.</p>{(['version', 'backend_commit', 'frontend_commit'] as const).map((field) => <label key={field} className="block text-xs font-bold text-slate-500">{field === 'version' ? 'Versión' : field === 'backend_commit' ? 'Commit backend' : 'Commit frontend'}<input required className={`${input} mt-1 font-mono`} placeholder={field === 'version' ? '2.5.0' : '40 caracteres'} value={form[field]} onChange={(e) => setForm({ ...form, [field]: e.target.value.trim() })} /></label>)}<label className="block text-xs font-bold text-slate-500">Notas<textarea className={`${input} mt-1`} rows={3} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} /></label><div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-black dark:border-slate-700">Cancelar</button><button disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-black text-white">{saving ? 'Publicando…' : 'Publicar'}</button></div></form></div>;
 }
 
 function CreateDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (value: InstallationCreated) => void }) {
