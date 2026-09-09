@@ -17,6 +17,7 @@ import {
 
 import ChatModal from '@/components/chat/ChatModal';
 import { useSync } from '@/context/sync/context';
+import { useBrand } from '@/context/brand/useBrand';
 import { cachedRequest, notifySessionChanged } from '../../offline/db';
 import { submitOperation } from '../../offline/sync';
 
@@ -72,6 +73,7 @@ function apiErrorMessage(error: unknown, fallback: string) {
 export default function TechDashboard() {
     const navigate = useNavigate();
     const { online } = useSync();
+    const { brand } = useBrand();
     
     const [activeTab, setActiveTab] = useState<'inicio' | 'agenda' | 'retiros'>('inicio');
     
@@ -206,7 +208,7 @@ export default function TechDashboard() {
                         {user?.usuario?.charAt(0) || 'T'}
                     </div>
                     <div>
-                        <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest transition-colors">FdezNet Tech</p>
+                        <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest transition-colors">{brand.empresa_nombre} Tech</p>
                         <h1 className="text-sm font-black text-slate-800 dark:text-white leading-tight transition-colors">{user?.usuario}</h1>
                     </div>
                 </div>

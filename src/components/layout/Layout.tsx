@@ -23,6 +23,7 @@ import ClientDetailModal from '@/pages/clientes/components/ClientDetailModal';
 import { useWhatsApp } from '@/context/whatsapp/context';
 import { notifySessionChanged } from '@/offline/db';
 import type { AppRole } from '@/utils/roles';
+import { useBrand } from '@/context/brand/useBrand';
 
 interface ClienteBusquedaApi {
     id: number;
@@ -73,6 +74,7 @@ function getSessionUser(raw: string | null): SessionUser {
 }
 
 export default function Layout() {
+    const { brand } = useBrand();
     const navigate = useNavigate();
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -240,7 +242,7 @@ export default function Layout() {
         }))
         .filter(item => !item.submenu || item.submenu.length > 0);
 
-    const pageTitle = getPageTitle(location.pathname);
+    const pageTitle = getPageTitle(location.pathname, brand.empresa_nombre);
     return (
         /* ✅ ADAPTADO: Las clases cambian dinámicamente con dark:bg-slate-950 bg-slate-50 text-slate-900 dark:text-slate-100 */
         <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-300">
@@ -250,8 +252,8 @@ export default function Layout() {
             <aside className={`fixed inset-y-0 left-0 z-30 w-[min(88vw,19rem)] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl transform transition-transform duration-300 ease-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:relative lg:w-64 lg:translate-x-0 flex flex-col`}>
                 <div className="h-20 flex items-center justify-center border-b border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-950/50">
                     <div className="flex items-center space-x-2">
-                        <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20"><SignalIcon className="h-5 w-5 text-white" /></div>
-                        <h1 className="text-2xl font-black tracking-wider text-slate-900 dark:text-white">FDEZ<span className="text-blue-500">NET</span></h1>
+                        <div className="h-8 w-8 rounded-lg flex items-center justify-center overflow-hidden shadow-lg shadow-blue-500/20" style={{ backgroundColor: brand.color_primario }}>{brand.logo_url ? <img src={brand.logo_url} alt={brand.empresa_nombre} className="h-full w-full object-contain" /> : <SignalIcon className="h-5 w-5 text-white" />}</div>
+                        <h1 className="truncate text-xl font-black tracking-wide text-slate-900 dark:text-white">{brand.empresa_nombre}</h1>
                     </div>
                 </div>
 
@@ -309,7 +311,7 @@ export default function Layout() {
                             {sidebarOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
                         </button>
                         <div className="min-w-0 lg:hidden">
-                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">FDEZNET</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">{brand.empresa_nombre}</p>
                             <h2 className="truncate text-sm font-black text-slate-900 dark:text-white">{pageTitle}</h2>
                         </div>
                     </div>
@@ -539,7 +541,7 @@ const allMenus: MenuItem[] = [
     },
 ];
 
-function getPageTitle(pathname: string): string {
+function getPageTitle(pathname: string, fallback: string): string {
     const routes: Array<[string, string]> = [
         ['/admin/dashboard', 'Inicio'],
         ['/admin/clientes', 'Clientes'],
@@ -553,5 +555,5 @@ function getPageTitle(pathname: string): string {
         ['/admin/whatsapp/comprobantes', 'Comprobantes por revisar'],
         ['/admin/configuracion', 'Configuración'],
     ];
-    return routes.find(([route]) => pathname.startsWith(route))?.[1] || 'FDEZNET';
+    return routes.find(([route]) => pathname.startsWith(route))?.[1] || fallback;
 }

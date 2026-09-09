@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/solid';
 
 import { BuildingStorefrontIcon } from '@heroicons/react/24/outline';
+import { useBrand } from '@/context/brand/useBrand';
 
 type MoneyValue = number | string;
 type HeroIcon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -56,6 +57,7 @@ interface TechnicalRowProps {
 
 export default function PortalCliente() {
     const { cedula } = useParams(); 
+    const { brand } = useBrand();
     
     const [data, setData] = useState<ClientPortalData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -237,7 +239,7 @@ export default function PortalCliente() {
             </div>
 
             <p className="mt-8 text-[10px] text-slate-500 dark:text-slate-600 text-center font-black uppercase tracking-widest">
-                FdezNet Telecomunicaciones • Uso Técnico Exclusivo
+                {brand.empresa_nombre} • Uso Técnico Exclusivo
             </p>
         </div>
     );

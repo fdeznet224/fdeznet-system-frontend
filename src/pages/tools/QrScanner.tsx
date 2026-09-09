@@ -8,6 +8,7 @@ import {
     VideoCameraSlashIcon, UserIcon
 } from '@heroicons/react/24/outline';
 import client from '../../api/axios';
+import { useBrand } from '@/context/brand/useBrand';
 
 interface ClientLookupResult {
     id: number;
@@ -22,6 +23,7 @@ const getErrorName = (error: unknown) => {
 
 export default function QrScanner() {
     const navigate = useNavigate();
+    const { brand } = useBrand();
 
     const [paused, setPaused] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -103,7 +105,7 @@ export default function QrScanner() {
                     <UserIcon className="w-6 h-6 text-emerald-400" />
                     <div>
                         <h2 className="text-base md:text-lg font-black text-white tracking-tight">Buscar Cliente</h2>
-                        <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest -mt-0.5">FdezNet Tech</p>
+                        <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest -mt-0.5">{brand.empresa_nombre} Tech</p>
                     </div>
                 </div>
 

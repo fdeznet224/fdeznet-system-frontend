@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
+import { useBrand } from '@/context/brand/useBrand';
 import {
     ArrowPathIcon,
     SignalIcon
@@ -57,6 +58,7 @@ const crearIcono = (estadoServicio: string, estadoTecnico: string) => {
 };
 
 export default function MapaClientes() {
+    const { brand } = useBrand();
     const [clientesMap, setClientesMap] = useState<MapClient[]>([]);
     const [statusTecnico, setStatusTecnico] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
@@ -135,7 +137,7 @@ export default function MapaClientes() {
     if (loading) return (
         <div className="flex h-[calc(100vh-100px)] flex-col items-center justify-center bg-slate-900 text-slate-400">
             <ArrowPathIcon className="w-10 h-10 animate-spin text-blue-500 mb-4" />
-            <p className="animate-pulse">Sincronizando red FdezNet...</p>
+            <p className="animate-pulse">Sincronizando red {brand.empresa_nombre}...</p>
         </div>
     );
 

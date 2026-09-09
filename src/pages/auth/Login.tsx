@@ -4,6 +4,7 @@ import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { notifySessionChanged } from '@/offline/db';
+import { useBrand } from '@/context/brand/useBrand';
 import {
     defaultPathForRole,
     type AppRole,
@@ -28,6 +29,7 @@ interface LoginResponse {
 }
 
 export default function Login() {
+    const { brand } = useBrand();
     const [username, setUsername] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -84,11 +86,11 @@ export default function Login() {
                 
                 {/* LOGO Y TÍTULO */}
                 <div className="text-center mb-8">
-                    <div className="mx-auto h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 dark:shadow-blue-500/30 mb-6 transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                        <SignalIcon className="h-8 w-8 text-white" />
+                    <div className="mx-auto h-16 w-16 rounded-2xl flex items-center justify-center overflow-hidden shadow-lg shadow-blue-500/20 dark:shadow-blue-500/30 mb-6 transform rotate-3 hover:rotate-0 transition-transform duration-300" style={{ background: `linear-gradient(135deg, ${brand.color_primario}, ${brand.color_secundario})` }}>
+                        {brand.logo_url ? <img src={brand.logo_url} alt={brand.empresa_nombre} className="h-full w-full object-contain" /> : <SignalIcon className="h-8 w-8 text-white" />}
                     </div>
                     <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white mb-2 transition-colors">
-                        FDEZ<span className="text-blue-500">NET</span>
+                        {brand.empresa_nombre}
                     </h2>
                     <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest transition-colors">
                         Portal de Administración

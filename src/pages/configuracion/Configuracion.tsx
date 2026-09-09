@@ -4,13 +4,21 @@ import {
     MapPinIcon, ChatBubbleLeftRightIcon, ArrowUpTrayIcon, 
     UsersIcon, AdjustmentsHorizontalIcon, KeyIcon, 
     DocumentTextIcon, Cog6ToothIcon, QrCodeIcon,
-    CommandLineIcon, ShieldCheckIcon
+    CommandLineIcon, ShieldCheckIcon, PaintBrushIcon
 } from '@heroicons/react/24/outline';
 
 export default function Configuracion() {
     const navigate = useNavigate();
 
     const herramientas = [
+        {
+            titulo: "Marca blanca",
+            descripcion: "Configura nombre, logotipo, colores y datos comerciales.",
+            icon: PaintBrushIcon,
+            color: "text-blue-500",
+            bg: "bg-blue-500/10",
+            path: "/admin/configuracion/marca"
+        },
         {
             titulo: "Conexión WhatsApp",
             descripcion: "Escanear QR, ver estado y configurar velocidad de envío.",
