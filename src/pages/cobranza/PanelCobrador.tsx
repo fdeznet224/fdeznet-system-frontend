@@ -128,6 +128,14 @@ function invoiceMonth(invoice?: BillingInvoice | null) {
     return match ? `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}` : value;
 }
 
+function invoiceLabel(invoice: BillingInvoice) {
+    const period = invoice.periodo_desde && invoice.periodo_hasta
+        ? `${formatDateLong(invoice.periodo_desde)} al ${formatDateLong(invoice.periodo_hasta)}`
+        : invoiceMonth(invoice);
+    const kind = invoice.es_prorrateada || invoice.tipo_factura === 'prorrateo' ? 'Prorrateo' : 'Mensual';
+    return `Folio #${invoice.id} · ${invoiceMonth(invoice)} · ${period} · ${kind}`;
+}
+
 function invoiceConcept(invoice?: BillingInvoice | null) {
     if (!invoice) return 'Factura';
     if (invoice.afecta_corte === false) return invoice.concepto || 'Cargo adicional';
@@ -721,7 +729,7 @@ export default function PanelCobrador() {
                                                     <IdentificationIcon className="w-3 h-3"/> {selectedFactura?.cliente.cedula || 'S/N'}
                                                 </p>
                                                 <div className="flex min-w-0 items-center gap-2">
-                                                    <h3 className="truncate text-base font-bold leading-none text-slate-900 dark:text-white sm:text-lg">{selectedFactura?.cliente.nombre}</h3>
+                                                    <h3 className="min-w-0 break-words text-base font-bold leading-tight text-slate-900 dark:text-white sm:text-lg">{selectedFactura?.cliente.nombre}</h3>
                                                     <span className={`shrink-0 rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${selectedFactura?.servicio?.estado === 'suspendido' ? 'border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400' : 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400'}`}>
                                                         {selectedFactura?.servicio?.estado === 'suspendido' ? 'Suspendido' : 'Activo'}
                                                     </span>
@@ -744,10 +752,13 @@ export default function PanelCobrador() {
                                             {modalInvoices.length > 1 && online && <option value="all">Todas las facturas — ${formatMoney(modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0))}</option>}
                                             {modalInvoices.map((invoice) => (
                                                 <option key={invoice.id} value={invoice.id}>
-                                                    {[invoice.servicio?.alias || invoiceConcept(invoice), invoice.servicio?.direccion, invoiceMonth(invoice)].filter(Boolean).join(' · ')} — ${formatMoney(invoice.saldo_pendiente)}
+                                                    {invoiceLabel(invoice)} — ${formatMoney(invoice.saldo_pendiente)}
                                                 </option>
                                             ))}
                                         </select>
+                                        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+                                            Debe {modalInvoices.length} factura{modalInvoices.length === 1 ? '' : 's'} · ${formatMoney(modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0))}
+                                        </div>
                                         {selectedFactura && (
                                             <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[10px] dark:border-slate-800 dark:bg-slate-900/60">
                                                 <span><b className="mr-1 uppercase tracking-wider text-slate-400">Mes:</b>{invoiceMonth(selectedFactura)}</span>
