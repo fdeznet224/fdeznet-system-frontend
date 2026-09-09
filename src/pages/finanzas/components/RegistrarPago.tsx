@@ -85,6 +85,13 @@ function invoiceConcept(invoice?: FacturaPendiente | null) {
         || `Factura #${invoice?.id || ''}`;
 }
 
+function invoiceMonth(invoice?: FacturaPendiente | null) {
+    const value = invoice?.mes_correspondiente;
+    if (!value) return formatDateLong(invoice?.fecha_vencimiento);
+    const match = value.match(/^(\d{4})-(\d{1,2})$/);
+    return match ? `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}` : value;
+}
+
 function invoiceIsOverdue(invoice: FacturaPendiente) {
     const now = new Date();
     const offset = now.getTimezoneOffset() * 60000;
@@ -559,6 +566,14 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                                 </option>
                                             ))}
                                         </select>
+                                        {selectedFactura && (
+                                            <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-[11px] dark:border-slate-800 dark:bg-slate-900/60">
+                                                <div><span className="block font-black uppercase tracking-wider text-slate-400">Periodo</span><span className="font-bold text-slate-700 dark:text-slate-200">{invoiceMonth(selectedFactura)}</span></div>
+                                                <div><span className="block font-black uppercase tracking-wider text-slate-400">Vencimiento</span><span className="font-bold text-slate-700 dark:text-slate-200">{formatDateLong(selectedFactura.fecha_vencimiento)}</span></div>
+                                                <div><span className="block font-black uppercase tracking-wider text-slate-400">Días con servicio</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedFactura.dias_con_servicio ?? 0} días</span></div>
+                                                <div><span className="block font-black uppercase tracking-wider text-slate-400">Días sin servicio</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedFactura.dias_sin_servicio ?? 0} días</span></div>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="flex-1 flex flex-col items-center justify-center text-slate-500 bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-10 mb-6 shadow-sm">

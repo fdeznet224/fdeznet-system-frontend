@@ -121,6 +121,13 @@ function formatDateLong(value?: string | null) {
     return `${day} de ${MESES_ES[month - 1]} de ${year}`;
 }
 
+function invoiceMonth(invoice?: BillingInvoice | null) {
+    const value = invoice?.mes_correspondiente;
+    if (!value) return formatDateLong(invoice?.periodo_desde);
+    const match = value.match(/^(\d{4})-(\d{1,2})$/);
+    return match ? `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}` : value;
+}
+
 function invoiceConcept(invoice?: BillingInvoice | null) {
     if (!invoice) return 'Factura';
     if (invoice.afecta_corte === false) return invoice.concepto || 'Cargo adicional';
@@ -737,10 +744,18 @@ export default function PanelCobrador() {
                                             {modalInvoices.length > 1 && online && <option value="all">Todas las facturas — ${formatMoney(modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0))}</option>}
                                             {modalInvoices.map((invoice) => (
                                                 <option key={invoice.id} value={invoice.id}>
-                                                    {[invoice.servicio?.alias || invoiceConcept(invoice), invoice.servicio?.direccion, invoice.mes_correspondiente || formatDateLong(invoice.periodo_desde)].filter(Boolean).join(' · ')} — ${formatMoney(invoice.saldo_pendiente)}
+                                                    {[invoice.servicio?.alias || invoiceConcept(invoice), invoice.servicio?.direccion, invoiceMonth(invoice)].filter(Boolean).join(' · ')} — ${formatMoney(invoice.saldo_pendiente)}
                                                 </option>
                                             ))}
                                         </select>
+                                        {selectedFactura && (
+                                            <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[10px] dark:border-slate-800 dark:bg-slate-900/60">
+                                                <span><b className="mr-1 uppercase tracking-wider text-slate-400">Mes:</b>{invoiceMonth(selectedFactura)}</span>
+                                                <span><b className="mr-1 uppercase tracking-wider text-slate-400">Vence:</b>{formatDateLong(selectedFactura.fecha_vencimiento)}</span>
+                                                <span><b className="mr-1 uppercase tracking-wider text-slate-400">Con servicio:</b>{selectedFactura.dias_con_servicio ?? 0} días</span>
+                                                <span><b className="mr-1 uppercase tracking-wider text-slate-400">Sin servicio:</b>{selectedFactura.dias_sin_servicio ?? 0} días</span>
+                                            </div>
+                                        )}
                                         {bulkInvoices.length <= 1 && (selectedFactura?.conceptos?.length || 0) > 0 && (
                                             <div className="mt-3 space-y-2">
                                                 <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Selecciona qué pagar</p>
