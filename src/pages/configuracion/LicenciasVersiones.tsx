@@ -7,6 +7,7 @@ import {
   CheckCircleIcon,
   ClipboardDocumentIcon,
   CloudArrowUpIcon,
+  CommandLineIcon,
   KeyIcon,
   PlusIcon,
   ServerStackIcon,
@@ -42,7 +43,12 @@ interface Installation {
   creada_en: string;
 }
 
-interface InstallationCreated extends Installation { licencia: string; }
+interface InstallCommand extends Installation {
+  token_instalacion: string;
+  token_expira: string;
+}
+interface InstallationCreated extends InstallCommand { licencia: string; }
+interface BootstrapToken { token_instalacion: string; token_expira: string; }
 interface Draft { estado: string; version_objetivo: string; notas_actualizacion: string; }
 
 const card = 'rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900';
@@ -56,7 +62,7 @@ export default function LicenciasVersiones() {
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [newLicense, setNewLicense] = useState<InstallationCreated | null>(null);
+  const [installCommand, setInstallCommand] = useState<InstallCommand | null>(null);
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
 
   const load = async () => {
@@ -103,6 +109,13 @@ export default function LicenciasVersiones() {
     } catch { toast.error('No se pudo actualizar la instalación'); }
   };
 
+  const regenerateCommand = async (item: Installation) => {
+    try {
+      const { data } = await client.post<BootstrapToken>(`/control/instalaciones/${item.id}/bootstrap`);
+      setInstallCommand({ ...item, ...data });
+    } catch { toast.error('No se pudo generar un nuevo comando'); }
+  };
+
   return <div className="mx-auto max-w-6xl space-y-6 p-4 pb-24 sm:p-6">
     <div className="flex items-center gap-4 border-b border-slate-200 pb-5 dark:border-slate-800">
       <button onClick={() => navigate(-1)} className="rounded-xl bg-slate-100 p-2 text-slate-500 dark:bg-slate-800"><ArrowLeftIcon className="h-6 w-6" /></button>
@@ -140,14 +153,14 @@ export default function LicenciasVersiones() {
               <label><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Enviar versión</span><input className={input} placeholder="2.4.0" value={draft.version_objetivo} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, version_objetivo: e.target.value } }))} /></label>
             </div>
             <label className="mt-3 block"><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Nota de actualización</span><textarea rows={2} className={input} placeholder="Cambios incluidos…" value={draft.notas_actualizacion} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, notas_actualizacion: e.target.value } }))} /></label>
-            <button onClick={() => void saveInstallation(item)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white dark:bg-blue-600"><CloudArrowUpIcon className="h-5 w-5" /> Guardar y enviar aviso</button>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2"><button disabled={item.estado !== 'activa'} onClick={() => void regenerateCommand(item)} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"><CommandLineIcon className="h-5 w-5" /> Nuevo comando</button><button onClick={() => void saveInstallation(item)} className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white dark:bg-blue-600"><CloudArrowUpIcon className="h-5 w-5" /> Guardar y enviar aviso</button></div>
           </article>;
         })}
       </div>}
     </section>}
 
-    {showCreate && <CreateDialog onClose={() => setShowCreate(false)} onCreated={(created) => { setNewLicense(created); setShowCreate(false); void load(); }} />}
-    {newLicense && <CredentialDialog installation={newLicense} onClose={() => setNewLicense(null)} />}
+    {showCreate && <CreateDialog onClose={() => setShowCreate(false)} onCreated={(created) => { setInstallCommand(created); setShowCreate(false); void load(); }} />}
+    {installCommand && <CredentialDialog installation={installCommand} onClose={() => setInstallCommand(null)} />}
   </div>;
 }
 
@@ -160,12 +173,15 @@ function CreateDialog({ onClose, onCreated }: { onClose: () => void; onCreated: 
     catch { toast.error('No se pudo crear la instalación'); }
     finally { setSaving(false); }
   };
-  return <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:items-center"><form onSubmit={(e) => void submit(e)} className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><h2 className="text-xl font-black text-slate-900 dark:text-white">Nueva instalación</h2><label className="block text-xs font-bold text-slate-500">Nombre del ISP<input required className={`${input} mt-1`} value={form.nombre_isp} onChange={(e) => setForm({ ...form, nombre_isp: e.target.value })} /></label><label className="block text-xs font-bold text-slate-500">Dominio<input className={`${input} mt-1`} placeholder="https://isp.com" value={form.dominio} onChange={(e) => setForm({ ...form, dominio: e.target.value })} /></label><label className="block text-xs font-bold text-slate-500">Correo de contacto<input type="email" className={`${input} mt-1`} value={form.contacto_email} onChange={(e) => setForm({ ...form, contacto_email: e.target.value })} /></label><div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-black text-slate-600 dark:border-slate-700">Cancelar</button><button disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-black text-white">{saving ? 'Creando…' : 'Crear licencia'}</button></div></form></div>;
+  return <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:items-center"><form onSubmit={(e) => void submit(e)} className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><h2 className="text-xl font-black text-slate-900 dark:text-white">Nueva instalación</h2><label className="block text-xs font-bold text-slate-500">Nombre del ISP<input required className={`${input} mt-1`} value={form.nombre_isp} onChange={(e) => setForm({ ...form, nombre_isp: e.target.value })} /></label><label className="block text-xs font-bold text-slate-500">Dominio<input required className={`${input} mt-1`} placeholder="isp.com" value={form.dominio} onChange={(e) => setForm({ ...form, dominio: e.target.value })} /></label><label className="block text-xs font-bold text-slate-500">Correo de contacto<input required type="email" className={`${input} mt-1`} value={form.contacto_email} onChange={(e) => setForm({ ...form, contacto_email: e.target.value })} /></label><div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-black text-slate-600 dark:border-slate-700">Cancelar</button><button disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-black text-white">{saving ? 'Creando…' : 'Crear licencia'}</button></div></form></div>;
 }
 
-function CredentialDialog({ installation, onClose }: { installation: InstallationCreated; onClose: () => void }) {
+function CredentialDialog({ installation, onClose }: { installation: InstallCommand; onClose: () => void }) {
   const copy = async (value: string) => { await navigator.clipboard.writeText(value); toast.success('Copiado'); };
-  return <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm"><div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><CheckCircleIcon className="h-12 w-12 text-emerald-500" /><h2 className="mt-3 text-xl font-black text-slate-900 dark:text-white">Licencia creada</h2><p className="mt-1 text-sm text-slate-500">Guarda estos datos ahora. La llave no volverá a mostrarse.</p><Credential label="FDEZNET_INSTALLATION_ID" value={installation.instalacion_id} onCopy={copy} /><Credential label="FDEZNET_LICENSE_KEY" value={installation.licencia} onCopy={copy} /><button onClick={onClose} className="mt-5 w-full rounded-xl bg-blue-600 py-3 text-sm font-black text-white">Ya guardé las credenciales</button></div></div>;
+  const domain = (installation.dominio || 'dominio-del-isp.com').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const email = installation.contacto_email || 'correo@dominio.com';
+  const command = `curl -fsSL https://fdezpay.com/api/control/installer | sudo bash -s -- --domain ${domain} --email ${email} --bootstrap-token ${installation.token_instalacion}`;
+  return <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm"><div className="max-h-[95vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><CheckCircleIcon className="h-12 w-12 text-emerald-500" /><h2 className="mt-3 text-xl font-black text-slate-900 dark:text-white">Instalación preparada</h2><p className="mt-1 text-sm text-slate-500">Copia este comando y ejecútalo como root en una VPS Ubuntu nueva. El token vence el {formatDate(installation.token_expira)} y funciona una sola vez.</p><Credential label="COMANDO DE INSTALACIÓN AUTOMÁTICA" value={command} onCopy={copy} />{'licencia' in installation && <details className="mt-4 rounded-2xl border border-slate-200 p-4 dark:border-slate-700"><summary className="cursor-pointer text-xs font-black text-slate-600 dark:text-slate-300">Configuración manual</summary><Credential label="FDEZNET_INSTALLATION_ID" value={installation.instalacion_id} onCopy={copy} /><Credential label="FDEZNET_LICENSE_KEY" value={installation.licencia} onCopy={copy} /></details>}<button onClick={onClose} className="mt-5 w-full rounded-xl bg-blue-600 py-3 text-sm font-black text-white">Ya guardé el comando</button></div></div>;
 }
 
 function Credential({ label, value, onCopy }: { label: string; value: string; onCopy: (value: string) => Promise<void> }) { return <div className="mt-4"><span className="text-[10px] font-black text-slate-400">{label}</span><button onClick={() => void onCopy(value)} className="mt-1 flex w-full items-center gap-2 rounded-xl bg-slate-100 p-3 text-left dark:bg-slate-950"><code className="min-w-0 flex-1 break-all text-xs text-slate-700 dark:text-slate-200">{value}</code><ClipboardDocumentIcon className="h-5 w-5 shrink-0 text-blue-500" /></button></div>; }
