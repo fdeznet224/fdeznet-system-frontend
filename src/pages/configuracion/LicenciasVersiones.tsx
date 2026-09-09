@@ -26,6 +26,14 @@ interface LicenseStatus {
   actualizacion_disponible: boolean;
   notas_actualizacion: string | null;
   ultima_revision: string | null;
+  plan_nombre: string | null;
+  plan_tipo: string | null;
+  vigente_hasta: string | null;
+  dias_gracia: number;
+  limite_clientes: number | null;
+  limite_routers: number | null;
+  uso_clientes: number;
+  uso_routers: number;
 }
 
 interface Installation {
@@ -35,7 +43,19 @@ interface Installation {
   dominio: string | null;
   contacto_email: string | null;
   estado: string;
+  estado_suscripcion: string | null;
   plan: string;
+  plan_licencia_id: number | null;
+  plan_nombre: string | null;
+  plan_tipo: string | null;
+  precio_mensual: number | null;
+  limite_clientes: number | null;
+  limite_routers: number | null;
+  dias_gracia: number;
+  suscripcion_inicio: string | null;
+  suscripcion_vence: string | null;
+  uso_clientes: number;
+  uso_routers: number;
   canal: string;
   version_actual: string | null;
   version_objetivo: string | null;
@@ -55,8 +75,9 @@ interface InstallCommand extends Installation {
 }
 interface InstallationCreated extends InstallCommand { licencia: string; }
 interface BootstrapToken { token_instalacion: string; token_expira: string; }
-interface Draft { estado: string; version_objetivo: string; notas_actualizacion: string; actualizacion_automatica: boolean; }
+interface Draft { estado: string; version_objetivo: string; notas_actualizacion: string; actualizacion_automatica: boolean; plan_licencia_id: string; }
 interface Release { id: number; version: string; backend_commit: string; frontend_commit: string; notas: string | null; creada_en: string; }
+interface LicensePlan { id: number; codigo: string; nombre: string; tipo: 'demo' | 'mensual' | 'permanente'; precio_mensual: number; duracion_dias: number | null; dias_gracia: number; limite_clientes: number | null; limite_routers: number | null; activo: boolean; creado_en: string; }
 interface Maintenance { estado: string; mensaje: string; fecha: string | null; version: string | null; respaldo: string | null; actualizacion_automatica: boolean; respaldo_automatico: boolean; revision_automatica: boolean; recuperacion_estado: string; recuperacion_fecha: string | null; clave_huella: string | null; }
 
 const card = 'rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900';
@@ -67,12 +88,15 @@ export default function LicenciasVersiones() {
   const [status, setStatus] = useState<LicenseStatus | null>(null);
   const [installations, setInstallations] = useState<Installation[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
+  const [plans, setPlans] = useState<LicensePlan[]>([]);
   const [maintenance, setMaintenance] = useState<Maintenance | null>(null);
   const [isCentral, setIsCentral] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showRelease, setShowRelease] = useState(false);
+  const [showPlan, setShowPlan] = useState(false);
+  const [planToEdit, setPlanToEdit] = useState<LicensePlan | null>(null);
   const [installCommand, setInstallCommand] = useState<InstallCommand | null>(null);
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
 
@@ -89,12 +113,15 @@ export default function LicenciasVersiones() {
       setInstallations(data);
       const releaseResponse = await client.get<Release[]>('/control/versiones');
       setReleases(releaseResponse.data);
+      const planResponse = await client.get<LicensePlan[]>('/control/planes');
+      setPlans(planResponse.data);
       setIsCentral(true);
       setDrafts(Object.fromEntries(data.map((item) => [item.id, {
         estado: item.estado,
         version_objetivo: item.version_objetivo || '',
         notas_actualizacion: item.notas_actualizacion || '',
         actualizacion_automatica: item.actualizacion_automatica,
+        plan_licencia_id: item.plan_licencia_id?.toString() || '',
       }])));
     } catch { setIsCentral(false); }
     setLoading(false);
@@ -120,10 +147,21 @@ export default function LicenciasVersiones() {
         version_objetivo: draft.version_objetivo || null,
         notas_actualizacion: draft.notas_actualizacion || null,
         actualizacion_automatica: draft.actualizacion_automatica,
+        plan_licencia_id: draft.plan_licencia_id && Number(draft.plan_licencia_id) !== item.plan_licencia_id ? Number(draft.plan_licencia_id) : undefined,
       });
       toast.success('Instalación actualizada');
       await load();
     } catch { toast.error('No se pudo actualizar la instalación'); }
+  };
+
+  const renewInstallation = async (item: Installation) => {
+    const reference = window.prompt(`Referencia del pago para renovar un mes de ${item.plan_nombre || 'este plan'}:`);
+    if (reference === null) return;
+    try {
+      await client.post(`/control/instalaciones/${item.id}/renovar`, { meses: 1, referencia: reference.trim() || null });
+      toast.success('Mensualidad renovada');
+      await load();
+    } catch { toast.error('Asigna primero un plan activo'); }
   };
 
   const runMaintenance = async (action: 'respaldo' | 'actualizar' | 'verificar') => {
@@ -148,7 +186,7 @@ export default function LicenciasVersiones() {
         <h1 className="flex items-center gap-2 text-xl font-black text-slate-900 dark:text-white sm:text-2xl"><ServerStackIcon className="h-6 w-6 text-blue-500" /> Licencias y versiones</h1>
         <p className="text-xs text-slate-500 sm:text-sm">Controla esta VPS y las instalaciones vendidas.</p>
       </div>
-      {isCentral && <div className="flex gap-2"><button onClick={() => setShowRelease(true)} className="rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-slate-700 dark:border-slate-700 dark:text-slate-200">Publicar versión</button><button onClick={() => setShowCreate(true)} className="flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-black text-white sm:px-4 sm:text-sm"><PlusIcon className="h-5 w-5" /><span className="hidden sm:inline">Nueva instalación</span></button></div>}
+      {isCentral && <div className="flex flex-wrap justify-end gap-2"><button onClick={() => { setPlanToEdit(null); setShowPlan(true); }} className="rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-slate-700 dark:border-slate-700 dark:text-slate-200">Nuevo plan</button><button onClick={() => setShowRelease(true)} className="rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-slate-700 dark:border-slate-700 dark:text-slate-200">Publicar versión</button><button onClick={() => setShowCreate(true)} className="flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-black text-white sm:px-4 sm:text-sm"><PlusIcon className="h-5 w-5" /><span className="hidden sm:inline">Nueva instalación</span></button></div>}
     </div>
 
     {loading ? <div className="py-20 text-center text-sm font-bold text-slate-500">Cargando control de versiones…</div> : status && <section className={card}>
@@ -158,36 +196,42 @@ export default function LicenciasVersiones() {
           <div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-slate-900 dark:text-white">Esta instalación</h2><StatusBadge value={status.estado} /></div>
           <p className="mt-1 text-sm text-slate-500">Versión instalada: <strong className="text-slate-800 dark:text-slate-200">v{status.version_actual}</strong></p>
           <p className="truncate text-xs text-slate-400">{status.instalacion_id || 'Aún no tiene ID de instalación'}</p>
+          {status.plan_nombre && <p className="mt-2 text-xs font-bold text-slate-600 dark:text-slate-300">Plan {status.plan_nombre} · {status.uso_clientes}/{status.limite_clientes ?? '∞'} abonados · {status.uso_routers}/{status.limite_routers ?? '∞'} routers · {status.vigente_hasta ? `vence ${formatDate(status.vigente_hasta)}` : 'sin vencimiento'}</p>}
           {status.actualizacion_disponible && <p className="mt-2 text-sm font-bold text-blue-600">Disponible v{status.version_objetivo}: {status.notas_actualizacion}</p>}
         </div>
         <button disabled={checking || !status.configurada} onClick={() => void verify()} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"><ArrowPathIcon className={`h-5 w-5 ${checking ? 'animate-spin' : ''}`} /> Verificar ahora</button>
       </div>
       {!status.configurada && <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">Para activar esta VPS agrega en su archivo <code>.env</code> las variables <strong>FDEZNET_INSTALLATION_ID</strong> y <strong>FDEZNET_LICENSE_KEY</strong>.</div>}
+      {['gracia', 'vencida', 'suspendida', 'revocada'].includes(status.estado) && <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-sm font-black text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">{status.mensaje}</div>}
       {maintenance && <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-950 sm:grid-cols-[1fr_auto]"><div><p className="text-sm font-black text-slate-800 dark:text-slate-100">Mantenimiento: {maintenance.estado.replaceAll('_', ' ')}</p><p className="text-xs text-slate-500">{maintenance.mensaje} · {formatDate(maintenance.fecha)}</p><p className="mt-1 text-xs font-bold text-slate-600 dark:text-slate-300">Recuperación: {maintenance.recuperacion_estado.replaceAll('_', ' ')} · {formatDate(maintenance.recuperacion_fecha)}</p><p className="mt-1 text-[10px] font-bold uppercase text-slate-400">Respaldo diario {maintenance.respaldo_automatico ? 'activo' : 'inactivo'} · Auditoría semanal {maintenance.revision_automatica ? 'activa' : 'inactiva'} · Revisión de versión {maintenance.actualizacion_automatica ? 'activa' : 'inactiva'}</p>{maintenance.clave_huella && <p className="mt-1 truncate font-mono text-[9px] text-slate-400">Huella de clave: {maintenance.clave_huella}</p>}</div><div className="flex flex-wrap gap-2 sm:max-w-xs sm:justify-end"><button onClick={() => void runMaintenance('respaldo')} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black dark:border-slate-700"><CircleStackIcon className="h-4 w-4" /> Respaldar</button><button onClick={() => void runMaintenance('verificar')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black dark:border-slate-700">Probar recuperación</button><button onClick={() => void runMaintenance('actualizar')} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Revisar actualización</button></div></div>}
     </section>}
+
+    {isCentral && plans.length > 0 && <section className="space-y-3"><div><h2 className="text-lg font-black text-slate-900 dark:text-white">Planes comerciales</h2><p className="text-xs text-slate-500">Condiciones disponibles para demos y mensualidades.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{plans.map((plan) => <article key={plan.id} className={`${card} ${plan.activo ? '' : 'opacity-60'}`}><div className="flex items-start justify-between gap-2"><div><h3 className="font-black text-slate-900 dark:text-white">{plan.nombre}</h3><p className="text-[10px] font-black uppercase text-blue-500">{plan.tipo} · {plan.activo ? 'activo' : 'inactivo'}</p></div><span className="text-sm font-black text-slate-700 dark:text-slate-200">${Number(plan.precio_mensual).toLocaleString('es-MX')}</span></div><p className="mt-3 text-xs text-slate-500">{plan.limite_clientes ?? 'Ilimitados'} abonados · {plan.limite_routers ?? 'Ilimitados'} routers</p><p className="mt-1 text-xs text-slate-500">{plan.duracion_dias ? `${plan.duracion_dias} días + ${plan.dias_gracia} de gracia` : 'Sin vencimiento'}</p><button onClick={() => { setPlanToEdit(plan); setShowPlan(true); }} className="mt-3 w-full rounded-xl border border-slate-200 py-2 text-xs font-black text-slate-600 dark:border-slate-700 dark:text-slate-300">Editar plan</button></article>)}</div></section>}
 
     {isCentral && <section className="space-y-4">
       <div className="flex items-end justify-between"><div><h2 className="text-lg font-black text-slate-900 dark:text-white">Instalaciones registradas</h2><p className="text-xs text-slate-500">{installations.length} ISP registrados</p></div></div>
       {installations.length === 0 ? <div className={`${card} py-12 text-center text-sm text-slate-500`}>Crea la primera instalación para generar sus credenciales.</div> : <div className="grid gap-4 lg:grid-cols-2">
         {installations.map((item) => {
-          const draft = drafts[item.id] || { estado: item.estado, version_objetivo: '', notas_actualizacion: '', actualizacion_automatica: false };
+          const draft = drafts[item.id] || { estado: item.estado, version_objetivo: '', notas_actualizacion: '', actualizacion_automatica: false, plan_licencia_id: item.plan_licencia_id?.toString() || '' };
           return <article key={item.id} className={card}>
-            <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-base font-black text-slate-900 dark:text-white">{item.nombre_isp}</h3><p className="truncate text-xs text-slate-500">{item.dominio || item.instalacion_id}</p></div><StatusBadge value={item.estado} /></div>
-            <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950"><Metric label="Versión instalada" value={item.version_actual ? `v${item.version_actual}` : 'Sin reporte'} /><Metric label="Última conexión" value={formatDate(item.ultima_conexion)} /><Metric label="Actualización" value={item.actualizacion_estado.replace('_', ' ')} /><Metric label="Último respaldo" value={item.ultimo_respaldo || 'Sin reporte'} /></div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-base font-black text-slate-900 dark:text-white">{item.nombre_isp}</h3><p className="truncate text-xs text-slate-500">{item.dominio || item.instalacion_id}</p></div><StatusBadge value={item.estado_suscripcion || item.estado} /></div>
+            <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950 sm:grid-cols-3"><Metric label="Plan" value={item.plan_nombre || 'Sin límite heredado'} /><Metric label="Vigencia" value={item.suscripcion_vence ? formatDate(item.suscripcion_vence) : 'Permanente'} /><Metric label="Uso" value={`${item.uso_clientes}/${item.limite_clientes ?? '∞'} abonados · ${item.uso_routers}/${item.limite_routers ?? '∞'} routers`} /><Metric label="Versión instalada" value={item.version_actual ? `v${item.version_actual}` : 'Sin reporte'} /><Metric label="Última conexión" value={formatDate(item.ultima_conexion)} /><Metric label="Último respaldo" value={item.ultimo_respaldo || 'Sin reporte'} /></div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <label><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Estado</span><select className={input} value={draft.estado} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, estado: e.target.value } }))}><option value="activa">Activa</option><option value="suspendida">Suspendida</option><option value="revocada">Revocada</option></select></label>
+              <label><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Plan contratado</span><select className={input} value={draft.plan_licencia_id} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, plan_licencia_id: e.target.value } }))}><option value="">Sin plan heredado</option>{plans.filter((plan) => plan.activo).map((plan) => <option key={plan.id} value={plan.id}>{plan.nombre}</option>)}</select></label>
               <label><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Enviar versión</span><select className={input} value={draft.version_objetivo} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, version_objetivo: e.target.value } }))}><option value="">Sin versión asignada</option>{releases.map((release) => <option key={release.id} value={release.version}>v{release.version}</option>)}</select></label>
             </div>
             <label className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300"><input type="checkbox" className="h-4 w-4" checked={draft.actualizacion_automatica} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, actualizacion_automatica: e.target.checked } }))} /> Instalar automáticamente después del respaldo y las verificaciones</label>
             {item.actualizacion_mensaje && <p className="mt-2 text-xs text-slate-500">{item.actualizacion_mensaje} · {formatDate(item.actualizacion_fecha)}</p>}
             <label className="mt-3 block"><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Nota de actualización</span><textarea rows={2} className={input} placeholder="Cambios incluidos…" value={draft.notas_actualizacion} onChange={(e) => setDrafts((all) => ({ ...all, [item.id]: { ...draft, notas_actualizacion: e.target.value } }))} /></label>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2"><button disabled={item.estado !== 'activa'} onClick={() => void regenerateCommand(item)} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"><CommandLineIcon className="h-5 w-5" /> Nuevo comando</button><button onClick={() => void saveInstallation(item)} className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white dark:bg-blue-600"><CloudArrowUpIcon className="h-5 w-5" /> Guardar y enviar aviso</button></div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3"><button disabled={item.estado !== 'activa'} onClick={() => void regenerateCommand(item)} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"><CommandLineIcon className="h-5 w-5" /> Nuevo comando</button><button onClick={() => void renewInstallation(item)} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white">Renovar 1 mes</button><button onClick={() => void saveInstallation(item)} className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white dark:bg-blue-600"><CloudArrowUpIcon className="h-5 w-5" /> Guardar</button></div>
           </article>;
         })}
       </div>}
     </section>}
 
-    {showCreate && <CreateDialog onClose={() => setShowCreate(false)} onCreated={(created) => { setInstallCommand(created); setShowCreate(false); void load(); }} />}
+    {showCreate && <CreateDialog plans={plans} onClose={() => setShowCreate(false)} onCreated={(created) => { setInstallCommand(created); setShowCreate(false); void load(); }} />}
+    {showPlan && <PlanDialog plan={planToEdit} onClose={() => setShowPlan(false)} onSaved={() => { setShowPlan(false); void load(); }} />}
     {showRelease && <ReleaseDialog onClose={() => setShowRelease(false)} onCreated={() => { setShowRelease(false); void load(); }} />}
     {installCommand && <CredentialDialog installation={installCommand} onClose={() => setInstallCommand(null)} />}
   </div>;
@@ -205,16 +249,48 @@ function ReleaseDialog({ onClose, onCreated }: { onClose: () => void; onCreated:
   return <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:items-center"><form onSubmit={(e) => void submit(e)} className="w-full max-w-xl space-y-4 rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><h2 className="text-xl font-black text-slate-900 dark:text-white">Publicar versión segura</h2><p className="text-xs text-slate-500">Los dos commits deben ser SHA completos de 40 caracteres. Cada VPS verificará la firma antes de instalarlos.</p>{(['version', 'backend_commit', 'frontend_commit'] as const).map((field) => <label key={field} className="block text-xs font-bold text-slate-500">{field === 'version' ? 'Versión' : field === 'backend_commit' ? 'Commit backend' : 'Commit frontend'}<input required className={`${input} mt-1 font-mono`} placeholder={field === 'version' ? '2.5.0' : '40 caracteres'} value={form[field]} onChange={(e) => setForm({ ...form, [field]: e.target.value.trim() })} /></label>)}<label className="block text-xs font-bold text-slate-500">Notas<textarea className={`${input} mt-1`} rows={3} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} /></label><div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-black dark:border-slate-700">Cancelar</button><button disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-black text-white">{saving ? 'Publicando…' : 'Publicar'}</button></div></form></div>;
 }
 
-function CreateDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (value: InstallationCreated) => void }) {
-  const [form, setForm] = useState({ nombre_isp: '', dominio: '', contacto_email: '', plan: 'estandar' });
+function PlanDialog({ plan, onClose, onSaved }: { plan: LicensePlan | null; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({ codigo: plan?.codigo || '', nombre: plan?.nombre || '', tipo: plan?.tipo || 'mensual', precio_mensual: String(plan?.precio_mensual ?? 0), duracion_dias: String(plan?.duracion_dias ?? 30), dias_gracia: String(plan?.dias_gracia ?? 3), limite_clientes: plan?.limite_clientes?.toString() || (plan ? '' : '300'), limite_routers: plan?.limite_routers?.toString() || (plan ? '' : '2'), activo: plan?.activo ?? true });
   const [saving, setSaving] = useState(false);
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setSaving(true);
-    try { const { data } = await client.post<InstallationCreated>('/control/instalaciones', { ...form, dominio: form.dominio.trim() || null }); onCreated(data); }
+    try {
+      const values = {
+        codigo: form.codigo.trim().toLowerCase(), nombre: form.nombre.trim(), tipo: form.tipo,
+        precio_mensual: Number(form.precio_mensual), duracion_dias: form.tipo === 'permanente' ? null : Number(form.duracion_dias),
+        dias_gracia: Number(form.dias_gracia), limite_clientes: form.limite_clientes ? Number(form.limite_clientes) : null,
+        limite_routers: form.limite_routers ? Number(form.limite_routers) : null, activo: form.activo,
+      };
+      if (plan) {
+        await client.patch(`/control/planes/${plan.id}`, {
+          nombre: values.nombre,
+          precio_mensual: values.precio_mensual,
+          duracion_dias: values.duracion_dias,
+          dias_gracia: values.dias_gracia,
+          limite_clientes: values.limite_clientes,
+          limite_routers: values.limite_routers,
+          activo: values.activo,
+        });
+      } else {
+        await client.post('/control/planes', values);
+      }
+      toast.success(plan ? 'Plan actualizado' : 'Plan creado'); onSaved();
+    } catch { toast.error(plan ? 'No se pudo actualizar el plan' : 'No se pudo crear el plan'); }
+    finally { setSaving(false); }
+  };
+  return <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:items-center"><form onSubmit={(e) => void submit(e)} className="w-full max-w-xl space-y-4 rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><h2 className="text-xl font-black text-slate-900 dark:text-white">{plan ? 'Editar plan comercial' : 'Nuevo plan comercial'}</h2><div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold text-slate-500">Código<input required disabled={Boolean(plan)} pattern="[a-z0-9_-]{2,50}" className={`${input} mt-1 disabled:opacity-60`} placeholder="basico_500" value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} /></label><label className="text-xs font-bold text-slate-500">Nombre<input required className={`${input} mt-1`} placeholder="Básico 500" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} /></label><label className="text-xs font-bold text-slate-500">Tipo<select disabled={Boolean(plan)} className={`${input} mt-1 disabled:opacity-60`} value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as LicensePlan['tipo'] })}><option value="demo">Demo</option><option value="mensual">Mensual</option><option value="permanente">Permanente</option></select></label><label className="text-xs font-bold text-slate-500">Precio mensual<input required type="number" min="0" step="0.01" className={`${input} mt-1`} value={form.precio_mensual} onChange={(e) => setForm({ ...form, precio_mensual: e.target.value })} /></label>{form.tipo !== 'permanente' && <label className="text-xs font-bold text-slate-500">Duración en días<input required type="number" min="1" className={`${input} mt-1`} value={form.duracion_dias} onChange={(e) => setForm({ ...form, duracion_dias: e.target.value })} /></label>}<label className="text-xs font-bold text-slate-500">Días de gracia<input required type="number" min="0" max="60" className={`${input} mt-1`} value={form.dias_gracia} onChange={(e) => setForm({ ...form, dias_gracia: e.target.value })} /></label><label className="text-xs font-bold text-slate-500">Máximo de abonados<input type="number" min="1" className={`${input} mt-1`} placeholder="Vacío = ilimitado" value={form.limite_clientes} onChange={(e) => setForm({ ...form, limite_clientes: e.target.value })} /></label><label className="text-xs font-bold text-slate-500">Máximo de routers<input type="number" min="1" className={`${input} mt-1`} placeholder="Vacío = ilimitado" value={form.limite_routers} onChange={(e) => setForm({ ...form, limite_routers: e.target.value })} /></label>{plan && <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300"><input type="checkbox" checked={form.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} /> Disponible para nuevas ventas</label>}</div><div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-black dark:border-slate-700">Cancelar</button><button disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-black text-white">{saving ? 'Guardando…' : plan ? 'Guardar cambios' : 'Crear plan'}</button></div></form></div>;
+}
+
+function CreateDialog({ plans, onClose, onCreated }: { plans: LicensePlan[]; onClose: () => void; onCreated: (value: InstallationCreated) => void }) {
+  const [form, setForm] = useState({ nombre_isp: '', dominio: '', contacto_email: '', plan_licencia_id: plans.find((plan) => plan.codigo === 'demo')?.id.toString() || '' });
+  const [saving, setSaving] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); setSaving(true);
+    try { const { data } = await client.post<InstallationCreated>('/control/instalaciones', { ...form, dominio: form.dominio.trim() || null, plan_licencia_id: Number(form.plan_licencia_id) }); onCreated(data); }
     catch { toast.error('No se pudo crear la instalación'); }
     finally { setSaving(false); }
   };
-  return <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:items-center"><form onSubmit={(e) => void submit(e)} className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><h2 className="text-xl font-black text-slate-900 dark:text-white">Nueva instalación</h2><label className="block text-xs font-bold text-slate-500">Nombre del ISP<input required className={`${input} mt-1`} value={form.nombre_isp} onChange={(e) => setForm({ ...form, nombre_isp: e.target.value })} /></label><label className="block text-xs font-bold text-slate-500">Dominio (opcional para piloto por IP)<input className={`${input} mt-1`} placeholder="isp.com" value={form.dominio} onChange={(e) => setForm({ ...form, dominio: e.target.value })} /></label><label className="block text-xs font-bold text-slate-500">Correo de contacto<input required type="email" className={`${input} mt-1`} value={form.contacto_email} onChange={(e) => setForm({ ...form, contacto_email: e.target.value })} /></label><div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-black text-slate-600 dark:border-slate-700">Cancelar</button><button disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-black text-white">{saving ? 'Creando…' : 'Crear licencia'}</button></div></form></div>;
+  return <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:items-center"><form onSubmit={(e) => void submit(e)} className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900"><h2 className="text-xl font-black text-slate-900 dark:text-white">Nueva instalación</h2><label className="block text-xs font-bold text-slate-500">Nombre del ISP<input required className={`${input} mt-1`} value={form.nombre_isp} onChange={(e) => setForm({ ...form, nombre_isp: e.target.value })} /></label><label className="block text-xs font-bold text-slate-500">Plan<select required className={`${input} mt-1`} value={form.plan_licencia_id} onChange={(e) => setForm({ ...form, plan_licencia_id: e.target.value })}><option value="">Selecciona un plan</option>{plans.filter((plan) => plan.activo).map((plan) => <option key={plan.id} value={plan.id}>{plan.nombre} · {plan.limite_clientes ?? '∞'} abonados · {plan.limite_routers ?? '∞'} routers</option>)}</select></label><label className="block text-xs font-bold text-slate-500">Dominio (opcional para piloto por IP)<input className={`${input} mt-1`} placeholder="isp.com" value={form.dominio} onChange={(e) => setForm({ ...form, dominio: e.target.value })} /></label><label className="block text-xs font-bold text-slate-500">Correo de contacto<input required type="email" className={`${input} mt-1`} value={form.contacto_email} onChange={(e) => setForm({ ...form, contacto_email: e.target.value })} /></label><div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-black text-slate-600 dark:border-slate-700">Cancelar</button><button disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-black text-white">{saving ? 'Creando…' : 'Crear licencia'}</button></div></form></div>;
 }
 
 function CredentialDialog({ installation, onClose }: { installation: InstallCommand; onClose: () => void }) {
@@ -227,5 +303,5 @@ function CredentialDialog({ installation, onClose }: { installation: InstallComm
 
 function Credential({ label, value, onCopy }: { label: string; value: string; onCopy: (value: string) => Promise<void> }) { return <div className="mt-4"><span className="text-[10px] font-black text-slate-400">{label}</span><button onClick={() => void onCopy(value)} className="mt-1 flex w-full items-center gap-2 rounded-xl bg-slate-100 p-3 text-left dark:bg-slate-950"><code className="min-w-0 flex-1 break-all text-xs text-slate-700 dark:text-slate-200">{value}</code><ClipboardDocumentIcon className="h-5 w-5 shrink-0 text-blue-500" /></button></div>; }
 function Metric({ label, value }: { label: string; value: string }) { return <div><p className="text-[9px] font-black uppercase tracking-wider text-slate-400">{label}</p><p className="mt-0.5 text-xs font-bold text-slate-700 dark:text-slate-200">{value}</p></div>; }
-function StatusBadge({ value }: { value: string }) { const color = value === 'activa' ? 'bg-emerald-500/10 text-emerald-600' : value === 'sin_configurar' ? 'bg-amber-500/10 text-amber-600' : 'bg-rose-500/10 text-rose-600'; return <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${color}`}>{value.replace('_', ' ')}</span>; }
+function StatusBadge({ value }: { value: string }) { const color = value === 'activa' || value === 'servidor_central' ? 'bg-emerald-500/10 text-emerald-600' : value === 'sin_configurar' || value === 'gracia' ? 'bg-amber-500/10 text-amber-600' : 'bg-rose-500/10 text-rose-600'; return <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${color}`}>{value.replace('_', ' ')}</span>; }
 function formatDate(value: string | null) { return value ? new Intl.DateTimeFormat('es-MX', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : 'Nunca'; }

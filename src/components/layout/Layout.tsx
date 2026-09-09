@@ -42,6 +42,13 @@ interface SessionUser {
     rol: AppRole;
 }
 
+interface LicenseNotice {
+    estado: string;
+    mensaje: string;
+    plan_nombre: string | null;
+    vigente_hasta: string | null;
+}
+
 function normalizeCliente(cliente: ClienteBusquedaApi): ClienteGlobal {
     return { ...cliente, telefono: cliente.telefono || '' };
 }
@@ -80,6 +87,7 @@ export default function Layout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
     const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
+    const [licenseNotice, setLicenseNotice] = useState<LicenseNotice | null>(null);
 
     // --- 🔥 NUEVO MOTOR DE MODO CLARO / OSCURO 🔥 ---
     const [darkMode, setDarkMode] = useState(() => {
@@ -118,6 +126,19 @@ export default function Layout() {
         const token = localStorage.getItem('token');
         if (!token) navigate('/login');
     }, [navigate]);
+
+    useEffect(() => {
+        let active = true;
+        const loadLicense = async () => {
+            try {
+                const { data } = await client.get<LicenseNotice>('/licencia/estado');
+                if (active) setLicenseNotice(data);
+            } catch { /* La navegación conserva su manejo normal de sesión. */ }
+        };
+        void loadLicense();
+        const timer = window.setInterval(() => void loadLicense(), 5 * 60 * 1000);
+        return () => { active = false; window.clearInterval(timer); };
+    }, []);
 
     // LÓGICA DEL BUSCADOR GLOBAL
     useEffect(() => {
@@ -449,6 +470,11 @@ export default function Layout() {
                     {/* El reflejo de luz de fondo adaptado para no encandilar en claro */}
                     <div className="absolute top-0 left-0 w-full h-96 bg-blue-500/[0.01] dark:bg-blue-600/5 rounded-full blur-3xl pointer-events-none transform -translate-y-1/2 -translate-x-1/2"></div>
                     <div className="relative z-10 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-10">
+                        {licenseNotice && ['gracia', 'vencida', 'suspendida', 'revocada'].includes(licenseNotice.estado) && (
+                            <div className={`mb-4 rounded-2xl border p-4 text-sm font-black ${licenseNotice.estado === 'gracia' ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200' : 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200'}`}>
+                                {licenseNotice.mensaje}{licenseNotice.plan_nombre ? ` · Plan ${licenseNotice.plan_nombre}` : ''}
+                            </div>
+                        )}
                         <Outlet />
                     </div>
                 </main>
