@@ -86,15 +86,9 @@ function invoiceMonth(invoice?: FacturaPendiente | null) {
     const value = invoice?.mes_correspondiente;
     if (!value) return formatDateLong(invoice?.fecha_vencimiento);
     const match = value.match(/^(\d{4})-(\d{1,2})$/);
-    return match ? `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}` : value;
-}
-
-function invoiceLabel(invoice: FacturaPendiente) {
-    const period = invoice.periodo_desde && invoice.periodo_hasta
-        ? `${formatDateLong(invoice.periodo_desde)} al ${formatDateLong(invoice.periodo_hasta)}`
-        : invoiceMonth(invoice);
-    const kind = invoice.es_prorrateada || invoice.tipo_factura === 'prorrateo' ? 'Prorrateo' : 'Mensual';
-    return `Folio #${invoice.id} · ${invoiceMonth(invoice)} · ${period} · ${kind}`;
+    if (match) return `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}`;
+    const englishMonths = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+    return value.replace(/january|february|march|april|may|june|july|august|september|october|november|december/i, (month) => MESES_ES[englishMonths.indexOf(month.toLowerCase())]);
 }
 
 function invoiceIsOverdue(invoice: FacturaPendiente) {
@@ -567,7 +561,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                             {facturasPendientes.length > 1 && <option value="all">Todas las facturas — ${facturasPendientes.reduce((total, factura) => total + Number(factura.saldo_pendiente), 0).toFixed(2)}</option>}
                                             {facturasPendientes.map((factura) => (
                                                 <option key={factura.id} value={factura.id}>
-                                                    {invoiceLabel(factura)} — ${Number(factura.saldo_pendiente).toFixed(2)}
+                                                    {invoiceMonth(factura)} — ${Number(factura.saldo_pendiente).toFixed(2)}
                                                 </option>
                                             ))}
                                         </select>
@@ -576,7 +570,9 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                         </div>
                                         {selectedFactura && (
                                             <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-[11px] dark:border-slate-800 dark:bg-slate-900/60">
-                                                <div><span className="block font-black uppercase tracking-wider text-slate-400">Periodo</span><span className="font-bold text-slate-700 dark:text-slate-200">{invoiceMonth(selectedFactura)}</span></div>
+                                                <div><span className="block font-black uppercase tracking-wider text-slate-400">Folio</span><span className="font-bold text-slate-700 dark:text-slate-200">#{selectedFactura.id}</span></div>
+                                                <div><span className="block font-black uppercase tracking-wider text-slate-400">Mes</span><span className="font-bold capitalize text-slate-700 dark:text-slate-200">{invoiceMonth(selectedFactura)}</span></div>
+                                                <div className="col-span-2"><span className="block font-black uppercase tracking-wider text-slate-400">Periodo cobrado</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedFactura.periodo_desde && selectedFactura.periodo_hasta ? `${formatDateLong(selectedFactura.periodo_desde)} al ${formatDateLong(selectedFactura.periodo_hasta)}` : formatDateLong(selectedFactura.fecha_vencimiento)}</span></div>
                                                 <div><span className="block font-black uppercase tracking-wider text-slate-400">Vencimiento</span><span className="font-bold text-slate-700 dark:text-slate-200">{formatDateLong(selectedFactura.fecha_vencimiento)}</span></div>
                                                 <div><span className="block font-black uppercase tracking-wider text-slate-400">Días con servicio</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedFactura.dias_con_servicio ?? 0} días</span></div>
                                                 <div><span className="block font-black uppercase tracking-wider text-slate-400">Días sin servicio</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedFactura.dias_sin_servicio ?? 0} días</span></div>

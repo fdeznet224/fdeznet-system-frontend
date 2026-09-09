@@ -125,15 +125,9 @@ function invoiceMonth(invoice?: BillingInvoice | null) {
     const value = invoice?.mes_correspondiente;
     if (!value) return formatDateLong(invoice?.periodo_desde);
     const match = value.match(/^(\d{4})-(\d{1,2})$/);
-    return match ? `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}` : value;
-}
-
-function invoiceLabel(invoice: BillingInvoice) {
-    const period = invoice.periodo_desde && invoice.periodo_hasta
-        ? `${formatDateLong(invoice.periodo_desde)} al ${formatDateLong(invoice.periodo_hasta)}`
-        : invoiceMonth(invoice);
-    const kind = invoice.es_prorrateada || invoice.tipo_factura === 'prorrateo' ? 'Prorrateo' : 'Mensual';
-    return `Folio #${invoice.id} · ${invoiceMonth(invoice)} · ${period} · ${kind}`;
+    if (match) return `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}`;
+    const englishMonths = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+    return value.replace(/january|february|march|april|may|june|july|august|september|october|november|december/i, (month) => MESES_ES[englishMonths.indexOf(month.toLowerCase())]);
 }
 
 function invoiceConcept(invoice?: BillingInvoice | null) {
@@ -752,7 +746,7 @@ export default function PanelCobrador() {
                                             {modalInvoices.length > 1 && online && <option value="all">Todas las facturas — ${formatMoney(modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0))}</option>}
                                             {modalInvoices.map((invoice) => (
                                                 <option key={invoice.id} value={invoice.id}>
-                                                    {invoiceLabel(invoice)} — ${formatMoney(invoice.saldo_pendiente)}
+                                                    {invoiceMonth(invoice)} — ${formatMoney(invoice.saldo_pendiente)}
                                                 </option>
                                             ))}
                                         </select>
@@ -761,7 +755,9 @@ export default function PanelCobrador() {
                                         </div>
                                         {selectedFactura && (
                                             <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[10px] dark:border-slate-800 dark:bg-slate-900/60">
+                                                <span><b className="mr-1 uppercase tracking-wider text-slate-400">Folio:</b>#{selectedFactura.id}</span>
                                                 <span><b className="mr-1 uppercase tracking-wider text-slate-400">Mes:</b>{invoiceMonth(selectedFactura)}</span>
+                                                <span className="col-span-2"><b className="mr-1 uppercase tracking-wider text-slate-400">Periodo:</b>{selectedFactura.periodo_desde && selectedFactura.periodo_hasta ? `${formatDateLong(selectedFactura.periodo_desde)} al ${formatDateLong(selectedFactura.periodo_hasta)}` : formatDateLong(selectedFactura.fecha_vencimiento)}</span>
                                                 <span><b className="mr-1 uppercase tracking-wider text-slate-400">Vence:</b>{formatDateLong(selectedFactura.fecha_vencimiento)}</span>
                                                 <span><b className="mr-1 uppercase tracking-wider text-slate-400">Con servicio:</b>{selectedFactura.dias_con_servicio ?? 0} días</span>
                                                 <span><b className="mr-1 uppercase tracking-wider text-slate-400">Sin servicio:</b>{selectedFactura.dias_sin_servicio ?? 0} días</span>
