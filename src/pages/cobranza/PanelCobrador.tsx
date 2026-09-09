@@ -127,9 +127,13 @@ function invoiceMonth(invoice?: BillingInvoice | null) {
     const value = invoice?.mes_correspondiente;
     if (!value) return formatDateLong(invoice?.periodo_desde);
     const match = value.match(/^(\d{4})-(\d{1,2})$/);
-    if (match) return `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}`;
+    if (match) {
+        const month = `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}`;
+        return month.charAt(0).toUpperCase() + month.slice(1);
+    }
     const englishMonths = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-    return value.replace(/january|february|march|april|may|june|july|august|september|october|november|december/i, (month) => MESES_ES[englishMonths.indexOf(month.toLowerCase())]);
+    const month = value.replace(/january|february|march|april|may|june|july|august|september|october|november|december/i, (name) => MESES_ES[englishMonths.indexOf(name.toLowerCase())]);
+    return month.charAt(0).toUpperCase() + month.slice(1);
 }
 
 function invoiceConcept(invoice?: BillingInvoice | null) {
@@ -749,6 +753,9 @@ export default function PanelCobrador() {
 
                                     {/* CONCEPTO A PAGAR */}
                                     <div className="mb-6">
+                                        <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+                                            Debe {modalInvoices.length} factura{modalInvoices.length === 1 ? '' : 's'} · ${formatMoney(modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0))}
+                                        </div>
                                         <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2 px-1">Comprobante a pagar</label>
                                         <select
                                             value={invoiceSelection}
@@ -758,13 +765,10 @@ export default function PanelCobrador() {
                                             {modalInvoices.length > 1 && online && <option value="all">Todas las facturas — ${formatMoney(modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0))}</option>}
                                             {modalInvoices.map((invoice) => (
                                                 <option key={invoice.id} value={invoice.id}>
-                                                    {invoiceMonth(invoice)} — ${formatMoney(invoice.saldo_pendiente)}
+                                                    {invoiceMonth(invoice)} · {invoiceIsOverdue(invoice) ? 'Atrasada' : 'Reciente'} — ${formatMoney(invoice.saldo_pendiente)}
                                                 </option>
                                             ))}
                                         </select>
-                                        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
-                                            Debe {modalInvoices.length} factura{modalInvoices.length === 1 ? '' : 's'} · ${formatMoney(modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0))}
-                                        </div>
                                         {selectedFactura && (
                                             <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[10px] dark:border-slate-800 dark:bg-slate-900/60">
                                                 <span><b className="mr-1 uppercase tracking-wider text-slate-400">Folio:</b>#{selectedFactura.id}</span>
@@ -794,14 +798,14 @@ export default function PanelCobrador() {
                                     </div>
 
                                     {/* TABS DE ACCIÓN */}
-                                    <div className={`grid ${bulkInvoices.length > 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-2 p-1.5 bg-slate-100 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-xl mb-6 shadow-sm dark:shadow-lg`}>
+                                    {bulkInvoices.length <= 1 && <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-xl mb-6 shadow-sm dark:shadow-lg">
                                         <button onClick={() => setModo('pagar')} className={`py-3 rounded-lg text-sm font-bold transition-all ${modo === 'pagar' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
                                             Registrar Pago
                                         </button>
-                                        {bulkInvoices.length <= 1 && <button onClick={() => setModo('promesa')} className={`py-3 rounded-lg text-sm font-bold transition-all ${modo === 'promesa' ? 'bg-orange-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+                                        <button onClick={() => setModo('promesa')} className={`py-3 rounded-lg text-sm font-bold transition-all ${modo === 'promesa' ? 'bg-orange-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
                                             Crear Promesa
-                                        </button>}
-                                    </div>
+                                        </button>
+                                    </div>}
 
                                     {/* FORMULARIOS */}
                                     <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar">
@@ -815,6 +819,7 @@ export default function PanelCobrador() {
                                                         <input 
                                                             type="number" step="0.01" required
                                                             className="w-full border-b-2 border-transparent bg-transparent pb-1 pl-10 text-center text-6xl font-black text-slate-900 outline-none transition-all placeholder-slate-300 focus:border-emerald-500 dark:text-white dark:placeholder-slate-800 sm:text-7xl"
+                                                            style={{ fontSize: 'clamp(3.75rem, 12vw, 5rem)', lineHeight: 1 }}
                                                             placeholder="0.00" value={formCobro.monto || ''} readOnly={bulkInvoices.length > 1} onChange={e => setFormCobro({...formCobro, monto: Number(e.target.value)})}
                                                         />
                                                     </div>

@@ -88,9 +88,13 @@ function invoiceMonth(invoice?: FacturaPendiente | null) {
     const value = invoice?.mes_correspondiente;
     if (!value) return formatDateLong(invoice?.fecha_vencimiento);
     const match = value.match(/^(\d{4})-(\d{1,2})$/);
-    if (match) return `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}`;
+    if (match) {
+        const month = `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}`;
+        return month.charAt(0).toUpperCase() + month.slice(1);
+    }
     const englishMonths = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-    return value.replace(/january|february|march|april|may|june|july|august|september|october|november|december/i, (month) => MESES_ES[englishMonths.indexOf(month.toLowerCase())]);
+    const month = value.replace(/january|february|march|april|may|june|july|august|september|october|november|december/i, (name) => MESES_ES[englishMonths.indexOf(name.toLowerCase())]);
+    return month.charAt(0).toUpperCase() + month.slice(1);
 }
 
 function invoiceIsOverdue(invoice: FacturaPendiente) {
@@ -559,6 +563,9 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 {/* Selector directo de comprobante */}
                                 {facturasPendientes.length > 0 ? (
                                     <div className="mb-5">
+                                        <div className="mb-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+                                            Debe {facturasPendientes.length} factura{facturasPendientes.length === 1 ? '' : 's'} · ${facturasPendientes.reduce((total, factura) => total + Number(factura.saldo_pendiente), 0).toFixed(2)}
+                                        </div>
                                         <label className={labelClass}>Comprobante a pagar</label>
                                         <select
                                             value={facturasSeleccionadas.length > 1 ? 'all' : String(facturasSeleccionadas[0] || '')}
@@ -568,13 +575,10 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                             {facturasPendientes.length > 1 && <option value="all">Todas las facturas — ${facturasPendientes.reduce((total, factura) => total + Number(factura.saldo_pendiente), 0).toFixed(2)}</option>}
                                             {facturasPendientes.map((factura) => (
                                                 <option key={factura.id} value={factura.id}>
-                                                    {invoiceMonth(factura)} — ${Number(factura.saldo_pendiente).toFixed(2)}
+                                                    {invoiceMonth(factura)} · {invoiceIsOverdue(factura) ? 'Atrasada' : 'Reciente'} — ${Number(factura.saldo_pendiente).toFixed(2)}
                                                 </option>
                                             ))}
                                         </select>
-                                        <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
-                                            Debe {facturasPendientes.length} factura{facturasPendientes.length === 1 ? '' : 's'} · ${facturasPendientes.reduce((total, factura) => total + Number(factura.saldo_pendiente), 0).toFixed(2)}
-                                        </div>
                                         {selectedFactura && (
                                             <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-[11px] dark:border-slate-800 dark:bg-slate-900/60">
                                                 <div><span className="block font-black uppercase tracking-wider text-slate-400">Folio</span><span className="font-bold text-slate-700 dark:text-slate-200">#{selectedFactura.id}</span></div>
@@ -598,14 +602,14 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 {selectedFactura && (
                                     <div className="flex-1 flex flex-col">
                                         {/* Tabs Pagar/Promesa tipo iOS */}
-                                        <div className="flex p-1 bg-slate-100 dark:bg-slate-900 rounded-[1rem] mb-6 border border-slate-200 dark:border-slate-800">
+                                        {facturasSeleccionadas.length <= 1 && <div className="flex p-1 bg-slate-100 dark:bg-slate-900 rounded-[1rem] mb-6 border border-slate-200 dark:border-slate-800">
                                             <button onClick={() => setModo('pagar')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${modo === 'pagar' ? 'bg-white dark:bg-[#12141a] text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-slate-800/80' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                                                 Registrar Pago
                                             </button>
                                             <button onClick={() => setModo('promesa')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${modo === 'promesa' ? 'bg-white dark:bg-[#12141a] text-amber-600 dark:text-amber-500 shadow-sm border border-slate-200 dark:border-slate-800/80' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                                                 Dar Prórroga
                                             </button>
-                                        </div>
+                                        </div>}
 
                                         {modo === 'pagar' ? (
                                             <form onSubmit={handleCobrar} className="flex flex-col flex-1">
@@ -622,6 +626,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                                             value={facturasSeleccionadas.length > 1 ? totalCobro : (selectedFactura ? montosPorFactura[selectedFactura.id] || '' : '')}
                                                             onChange={(event) => selectedFactura && setMontosPorFactura((actual) => ({ ...actual, [selectedFactura.id]: event.target.value }))}
                                                             className="w-full border-b-2 border-transparent bg-transparent pb-1 pl-10 text-center text-6xl font-black text-slate-900 outline-none transition-all focus:border-emerald-500 dark:text-white sm:text-7xl"
+                                                            style={{ fontSize: 'clamp(3.75rem, 12vw, 5rem)', lineHeight: 1 }}
                                                         />
                                                     </div>
                                                     <p className="mt-3 text-[11px] font-semibold text-slate-500">
