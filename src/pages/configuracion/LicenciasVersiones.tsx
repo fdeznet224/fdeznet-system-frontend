@@ -57,7 +57,7 @@ interface InstallationCreated extends InstallCommand { licencia: string; }
 interface BootstrapToken { token_instalacion: string; token_expira: string; }
 interface Draft { estado: string; version_objetivo: string; notas_actualizacion: string; actualizacion_automatica: boolean; }
 interface Release { id: number; version: string; backend_commit: string; frontend_commit: string; notas: string | null; creada_en: string; }
-interface Maintenance { estado: string; mensaje: string; fecha: string | null; version: string | null; respaldo: string | null; actualizacion_automatica: boolean; respaldo_automatico: boolean; }
+interface Maintenance { estado: string; mensaje: string; fecha: string | null; version: string | null; respaldo: string | null; actualizacion_automatica: boolean; respaldo_automatico: boolean; revision_automatica: boolean; recuperacion_estado: string; recuperacion_fecha: string | null; clave_huella: string | null; }
 
 const card = 'rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900';
 const input = 'w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
@@ -126,10 +126,10 @@ export default function LicenciasVersiones() {
     } catch { toast.error('No se pudo actualizar la instalación'); }
   };
 
-  const runMaintenance = async (action: 'respaldo' | 'actualizar') => {
+  const runMaintenance = async (action: 'respaldo' | 'actualizar' | 'verificar') => {
     try {
       await client.post(`/configuracion/mantenimiento/${action}`);
-      toast.success(action === 'respaldo' ? 'Respaldo iniciado' : 'Revisión iniciada');
+      toast.success(action === 'respaldo' ? 'Respaldo iniciado' : action === 'verificar' ? 'Prueba de recuperación iniciada' : 'Revisión iniciada');
       window.setTimeout(() => void load(), 2500);
     } catch { toast.error('No se pudo iniciar la tarea'); }
   };
@@ -163,7 +163,7 @@ export default function LicenciasVersiones() {
         <button disabled={checking || !status.configurada} onClick={() => void verify()} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"><ArrowPathIcon className={`h-5 w-5 ${checking ? 'animate-spin' : ''}`} /> Verificar ahora</button>
       </div>
       {!status.configurada && <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">Para activar esta VPS agrega en su archivo <code>.env</code> las variables <strong>FDEZNET_INSTALLATION_ID</strong> y <strong>FDEZNET_LICENSE_KEY</strong>.</div>}
-      {maintenance && <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-950 sm:grid-cols-[1fr_auto]"><div><p className="text-sm font-black text-slate-800 dark:text-slate-100">Mantenimiento: {maintenance.estado.replace('_', ' ')}</p><p className="text-xs text-slate-500">{maintenance.mensaje} · {formatDate(maintenance.fecha)}</p><p className="mt-1 text-[10px] font-bold uppercase text-slate-400">Respaldo diario {maintenance.respaldo_automatico ? 'activo' : 'inactivo'} · Revisión automática {maintenance.actualizacion_automatica ? 'activa' : 'inactiva'}</p></div><div className="flex gap-2"><button onClick={() => void runMaintenance('respaldo')} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black dark:border-slate-700"><CircleStackIcon className="h-4 w-4" /> Respaldar</button><button onClick={() => void runMaintenance('actualizar')} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Revisar actualización</button></div></div>}
+      {maintenance && <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-950 sm:grid-cols-[1fr_auto]"><div><p className="text-sm font-black text-slate-800 dark:text-slate-100">Mantenimiento: {maintenance.estado.replaceAll('_', ' ')}</p><p className="text-xs text-slate-500">{maintenance.mensaje} · {formatDate(maintenance.fecha)}</p><p className="mt-1 text-xs font-bold text-slate-600 dark:text-slate-300">Recuperación: {maintenance.recuperacion_estado.replaceAll('_', ' ')} · {formatDate(maintenance.recuperacion_fecha)}</p><p className="mt-1 text-[10px] font-bold uppercase text-slate-400">Respaldo diario {maintenance.respaldo_automatico ? 'activo' : 'inactivo'} · Auditoría semanal {maintenance.revision_automatica ? 'activa' : 'inactiva'} · Revisión de versión {maintenance.actualizacion_automatica ? 'activa' : 'inactiva'}</p>{maintenance.clave_huella && <p className="mt-1 truncate font-mono text-[9px] text-slate-400">Huella de clave: {maintenance.clave_huella}</p>}</div><div className="flex flex-wrap gap-2 sm:max-w-xs sm:justify-end"><button onClick={() => void runMaintenance('respaldo')} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black dark:border-slate-700"><CircleStackIcon className="h-4 w-4" /> Respaldar</button><button onClick={() => void runMaintenance('verificar')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black dark:border-slate-700">Probar recuperación</button><button onClick={() => void runMaintenance('actualizar')} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Revisar actualización</button></div></div>}
     </section>}
 
     {isCentral && <section className="space-y-4">
