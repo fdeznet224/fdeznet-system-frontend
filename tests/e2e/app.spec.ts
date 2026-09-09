@@ -333,7 +333,7 @@ test('ofrece recuperación cuando falla un módulo diferido', async ({ page }) =
   await page.goto('/admin/bajas')
 
   await expect(page.getByRole('heading', { name: 'No pudimos cargar esta pantalla' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Recargar aplicación' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Limpiar versión y recargar' })).toBeVisible()
 })
 
 test('carga el panel técnico tipado', async ({ page }) => {
@@ -392,7 +392,7 @@ test('abre herramientas y alta desde el listado unificado', async ({ page }) => 
     await page.locator('article').first().click()
     await expect(page.locator('.client-detail-panel')).toBeVisible()
     await expect(page.getByText('Copiar IP')).toHaveCount(0)
-    await expect(page.getByTitle('Copiar IP asignada')).toHaveCount(0)
+    await expect(page.getByTitle('Copiar IP asignada')).toBeVisible()
     await page.locator('.client-close-button').click()
   }
   await page.getByRole('button', { name: 'Herramientas de Cliente E2E' }).click()
@@ -489,7 +489,7 @@ test('abre la terminal de cobro y busca un cliente', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Cobrar' }).click()
   await expect(page.getByRole('heading', { name: 'Registrar Pago' })).toBeVisible()
-  await page.getByPlaceholder('Ej. Juan Perez...').fill('Cliente')
+  await page.getByPlaceholder('Nombre, número de contrato de 4 dígitos o IP...').fill('Cliente')
   await expect(page.getByText('Cliente E2E', { exact: true })).toBeVisible()
 })
 
@@ -716,7 +716,7 @@ test('busca un abonado desde la herramienta técnica', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Buscar Abonado' })).toBeVisible()
   await expect(page.getByText('Cliente E2E', { exact: true })).toBeVisible()
-  await expect(page.getByText('SN: E2E-1')).toBeVisible()
+  await expect(page.getByText('Contrato: E2E-1')).toBeVisible()
 })
 
 test('abre la herramienta móvil de escaneo QR', async ({ page }) => {

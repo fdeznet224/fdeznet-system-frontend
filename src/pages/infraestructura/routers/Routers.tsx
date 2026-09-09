@@ -16,6 +16,7 @@ import {
 import CreateRouterModal from './components/CreateRouterModal';
 import RouterPingButton from './components/RouterPingButton';
 import type { RouterActionResponse, RouterRecord } from './types';
+import { useBrand } from '@/context/brand/useBrand';
 
 const getErrorMessage = (error: unknown, fallback: string) => {
     if (axios.isAxiosError<{ detail?: string }>(error)) {
@@ -26,6 +27,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 };
 
 export default function Routers() {
+    const { brand } = useBrand();
     const [routers, setRouters] = useState<RouterRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,7 +121,7 @@ export default function Routers() {
             {loading ? (
                 <div className="py-32 text-center flex flex-col items-center justify-center bg-white dark:bg-slate-800/30 rounded-3xl border border-slate-200 dark:border-slate-700/30 backdrop-blur-sm shadow-sm">
                     <ArrowPathIcon className="w-12 h-12 animate-spin text-blue-500 mb-4" />
-                    <span className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-sm text-blue-600 dark:text-blue-400">Escaneando red FdezNet...</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-sm text-blue-600 dark:text-blue-400">Escaneando red {brand.empresa_nombre}...</span>
                 </div>
             ) : routers.length === 0 ? (
                 <div className="py-32 text-center flex flex-col items-center justify-center bg-white dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700/30 shadow-sm">

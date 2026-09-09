@@ -9,6 +9,7 @@ import {
     EllipsisVerticalIcon, DocumentIcon, MusicalNoteIcon, VideoCameraIcon
 } from '@heroicons/react/24/outline';
 import { useWhatsApp } from '@/context/whatsapp/context';
+import { useBrand } from '@/context/brand/useBrand';
 
 // --- SVGs DE WHATSAPP ---
 const IconClock = () => <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" className="text-white/60"><path d="M8 0a8 8 0 1 0 8 8 8 8 0 0 0-8-8zm0 14.5a6.5 6.5 0 1 1 6.5-6.5 6.5 6.5 0 0 1-6.5 6.5zM8.5 4h-1v4.2l3 1.8.5-.8-2.5-1.5z"/></svg>;
@@ -50,6 +51,7 @@ interface MensajeChat {
 
 export default function MensajesCRM() {
     const { wsEvent, unreadCounts, clearUnread } = useWhatsApp();
+    const { brand } = useBrand();
 
     const [clientes, setClientes] = useState<ClienteCRM[]>([]);
     const [busqueda, setBusqueda] = useState('');
@@ -468,7 +470,7 @@ export default function MensajesCRM() {
                 <div className="hidden md:flex flex-1 flex-col items-center justify-center bg-[#222e35] border-l border-slate-700/50">
                     <div className="max-w-md text-center flex flex-col items-center">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WA" className="w-20 h-20 mb-8 opacity-50 grayscale" />
-                        <h2 className="text-3xl font-light text-[#e9edef] mb-4">FdezNet Mensajes</h2>
+                        <h2 className="text-3xl font-light text-[#e9edef] mb-4">{brand.empresa_nombre} Mensajes</h2>
                         <p className="text-[#8696a0] text-sm leading-relaxed">
                             Envía y recibe mensajes sin necesidad de mantener tu teléfono conectado.<br/>
                             Administra la red y las finanzas de tus clientes desde una sola pantalla.

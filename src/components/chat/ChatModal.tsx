@@ -98,9 +98,10 @@ export default function ChatModal({ isOpen, onClose, cliente, onMessagesRead }: 
         if (urls && urls.length > 0) {
             let urlArchivo = urls[0];
             
-            // Reemplazo para producción
-            urlArchivo = urlArchivo.replace("http://localhost:3000/uploads", "https://fdezpay.com/media");
-            urlArchivo = urlArchivo.replace("https://localhost:3000/uploads", "https://fdezpay.com/media");
+            // Los mensajes antiguos pueden conservar la URL local del motor.
+            // En cada VPS se sirven desde el mismo dominio de la instalación.
+            const mediaBase = `${window.location.origin}/media/uploads`;
+            urlArchivo = urlArchivo.replace(/^https?:\/\/(localhost|127\.0\.0\.1):3000\/uploads/, mediaBase);
 
             const extension = urlArchivo.split('.').pop()?.toLowerCase();
 

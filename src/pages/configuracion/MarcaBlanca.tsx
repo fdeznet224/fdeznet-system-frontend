@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ArrowLeftIcon, CheckCircleIcon, PaintBrushIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, ArrowUpTrayIcon, CheckCircleIcon, PaintBrushIcon, PhotoIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import client from '@/api/axios';
@@ -13,6 +13,7 @@ export default function MarcaBlanca() {
   const { brand, refreshBrand } = useBrand();
   const [form, setForm] = useState<BrandConfig>(brand);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<'logo' | 'favicon' | null>(null);
   useEffect(() => { setForm(brand); }, [brand]);
   const update = <K extends keyof BrandConfig>(key: K, value: BrandConfig[K]) => setForm((current) => ({ ...current, [key]: value }));
   const save = async () => {
@@ -20,6 +21,16 @@ export default function MarcaBlanca() {
     try { await client.put('/configuracion/marca', form); await refreshBrand(); toast.success('Marca actualizada'); }
     catch { toast.error('No se pudo guardar la marca'); }
     finally { setSaving(false); }
+  };
+  const uploadImage = async (type: 'logo' | 'favicon', file?: File) => {
+    if (!file) return;
+    const body = new FormData(); body.append('archivo', file);
+    setUploading(type);
+    try {
+      const { data } = await client.post<BrandConfig>(`/configuracion/marca/${type}/archivo`, body);
+      setForm(data); await refreshBrand(); toast.success(type === 'logo' ? 'Logotipo actualizado' : 'Favicon actualizado');
+    } catch { toast.error('Usa una imagen PNG, JPG o WebP de máximo 2 MB'); }
+    finally { setUploading(null); }
   };
 
   return <div className="mx-auto max-w-5xl space-y-6 p-4 pb-28 sm:p-6">
@@ -31,8 +42,8 @@ export default function MarcaBlanca() {
       <div className="grid gap-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-2 sm:p-7">
         <Field label="Nombre del ISP"><input className={fieldClass} value={form.empresa_nombre} onChange={(e) => update('empresa_nombre', e.target.value)} /></Field>
         <Field label="Nombre del sistema"><input className={fieldClass} value={form.sistema_nombre} onChange={(e) => update('sistema_nombre', e.target.value)} /></Field>
-        <Field label="URL del logotipo"><input className={fieldClass} placeholder="https://.../logo.png" value={form.logo_url || ''} onChange={(e) => update('logo_url', e.target.value || null)} /></Field>
-        <Field label="URL del favicon"><input className={fieldClass} placeholder="https://.../favicon.png" value={form.favicon_url || ''} onChange={(e) => update('favicon_url', e.target.value || null)} /></Field>
+        <Field label="Logotipo"><label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 p-3 text-sm font-black text-slate-600 dark:border-slate-700 dark:text-slate-300"><ArrowUpTrayIcon className="h-5 w-5" />{uploading === 'logo' ? 'Subiendo…' : 'Subir imagen'}<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading !== null} onChange={(e) => void uploadImage('logo', e.target.files?.[0])} /></label></Field>
+        <Field label="Favicon"><label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 p-3 text-sm font-black text-slate-600 dark:border-slate-700 dark:text-slate-300"><ArrowUpTrayIcon className="h-5 w-5" />{uploading === 'favicon' ? 'Subiendo…' : 'Subir icono'}<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading !== null} onChange={(e) => void uploadImage('favicon', e.target.files?.[0])} /></label></Field>
         <Field label="Color principal"><ColorField value={form.color_primario} onChange={(value) => update('color_primario', value)} /></Field>
         <Field label="Color secundario"><ColorField value={form.color_secundario} onChange={(value) => update('color_secundario', value)} /></Field>
         <Field label="Teléfono"><input className={fieldClass} value={form.empresa_telefono || ''} onChange={(e) => update('empresa_telefono', e.target.value || null)} /></Field>
