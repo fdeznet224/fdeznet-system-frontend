@@ -92,7 +92,17 @@ function errorMessage(error: unknown, fallback: string): string {
         .map((item) => {
           if (typeof item === 'string') return item;
           if (item && typeof item === 'object' && 'msg' in item) {
-            return String(item.msg);
+            const location = 'loc' in item && Array.isArray(item.loc)
+              ? String(item.loc.at(-1) || '')
+              : '';
+            const labels: Record<string, string> = {
+              correo: 'Cuenta Gmail',
+              password_aplicacion: 'Contraseña de aplicación',
+              remitente_permitido: 'Remitente bancario',
+              ventana_dias: 'Ventana de búsqueda',
+              tolerancia_monto: 'Tolerancia de monto',
+            };
+            return `${labels[location] || location || 'Dato inválido'}: ${String(item.msg)}`;
           }
           return '';
         })
@@ -204,6 +214,14 @@ export default function PaymentReviewInbox() {
     }
     if (payload.password_aplicacion && payload.password_aplicacion.length !== 16) {
       toast.error('La contraseña de aplicación debe tener 16 caracteres');
+      return false;
+    }
+    if (payload.ventana_dias < 1 || payload.ventana_dias > 30) {
+      toast.error('La ventana de búsqueda debe estar entre 1 y 30 días');
+      return false;
+    }
+    if (payload.tolerancia_monto < 0 || payload.tolerancia_monto > 100) {
+      toast.error('La tolerancia debe estar entre $0.00 y $100.00; recomendamos $0.00');
       return false;
     }
     return true;
@@ -417,7 +435,11 @@ export default function PaymentReviewInbox() {
                 <input type="number" min="1" max="30" value={emailConfig.ventana_dias} onChange={(event) => updateEmailConfig('ventana_dias', Number(event.target.value))} className={bankInputClass} />
               </label>
               <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Tolerancia de monto
-                <input type="number" min="0" max="100" step="0.01" value={emailConfig.tolerancia_monto} onChange={(event) => updateEmailConfig('tolerancia_monto', Number(event.target.value))} className={bankInputClass} />
+                <span className="relative block">
+                  <span className="pointer-events-none absolute left-3.5 top-1/2 mt-0.5 -translate-y-1/2 text-sm text-slate-400">$</span>
+                  <input type="number" min="0" max="100" step="0.01" value={emailConfig.tolerancia_monto} onChange={(event) => updateEmailConfig('tolerancia_monto', Number(event.target.value))} className={`${bankInputClass} pl-7`} />
+                </span>
+                <span className="mt-1 block font-normal text-slate-400">Diferencia permitida entre captura y banco. Recomendado: $0.00 · Máximo: $100.00.</span>
               </label>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
