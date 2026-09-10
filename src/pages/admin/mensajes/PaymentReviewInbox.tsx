@@ -6,8 +6,11 @@ import {
   CheckCircleIcon,
   ClockIcon,
   EnvelopeIcon,
+  EyeIcon,
+  EyeSlashIcon,
   MagnifyingGlassIcon,
   PhotoIcon,
+  ShieldCheckIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
 
@@ -80,9 +83,25 @@ interface ClientResult {
   total_deuda: number;
 }
 
-function errorMessage(error: unknown, fallback: string) {
-  if (axios.isAxiosError<{ detail?: string }>(error)) {
-    return error.response?.data?.detail || fallback;
+function errorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError<{ detail?: unknown }>(error)) {
+    const detail = error.response?.data?.detail;
+    if (typeof detail === 'string' && detail.trim()) return detail;
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object' && 'msg' in item) {
+            return String(item.msg);
+          }
+          return '';
+        })
+        .filter(Boolean);
+      if (messages.length) return messages.join(' · ');
+    }
+    if (detail && typeof detail === 'object' && 'msg' in detail) {
+      return String(detail.msg);
+    }
   }
   return fallback;
 }
@@ -101,6 +120,8 @@ const statusStyles: Record<ReviewStatus, string> = {
   rechazado: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
 };
 
+const bankInputClass = 'mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
+
 export default function PaymentReviewInbox() {
   const [status, setStatus] = useState<ReviewStatus | 'todos'>('pendiente');
   const [items, setItems] = useState<ReviewItem[]>([]);
@@ -117,6 +138,7 @@ export default function PaymentReviewInbox() {
   const [showEmailSettings, setShowEmailSettings] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [appPassword, setAppPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [emailConfig, setEmailConfig] = useState<BankEmailConfig | null>(null);
 
   const loadEmailConfig = useCallback(async () => {
@@ -153,25 +175,48 @@ export default function PaymentReviewInbox() {
     setEmailConfig((current) => (current ? { ...current, [key]: value } : current));
   };
 
-  const saveEmailConfig = async () => {
-    if (!emailConfig?.correo || !emailConfig.remitente_permitido) {
-      toast.error('Indica la cuenta Gmail y el remitente exacto del banco');
-      return;
+  const emailPayload = () => ({
+    activo: Boolean(emailConfig?.activo),
+    auto_aprobar: Boolean(emailConfig?.auto_aprobar),
+    correo: emailConfig?.correo?.trim() || '',
+    password_aplicacion: appPassword.replaceAll(' ', '') || null,
+    remitente_permitido: emailConfig?.remitente_permitido?.trim() || '',
+    asunto_filtro: emailConfig?.asunto_filtro?.trim() || null,
+    carpeta: emailConfig?.carpeta?.trim() || 'INBOX',
+    ventana_dias: Number(emailConfig?.ventana_dias || 3),
+    tolerancia_monto: Number(emailConfig?.tolerancia_monto || 0),
+    requiere_dkim: true,
+  });
+
+  const validateEmailForm = () => {
+    const payload = emailPayload();
+    if (!payload.correo.includes('@')) {
+      toast.error('Escribe una cuenta de Gmail válida');
+      return false;
     }
+    if (!payload.remitente_permitido.includes('@')) {
+      toast.error('Copia el correo remitente exacto desde un aviso real del banco');
+      return false;
+    }
+    if (!emailConfig?.credencial_configurada && !payload.password_aplicacion) {
+      toast.error('Escribe la contraseña de aplicación de Google');
+      return false;
+    }
+    if (payload.password_aplicacion && payload.password_aplicacion.length !== 16) {
+      toast.error('La contraseña de aplicación debe tener 16 caracteres');
+      return false;
+    }
+    return true;
+  };
+
+  const saveEmailConfig = async () => {
+    if (!validateEmailForm()) return;
     setEmailLoading(true);
     try {
-      const response = await client.post<BankEmailConfig>('/correo-bancario/configuracion', {
-        activo: emailConfig.activo,
-        auto_aprobar: emailConfig.auto_aprobar,
-        correo: emailConfig.correo,
-        password_aplicacion: appPassword.trim() || null,
-        remitente_permitido: emailConfig.remitente_permitido,
-        asunto_filtro: emailConfig.asunto_filtro || null,
-        carpeta: emailConfig.carpeta || 'INBOX',
-        ventana_dias: emailConfig.ventana_dias,
-        tolerancia_monto: emailConfig.tolerancia_monto,
-        requiere_dkim: true,
-      });
+      const response = await client.post<BankEmailConfig>(
+        '/correo-bancario/configuracion',
+        emailPayload(),
+      );
       setEmailConfig(response.data);
       setAppPassword('');
       toast.success('Configuración guardada');
@@ -183,19 +228,15 @@ export default function PaymentReviewInbox() {
   };
 
   const testEmailConnection = async () => {
-    if (!emailConfig?.correo) {
-      toast.error('Indica primero la cuenta Gmail');
-      return;
-    }
+    if (!validateEmailForm()) return;
     setEmailLoading(true);
     try {
-      await client.post('/correo-bancario/probar', {
-        correo: emailConfig.correo,
-        password_aplicacion: appPassword.trim() || null,
-        carpeta: emailConfig.carpeta || 'INBOX',
-      });
-      await loadEmailConfig();
-      toast.success('Conexión segura de solo lectura verificada');
+      const response = await client.post<{
+        configuracion: BankEmailConfig;
+      }>('/correo-bancario/probar', emailPayload());
+      setEmailConfig(response.data.configuracion);
+      setAppPassword('');
+      toast.success('Conexión verificada y datos guardados');
     } catch (error) {
       toast.error(errorMessage(error, 'No se pudo conectar con Gmail'));
     } finally {
@@ -345,27 +386,38 @@ export default function PaymentReviewInbox() {
 
         {showEmailSettings && emailConfig && (
           <div className="space-y-4 border-t border-slate-200 p-4 dark:border-slate-800 sm:p-5">
-            <div className="rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
-              Usa una contraseña de aplicación de Google, no tu contraseña normal. El sistema abre Gmail en modo de solo lectura y únicamente aprueba cuando coinciden referencia, monto y fecha, además de DKIM/DMARC.
+            <div className="grid gap-3 sm:grid-cols-3">
+              {['1. Captura los datos', '2. Prueba y guarda', '3. Activa la validación'].map((step, index) => (
+                <div key={step} className={`rounded-xl border px-3 py-2 text-xs font-bold ${index === 0 || emailConfig.credencial_verificada_en ? 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-200' : 'border-slate-200 text-slate-500 dark:border-slate-700'}`}>{step}</div>
+              ))}
+            </div>
+            <div className="flex gap-3 rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+              <ShieldCheckIcon className="mt-0.5 h-5 w-5 shrink-0" />
+              <p>Usa una contraseña de aplicación de Google, no tu contraseña normal. Gmail se consulta en modo de solo lectura y el pago exige coincidencia de referencia, monto, fecha, DKIM y DMARC.</p>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
-              <label className="block text-xs font-bold text-slate-500">Cuenta Gmail
-                <input type="email" value={emailConfig.correo || ''} onChange={(event) => updateEmailConfig('correo', event.target.value)} placeholder="pagos@tuempresa.com" className="app-input mt-1 w-full" />
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Cuenta de Gmail que recibe los depósitos
+                <input type="email" value={emailConfig.correo || ''} onChange={(event) => updateEmailConfig('correo', event.target.value)} placeholder="pagos@gmail.com" className={bankInputClass} />
               </label>
-              <label className="block text-xs font-bold text-slate-500">Contraseña de aplicación
-                <input type="password" value={appPassword} onChange={(event) => setAppPassword(event.target.value)} placeholder={emailConfig.credencial_configurada ? 'Guardada; deja vacío para conservarla' : '16 caracteres de Google'} autoComplete="new-password" className="app-input mt-1 w-full" />
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Contraseña de aplicación de Google
+                <span className="relative mt-1.5 block">
+                  <input type={showPassword ? 'text' : 'password'} value={appPassword} onChange={(event) => setAppPassword(event.target.value)} placeholder={emailConfig.credencial_configurada ? 'Guardada; deja vacío para conservarla' : '16 caracteres de Google'} autoComplete="new-password" className={`${bankInputClass} mt-0 pr-11`} />
+                  <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-indigo-600" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+                    {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                  </button>
+                </span>
               </label>
-              <label className="block text-xs font-bold text-slate-500">Remitente exacto de Banco Azteca
-                <input type="email" value={emailConfig.remitente_permitido || ''} onChange={(event) => updateEmailConfig('remitente_permitido', event.target.value)} placeholder="Cópialo de un correo bancario real" className="app-input mt-1 w-full" />
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Correo remitente de Banco Azteca
+                <input type="text" value={emailConfig.remitente_permitido || ''} onChange={(event) => updateEmailConfig('remitente_permitido', event.target.value)} placeholder="Copia el campo De de un correo real" className={bankInputClass} />
               </label>
-              <label className="block text-xs font-bold text-slate-500">El asunto contiene (opcional)
-                <input value={emailConfig.asunto_filtro || ''} onChange={(event) => updateEmailConfig('asunto_filtro', event.target.value)} placeholder="Transferencia recibida" className="app-input mt-1 w-full" />
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">El asunto contiene (opcional)
+                <input value={emailConfig.asunto_filtro || ''} onChange={(event) => updateEmailConfig('asunto_filtro', event.target.value)} placeholder="Transferencia recibida" className={bankInputClass} />
               </label>
-              <label className="block text-xs font-bold text-slate-500">Ventana de búsqueda (días)
-                <input type="number" min="1" max="30" value={emailConfig.ventana_dias} onChange={(event) => updateEmailConfig('ventana_dias', Number(event.target.value))} className="app-input mt-1 w-full" />
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Ventana de búsqueda (días)
+                <input type="number" min="1" max="30" value={emailConfig.ventana_dias} onChange={(event) => updateEmailConfig('ventana_dias', Number(event.target.value))} className={bankInputClass} />
               </label>
-              <label className="block text-xs font-bold text-slate-500">Tolerancia de monto
-                <input type="number" min="0" max="100" step="0.01" value={emailConfig.tolerancia_monto} onChange={(event) => updateEmailConfig('tolerancia_monto', Number(event.target.value))} className="app-input mt-1 w-full" />
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Tolerancia de monto
+                <input type="number" min="0" max="100" step="0.01" value={emailConfig.tolerancia_monto} onChange={(event) => updateEmailConfig('tolerancia_monto', Number(event.target.value))} className={bankInputClass} />
               </label>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -383,10 +435,14 @@ export default function PaymentReviewInbox() {
               {emailConfig.ultima_revision && <p>Última revisión: {formatDate(emailConfig.ultima_revision)}.</p>}
               {emailConfig.ultimo_error && <p className="mt-1 text-rose-600">Último error: {emailConfig.ultimo_error}</p>}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void saveEmailConfig()} disabled={emailLoading} className="app-button-primary">Guardar</button>
-              <button type="button" onClick={() => void testEmailConnection()} disabled={emailLoading} className="app-button-secondary">Probar conexión</button>
-              <button type="button" onClick={() => void syncBankEmail()} disabled={emailLoading || !emailConfig.activo} className="app-button-secondary">Sincronizar ahora</button>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <button type="button" onClick={() => void testEmailConnection()} disabled={emailLoading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">
+                <ShieldCheckIcon className="h-5 w-5" /> {emailLoading ? 'Procesando…' : 'Probar y guardar'}
+              </button>
+              <button type="button" onClick={() => void saveEmailConfig()} disabled={emailLoading} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">Guardar cambios</button>
+              <button type="button" onClick={() => void syncBankEmail()} disabled={emailLoading || !emailConfig.activo} className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+                <ArrowPathIcon className={`h-5 w-5 ${emailLoading ? 'animate-spin' : ''}`} /> Sincronizar ahora
+              </button>
             </div>
             <p className="text-xs text-amber-700 dark:text-amber-300">Primera configuración: guarda desactivado, prueba la conexión y después activa. Empieza con aprobación automática apagada hasta verificar una transferencia real.</p>
           </div>
