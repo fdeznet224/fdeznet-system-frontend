@@ -5,6 +5,7 @@ import {
   ArrowPathIcon,
   CheckCircleIcon,
   ClockIcon,
+  EnvelopeIcon,
   MagnifyingGlassIcon,
   PhotoIcon,
   XCircleIcon,
@@ -36,6 +37,31 @@ interface ReviewItem {
     fecha_vencimiento: string;
   } | null;
   archivo_url: string;
+  validacion_correo?: {
+    id: number;
+    fecha?: string | null;
+    monto?: number | null;
+    referencia?: string | null;
+    autenticado: boolean;
+    estado: string;
+  } | null;
+}
+
+interface BankEmailConfig {
+  activo: boolean;
+  auto_aprobar: boolean;
+  proveedor: string;
+  correo?: string | null;
+  credencial_configurada: boolean;
+  credencial_verificada_en?: string | null;
+  remitente_permitido?: string | null;
+  asunto_filtro?: string | null;
+  carpeta: string;
+  ventana_dias: number;
+  tolerancia_monto: number;
+  requiere_dkim: boolean;
+  ultima_revision?: string | null;
+  ultimo_error?: string | null;
 }
 
 interface ReviewResponse {
@@ -88,6 +114,19 @@ export default function PaymentReviewInbox() {
   const [reference, setReference] = useState('');
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<ClientResult[]>([]);
+  const [showEmailSettings, setShowEmailSettings] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [appPassword, setAppPassword] = useState('');
+  const [emailConfig, setEmailConfig] = useState<BankEmailConfig | null>(null);
+
+  const loadEmailConfig = useCallback(async () => {
+    try {
+      const response = await client.get<BankEmailConfig>('/correo-bancario/configuracion');
+      setEmailConfig(response.data);
+    } catch (error) {
+      toast.error(errorMessage(error, 'No se pudo cargar la configuración bancaria'));
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -108,7 +147,74 @@ export default function PaymentReviewInbox() {
     }
   }, [status]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); void loadEmailConfig(); }, [load, loadEmailConfig]);
+
+  const updateEmailConfig = <K extends keyof BankEmailConfig>(key: K, value: BankEmailConfig[K]) => {
+    setEmailConfig((current) => (current ? { ...current, [key]: value } : current));
+  };
+
+  const saveEmailConfig = async () => {
+    if (!emailConfig?.correo || !emailConfig.remitente_permitido) {
+      toast.error('Indica la cuenta Gmail y el remitente exacto del banco');
+      return;
+    }
+    setEmailLoading(true);
+    try {
+      const response = await client.post<BankEmailConfig>('/correo-bancario/configuracion', {
+        activo: emailConfig.activo,
+        auto_aprobar: emailConfig.auto_aprobar,
+        correo: emailConfig.correo,
+        password_aplicacion: appPassword.trim() || null,
+        remitente_permitido: emailConfig.remitente_permitido,
+        asunto_filtro: emailConfig.asunto_filtro || null,
+        carpeta: emailConfig.carpeta || 'INBOX',
+        ventana_dias: emailConfig.ventana_dias,
+        tolerancia_monto: emailConfig.tolerancia_monto,
+        requiere_dkim: true,
+      });
+      setEmailConfig(response.data);
+      setAppPassword('');
+      toast.success('Configuración guardada');
+    } catch (error) {
+      toast.error(errorMessage(error, 'No se pudo guardar la configuración'));
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const testEmailConnection = async () => {
+    if (!emailConfig?.correo) {
+      toast.error('Indica primero la cuenta Gmail');
+      return;
+    }
+    setEmailLoading(true);
+    try {
+      await client.post('/correo-bancario/probar', {
+        correo: emailConfig.correo,
+        password_aplicacion: appPassword.trim() || null,
+        carpeta: emailConfig.carpeta || 'INBOX',
+      });
+      await loadEmailConfig();
+      toast.success('Conexión segura de solo lectura verificada');
+    } catch (error) {
+      toast.error(errorMessage(error, 'No se pudo conectar con Gmail'));
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const syncBankEmail = async () => {
+    setEmailLoading(true);
+    try {
+      const response = await client.post<{ nuevos: number; validos: number }>('/correo-bancario/sincronizar');
+      await Promise.all([loadEmailConfig(), load()]);
+      toast.success(`Correo revisado: ${response.data.nuevos || 0} nuevo(s), ${response.data.validos || 0} válido(s)`);
+    } catch (error) {
+      toast.error(errorMessage(error, 'No se pudo sincronizar Gmail'));
+    } finally {
+      setEmailLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!selected) return;
@@ -215,6 +321,78 @@ export default function PaymentReviewInbox() {
         </button>
       </header>
 
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <button
+          type="button"
+          onClick={() => setShowEmailSettings((value) => !value)}
+          className="flex w-full items-center justify-between gap-4 p-4 text-left sm:p-5"
+        >
+          <span className="flex items-center gap-3">
+            <span className={`rounded-xl p-2 ${emailConfig?.activo ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`}>
+              <EnvelopeIcon className="h-6 w-6" />
+            </span>
+            <span>
+              <span className="block font-black text-slate-900 dark:text-white">Validación por correo bancario</span>
+              <span className="block text-xs text-slate-500">
+                {emailConfig?.activo
+                  ? `Activa${emailConfig.auto_aprobar ? ' · aprobación automática' : ' · aprobación manual'}`
+                  : 'Desactivada hasta configurar y probar Gmail'}
+              </span>
+            </span>
+          </span>
+          <span className="text-xs font-bold text-indigo-600">{showEmailSettings ? 'Cerrar' : 'Configurar'}</span>
+        </button>
+
+        {showEmailSettings && emailConfig && (
+          <div className="space-y-4 border-t border-slate-200 p-4 dark:border-slate-800 sm:p-5">
+            <div className="rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+              Usa una contraseña de aplicación de Google, no tu contraseña normal. El sistema abre Gmail en modo de solo lectura y únicamente aprueba cuando coinciden referencia, monto y fecha, además de DKIM/DMARC.
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="block text-xs font-bold text-slate-500">Cuenta Gmail
+                <input type="email" value={emailConfig.correo || ''} onChange={(event) => updateEmailConfig('correo', event.target.value)} placeholder="pagos@tuempresa.com" className="app-input mt-1 w-full" />
+              </label>
+              <label className="block text-xs font-bold text-slate-500">Contraseña de aplicación
+                <input type="password" value={appPassword} onChange={(event) => setAppPassword(event.target.value)} placeholder={emailConfig.credencial_configurada ? 'Guardada; deja vacío para conservarla' : '16 caracteres de Google'} autoComplete="new-password" className="app-input mt-1 w-full" />
+              </label>
+              <label className="block text-xs font-bold text-slate-500">Remitente exacto de Banco Azteca
+                <input type="email" value={emailConfig.remitente_permitido || ''} onChange={(event) => updateEmailConfig('remitente_permitido', event.target.value)} placeholder="Cópialo de un correo bancario real" className="app-input mt-1 w-full" />
+              </label>
+              <label className="block text-xs font-bold text-slate-500">El asunto contiene (opcional)
+                <input value={emailConfig.asunto_filtro || ''} onChange={(event) => updateEmailConfig('asunto_filtro', event.target.value)} placeholder="Transferencia recibida" className="app-input mt-1 w-full" />
+              </label>
+              <label className="block text-xs font-bold text-slate-500">Ventana de búsqueda (días)
+                <input type="number" min="1" max="30" value={emailConfig.ventana_dias} onChange={(event) => updateEmailConfig('ventana_dias', Number(event.target.value))} className="app-input mt-1 w-full" />
+              </label>
+              <label className="block text-xs font-bold text-slate-500">Tolerancia de monto
+                <input type="number" min="0" max="100" step="0.01" value={emailConfig.tolerancia_monto} onChange={(event) => updateEmailConfig('tolerancia_monto', Number(event.target.value))} className="app-input mt-1 w-full" />
+              </label>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex items-center justify-between rounded-xl border border-slate-200 p-3 text-sm font-bold dark:border-slate-700">
+                Validación activa
+                <input type="checkbox" checked={emailConfig.activo} onChange={(event) => updateEmailConfig('activo', event.target.checked)} className="h-5 w-5 rounded" />
+              </label>
+              <label className="flex items-center justify-between rounded-xl border border-slate-200 p-3 text-sm font-bold dark:border-slate-700">
+                Aprobar automáticamente
+                <input type="checkbox" checked={emailConfig.auto_aprobar} onChange={(event) => updateEmailConfig('auto_aprobar', event.target.checked)} className="h-5 w-5 rounded" />
+              </label>
+            </div>
+            <div className="text-xs text-slate-500">
+              <p>Credencial: {emailConfig.credencial_verificada_en ? `verificada ${formatDate(emailConfig.credencial_verificada_en)}` : emailConfig.credencial_configurada ? 'guardada, falta probarla' : 'no configurada'}.</p>
+              {emailConfig.ultima_revision && <p>Última revisión: {formatDate(emailConfig.ultima_revision)}.</p>}
+              {emailConfig.ultimo_error && <p className="mt-1 text-rose-600">Último error: {emailConfig.ultimo_error}</p>}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => void saveEmailConfig()} disabled={emailLoading} className="app-button-primary">Guardar</button>
+              <button type="button" onClick={() => void testEmailConnection()} disabled={emailLoading} className="app-button-secondary">Probar conexión</button>
+              <button type="button" onClick={() => void syncBankEmail()} disabled={emailLoading || !emailConfig.activo} className="app-button-secondary">Sincronizar ahora</button>
+            </div>
+            <p className="text-xs text-amber-700 dark:text-amber-300">Primera configuración: guarda desactivado, prueba la conexión y después activa. Empieza con aprobación automática apagada hasta verificar una transferencia real.</p>
+          </div>
+        )}
+      </section>
+
       <div className="flex gap-2 overflow-x-auto pb-1">
         {(['pendiente', 'procesando', 'aprobado', 'rechazado', 'todos'] as const).map((value) => (
           <button
@@ -253,6 +431,11 @@ export default function PaymentReviewInbox() {
                 <span className="inline-flex items-center gap-1"><ClockIcon className="h-4 w-4" /> {formatDate(item.fecha_recepcion)}</span>
               </div>
               <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{item.motivo_revision.replaceAll('_', ' ')}</p>
+              {item.validacion_correo && (
+                <p className="mt-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                  Correo bancario autenticado · {item.validacion_correo.referencia} · ${Number(item.validacion_correo.monto || 0).toFixed(2)}
+                </p>
+              )}
             </button>
           ))}
         </section>
@@ -268,6 +451,13 @@ export default function PaymentReviewInbox() {
               <div className="overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-950">
                 {imageUrl ? <img src={imageUrl} alt="Comprobante recibido" className="max-h-[28rem] w-full object-contain" /> : <div className="flex h-48 items-center justify-center text-sm text-slate-500">Imagen no disponible</div>}
               </div>
+
+              {selected.validacion_correo && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+                  <p className="font-black">Transferencia encontrada en Gmail</p>
+                  <p className="mt-1">Referencia {selected.validacion_correo.referencia} · ${Number(selected.validacion_correo.monto || 0).toFixed(2)}{selected.validacion_correo.fecha ? ` · ${formatDate(selected.validacion_correo.fecha)}` : ''}</p>
+                </div>
+              )}
 
               {selected.estado === 'pendiente' || selected.estado === 'procesando' ? (
                 <div className="space-y-3">
