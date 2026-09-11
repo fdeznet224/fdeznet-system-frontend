@@ -253,9 +253,11 @@ export default function PanelCobrador() {
 
     const handleLogout = () => {
         if(confirm("¿Cerrar sesión?")) {
-            localStorage.clear();
-            notifySessionChanged();
-            navigate('/login');
+            void client.post('/auth/logout').finally(() => {
+                localStorage.clear();
+                notifySessionChanged();
+                navigate('/login');
+            });
         }
     };
 

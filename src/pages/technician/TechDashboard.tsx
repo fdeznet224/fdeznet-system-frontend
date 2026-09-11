@@ -214,7 +214,7 @@ export default function TechDashboard() {
                 </div>
                 <button
                     aria-label="Cerrar sesión"
-                    onClick={() => { if (confirm("¿Cerrar sesión?")) { localStorage.clear(); notifySessionChanged(); navigate('/login'); } }}
+                    onClick={() => { if (confirm("¿Cerrar sesión?")) { void client.post('/auth/logout').finally(() => { localStorage.clear(); notifySessionChanged(); navigate('/login'); }); } }}
                     className="app-icon-button hover:text-rose-500 dark:hover:text-rose-500"
                 >
                     <PowerIcon className="w-5 h-5" />

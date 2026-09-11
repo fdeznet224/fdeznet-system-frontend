@@ -45,7 +45,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
         {
             titulo: "👤 Cliente y Sistema",
             variables: [
-                { name: 'empresa', label: 'Empresa', desc: 'Nombre de tu ISP (FdezNet)' },
+                { name: 'empresa', label: 'Empresa', desc: 'Nombre configurado de tu ISP' },
                 { name: 'nombre', label: 'Cliente', desc: 'Nombre completo del cliente' },
                 { name: 'contrato', label: 'Número de contrato', desc: 'Contrato asignado al cliente' },
                 { name: 'telefono', label: 'Teléfono', desc: 'Número celular del cliente' },

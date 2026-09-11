@@ -38,10 +38,9 @@ export default function RoleGuard({
   children,
 }: RoleGuardProps) {
   const location = useLocation();
-  const token = localStorage.getItem('token');
   const role = readRole();
 
-  if (!token || !role) {
+  if (!role) {
     return (
       <Navigate
         to="/login"

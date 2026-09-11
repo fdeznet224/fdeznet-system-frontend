@@ -120,12 +120,8 @@ export default function Layout() {
     const [targetCliente, setTargetCliente] = useState<ClienteGlobal | null>(null);
 
     const { wsEvent } = useWhatsApp();
-    const user = getSessionUser(localStorage.getItem('user'));
-
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) navigate('/login');
-    }, [navigate]);
+    const storedUser = localStorage.getItem('user');
+    const user = getSessionUser(storedUser);
 
     useEffect(() => {
         let active = true;
@@ -250,7 +246,13 @@ export default function Layout() {
         }
     }, [wsEvent, user.rol]);
 
-    const handleLogout = () => { localStorage.clear(); notifySessionChanged(); navigate('/'); };
+    const handleLogout = () => {
+        void client.post('/auth/logout').finally(() => {
+            localStorage.clear();
+            notifySessionChanged();
+            navigate('/');
+        });
+    };
     const toggleSubMenu = (name: string) => setOpenSubMenu(openSubMenu === name ? null : name);
 
     const menus = allMenus

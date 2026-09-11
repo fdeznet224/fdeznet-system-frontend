@@ -4,15 +4,26 @@ async function authenticateAs(
   page: Page,
   role: 'admin' | 'supervisor' | 'tecnico' | 'cajero' = 'admin',
 ) {
-  await page.addInitScript((selectedRole) => {
-    localStorage.setItem('token', 'e2e-token')
-    localStorage.setItem('user', JSON.stringify({
+  const user = {
       id: 1,
-      usuario: `${selectedRole}-e2e`,
+      usuario: `${role}-e2e`,
       nombre_completo: 'Usuario E2E',
-      rol: selectedRole,
-    }))
-  }, role)
+      rol: role,
+  }
+  await page.context().addCookies([{
+    name: 'fdeznet_access',
+    value: 'e2e-session-cookie',
+    url: 'http://127.0.0.1:4173',
+    httpOnly: true,
+    sameSite: 'Strict',
+  }])
+  await page.goto('/login')
+  await page.evaluate((sessionUser) => {
+    localStorage.setItem('user', JSON.stringify(sessionUser))
+  }, user)
+  await page.addInitScript((sessionUser) => {
+    localStorage.setItem('user', JSON.stringify(sessionUser))
+  }, user)
 }
 
 async function mockApi(page: Page) {

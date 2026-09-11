@@ -7,7 +7,8 @@ import { notifySessionChanged } from '../offline/db';
 const API_URL = import.meta.env.PROD ? '/api' : 'http://127.0.0.1:8000';
 
 const client = axios.create({
-    baseURL: API_URL, 
+    baseURL: API_URL,
+    withCredentials: true,
 });
 
 // 🔥 ESTA ES LA MAGIA GLOBAL ANTI-CACHÉ 🔥
@@ -16,23 +17,11 @@ client.defaults.headers.get['Cache-Control'] = 'no-cache, no-store, must-revalid
 client.defaults.headers.get['Pragma'] = 'no-cache';
 client.defaults.headers.get['Expires'] = '0';
 
-// Interceptor para inyectar el Token en cada petición
-client.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-}, (error) => {
-    return Promise.reject(error);
-});
-
 // Interceptor para manejar errores 401 (Token expirado)
 client.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('token');
             localStorage.removeItem('user');
             notifySessionChanged();
             window.location.href = '/login';

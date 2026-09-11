@@ -32,6 +32,63 @@ interface ChatMessage {
     ack?: number;
 }
 
+function PrivateChatMedia({ reference, clientId }: { reference: string; clientId: number }) {
+    const [blobUrl, setBlobUrl] = useState<string | null>(null);
+    const [failed, setFailed] = useState(false);
+    const filename = decodeURIComponent(reference.split('/').pop() || reference.replace('whatsapp-media://', ''));
+    const extension = filename.split('.').pop()?.toLowerCase() || '';
+
+    useEffect(() => {
+        let active = true;
+        let temporaryUrl: string | null = null;
+        void client.get(
+            `/whatsapp/chat/${clientId}/archivo/${encodeURIComponent(filename)}`,
+            { responseType: 'blob' },
+        ).then((response) => {
+            if (!active) return;
+            temporaryUrl = URL.createObjectURL(response.data);
+            setBlobUrl(temporaryUrl);
+        }).catch(() => {
+            if (active) setFailed(true);
+        });
+        return () => {
+            active = false;
+            if (temporaryUrl) URL.revokeObjectURL(temporaryUrl);
+        };
+    }, [clientId, filename]);
+
+    if (failed) {
+        return <div className="p-3 rounded-lg text-xs font-bold text-red-500">Archivo no disponible</div>;
+    }
+    if (!blobUrl) {
+        return <div className="p-3 text-xs font-bold opacity-60">Cargando archivo…</div>;
+    }
+    if (['oga', 'ogg', 'mp3', 'wav', 'm4a'].includes(extension)) {
+        return (
+            <div className="mt-1 mb-1.5 w-full min-w-[200px] sm:min-w-[240px] flex flex-col">
+                <span className="text-[10px] font-bold opacity-70 flex items-center gap-1 mb-1.5">
+                    <MusicalNoteIcon className="w-3.5 h-3.5" /> Nota de voz
+                </span>
+                <audio controls src={blobUrl} className="w-full h-10 outline-none rounded-full bg-black/5 dark:bg-white/5" />
+            </div>
+        );
+    }
+    if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(extension)) {
+        return (
+            <div className="mt-1 mb-2 w-full sm:max-w-[280px]">
+                <a href={blobUrl} target="_blank" rel="noopener noreferrer" className="block w-full">
+                    <img src={blobUrl} alt="Imagen recibida" className="w-full h-auto rounded-xl object-cover border border-black/10 dark:border-white/10 shadow-sm" />
+                </a>
+            </div>
+        );
+    }
+    return (
+        <a href={blobUrl} target="_blank" rel="noopener noreferrer" className="mt-1 mb-2 flex items-center justify-center gap-2 rounded-xl bg-black/5 px-3 py-2.5 text-xs font-black dark:bg-white/10">
+            <DocumentIcon className="w-5 h-5 shrink-0" /> Ver documento
+        </a>
+    );
+}
+
 export default function ChatModal({ isOpen, onClose, cliente, onMessagesRead }: ChatModalProps) {
     const [mensaje, setMensaje] = useState("");
     const [sending, setSending] = useState(false);
@@ -92,62 +149,11 @@ export default function ChatModal({ isOpen, onClose, cliente, onMessagesRead }: 
 
     // 🔥 RENDERIZADOR MULTIMEDIA 100% RESPONSIVO
     const renderizarContenidoMensaje = (texto: string) => {
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const urlRegex = /((?:https?:\/\/|whatsapp-media:\/\/)[^\s]+)/g;
         const urls = texto.match(urlRegex);
 
         if (urls && urls.length > 0) {
-            let urlArchivo = urls[0];
-            
-            // Los mensajes antiguos pueden conservar la URL local del motor.
-            // En cada VPS se sirven desde el mismo dominio de la instalación.
-            const mediaBase = `${window.location.origin}/media/uploads`;
-            urlArchivo = urlArchivo.replace(/^https?:\/\/(localhost|127\.0\.0\.1):3000\/uploads/, mediaBase);
-
-            const extension = urlArchivo.split('.').pop()?.toLowerCase();
-
-            // 1. SI ES AUDIO (Diseño fluido que se adapta a la burbuja)
-            if (['oga', 'ogg', 'mp3', 'wav', 'm4a'].includes(extension || '')) {
-                return (
-                    <div className="mt-1 mb-1.5 w-full min-w-[200px] sm:min-w-[240px] flex flex-col">
-                        <span className="text-[10px] font-bold opacity-70 flex items-center gap-1 mb-1.5">
-                            <MusicalNoteIcon className="w-3.5 h-3.5" /> Nota de voz
-                        </span>
-                        <audio controls className="w-full h-10 outline-none rounded-full bg-black/5 dark:bg-white/5">
-                            <source src={urlArchivo} type={extension === 'oga' ? 'audio/ogg' : `audio/${extension}`} />
-                            Tu navegador no soporta audio.
-                        </audio>
-                    </div>
-                );
-            }
-
-            // 2. SI ES IMAGEN (Ocupa el 100% del contenedor sin romperse)
-            if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(extension || '')) {
-                return (
-                    <div className="mt-1 mb-2 w-full sm:max-w-[280px]">
-                        <a href={urlArchivo} target="_blank" rel="noopener noreferrer" className="block w-full">
-                            <img 
-                                src={urlArchivo} 
-                                alt="Imagen recibida" 
-                                className="w-full h-auto rounded-xl cursor-pointer hover:opacity-90 transition-opacity object-cover border border-black/10 dark:border-white/10 shadow-sm"
-                                onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    e.currentTarget.parentElement?.insertAdjacentHTML('beforeend', '<div class="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-xs text-red-500 font-bold border border-red-100 dark:border-red-900/50 flex items-center justify-center">Imagen no disponible</div>');
-                                }}
-                            />
-                        </a>
-                    </div>
-                );
-            }
-
-            // 3. SI ES DOCUMENTO PDF O SIMILAR (Botón adaptable)
-            return (
-                <div className="mt-1 mb-2 w-full">
-                    <a href={urlArchivo} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-current px-3 py-2.5 rounded-xl text-xs font-black transition-colors w-full border border-black/5 dark:border-white/5 shadow-sm active:scale-[0.98]">
-                        <DocumentIcon className="w-5 h-5 shrink-0" /> 
-                        <span className="truncate uppercase tracking-wider">Ver Documento</span>
-                    </a>
-                </div>
-            );
+            return <PrivateChatMedia reference={urls[0]} clientId={clientId!} />;
         }
         
         // TEXTO NORMAL (Padding derecho para no chocar con la hora)

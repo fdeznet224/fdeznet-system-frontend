@@ -190,7 +190,7 @@ export default function Sistema() {
                         <CardInputRight label="3er Aviso (Corte)" sub="0 = DESACTIVADO" value={config.recordatorio_3_dias} onChange={(value) => handleChange('recordatorio_3_dias', value)} textColor="text-rose-600 dark:text-rose-400" />
                         
                         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
-                            <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">Números WhatsApp para Alertas FdezNet</label>
+                            <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">Números WhatsApp para alertas del sistema</label>
                             <input 
                                 type="text" 
                                 className="w-full bg-slate-50 dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white font-mono text-sm outline-none focus:border-emerald-500 transition-colors"

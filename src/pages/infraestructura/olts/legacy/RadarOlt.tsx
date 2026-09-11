@@ -214,7 +214,7 @@ export default function RadarOlt() {
     }, [datosRadar, busqueda, filtroActivo]);
 
     const handleDeleteOlt = async (id: number) => {
-        if (!confirm("¿Eliminar esta OLT de FdezNet?")) return;
+        if (!confirm("¿Eliminar esta OLT del sistema?")) return;
         try {
             await client.delete(`/olts/${id}`);
             toast.success("OLT eliminada");
@@ -231,7 +231,7 @@ export default function RadarOlt() {
             {/* HEADER RESPONSIVO ADAPTATIVO */}
             <div className="bg-white dark:bg-[#12131a] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 md:p-5 flex flex-col lg:flex-row justify-between items-start lg:items-center shadow-sm dark:shadow-2xl gap-4 flex-none transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:w-auto">
-                    <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight whitespace-nowrap transition-colors">Radar Óptico FdezNet</h1>
+                    <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight whitespace-nowrap transition-colors">Radar óptico</h1>
                     
                     <div className="flex items-center gap-1.5 w-full sm:w-auto mt-0.5">
                         <div className="relative bg-slate-100 dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700/60 rounded-xl px-2.5 py-2 flex items-center shadow-inner max-w-[150px] sm:max-w-none transition-colors">

@@ -380,7 +380,7 @@ export default function PaymentReviewInbox() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white">Comprobantes por revisar</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Valida los pagos recibidos por FdezBot antes de aplicarlos.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Valida los pagos recibidos por el asistente antes de aplicarlos.</p>
         </div>
         <button onClick={() => void load()} className="app-button-secondary inline-flex items-center justify-center gap-2" disabled={loading}>
           <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} /> Actualizar

@@ -61,7 +61,7 @@ export default function Configuracion() {
         },
         {
             titulo: "Túneles VPN",
-            descripcion: "Administra túneles WireGuard para nodos remotos FdezNet.",
+            descripcion: "Administra túneles WireGuard para nodos remotos del ISP.",
             icon: ShieldCheckIcon,
             color: "text-emerald-500 dark:text-emerald-400",
             bg: "bg-emerald-500/10",

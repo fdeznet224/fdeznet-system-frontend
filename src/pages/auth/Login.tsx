@@ -46,8 +46,9 @@ export default function Login() {
         try {
             const response = await client.post<LoginResponse>('/auth/login', formData);
             
-            // 1. Guardamos Token y Usuario
-            localStorage.setItem('token', response.data.access_token);
+            // La sesión vive en una cookie HttpOnly; JavaScript conserva solo
+            // los datos no sensibles necesarios para presentar la interfaz.
+            localStorage.removeItem('token');
             localStorage.setItem('user', JSON.stringify(response.data.user));
             notifySessionChanged();
             

@@ -120,7 +120,7 @@ export default function Importar() {
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `Plantilla_FdezNet_R${routerId}.xlsx`);
+            link.setAttribute('download', `Plantilla_Clientes_R${routerId}.xlsx`);
             document.body.appendChild(link);
             link.click();
             link.remove();

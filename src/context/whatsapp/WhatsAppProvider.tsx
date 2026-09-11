@@ -13,12 +13,11 @@ interface RealtimeUser {
 
 function getRealtimeSession() {
     try {
-        const token = localStorage.getItem('token');
         const rawUser = localStorage.getItem('user');
         const user = rawUser ? JSON.parse(rawUser) as RealtimeUser : null;
-        return { token, user };
+        return { user };
     } catch {
-        return { token: null, user: null };
+        return { user: null };
     }
 }
 
@@ -28,10 +27,9 @@ export const WhatsAppProvider = ({ children }: { children: React.ReactNode }) =>
     const [sessionVersion, setSessionVersion] = useState(0);
 
     const fetchUnread = useCallback(async () => {
-        const { token, user } = getRealtimeSession();
+        const { user } = getRealtimeSession();
         if (
-            !token
-            || !user
+            !user
             || !['admin', 'supervisor'].includes(user.rol)
         ) {
             setUnreadCounts({});
@@ -70,10 +68,9 @@ export const WhatsAppProvider = ({ children }: { children: React.ReactNode }) =>
 
     // 🔥 EL MOTOR PRINCIPAL: LA TUBERÍA MAESTRA (PRODUCCIÓN) 🔥
     useEffect(() => {
-        const { token, user } = getRealtimeSession();
+        const { user } = getRealtimeSession();
         if (
-            !token
-            || !user
+            !user
             || !['admin', 'supervisor'].includes(user.rol)
         ) {
             return;
@@ -94,10 +91,7 @@ export const WhatsAppProvider = ({ children }: { children: React.ReactNode }) =>
                 ? `${protocol}://${window.location.host}`
                 : 'ws://127.0.0.1:8000';
             
-            const wsUrl = (
-                `${base}/whatsapp/ws/${user.id}`
-                + `?token=${encodeURIComponent(token)}`
-            );
+            const wsUrl = `${base}/api/whatsapp/ws/${user.id}`;
             
             socket = new WebSocket(wsUrl);
 
