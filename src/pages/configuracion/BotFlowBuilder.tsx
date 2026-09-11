@@ -6,9 +6,18 @@ import client from '@/api/axios';
 
 type Scope = 'cliente' | 'tecnico';
 type NodeType = 'trigger' | 'message' | 'menu' | 'action' | 'end';
+type DayKey = 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes' | 'sabado' | 'domingo';
 interface FlowNode { id: string; type: NodeType; title: string; text: string; action?: string | null; x: number; y: number }
 interface FlowEdge { id: string; source: string; target: string; label: string }
-interface VisualFlow { alcance: Scope; nombre: string; activo: boolean; comando: string; nodos: FlowNode[]; conexiones: FlowEdge[] }
+interface ScheduleDay { activo: boolean; inicio: string; fin: string }
+interface OutOfHoursConfig { habilitado: boolean; zona_horaria: string; horario: Record<DayKey, ScheduleDay>; mensaje: string }
+interface VisualFlow { alcance: Scope; nombre: string; activo: boolean; comando: string; nodos: FlowNode[]; conexiones: FlowEdge[]; fuera_horario?: OutOfHoursConfig }
+
+const weekdays: Array<[DayKey, string]> = [
+  ['lunes', 'Lunes'], ['martes', 'Martes'], ['miercoles', 'Miércoles'],
+  ['jueves', 'Jueves'], ['viernes', 'Viernes'], ['sabado', 'Sábado'],
+  ['domingo', 'Domingo'],
+];
 
 const publicActions = [
   ['reportar_pago', 'Reportar y validar pago'], ['promesa_pago', 'Registrar promesa de pago'],
@@ -71,6 +80,24 @@ export default function BotFlowBuilder() {
     if (!selectedId) return;
     setFlow((current) => current ? { ...current, nodos: current.nodos.map((node) => node.id === selectedId ? { ...node, ...changes } : node) } : current);
   };
+  const updateOutOfHours = (changes: Partial<OutOfHoursConfig>) => {
+    setFlow((current) => current?.fuera_horario ? {
+      ...current,
+      fuera_horario: { ...current.fuera_horario, ...changes },
+    } : current);
+  };
+  const updateScheduleDay = (day: DayKey, changes: Partial<ScheduleDay>) => {
+    setFlow((current) => current?.fuera_horario ? {
+      ...current,
+      fuera_horario: {
+        ...current.fuera_horario,
+        horario: {
+          ...current.fuera_horario.horario,
+          [day]: { ...current.fuera_horario.horario[day], ...changes },
+        },
+      },
+    } : current);
+  };
   const addNode = (type: Exclude<NodeType, 'trigger'>) => {
     if (!flow) return;
     const id = `${type}_${Date.now().toString(36)}`;
@@ -103,6 +130,17 @@ export default function BotFlowBuilder() {
       <div className="flex items-center gap-3"><button onClick={() => navigate('/admin/configuracion')} className="rounded-xl bg-slate-100 p-2 dark:bg-slate-800"><ArrowLeftIcon className="h-5 w-5" /></button><div><h1 className="text-2xl font-black text-slate-900 dark:text-white">Constructor visual del bot</h1><p className="text-sm text-slate-500">Crea conversaciones conectando bloques, como en n8n.</p></div></div>
       <div className="flex items-center gap-2"><button onClick={() => setScope('cliente')} className={`rounded-xl px-4 py-2 text-sm font-black ${scope === 'cliente' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800'}`}>Bot clientes</button><button onClick={() => setScope('tecnico')} className={`rounded-xl px-4 py-2 text-sm font-black ${scope === 'tecnico' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800'}`}>Bot técnicos</button><button disabled={saving} onClick={() => void save()} className="rounded-xl bg-blue-600 px-5 py-2 font-black text-white disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar'}</button></div>
     </div>
+    {scope === 'cliente' && flow.fuera_horario && <section className="rounded-2xl border border-indigo-200 bg-white p-5 shadow-sm dark:border-indigo-900/70 dark:bg-[#111218]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><h2 className="font-black text-slate-900 dark:text-white">🌙 Automatización fuera de horario</h2><p className="mt-1 text-sm text-slate-500">Define cuándo el bot debe contestar automáticamente y qué información mostrará.</p></div>
+        <label className="flex items-center gap-2 rounded-xl bg-indigo-50 px-3 py-2 text-sm font-black text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"><input type="checkbox" checked={flow.fuera_horario.habilitado} onChange={(event) => updateOutOfHours({ habilitado: event.target.checked })} className="h-5 w-5 rounded" /> Responder automáticamente</label>
+      </div>
+      <div className={`mt-5 space-y-5 ${flow.fuera_horario.habilitado ? '' : 'pointer-events-none opacity-50'}`}>
+        <div className="max-w-md"><label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Zona horaria de la empresa</label><input list="bot-timezones" value={flow.fuera_horario.zona_horaria} onChange={(event) => updateOutOfHours({ zona_horaria: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm dark:border-slate-700 dark:bg-slate-900" /><datalist id="bot-timezones"><option value="America/Mexico_City" /><option value="America/Cancun" /><option value="America/Monterrey" /><option value="America/Chihuahua" /><option value="America/Hermosillo" /><option value="America/Tijuana" /><option value="America/Bogota" /><option value="America/Lima" /><option value="America/Guatemala" /></datalist></div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">{weekdays.map(([day, label]) => { const rule = flow.fuera_horario!.horario[day]; return <div key={day} className={`rounded-xl border p-3 ${rule.activo ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/20' : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'}`}><label className="flex items-center gap-2 text-sm font-black"><input type="checkbox" checked={rule.activo} onChange={(event) => updateScheduleDay(day, { activo: event.target.checked })} className="h-4 w-4 rounded" />{label}</label><div className={`mt-3 grid grid-cols-2 gap-2 ${rule.activo ? '' : 'pointer-events-none opacity-40'}`}><label className="text-[9px] font-black uppercase text-slate-500">Abre<input type="time" value={rule.inicio} onChange={(event) => updateScheduleDay(day, { inicio: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-1.5 text-xs dark:border-slate-700 dark:bg-slate-950" /></label><label className="text-[9px] font-black uppercase text-slate-500">Cierra<input type="time" value={rule.fin} onChange={(event) => updateScheduleDay(day, { fin: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-1.5 text-xs dark:border-slate-700 dark:bg-slate-950" /></label></div>{!rule.activo && <p className="mt-3 text-center text-[10px] font-bold text-slate-500">Cerrado</p>}</div>; })}</div>
+        <div><label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Mensaje que recibirá el cliente</label><textarea rows={5} maxLength={1000} value={flow.fuera_horario.mensaje} onChange={(event) => updateOutOfHours({ mensaje: event.target.value })} className="mt-1 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-900" /><p className="mt-2 text-xs text-slate-500">Variables disponibles: <code className="font-bold text-indigo-600">{'{empresa}'}</code>, <code className="font-bold text-indigo-600">{'{asistente}'}</code> y <code className="font-bold text-indigo-600">{'{horario}'}</code>.</p></div>
+      </div>
+    </section>}
     <div className="grid gap-4 xl:grid-cols-[220px_minmax(600px,1fr)_330px]">
       <aside className="h-fit space-y-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#111218]">
         <div><label className="text-[10px] font-black uppercase text-slate-500">Nombre del flujo</label><input value={flow.nombre} onChange={(e) => setFlow({ ...flow, nombre: e.target.value })} className="mt-1 w-full rounded-lg border bg-slate-50 p-2 text-sm dark:border-slate-700 dark:bg-slate-900" /></div>
