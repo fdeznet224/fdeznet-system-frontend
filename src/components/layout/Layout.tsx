@@ -556,6 +556,7 @@ const allMenus: MenuItem[] = [
             { name: 'Zonas y Áreas', path: '/admin/configuracion/zonas', icon: GlobeAltIcon },
             { name: 'Usuarios Sistema', path: '/admin/configuracion/usuarios', icon: UsersIcon },
             { name: 'Plantillas Mensajes', path: '/admin/configuracion/mensajes', icon: DocumentTextIcon },
+            { name: 'Flujo Bot WhatsApp', path: '/admin/configuracion/bot-whatsapp', icon: ChatBubbleLeftRightIcon },
             { name: 'Conexión WhatsApp', path: '/admin/configuracion/whatsapp-qr', icon: SignalIcon },
             { name: 'Plantillas Fact.', path: '/admin/configuracion/plantillas-facturacion', icon: BanknotesIcon },
             { name: 'Perfiles PPPoE', path: '/admin/configuracion/pppoe', icon: ServerStackIcon },

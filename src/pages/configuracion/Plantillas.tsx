@@ -53,7 +53,8 @@ export default function Plantillas() {
         'aviso_corte': '🚫 Corte por Falta de Pago',
         'corte_servicio': '🛠️ Suspensión Administrativa',
         'reconexion': '🚀 Reconexión de Servicio',
-        'promesa_pago': '🤝 Promesa de Pago Registrada'
+        'promesa_pago': '🤝 Promesa de Pago Registrada',
+        'datos_pago': '🏦 Datos para Depósito o Transferencia'
     };
 
     // Colección visual para el pie de página

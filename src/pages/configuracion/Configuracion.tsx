@@ -36,6 +36,14 @@ export default function Configuracion() {
             path: "/admin/configuracion/whatsapp-qr"
         },
         {
+            titulo: "Flujo del Bot WhatsApp",
+            descripcion: "Personaliza el comando, menú, pagos y diagnóstico técnico del autoservicio.",
+            icon: ChatBubbleLeftRightIcon,
+            color: "text-emerald-500",
+            bg: "bg-emerald-500/10",
+            path: "/admin/configuracion/bot-whatsapp"
+        },
+        {
             titulo: "Almacenamiento y cierres",
             descripcion: "Consulta el uso de disco, archiva meses y configura la limpieza segura.",
             icon: CircleStackIcon,
