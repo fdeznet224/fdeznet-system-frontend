@@ -436,7 +436,7 @@ export default function PaymentReviewInbox() {
                 <input type="text" value={emailConfig.remitente_permitido || ''} onChange={(event) => updateEmailConfig('remitente_permitido', event.target.value)} placeholder="Copia el campo De de un correo real" className={bankInputClass} />
               </label>
               <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Terminaciones de cuentas receptoras
-                <input type="text" inputMode="numeric" value={emailConfig.cuentas_destino_permitidas || ''} onChange={(event) => updateEmailConfig('cuentas_destino_permitidas', event.target.value)} placeholder="Ej. 6342 o 6342,1735" className={bankInputClass} />
+                <input type="text" inputMode="numeric" value={emailConfig.cuentas_destino_permitidas || ''} onChange={(event) => updateEmailConfig('cuentas_destino_permitidas', event.target.value)} placeholder="Ej. 1234 o 1234,5678" className={bankInputClass} />
                 <span className="mt-1 block font-normal text-slate-400">Solo se aceptan abonos dirigidos a estas cuentas.</span>
               </label>
               <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">El asunto contiene (opcional)
