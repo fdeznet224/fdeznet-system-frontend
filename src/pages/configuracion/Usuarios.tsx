@@ -22,6 +22,8 @@ interface SystemUser {
     rol: string;
     activo: boolean;
     router_ids?: number[];
+    telefono_whatsapp?: string | null;
+    bot_whatsapp_habilitado: boolean;
 }
 
 interface RouterCatalog {
@@ -36,6 +38,8 @@ interface UserForm {
     rol: string;
     activo: boolean;
     router_ids: number[];
+    telefono_whatsapp: string;
+    bot_whatsapp_habilitado: boolean;
 }
 
 const initialForm: UserForm = {
@@ -44,7 +48,9 @@ const initialForm: UserForm = {
     password: '',
     rol: 'cajero',
     activo: true,
-    router_ids: []
+    router_ids: [],
+    telefono_whatsapp: '',
+    bot_whatsapp_habilitado: false,
 };
 
 const getApiError = (error: unknown, fallback: string) => {
@@ -90,7 +96,9 @@ export default function Usuarios() {
             password: '', 
             rol: user.rol,
             activo: user.activo,
-            router_ids: user.router_ids || [] 
+            router_ids: user.router_ids || [],
+            telefono_whatsapp: user.telefono_whatsapp || '',
+            bot_whatsapp_habilitado: user.bot_whatsapp_habilitado,
         });
     };
 
@@ -224,6 +232,18 @@ export default function Usuarios() {
                                     <option value="admin" className="bg-white dark:bg-slate-900">Administrador General</option>
                                 </select>
                             </div>
+
+                            <div>
+                                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider ml-1">WhatsApp del personal</label>
+                                <input
+                                    type="tel"
+                                    placeholder="Ej. 5215512345678"
+                                    value={form.telefono_whatsapp}
+                                    onChange={e => setForm({...form, telefono_whatsapp: e.target.value.replace(/[^0-9+ ()-]/g, '')})}
+                                    className="w-full mt-1.5 bg-slate-50 dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 text-slate-800 dark:text-white text-sm focus:border-indigo-500 outline-none"
+                                />
+                                <p className="mt-1 text-[10px] text-slate-500">Incluye código de país. Este número identifica al técnico en el bot privado.</p>
+                            </div>
                         </div>
 
                         <hr className="border-slate-200 dark:border-slate-800 my-4"/>
@@ -265,6 +285,11 @@ export default function Usuarios() {
                             </button>
                         </div>
 
+                        <label className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-200 dark:border-indigo-500/20 cursor-pointer">
+                            <div><span className="text-sm font-black text-slate-900 dark:text-white block">Bot técnico por WhatsApp</span><span className="text-[10px] text-slate-500 dark:text-slate-400">Permitir diagnósticos desde el número registrado</span></div>
+                            <input type="checkbox" checked={form.bot_whatsapp_habilitado} onChange={e => setForm({...form, bot_whatsapp_habilitado: e.target.checked})} className="w-5 h-5 rounded text-indigo-600" />
+                        </label>
+
                         <button className={`w-full font-black py-4 rounded-xl mt-4 shadow-md transition-all flex justify-center items-center gap-2 ${editingId ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-blue-600 hover:bg-blue-500'} text-white`}>
                             {editingId ? <PencilSquareIcon className="w-5 h-5"/> : <ShieldCheckIcon className="w-5 h-5"/>}
                             {editingId ? 'Guardar Cambios' : 'Registrar Nuevo Usuario'}
@@ -292,6 +317,7 @@ export default function Usuarios() {
                                             <div className="text-xs text-slate-500 flex items-center gap-1">
                                                 <IdentificationIcon className="w-3.5 h-3.5"/> @{u.usuario}
                                             </div>
+                                            {u.bot_whatsapp_habilitado && <div className="mt-1 text-[10px] font-bold text-indigo-500">🤖 Bot técnico: {u.telefono_whatsapp || 'sin número'}</div>}
                                         </td>
                                         <td className="p-5 text-center">
                                             <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${
