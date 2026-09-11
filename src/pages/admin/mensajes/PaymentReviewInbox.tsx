@@ -58,6 +58,7 @@ interface BankEmailConfig {
   credencial_configurada: boolean;
   credencial_verificada_en?: string | null;
   remitente_permitido?: string | null;
+  cuentas_destino_permitidas?: string | null;
   asunto_filtro?: string | null;
   carpeta: string;
   ventana_dias: number;
@@ -99,6 +100,7 @@ function errorMessage(error: unknown, fallback: string): string {
               correo: 'Cuenta Gmail',
               password_aplicacion: 'Contraseña de aplicación',
               remitente_permitido: 'Remitente bancario',
+              cuentas_destino_permitidas: 'Cuentas receptoras',
               ventana_dias: 'Ventana de búsqueda',
               tolerancia_monto: 'Tolerancia de monto',
             };
@@ -191,6 +193,7 @@ export default function PaymentReviewInbox() {
     correo: emailConfig?.correo?.trim() || '',
     password_aplicacion: appPassword.replaceAll(' ', '') || null,
     remitente_permitido: emailConfig?.remitente_permitido?.trim() || '',
+    cuentas_destino_permitidas: emailConfig?.cuentas_destino_permitidas?.trim() || '',
     asunto_filtro: emailConfig?.asunto_filtro?.trim() || null,
     carpeta: emailConfig?.carpeta?.trim() || 'INBOX',
     ventana_dias: Number(emailConfig?.ventana_dias || 3),
@@ -206,6 +209,10 @@ export default function PaymentReviewInbox() {
     }
     if (!payload.remitente_permitido.includes('@')) {
       toast.error('Copia el correo remitente exacto desde un aviso real del banco');
+      return false;
+    }
+    if (!/^\d{4}(\s*,\s*\d{4})*$/.test(payload.cuentas_destino_permitidas)) {
+      toast.error('Indica la terminación de 4 dígitos de cada cuenta receptora');
       return false;
     }
     if (!emailConfig?.credencial_configurada && !payload.password_aplicacion) {
@@ -427,6 +434,10 @@ export default function PaymentReviewInbox() {
               </label>
               <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Correo remitente de Banco Azteca
                 <input type="text" value={emailConfig.remitente_permitido || ''} onChange={(event) => updateEmailConfig('remitente_permitido', event.target.value)} placeholder="Copia el campo De de un correo real" className={bankInputClass} />
+              </label>
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Terminaciones de cuentas receptoras
+                <input type="text" inputMode="numeric" value={emailConfig.cuentas_destino_permitidas || ''} onChange={(event) => updateEmailConfig('cuentas_destino_permitidas', event.target.value)} placeholder="Ej. 6342 o 6342,1735" className={bankInputClass} />
+                <span className="mt-1 block font-normal text-slate-400">Solo se aceptan abonos dirigidos a estas cuentas.</span>
               </label>
               <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">El asunto contiene (opcional)
                 <input value={emailConfig.asunto_filtro || ''} onChange={(event) => updateEmailConfig('asunto_filtro', event.target.value)} placeholder="Transferencia recibida" className={bankInputClass} />
