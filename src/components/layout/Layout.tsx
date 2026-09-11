@@ -561,6 +561,7 @@ const allMenus: MenuItem[] = [
             { name: 'Perfiles PPPoE', path: '/admin/configuracion/pppoe', icon: ServerStackIcon },
             { name: 'Logs Sistema/Cron', path: '/admin/configuracion/cron', icon: ClipboardDocumentListIcon },
             { name: 'Sistema y Respaldo', path: '/admin/configuracion/sistema', icon: Cog6ToothIcon },
+            { name: 'Almacenamiento', path: '/admin/configuracion/almacenamiento', icon: ArchiveBoxIcon },
             { name: 'Importar Datos', path: '/admin/configuracion/importar', icon: ArrowLeftOnRectangleIcon },
             { name: 'Túneles VPN', path: '/admin/configuracion/vpn', icon: ShieldCheckIcon },
         ]

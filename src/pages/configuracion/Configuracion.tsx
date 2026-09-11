@@ -4,7 +4,7 @@ import {
     MapPinIcon, ChatBubbleLeftRightIcon, ArrowUpTrayIcon, 
     UsersIcon, AdjustmentsHorizontalIcon, KeyIcon, 
     DocumentTextIcon, Cog6ToothIcon, QrCodeIcon,
-    CommandLineIcon, ShieldCheckIcon, PaintBrushIcon, CloudArrowUpIcon
+    CommandLineIcon, ShieldCheckIcon, PaintBrushIcon, CloudArrowUpIcon, CircleStackIcon
 } from '@heroicons/react/24/outline';
 
 export default function Configuracion() {
@@ -34,6 +34,14 @@ export default function Configuracion() {
             color: "text-emerald-500",
             bg: "bg-emerald-500/10",
             path: "/admin/configuracion/whatsapp-qr"
+        },
+        {
+            titulo: "Almacenamiento y cierres",
+            descripcion: "Consulta el uso de disco, archiva meses y configura la limpieza segura.",
+            icon: CircleStackIcon,
+            color: "text-cyan-500",
+            bg: "bg-cyan-500/10",
+            path: "/admin/configuracion/almacenamiento"
         },
         {
             titulo: "Panel de Control & Cortes",
