@@ -163,6 +163,7 @@ async function mockApi(page: Page) {
         : {
             items: [{
               id: 42,
+              cliente_id: 1,
               estado: 'pendiente',
               saldo_pendiente: 500,
               total: 500,
@@ -175,7 +176,20 @@ async function mockApi(page: Page) {
             resumen,
           }
     } else if (url.pathname.endsWith('/finanzas/pagos-reporte')) {
-      body = { detalles: [] }
+      body = { detalles: [{
+        id: 7,
+        cliente_id: 1,
+        cliente_nombre: 'Cliente equivocado E2E',
+        cliente_cedula: 'ERR-1',
+        factura_id: 41,
+        metodo: 'efectivo',
+        referencia: null,
+        fecha: '2026-09-12T10:00:00',
+        usuario_nombre: 'Cobradora E2E',
+        monto: 500,
+        zona_nombre: 'Zona E2E',
+        router_nombre: 'Router E2E',
+      }] }
     } else if (url.pathname.endsWith('/finanzas/caja/actual')) {
       body = { abierta: false, caja: null }
     } else if (url.pathname.endsWith('/clientes/E2E-1/portal')) {
@@ -596,6 +610,9 @@ test('carga las transacciones y sus filtros financieros', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Corte de Cobranza' })).toBeVisible()
   await expect(page.getByText('Total en Pantalla')).toBeVisible()
+  await page.getByRole('button', { name: /Corregir/ }).click()
+  await expect(page.getByRole('heading', { name: 'Corregir cobro #7' })).toBeVisible()
+  await expect(page.getByText(/ERR-1.*Cliente equivocado E2E/)).toBeVisible()
 })
 
 test('carga las estadísticas de ingresos', async ({ page }) => {
