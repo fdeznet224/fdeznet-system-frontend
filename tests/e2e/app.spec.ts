@@ -825,6 +825,19 @@ test('carga y muestra los nodos MikroTik', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Vincular Nodo' })).toBeVisible()
 })
 
+test('permite configurar un nodo con DHCP estático y rate-limit', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.goto('/admin/routers')
+
+  await page.getByRole('button', { name: 'Vincular Nodo' }).click()
+  await page.getByRole('combobox').selectOption('dhcp')
+
+  await expect(page.getByRole('option', { name: 'DHCP estático (IP + MAC)' })).toBeAttached()
+  await expect(page.getByText('Rate-limit en lease DHCP')).toBeVisible()
+  await expect(page.getByText(/servidor DHCP debe existir/i)).toBeVisible()
+})
+
 test('inicia sesión con el contrato tipado y redirige al panel', async ({ page }) => {
   await mockApi(page)
   await page.goto('/login')

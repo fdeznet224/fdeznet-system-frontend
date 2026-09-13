@@ -32,6 +32,7 @@ interface Props {
 interface NamedItem {
     id: number;
     nombre: string;
+    tipo_seguridad?: 'pppoe' | 'dhcp';
 }
 
 interface NapItem extends NamedItem {
@@ -201,7 +202,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [formData, setFormData] = useState({
         nombre: '', cedula: '', telefono: '', direccion: '',
         plantilla_id: 0, zona_id: 0, router_id: 0, plan_id: 0,
-        ip_asignada: '', user_pppoe: '', pass_pppoe: '',
+        ip_asignada: '', mac_address: '', user_pppoe: '', pass_pppoe: '',
         olt_id: 0, caja_nap_id: 0, puerto_nap: 0,
         latitud: '', longitud: '', identificador_onu: ''
     });
@@ -302,6 +303,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                 plantilla_id: cliente.plantilla?.id || 0, zona_id: cliente.zona?.id || 0,
                 router_id: cliente.router?.id || 0, plan_id: cliente.plan?.id || 0,
                 ip_asignada: cliente.ip_asignada || '', user_pppoe: cliente.user_pppoe || '', pass_pppoe: cliente.pass_pppoe || '',
+                mac_address: cliente.mac_address || '',
                 olt_id: cliente.olt?.id || 0, caja_nap_id: cliente.caja_nap?.id || 0, puerto_nap: cliente.puerto_nap || 0,
                 latitud: cliente.latitud ? cliente.latitud.toString() : '', longitud: cliente.longitud ? cliente.longitud.toString() : '',
                 identificador_onu: cliente.onu_asignada?.identificador || ''
@@ -364,7 +366,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         try {
             const payload: Record<string, unknown> = {
                 ...formData,
-                mac_address: !cliente.onu_asignada ? formData.identificador_onu : undefined,
+                mac_address: formData.mac_address || null,
                 latitud: formData.latitud ? parseFloat(formData.latitud) : null,
                 longitud: formData.longitud ? parseFloat(formData.longitud) : null
             };
@@ -524,7 +526,11 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
     const tecOltActual = olts.find(o => o.id === formData.olt_id)?.tecnologia?.toUpperCase() || null;
     const equiposCompatibles = formData.olt_id ? equiposDisponibles.filter(eq => tecOltActual ? eq.tecnologia?.toUpperCase() === tecOltActual : true) : [];
-    const isPPPoE = cliente?.router?.tipo_seguridad === 'pppoe' || formData.router_id !== 0;
+    const routerSeleccionado = routers.find(r => r.id === formData.router_id);
+    const tipoAcceso = routerSeleccionado?.tipo_seguridad
+        || cliente?.router?.tipo_seguridad
+        || 'pppoe';
+    const isPPPoE = tipoAcceso === 'pppoe';
 
     const servicioActual = resumenComercial?.servicio_actual || null;
     const facturaActual = resumenComercial?.factura_actual || facturas.find((f) => ['pendiente', 'vencida'].includes(f.estado)) || facturas[0] || null;
@@ -877,6 +883,13 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                 <div><label className={labelClass}>Pass PPPoE</label><input name="pass_pppoe" value={formData.pass_pppoe} onChange={handleInputChange} className={flatInputClass} /></div>
                                             </div>
                                         )}
+                                        {!isPPPoE && (
+                                            <div>
+                                                <label className={labelClass}>MAC WAN/CPE vista por MikroTik</label>
+                                                <input name="mac_address" value={formData.mac_address} onChange={handleInputChange} placeholder="AA:BB:CC:DD:EE:FF" className={flatInputClass} />
+                                                <p className="mt-2 text-[11px] text-blue-600 dark:text-blue-400">No uses aquí el serial GPON de la ONU.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 gap-y-4">
@@ -899,6 +912,9 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                 <DetailTile label="Usuario PPPoE" value={cliente?.user_pppoe || 'N/A'} copy />
                                                 <DetailTile label="Contraseña PPPoE" value={cliente?.pass_pppoe || 'N/A'} copy />
                                             </div>
+                                        )}
+                                        {!isPPPoE && (
+                                            <DetailTile label="MAC WAN/CPE" value={cliente?.mac_address || 'N/A'} copy />
                                         )}
                                     </div>
                                 )}

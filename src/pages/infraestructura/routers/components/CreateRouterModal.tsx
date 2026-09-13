@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { 
     ServerIcon, XMarkIcon,
     GlobeAltIcon, ShieldCheckIcon, AdjustmentsHorizontalIcon,
-    LockClosedIcon
+    LockClosedIcon, InformationCircleIcon
 } from '@heroicons/react/24/outline';
 import type { RouterFormData, RouterRecord } from '../types';
 
@@ -164,7 +164,7 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                         </div>
                     </div>
 
-                    {/* Gestión de Tráfico (Bloqueado) */}
+                    {/* Gestión de Tráfico */}
                     <div className="pt-2">
                         <div className="flex items-center gap-3 mb-4">
                             <h4 className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest flex items-center gap-2">
@@ -174,19 +174,37 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm dark:shadow-inner transition-colors">
                             <div>
                                 <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Modo</label>
-                                <div className="w-full bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex items-center justify-between opacity-70">
-                                    <span className="text-slate-800 dark:text-slate-300 font-black text-sm">PPP Secrets</span>
-                                    <LockClosedIcon className="w-4 h-4 text-slate-500" />
-                                </div>
+                                <select
+                                    value={formData.tipo_seguridad}
+                                    onChange={e => setFormData({
+                                        ...formData,
+                                        tipo_seguridad: e.target.value as RouterFormData['tipo_seguridad'],
+                                        tipo_control: 'colas_dinamicas',
+                                    })}
+                                    className="w-full bg-white dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-black text-sm outline-none focus:border-purple-500"
+                                >
+                                    <option value="pppoe">PPPoE (PPP Secrets)</option>
+                                    <option value="dhcp">DHCP estático (IP + MAC)</option>
+                                </select>
                             </div>
                             <div>
                                 <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Control</label>
                                 <div className="w-full bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex items-center justify-between opacity-70">
-                                    <span className="text-slate-800 dark:text-slate-300 font-black text-sm">Colas Dinámicas</span>
+                                    <span className="text-slate-800 dark:text-slate-300 font-black text-sm">
+                                        {formData.tipo_seguridad === 'dhcp'
+                                            ? 'Rate-limit en lease DHCP'
+                                            : 'Perfil PPPoE / cola dinámica'}
+                                    </span>
                                     <LockClosedIcon className="w-4 h-4 text-slate-500" />
                                 </div>
                             </div>
                         </div>
+                        {formData.tipo_seguridad === 'dhcp' && (
+                            <div className="mt-4 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                                <InformationCircleIcon className="h-5 w-5 shrink-0" />
+                                <p>El servidor DHCP debe existir en MikroTik. El sistema creará leases estáticos por IP y MAC con la velocidad del plan. Revisa que FastTrack no omita este tráfico.</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Footer */}

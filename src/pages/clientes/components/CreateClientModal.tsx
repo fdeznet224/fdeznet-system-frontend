@@ -91,6 +91,7 @@ interface CreatedClientRecord {
   cedula?: string;
   user_pppoe?: string | null;
   pass_pppoe?: string | null;
+  mac_address?: string | null;
 }
 
 interface ActivationResponse extends Partial<CreatedClientRecord> {
@@ -121,6 +122,7 @@ type FormDataState = {
   ip_asignada: string;
   user_pppoe: string;
   pass_pppoe: string;
+  mac_address: string;
   caja_nap_id: string;
   puerto_nap: string;
   tecnico_id: string;
@@ -188,6 +190,7 @@ const createInitialFormData = (): FormDataState => {
     ip_asignada: '',
     user_pppoe: '',
     pass_pppoe: '',
+    mac_address: '',
     caja_nap_id: '',
     puerto_nap: '',
     tecnico_id: '',
@@ -221,6 +224,7 @@ export default function CreateClientModal({
     id: number;
     user_pppoe?: string;
     pass_pppoe?: string;
+    mac_address?: string;
     estado?: string;
   } | null>(null);
 
@@ -380,6 +384,7 @@ export default function CreateClientModal({
       ip_asignada: '',
       plan_id: '',
       pass_pppoe: '',
+      mac_address: '',
     }));
     if (!rId) {
       setRedes([]);
@@ -516,6 +521,7 @@ export default function CreateClientModal({
         longitud: formData.longitud ? parseFloat(formData.longitud) : null,
         user_pppoe: formData.user_pppoe?.trim() || null,
         pass_pppoe: formData.pass_pppoe?.trim() || null,
+        mac_address: formData.mac_address?.trim() || null,
         ip_asignada: formData.ip_asignada?.trim() || null,
         estado: 'pendiente_instalacion',
       };
@@ -563,6 +569,7 @@ export default function CreateClientModal({
             plan_id: payload.plan_id,
             user_pppoe: clienteRegistrado.user_pppoe || payload.user_pppoe,
             pass_pppoe: clienteRegistrado.pass_pppoe || payload.pass_pppoe,
+            mac_address: payload.mac_address,
             ip_asignada: ipSeleccionadaParaActivar,
             latitud: payload.latitud,
             longitud: payload.longitud,
@@ -601,6 +608,7 @@ export default function CreateClientModal({
         id: datosCliente.id || clienteRegistrado.id,
         user_pppoe: datosCliente.user_pppoe || payload.user_pppoe || undefined,
         pass_pppoe: datosCliente.pass_pppoe || payload.pass_pppoe || undefined,
+        mac_address: datosCliente.mac_address || payload.mac_address || undefined,
         estado: activarAhora ? 'Activo' : 'Pendiente',
       });
       setStep(4);
@@ -682,9 +690,15 @@ export default function CreateClientModal({
 
   const canContinueStep1 = formData.nombre && formData.telefono && formData.zona_id;
   const canContinueStep2 = formData.plantilla_id && formData.plan_id;
+  const selectedRouter = routers.find(
+    (router) => router.id === Number(formData.router_id),
+  );
+  const isDhcp = selectedRouter?.tipo_seguridad === 'dhcp';
   const canSubmit = formData.router_id
-    && formData.user_pppoe
-    && (pppoePasswordMode === 'aleatoria' || formData.pass_pppoe);
+    && (isDhcp
+      ? (!activarAhora || Boolean(formData.mac_address))
+      : formData.user_pppoe
+        && (pppoePasswordMode === 'aleatoria' || formData.pass_pppoe));
 
   const renderProgress = () => {
     const progress = step >= 4 ? 100 : Math.min((step / 3) * 100, 100);
@@ -1089,7 +1103,7 @@ export default function CreateClientModal({
                         </select>
                       </div>
 
-                      <div>
+                      {!isDhcp && <div>
                         <label className={labelClass}>Usuario PPPoE</label>
                         <div className="relative">
                           <UserIcon className="w-5 h-5 absolute left-4 top-4 text-slate-400" />
@@ -1101,9 +1115,9 @@ export default function CreateClientModal({
                             }
                           />
                         </div>
-                      </div>
+                      </div>}
 
-                      <div>
+                      {!isDhcp && <div>
                         <label className={labelClass}>Contraseña PPPoE</label>
                         <div className="relative">
                           <KeyIcon className="w-5 h-5 absolute left-4 top-4 text-slate-400" />
@@ -1122,7 +1136,23 @@ export default function CreateClientModal({
                             El sistema generará una contraseña diferente según la política PPPoE.
                           </p>
                         )}
-                      </div>
+                      </div>}
+
+                      {isDhcp && (
+                        <div className="md:col-span-2">
+                          <label className={labelClass}>MAC WAN/CPE vista por MikroTik</label>
+                          <input
+                            className={flatInputClass}
+                            value={formData.mac_address}
+                            onChange={(e) => setFormData({ ...formData, mac_address: e.target.value })}
+                            placeholder="AA:BB:CC:DD:EE:FF"
+                            required={activarAhora}
+                          />
+                          <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+                            No es el serial GPON: usa la MAC que aparece en el lease DHCP del MikroTik.
+                          </p>
+                        </div>
+                      )}
 
                       <div>
                         <label className={labelClass}>Caja NAP</label>
@@ -1274,7 +1304,7 @@ export default function CreateClientModal({
                           </p>
                         </button>
 
-                        <button
+                        {!createdClient.mac_address && <button
                           type="button"
                           onClick={() => copyToClipboard(createdClient.user_pppoe || '')}
                           className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
@@ -1284,9 +1314,20 @@ export default function CreateClientModal({
                           <p className="font-black text-slate-900 dark:text-white break-all">
                             {createdClient.user_pppoe || '-'}
                           </p>
-                        </button>
+                        </button>}
+                        {createdClient.mac_address && (
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(createdClient.mac_address || '')}
+                            className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                          >
+                            <WifiIcon className="w-6 h-6 text-blue-600 mb-3" />
+                            <p className="text-xs text-slate-500 uppercase font-bold">MAC WAN/CPE</p>
+                            <p className="font-black text-slate-900 dark:text-white break-all">{createdClient.mac_address}</p>
+                          </button>
+                        )}
 
-                        <button
+                        {!createdClient.mac_address && <button
                           type="button"
                           onClick={() => copyToClipboard(createdClient.pass_pppoe || '')}
                           className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
@@ -1296,7 +1337,7 @@ export default function CreateClientModal({
                           <p className="font-black text-slate-900 dark:text-white break-all">
                             {createdClient.pass_pppoe || '-'}
                           </p>
-                        </button>
+                        </button>}
                       </div>
                     </div>
                   )}

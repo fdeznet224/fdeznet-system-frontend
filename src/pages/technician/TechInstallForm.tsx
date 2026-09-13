@@ -32,6 +32,8 @@ interface ClientInstallation {
     nap_nombre?: string;
     suggested_user?: string;
     suggested_pass?: string;
+    tipo_seguridad?: 'pppoe' | 'dhcp';
+    mac_address?: string;
     plan_nombre: string;
 }
 
@@ -62,6 +64,7 @@ interface InstallationFormData {
     puerto_nap: string;
     latitud: string;
     longitud: string;
+    mac_address: string;
 }
 
 function apiErrorMessage(error: unknown, fallback: string) {
@@ -93,7 +96,8 @@ export default function TechInstallForm() {
         caja_nap_id: '',
         puerto_nap: '', 
         latitud: '',  
-        longitud: ''
+        longitud: '',
+        mac_address: ''
     });
 
     const cargarPuertos = useCallback(async (napId: number | string, listaNaps: NapOption[]) => {
@@ -184,6 +188,7 @@ export default function TechInstallForm() {
                     puerto_nap: c.puerto_nap?.toString() || '',
                     latitud: c.latitud?.toString() || '',
                     longitud: c.longitud?.toString() || '',
+                    mac_address: c.mac_address || '',
                     ...(draft || {}),
                 }));
                 if (resCliente.fromCache) toast('Orden cargada desde el dispositivo');
@@ -237,6 +242,9 @@ export default function TechInstallForm() {
         if (!finalOnuId) return toast.error("La ONU es obligatoria");
         if (finalNapId && !finalPuerto) return toast.error("Si seleccionas una Caja NAP, debes indicar el puerto");
         if (!formData.latitud || !formData.longitud) return toast.error("⚠️ Falta capturar la ubicación GPS");
+        if (cliente.tipo_seguridad === 'dhcp' && !formData.mac_address.trim()) {
+            return toast.error("Falta la MAC WAN/CPE vista por MikroTik");
+        }
 
         setLoading(true);
         const load = toast.loading("Aprovisionando en red...");
@@ -254,6 +262,7 @@ export default function TechInstallForm() {
                 router_id: cliente.router_id,
                 user_pppoe: cliente.suggested_user,
                 pass_pppoe: cliente.suggested_pass,
+                mac_address: formData.mac_address.trim() || null,
                 ip_asignada: cliente.ip_asignada === "Pendiente" ? null : cliente.ip_asignada
             });
 
@@ -306,12 +315,24 @@ export default function TechInstallForm() {
                     </div>
                 </div>
 
-                {/* 2. CREDENCIALES PPPoE */}
+                {/* 2. DATOS DE ACCESO */}
                 <div className="bg-gradient-to-br from-blue-50 dark:from-blue-600/10 to-indigo-50 dark:to-purple-600/10 p-4 rounded-3xl border border-blue-200 dark:border-blue-500/20 shadow-sm">
                     <h3 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase mb-3 flex items-center gap-2 tracking-widest">
                         <LockClosedIcon className="w-4 h-4"/> Datos Mikrotik
                     </h3>
-                    <div className="space-y-3">
+                    {cliente.tipo_seguridad === 'dhcp' ? (
+                        <div>
+                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">MAC WAN/CPE vista por MikroTik</label>
+                            <input
+                                value={formData.mac_address}
+                                onChange={e => setFormData({...formData, mac_address: e.target.value})}
+                                placeholder="AA:BB:CC:DD:EE:FF"
+                                className="w-full rounded-2xl border border-blue-200 bg-white p-3 font-mono text-sm font-bold uppercase outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                required
+                            />
+                            <p className="mt-2 text-[11px] font-medium text-blue-700 dark:text-blue-300">Usa la MAC del lease DHCP, no el serial GPON de la ONU.</p>
+                        </div>
+                    ) : <div className="space-y-3">
                         <div className="bg-white dark:bg-slate-900/80 p-3 rounded-2xl flex justify-between items-center border border-white/50 dark:border-slate-800 shadow-sm">
                             <div>
                                 <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Usuario</span>
@@ -326,7 +347,7 @@ export default function TechInstallForm() {
                             </div>
                             <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_pass || ''); toast.success("Copiado")}} className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl text-emerald-500 active:scale-90 transition-all"><ClipboardDocumentIcon className="w-5 h-5"/></button>
                         </div>
-                    </div>
+                    </div>}
                 </div>
 
                 {/* 3. REGISTRO TÉCNICO (Hardware) */}
