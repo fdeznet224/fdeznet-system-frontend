@@ -173,12 +173,17 @@ export default function LicenciasVersiones() {
         "/configuracion/licencia",
       );
       setStatus(data);
+    } catch {
+      toast.error("No se pudo consultar el estado de la licencia");
+    }
+    try {
       const maintenanceResponse = await client.get<Maintenance>(
         "/configuracion/mantenimiento",
       );
       setMaintenance(maintenanceResponse.data);
     } catch {
-      toast.error("No se pudo consultar la licencia local");
+      setMaintenance(null);
+      toast.error("No se pudo consultar el estado de mantenimiento");
     }
     try {
       const { data } = await client.get<Installation[]>(

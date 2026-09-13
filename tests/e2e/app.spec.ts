@@ -95,6 +95,13 @@ async function mockApi(page: Page) {
       }]
     } else if (url.pathname.endsWith('/usuarios/')) {
       body = [{ id: 2, usuario: 'tecnico-e2e', nombre_completo: 'Técnico E2E', rol: 'tecnico' }]
+    } else if (url.pathname.endsWith('/configuracion/pppoe-default')) {
+      body = {
+        modo: 'aleatoria',
+        password: null,
+        longitud: 12,
+        tipo_caracteres: 'alfanumerica',
+      }
     } else if (url.pathname.endsWith('/configuracion/sistema')) {
       body = {
         id: 1,
@@ -650,6 +657,21 @@ test('carga la administración de zonas', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Gestión de Zonas' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Crear Zona' })).toBeVisible()
+})
+
+test('configura contraseñas PPPoE fijas o aleatorias', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.goto('/admin/configuracion/pppoe')
+
+  await expect(page.getByRole('heading', { name: 'Seguridad PPPoE' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Una contraseña fija/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Contraseña aleatoria/ })).toBeVisible()
+  await expect(page.getByRole('spinbutton')).toHaveValue('12')
+  await expect(page.getByRole('combobox')).toHaveValue('alfanumerica')
+
+  await page.getByRole('button', { name: /Una contraseña fija/ }).click()
+  await expect(page.getByPlaceholder('Mínimo 3 caracteres')).toBeVisible()
 })
 
 test('carga las plantillas de mensajes de WhatsApp', async ({ page }) => {

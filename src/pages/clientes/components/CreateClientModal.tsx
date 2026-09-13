@@ -79,7 +79,10 @@ interface NapDetail {
 }
 
 interface PppoeDefaultResponse {
-  password?: string;
+  modo?: 'fija' | 'aleatoria';
+  password?: string | null;
+  longitud?: number;
+  tipo_caracteres?: 'numeros' | 'letras' | 'alfanumerica';
 }
 
 interface CreatedClientRecord {
@@ -207,6 +210,8 @@ export default function CreateClientModal({
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [activarAhora, setActivarAhora] = useState(false);
+  const [pppoePasswordMode, setPppoePasswordMode] =
+    useState<'fija' | 'aleatoria'>('aleatoria');
   const [pendingActivationClient, setPendingActivationClient] =
     useState<CreatedClientRecord | null>(null);
   const [createdClient, setCreatedClient] = useState<{
@@ -237,6 +242,7 @@ export default function CreateClientModal({
 
     setStep(1);
     setActivarAhora(false);
+    setPppoePasswordMode('aleatoria');
     setPendingActivationClient(null);
     setCreatedClient(null);
     setFormData(createInitialFormData());
@@ -365,6 +371,7 @@ export default function CreateClientModal({
   const handleRouterChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const rId = e.target.value;
     const routerObj = routers.find((r) => r.id.toString() === rId);
+    setPppoePasswordMode('aleatoria');
 
     setFormData((prev) => ({
       ...prev,
@@ -372,6 +379,7 @@ export default function CreateClientModal({
       red_id: '',
       ip_asignada: '',
       plan_id: '',
+      pass_pppoe: '',
     }));
     if (!rId) {
       setRedes([]);
@@ -391,14 +399,17 @@ export default function CreateClientModal({
       if (routerObj?.tipo_seguridad === 'pppoe') {
         try {
           const resDef = await client.get<PppoeDefaultResponse>('/configuracion/pppoe-default');
+          const mode = resDef.data.modo || (resDef.data.password ? 'fija' : 'aleatoria');
+          setPppoePasswordMode(mode);
           setFormData((prev) => ({
             ...prev,
-            pass_pppoe: resDef.data.password || '123456',
+            pass_pppoe: mode === 'fija' ? (resDef.data.password || '') : '',
           }));
         } catch {
+          setPppoePasswordMode('aleatoria');
           setFormData((prev) => ({
             ...prev,
-            pass_pppoe: '123456',
+            pass_pppoe: '',
           }));
         }
       }
@@ -550,8 +561,8 @@ export default function CreateClientModal({
             onu_id: payload.onu_id,
             router_id: payload.router_id,
             plan_id: payload.plan_id,
-            user_pppoe: payload.user_pppoe,
-            pass_pppoe: payload.pass_pppoe,
+            user_pppoe: clienteRegistrado.user_pppoe || payload.user_pppoe,
+            pass_pppoe: clienteRegistrado.pass_pppoe || payload.pass_pppoe,
             ip_asignada: ipSeleccionadaParaActivar,
             latitud: payload.latitud,
             longitud: payload.longitud,
@@ -671,7 +682,9 @@ export default function CreateClientModal({
 
   const canContinueStep1 = formData.nombre && formData.telefono && formData.zona_id;
   const canContinueStep2 = formData.plantilla_id && formData.plan_id;
-  const canSubmit = formData.router_id && formData.user_pppoe && formData.pass_pppoe;
+  const canSubmit = formData.router_id
+    && formData.user_pppoe
+    && (pppoePasswordMode === 'aleatoria' || formData.pass_pppoe);
 
   const renderProgress = () => {
     const progress = step >= 4 ? 100 : Math.min((step / 3) * 100, 100);
@@ -1100,8 +1113,15 @@ export default function CreateClientModal({
                             onChange={(e) =>
                               setFormData({ ...formData, pass_pppoe: e.target.value })
                             }
+                            readOnly={pppoePasswordMode === 'aleatoria'}
+                            placeholder={pppoePasswordMode === 'aleatoria' ? 'Se generará al guardar' : ''}
                           />
                         </div>
+                        {pppoePasswordMode === 'aleatoria' && (
+                          <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+                            El sistema generará una contraseña diferente según la política PPPoE.
+                          </p>
+                        )}
                       </div>
 
                       <div>
