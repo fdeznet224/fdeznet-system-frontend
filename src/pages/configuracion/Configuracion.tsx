@@ -4,7 +4,7 @@ import {
     MapPinIcon, ChatBubbleLeftRightIcon, ArrowUpTrayIcon, 
     UsersIcon, AdjustmentsHorizontalIcon, KeyIcon, 
     DocumentTextIcon, Cog6ToothIcon, QrCodeIcon,
-    CommandLineIcon, ShieldCheckIcon, PaintBrushIcon, CloudArrowUpIcon, CircleStackIcon
+    CommandLineIcon, ShieldCheckIcon, PaintBrushIcon, CloudArrowUpIcon, CircleStackIcon, ArchiveBoxArrowDownIcon
 } from '@heroicons/react/24/outline';
 
 export default function Configuracion() {
@@ -50,6 +50,14 @@ export default function Configuracion() {
             color: "text-cyan-500",
             bg: "bg-cyan-500/10",
             path: "/admin/configuracion/almacenamiento"
+        },
+        {
+            titulo: "Respaldos y recuperación",
+            descripcion: "Programa respaldos, consulta el historial y recupera un punto anterior.",
+            icon: ArchiveBoxArrowDownIcon,
+            color: "text-violet-500",
+            bg: "bg-violet-500/10",
+            path: "/admin/configuracion/respaldos"
         },
         {
             titulo: "Panel de Control & Cortes",

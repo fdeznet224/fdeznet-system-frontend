@@ -7,7 +7,6 @@ import {
   CheckCircleIcon,
   ClipboardDocumentIcon,
   CloudArrowUpIcon,
-  CircleStackIcon,
   CommandLineIcon,
   BanknotesIcon,
   KeyIcon,
@@ -532,16 +531,10 @@ export default function LicenciasVersiones() {
                 </div>
                 <div className="flex flex-wrap gap-2 sm:max-w-xs sm:justify-end">
                   <button
-                    onClick={() => void runMaintenance("respaldo")}
-                    className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black dark:border-slate-700"
-                  >
-                    <CircleStackIcon className="h-4 w-4" /> Respaldar
-                  </button>
-                  <button
-                    onClick={() => void runMaintenance("verificar")}
+                    onClick={() => navigate("/admin/configuracion/respaldos")}
                     className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black dark:border-slate-700"
                   >
-                    Probar recuperación
+                    Administrar respaldos
                   </button>
                 </div>
               </div>

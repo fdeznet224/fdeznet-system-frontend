@@ -131,6 +131,28 @@ async function mockApi(page: Page) {
         recuperacion_fecha: '2026-09-12T10:00:00',
         clave_huella: null,
       }
+    } else if (url.pathname.endsWith('/configuracion/respaldos')) {
+      body = {
+        politica: {
+          activo: true,
+          frecuencia_dias: 3,
+          retencion_dias: 30,
+          incluir_configuracion: true,
+          incluir_archivos_estaticos: true,
+          incluir_evidencias_ordenes: true,
+          incluir_sesion_whatsapp: true,
+          incluir_archivos_whatsapp: false,
+          incluir_wireguard: true,
+        },
+        respaldos: [{
+          archivo: '20260912-030000.tar.gz.gpg',
+          creado_en: '2026-09-12T03:00:00',
+          bytes: 1048576,
+          checksum_disponible: true,
+        }],
+        proximo_respaldo: '2026-09-15T03:00:00',
+        estado: { estado: 'respaldado', mensaje: 'Respaldo cifrado y verificado' },
+      }
     } else if (url.pathname.endsWith('/configuracion/pppoe-default')) {
       body = {
         modo: 'aleatoria',
@@ -484,6 +506,20 @@ test('carga y conserva los horarios del sistema', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Sistema & Cronjobs' })).toBeVisible()
   await expect(page.locator('input[type="time"]').nth(1)).toHaveValue('06:30')
   await expect(page.locator('input[type="time"]').nth(2)).toHaveValue('09:15')
+})
+
+test('administra programación e historial de respaldos', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.goto('/admin/configuracion/respaldos')
+
+  await expect(page.getByRole('heading', { name: 'Respaldos y recuperación' })).toBeVisible()
+  await expect(page.getByText('20260912-030000.tar.gz.gpg')).toBeVisible()
+  await expect(page.getByText('1.0 MB')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Verificar' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Restaurar' })).toBeVisible()
+  await expect(page.getByLabel('Respaldar cada cuántos días')).toHaveValue('3')
+  await expect(page.getByLabel('Conservar respaldos durante (días)')).toHaveValue('30')
 })
 
 test('carga la importación masiva con catálogos vacíos', async ({ page }) => {
