@@ -146,6 +146,7 @@ export default function LicenciasVersiones() {
   const [isCentral, setIsCentral] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showRelease, setShowRelease] = useState(false);
   const [showPlan, setShowPlan] = useState(false);
@@ -223,6 +224,15 @@ export default function LicenciasVersiones() {
   const runMaintenance = async (
     action: "respaldo" | "actualizar" | "verificar",
   ) => {
+    if (
+      action === "actualizar" &&
+      !window.confirm(
+        `¿Actualizar ahora a la versión ${status?.version_objetivo || "más reciente"}? Se creará un respaldo y el sistema puede desconectarse durante unos minutos.`,
+      )
+    ) {
+      return;
+    }
+    if (action === "actualizar") setUpdating(true);
     try {
       await client.post(`/configuracion/mantenimiento/${action}`);
       toast.success(
@@ -230,10 +240,43 @@ export default function LicenciasVersiones() {
           ? "Respaldo iniciado"
           : action === "verificar"
             ? "Prueba de recuperación iniciada"
-            : "Revisión iniciada",
+            : "Actualización iniciada. La pantalla se recargará al finalizar.",
       );
-      window.setTimeout(() => void load(), 2500);
+      if (action === "actualizar") {
+        const targetVersion = status?.version_objetivo;
+        let attempts = 0;
+        const checkFinished = async () => {
+          attempts += 1;
+          try {
+            const { data } = await client.get<LicenseStatus>(
+              "/configuracion/licencia",
+            );
+            if (
+              (targetVersion && data.version_actual === targetVersion) ||
+              !data.actualizacion_disponible
+            ) {
+              window.location.reload();
+              return;
+            }
+          } catch {
+            // Es normal mientras los servicios se reinician.
+          }
+          if (attempts < 90) {
+            window.setTimeout(() => void checkFinished(), 5000);
+          } else {
+            setUpdating(false);
+            toast.error(
+              "La actualización continúa o necesita revisión. Recarga la página en unos minutos.",
+              { duration: 8000 },
+            );
+          }
+        };
+        window.setTimeout(() => void checkFinished(), 8000);
+      } else {
+        window.setTimeout(() => void load(), 2500);
+      }
     } catch {
+      if (action === "actualizar") setUpdating(false);
       toast.error("No se pudo iniciar la tarea");
     }
   };
@@ -405,10 +448,29 @@ export default function LicenciasVersiones() {
                   </p>
                 )}
                 {status.actualizacion_disponible && (
-                  <p className="mt-2 text-sm font-bold text-blue-600">
-                    Disponible v{status.version_objetivo}:{" "}
-                    {status.notas_actualizacion}
-                  </p>
+                  <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-500/20 dark:bg-blue-500/10 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-black text-blue-700 dark:text-blue-300">
+                        Actualización disponible: v{status.version_objetivo}
+                      </p>
+                      {status.notas_actualizacion && (
+                        <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                          {status.notas_actualizacion}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={updating}
+                      onClick={() => void runMaintenance("actualizar")}
+                      className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white disabled:cursor-wait disabled:opacity-60"
+                    >
+                      <RocketLaunchIcon
+                        className={`h-5 w-5 ${updating ? "animate-pulse" : ""}`}
+                      />
+                      {updating ? "Actualizando…" : "Actualizar ahora"}
+                    </button>
+                  </div>
                 )}
               </div>
               <button
@@ -480,12 +542,6 @@ export default function LicenciasVersiones() {
                     className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black dark:border-slate-700"
                   >
                     Probar recuperación
-                  </button>
-                  <button
-                    onClick={() => void runMaintenance("actualizar")}
-                    className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white"
-                  >
-                    Revisar actualización
                   </button>
                 </div>
               </div>

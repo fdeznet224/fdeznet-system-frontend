@@ -95,6 +95,42 @@ async function mockApi(page: Page) {
       }]
     } else if (url.pathname.endsWith('/usuarios/')) {
       body = [{ id: 2, usuario: 'tecnico-e2e', nombre_completo: 'Técnico E2E', rol: 'tecnico' }]
+    } else if (url.pathname.endsWith('/configuracion/licencia')) {
+      body = {
+        configurada: true,
+        instalacion_id: 'instalacion-e2e',
+        servidor_central: 'https://central.e2e/api',
+        estado: 'activa',
+        mensaje: 'Licencia activa',
+        version_actual: '2.15.0',
+        version_objetivo: '2.16.0',
+        actualizacion_disponible: true,
+        notas_actualizacion: 'Mejoras PPPoE y mantenimiento',
+        ultima_revision: '2026-09-12T10:00:00',
+        plan_nombre: 'Mensual',
+        plan_tipo: 'mensual',
+        vigente_hasta: '2026-10-12T10:00:00',
+        dias_gracia: 3,
+        limite_clientes: 500,
+        limite_routers: 5,
+        uso_clientes: 20,
+        uso_routers: 1,
+      }
+    } else if (url.pathname.endsWith('/configuracion/mantenimiento')) {
+      body = {
+        estado: 'completada',
+        mensaje: 'Mantenimiento disponible',
+        fecha: '2026-09-12T10:00:00',
+        version: '2.15.0',
+        respaldo: null,
+        actualizacion_automatica: true,
+        respaldo_automatico: true,
+        revision_automatica: true,
+        respaldo_externo_configurado: false,
+        recuperacion_estado: 'verificada',
+        recuperacion_fecha: '2026-09-12T10:00:00',
+        clave_huella: null,
+      }
     } else if (url.pathname.endsWith('/configuracion/pppoe-default')) {
       body = {
         modo: 'aleatoria',
@@ -672,6 +708,21 @@ test('configura contraseñas PPPoE fijas o aleatorias', async ({ page }) => {
 
   await page.getByRole('button', { name: /Una contraseña fija/ }).click()
   await expect(page.getByPlaceholder('Mínimo 3 caracteres')).toBeVisible()
+})
+
+test('permite iniciar una actualización disponible desde la licencia local', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.goto('/admin/configuracion/licencias')
+
+  await expect(page.getByText('Actualización disponible: v2.16.0')).toBeVisible()
+  const updateRequest = page.waitForRequest((request) =>
+    request.method() === 'POST'
+    && request.url().endsWith('/configuracion/mantenimiento/actualizar'))
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Actualizar ahora' }).click()
+  await updateRequest
+  await expect(page.getByRole('button', { name: 'Actualizando…' })).toBeDisabled()
 })
 
 test('carga las plantillas de mensajes de WhatsApp', async ({ page }) => {
