@@ -610,6 +610,7 @@ test('carga las transacciones y sus filtros financieros', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Corte de Cobranza' })).toBeVisible()
   await expect(page.getByText('Total en Pantalla')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Anular/ })).toBeVisible()
   await page.getByRole('button', { name: /Corregir/ }).click()
   await expect(page.getByRole('heading', { name: 'Corregir cobro #7' })).toBeVisible()
   await expect(page.getByText(/ERR-1.*Cliente equivocado E2E/)).toBeVisible()

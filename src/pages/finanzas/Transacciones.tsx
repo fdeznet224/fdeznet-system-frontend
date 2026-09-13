@@ -5,7 +5,7 @@ import {
     ArrowPathIcon,
     MagnifyingGlassIcon, FunnelIcon,
     CalendarDaysIcon, UserIcon, TicketIcon, CreditCardIcon,
-    ExclamationTriangleIcon, XMarkIcon
+    ExclamationTriangleIcon, XMarkIcon, XCircleIcon
 } from '@heroicons/react/24/outline';
 
 interface PaymentReportItem {
@@ -212,6 +212,35 @@ export default function Transacciones() {
         }
     };
 
+    const annulPayment = async (payment: PaymentReportItem) => {
+        const reason = window.prompt(
+            'Motivo de la anulación (mínimo 5 caracteres):',
+            'Pago registrado al cliente equivocado',
+        );
+        if (!reason) return;
+        if (reason.trim().length < 5) {
+            toast.error('El motivo debe tener al menos 5 caracteres');
+            return;
+        }
+        if (!window.confirm(
+            `Se quitará el pago #${payment.id} de ${payment.cliente_nombre}. El dinero NO se aplicará a otro cliente. ¿Continuar?`,
+        )) return;
+
+        const toastId = toast.loading('Anulando pago…');
+        try {
+            await client.post(`/finanzas/pagos/${payment.id}/anular`, {
+                motivo: reason.trim(),
+            });
+            toast.success('Pago anulado; el adeudo del cliente fue restaurado', { id: toastId });
+            toast('El pago del cliente correcto no fue modificado', { icon: 'ℹ️' });
+            await fetchPagos();
+        } catch (error: unknown) {
+            const detail = (error as { response?: { data?: { detail?: string } } })
+                ?.response?.data?.detail;
+            toast.error(detail || 'No fue posible anular el pago', { id: toastId });
+        }
+    };
+
     return (
         /* ✅ ADAPTADO: Fondo base adaptativo */
         <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12 transition-colors duration-300">
@@ -368,6 +397,7 @@ export default function Transacciones() {
                                             +${Number(p.monto).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                                         </td>
                                         <td className="p-4 text-center">
+                                            <div className="flex items-center justify-center gap-1.5">
                                             <button
                                                 type="button"
                                                 onClick={() => setPaymentToCorrect(p)}
@@ -375,6 +405,14 @@ export default function Transacciones() {
                                             >
                                                 Corregir
                                             </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => void annulPayment(p)}
+                                                className="px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-500/30 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 font-black text-[10px] uppercase"
+                                            >
+                                                Anular
+                                            </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -423,13 +461,22 @@ export default function Transacciones() {
                                             <UserIcon className="w-3 h-3 text-slate-400" /> {p.usuario_nombre}
                                         </span>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setPaymentToCorrect(p)}
-                                        className="w-full py-2 rounded-lg border border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400 font-black text-[10px] uppercase"
-                                    >
-                                        Corregir cobro
-                                    </button>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPaymentToCorrect(p)}
+                                            className="w-full py-2 rounded-lg border border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400 font-black text-[10px] uppercase"
+                                        >
+                                            Corregir cobro
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => void annulPayment(p)}
+                                            className="w-full py-2 rounded-lg border border-rose-300 dark:border-rose-500/30 text-rose-700 dark:text-rose-400 font-black text-[10px] uppercase flex items-center justify-center gap-1"
+                                        >
+                                            <XCircleIcon className="w-4 h-4" /> Anular pago
+                                        </button>
+                                    </div>
                                 </div>
                             ))
                         )}
