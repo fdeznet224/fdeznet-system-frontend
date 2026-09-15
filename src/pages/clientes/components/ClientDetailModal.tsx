@@ -629,7 +629,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                     <span className="client-tag">Número de contrato <b>{cliente?.cedula || 'N/A'}</b></span>
 
                                                     <span className="client-tag">
-                                                        Instalación <b>{formatDate(servicioActual?.fecha_inicio_cobro || cliente?.created_at)}</b>
+                                                        Instalación <b>{formatDate(servicioActual?.fecha_instalacion || cliente?.created_at)}</b>
                                                     </span>
                                                 </div>
                                             </>
@@ -706,7 +706,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                             {!loadingData && !isEditing && cliente && activeTab === 'resumen' && (
                                 <SectionCard title="Resumen del cliente" icon={CheckCircleIcon}>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <DetailTile label="Fecha instalación" value={formatDate(servicioActual?.fecha_inicio_cobro || cliente?.created_at)} highlight />
+                                        <DetailTile label="Fecha instalación" value={formatDate(servicioActual?.fecha_instalacion || cliente?.created_at)} highlight />
                                         <DetailTile label="Número de contrato" value={cliente?.cedula || 'N/A'} copy />
                                         <DetailTile label="Teléfono" value={cliente?.telefono || 'N/A'} copy />
                                         <DetailTile label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
