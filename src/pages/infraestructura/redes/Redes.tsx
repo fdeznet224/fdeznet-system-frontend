@@ -198,7 +198,7 @@ export default function RedesIP() {
                                                 </button>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                     <button onClick={() => setModalConfig({ isOpen: true, red })} className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 text-slate-400 hover:text-white rounded-lg transition-colors border border-transparent dark:border-slate-700"><PencilSquareIcon className="w-4 h-4" /></button>
                                                     <button onClick={() => handleDelete(red.id)} className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white rounded-lg transition-colors border border-transparent dark:border-slate-700"><TrashIcon className="w-4 h-4" /></button>
                                                 </div>

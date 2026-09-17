@@ -13,7 +13,9 @@ import {
     SignalIcon, 
     UserIcon, 
     LockClosedIcon, 
-    ArrowPathIcon 
+    ArrowPathIcon,
+    EyeIcon,
+    EyeSlashIcon,
 } from '@heroicons/react/24/outline';
 
 interface LoginUser {
@@ -32,6 +34,7 @@ export default function Login() {
     const { brand } = useBrand();
     const [username, setUsername] = useState<string>('');
     const [password, setPassword] = useState<string>('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const navigate = useNavigate();
 
@@ -137,7 +140,7 @@ export default function Login() {
                                         <LockClosedIcon className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                                     </div>
                                     <input
-                                        type="password"
+                                        type={showPassword ? 'text' : 'password'}
                                         required
                                         autoComplete="current-password"
                                         className="block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 py-3.5 pl-11 pr-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm transition-all outline-none"
@@ -146,6 +149,9 @@ export default function Login() {
                                         onChange={(e) => setPassword(e.target.value)}
                                         disabled={isLoading}
                                     />
+                                    <button type="button" onClick={() => setShowPassword(value => !value)} className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400 hover:text-blue-600" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+                                        {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                                    </button>
                                 </div>
                             </div>
                         </div>

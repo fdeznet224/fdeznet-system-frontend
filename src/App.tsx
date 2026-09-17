@@ -17,6 +17,7 @@ import { getDesignTokens } from '@/theme';
 import { WhatsAppProvider } from '@/context/whatsapp/WhatsAppProvider';
 import { SyncProvider } from '@/context/sync/SyncProvider';
 import { BrandProvider } from '@/context/brand/BrandProvider';
+import { useBrand } from '@/context/brand/useBrand';
 import ConnectivityBanner from '@/components/app/ConnectivityBanner';
 import AppErrorBoundary from '@/components/app/AppErrorBoundary';
 import RoleGuard from '@/components/app/RoleGuard';
@@ -70,11 +71,14 @@ const QrScanner = lazy(() => import('@/pages/tools/QrScanner'));
 const OltRadarVsolPage = lazy(() => import('@/pages/infraestructura/olts/OltRadarVsolPage'));
 
 function RouteFallback() {
+  const { brand } = useBrand();
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
       <div className="flex items-center gap-3" role="status" aria-live="polite">
-        <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-600 border-t-cyan-400" />
-        <span>Cargando módulo…</span>
+        <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl shadow-lg" style={{ backgroundColor: brand.color_primario }}>
+          {brand.logo_url ? <img src={brand.logo_url} alt={brand.empresa_nombre} className="h-full w-full object-contain" /> : <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40" style={{ borderTopColor: brand.color_secundario }} />}
+        </span>
+        <span style={{ color: brand.color_primario }}>Cargando módulo…</span>
       </div>
     </div>
   );

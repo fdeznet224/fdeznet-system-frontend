@@ -19,7 +19,6 @@ import type { Cliente } from '@/types';
 import type { ClientService } from '@/types/services';
 import { openNativeMap } from '@/utils/nativeActions';
 import ClientServicesPanel from './ClientServicesPanel';
-import IpAccessModal from './IpAccessModal';
 import './client-detail-sheet.css';
 
 interface Props {
@@ -169,7 +168,10 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [addingSaldo, setAddingSaldo] = useState(false);
     const [montoSaldo, setMontoSaldo] = useState('');
     const [facturas, setFacturas] = useState<ClientInvoice[]>([]);
-    const [remoteIp, setRemoteIp] = useState<string | null>(null);
+    const abrirIpHttp = (ip: string) => {
+        const destino = `http://${ip.trim().replace(/^https?:\/\//i, '')}`;
+        window.open(destino, '_blank', 'noopener,noreferrer');
+    };
     const [servicios, setServicios] = useState<ClientService[]>([]);
     const [serviciosAdicionales, setServiciosAdicionales] = useState<Array<{id:number; nombre:string; precio_mensual:number; periodicidad:'mensual'|'unico'; activo:boolean; servicio_id?:number}>>([]);
     const [resumenComercial, setResumenComercial] = useState<CommercialSummary | null>(null);
@@ -711,7 +713,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         <DetailTile label="Teléfono" value={cliente?.telefono || 'N/A'} copy />
                                         <DetailTile label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
                                         <DetailTile label="Plan" value={servicioActual?.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
-                                        <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight copy onClick={cliente?.ip_asignada ? () => setRemoteIp(cliente.ip_asignada || null) : undefined} />
+                                        <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight copy onClick={cliente?.ip_asignada ? () => abrirIpHttp(cliente.ip_asignada || '') : undefined} />
                                         <DetailTile label="ONU serial" value={cliente?.onu_asignada?.identificador || 'Sin equipo'} copy />
                                         <DetailTile label="Dirección" value={cliente?.direccion || 'N/A'} />
                                     </div>
@@ -1284,7 +1286,6 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                     </div>
                 </Dialog>
             </Transition>
-            <IpAccessModal ip={remoteIp} clientName={cliente?.nombre} onClose={() => setRemoteIp(null)} />
         </Transition>
     );
 }

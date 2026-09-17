@@ -11,7 +11,9 @@ import {
     TrashIcon,
     UserCircleIcon,
     KeyIcon,
-    IdentificationIcon
+    IdentificationIcon,
+    EyeIcon,
+    EyeSlashIcon,
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,11 +24,17 @@ interface SystemUser {
     rol: string;
     activo: boolean;
     router_ids?: number[];
+    zona_ids?: number[];
     telefono_whatsapp?: string | null;
     bot_whatsapp_habilitado: boolean;
 }
 
 interface RouterCatalog {
+    id: number;
+    nombre: string;
+}
+
+interface ZonaCatalog {
     id: number;
     nombre: string;
 }
@@ -38,6 +46,7 @@ interface UserForm {
     rol: string;
     activo: boolean;
     router_ids: number[];
+    zona_ids: number[];
     telefono_whatsapp: string;
     bot_whatsapp_habilitado: boolean;
 }
@@ -49,6 +58,7 @@ const initialForm: UserForm = {
     rol: 'cajero',
     activo: true,
     router_ids: [],
+    zona_ids: [],
     telefono_whatsapp: '',
     bot_whatsapp_habilitado: false,
 };
@@ -65,18 +75,22 @@ export default function Usuarios() {
     
     const [usuarios, setUsuarios] = useState<SystemUser[]>([]);
     const [listaRouters, setListaRouters] = useState<RouterCatalog[]>([]);
+    const [listaZonas, setListaZonas] = useState<ZonaCatalog[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
 
     const [form, setForm] = useState<UserForm>(initialForm);
+    const [showPassword, setShowPassword] = useState(false);
 
     const fetchData = useCallback(async () => {
         try {
-            const [resUsers, resRouters] = await Promise.all([
+            const [resUsers, resRouters, resZonas] = await Promise.all([
                 client.get<SystemUser[]>('/usuarios/'),
-                client.get<RouterCatalog[]>('/network/routers/')
+                client.get<RouterCatalog[]>('/network/routers/'),
+                client.get<ZonaCatalog[]>('/zonas/')
             ]);
             setUsuarios(resUsers.data);
             setListaRouters(resRouters.data);
+            setListaZonas(resZonas.data);
         } catch (error) {
             console.error(error);
             toast.error("Error cargando datos del sistema");
@@ -90,6 +104,7 @@ export default function Usuarios() {
 
     const handleEdit = (user: SystemUser) => {
         setEditingId(user.id);
+        setShowPassword(false);
         setForm({
             nombre_completo: user.nombre_completo,
             usuario: user.usuario,
@@ -97,6 +112,7 @@ export default function Usuarios() {
             rol: user.rol,
             activo: user.activo,
             router_ids: user.router_ids || [],
+            zona_ids: user.zona_ids || [],
             telefono_whatsapp: user.telefono_whatsapp || '',
             bot_whatsapp_habilitado: user.bot_whatsapp_habilitado,
         });
@@ -104,6 +120,7 @@ export default function Usuarios() {
 
     const handleCancelEdit = () => {
         setEditingId(null);
+        setShowPassword(false);
         setForm(initialForm);
     };
 
@@ -114,6 +131,16 @@ export default function Usuarios() {
         } else {
             setForm({ ...form, router_ids: [...currentIds, routerId] });
         }
+    };
+
+    const toggleZona = (zonaId: number) => {
+        const currentIds = [...form.zona_ids];
+        setForm({
+            ...form,
+            zona_ids: currentIds.includes(zonaId)
+                ? currentIds.filter(id => id !== zonaId)
+                : [...currentIds, zonaId],
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -212,11 +239,14 @@ export default function Usuarios() {
                                 <div className="relative mt-1.5">
                                     <KeyIcon className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                                     <input 
-                                        type="password" required={!editingId} 
+                                        type={showPassword ? 'text' : 'password'} required={!editingId}
                                         placeholder={editingId ? "Dejar vacío para mantener actual" : "Mínimo 6 caracteres"}
                                         className="w-full bg-slate-50 dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-11 pr-4 text-slate-800 dark:text-white text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
                                         value={form.password} onChange={e => setForm({...form, password: e.target.value})} 
                                     />
+                                    <button type="button" onClick={() => setShowPassword(value => !value)} className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-blue-600" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+                                        {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                                    </button>
                                 </div>
                             </div>
 
@@ -243,6 +273,22 @@ export default function Usuarios() {
                                     className="w-full mt-1.5 bg-slate-50 dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 text-slate-800 dark:text-white text-sm focus:border-indigo-500 outline-none"
                                 />
                                 <p className="mt-1 text-[10px] text-slate-500">Incluye código de país. Este número identifica al técnico en el bot privado.</p>
+                            </div>
+                        </div>
+
+                        {/* SELECCIÓN DE ZONAS */}
+                        <div>
+                            <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider mb-3 ml-1 block">
+                                Zonas de cobranza permitidas
+                            </label>
+                            <div className="bg-slate-50 dark:bg-[#0b0d14] p-4 rounded-xl border border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto space-y-2.5 custom-scrollbar">
+                                {listaZonas.length === 0 && <p className="text-sm text-slate-500 text-center py-2">No hay zonas registradas</p>}
+                                {listaZonas.map(zona => (
+                                    <label key={zona.id} className="flex items-center space-x-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/80 p-2 rounded-lg transition-colors">
+                                        <input type="checkbox" className="w-5 h-5 rounded text-emerald-600" checked={form.zona_ids.includes(zona.id)} onChange={() => toggleZona(zona.id)} />
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{zona.nombre}</span>
+                                    </label>
+                                ))}
                             </div>
                         </div>
 
@@ -305,7 +351,7 @@ export default function Usuarios() {
                                 <tr>
                                     <th className="p-5">Usuario / Login</th>
                                     <th className="p-5 text-center">Rol</th>
-                                    <th className="p-5">Permisos (Routers)</th>
+                                    <th className="p-5">Permisos (Routers / Zonas)</th>
                                     <th className="p-5 text-right">Acciones</th>
                                 </tr>
                             </thead>
@@ -345,9 +391,17 @@ export default function Usuarios() {
                                                     </span>
                                                 )}
                                             </div>
+                                            {u.zona_ids && u.zona_ids.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                                    {u.zona_ids.map((zid: number) => {
+                                                        const zona = listaZonas.find(item => item.id === zid);
+                                                        return zona ? <span key={zid} className="px-2 py-1 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-md text-[10px] font-medium text-emerald-700 dark:text-emerald-300">{zona.nombre}</span> : null;
+                                                    })}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="p-5 text-right">
-                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => handleEdit(u)} className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition border border-transparent hover:border-blue-200 dark:hover:border-blue-500/20">
                                                     <PencilSquareIcon className="w-5 h-5"/>
                                                 </button>

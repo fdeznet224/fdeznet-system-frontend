@@ -245,7 +245,7 @@ export default function TechDashboard() {
                         {/* TARJETAS DE KPIs ADAPTATIVAS */}
                         <div className="grid grid-cols-1 gap-4">
                             <div onClick={() => setActiveTab('agenda')} className="bg-white dark:bg-gradient-to-br dark:from-[#1a1f2e] dark:to-[#0f1219] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md dark:shadow-xl relative overflow-hidden active:scale-95 transition-all cursor-pointer group hover:border-purple-500/30 dark:hover:border-purple-500/30">
-                                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <div className="relative z-10 flex items-center justify-between">
                                     <div>
                                         <span className="text-purple-600 dark:text-purple-400 text-[10px] font-black uppercase tracking-widest transition-colors">Nuevas</span>

@@ -15,7 +15,6 @@ import {
 
 import client from '@/api/axios';
 import type { ClientService } from '@/types/services';
-import IpAccessModal from './IpAccessModal';
 
 interface Props {
   clientId: number;
@@ -117,7 +116,10 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
   const [planOptions, setPlanOptions] = useState<PlanCatalog[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [savingPlan, setSavingPlan] = useState(false);
-  const [remoteService, setRemoteService] = useState<ClientService | null>(null);
+  const abrirIpHttp = (ip: string) => {
+    const destino = `http://${ip.trim().replace(/^https?:\/\//i, '')}`;
+    window.open(destino, '_blank', 'noopener,noreferrer');
+  };
 
   const fetchServices = useCallback(async () => {
     setLoading(true);
@@ -333,7 +335,7 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
                         Plan: {service.plan?.nombre || 'Sin asignar'}
                         {service.plan ? ` · $${Number(service.plan.precio).toFixed(2)}/mes` : ''}
                       </span>
-                      <button type="button" onClick={() => service.ip_asignada && setRemoteService(service)} className="font-bold underline decoration-dotted underline-offset-2 hover:text-blue-600 dark:hover:text-blue-400">
+                      <button type="button" onClick={() => service.ip_asignada && abrirIpHttp(service.ip_asignada)} className="font-bold underline decoration-dotted underline-offset-2 hover:text-blue-600 dark:hover:text-blue-400">
                         IP: {service.ip_asignada || 'Sin asignar'}
                       </button>
                       <span>Facturación: {service.tipo_facturacion}</span>
@@ -567,11 +569,6 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
           </div>
         </div>
       )}
-      <IpAccessModal
-        ip={remoteService?.ip_asignada || null}
-        clientName={remoteService?.alias}
-        onClose={() => setRemoteService(null)}
-      />
     </>
   );
 }

@@ -4,20 +4,30 @@ import { DEFAULT_BRAND, type BrandConfig } from './brand';
 import { BrandContext } from './brand-context';
 
 export function BrandProvider({ children }: { children: ReactNode }) {
-  const [brand, setBrand] = useState(DEFAULT_BRAND);
+  const [brand, setBrand] = useState<BrandConfig>(() => {
+    try {
+      const cached = localStorage.getItem('fdeznet-brand');
+      return cached ? { ...DEFAULT_BRAND, ...JSON.parse(cached) } : DEFAULT_BRAND;
+    } catch { return DEFAULT_BRAND; }
+  });
+  const applyBrand = useCallback((data: BrandConfig) => {
+    const next = { ...DEFAULT_BRAND, ...data };
+    setBrand(next);
+    localStorage.setItem('fdeznet-brand', JSON.stringify(next));
+  }, []);
   const refreshBrand = useCallback(async () => {
     try {
       const { data } = await client.get<BrandConfig>('/public/marca');
-      setBrand({ ...DEFAULT_BRAND, ...data });
-    } catch { setBrand(DEFAULT_BRAND); }
-  }, []);
+      applyBrand(data);
+    } catch { /* conserva la última marca conocida para la pantalla inicial */ }
+  }, [applyBrand]);
   useEffect(() => {
     let active = true;
     client.get<BrandConfig>('/public/marca')
-      .then(({ data }) => { if (active) setBrand({ ...DEFAULT_BRAND, ...data }); })
-      .catch(() => { if (active) setBrand(DEFAULT_BRAND); });
+      .then(({ data }) => { if (active) applyBrand(data); })
+      .catch(() => { /* conserva la última marca conocida */ });
     return () => { active = false; };
-  }, []);
+  }, [applyBrand]);
   useEffect(() => {
     document.title = brand.sistema_nombre;
     document.documentElement.style.setProperty('--brand-primary', brand.color_primario);

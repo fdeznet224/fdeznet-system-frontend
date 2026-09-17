@@ -165,6 +165,7 @@ export interface Usuario {
     rol: 'admin' | 'supervisor' | 'cajero' | 'tecnico';
     activo: boolean;
     router_ids: number[]; 
+    zona_ids: number[];
 }
 
 export interface LoginResponse {
