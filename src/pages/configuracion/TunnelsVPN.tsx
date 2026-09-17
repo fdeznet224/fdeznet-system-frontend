@@ -16,6 +16,7 @@ interface VpnTunnel {
     ip_asignada: string;
     public_key: string;
     script_mikrotik: string;
+    subredes_remotas?: string | null;
     is_active: boolean;
     created_at: string;
 }
@@ -23,6 +24,11 @@ interface VpnTunnel {
 interface TechnicianVpnResponse {
     archivo_conf: string;
     nombre: string;
+}
+
+interface RoutedSubnet {
+    subred: string;
+    tunnel_nombre: string;
 }
 
 const getApiError = (error: unknown, fallback: string) => {
@@ -34,18 +40,24 @@ const getApiError = (error: unknown, fallback: string) => {
 
 export default function TunnelsVPN() {
     const [tunnels, setTunnels] = useState<VpnTunnel[]>([]);
+    const [routedSubnets, setRoutedSubnets] = useState<RoutedSubnet[]>([]);
     const [loading, setLoading] = useState(true);
     const [scriptVisibleId, setScriptVisibleId] = useState<number | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [nuevoNombre, setNuevoNombre] = useState("");
+    const [subredesRemotas, setSubredesRemotas] = useState("");
     const [tipoTunnel, setTipoTunnel] = useState<'mikrotik' | 'tecnico'>('mikrotik');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [qrModalData, setQrModalData] = useState<{script_text: string, nombre: string} | null>(null);
 
     const fetchTunnels = useCallback(async () => {
         try {
-            const res = await client.get<VpnTunnel[]>('/vpn/tunnels/');
-            setTunnels(res.data);
+            const [tunnelsResponse, subnetsResponse] = await Promise.all([
+                client.get<VpnTunnel[]>('/vpn/tunnels/'),
+                client.get<RoutedSubnet[]>('/vpn/subredes/'),
+            ]);
+            setTunnels(tunnelsResponse.data);
+            setRoutedSubnets(subnetsResponse.data);
         } catch {
             toast.error("Error al cargar los túneles VPN");
         } finally {
@@ -62,10 +74,16 @@ export default function TunnelsVPN() {
         
         try {
             if (tipoTunnel === 'mikrotik') {
-                await client.post('/vpn/tunnels/', { nombre: nuevoNombre });
+                await client.post('/vpn/tunnels/', {
+                    nombre: nuevoNombre,
+                    subredes_remotas: subredesRemotas.trim() || null,
+                });
                 toast.success("¡Túnel MikroTik creado!", { id: loadingToast });
             } else {
-                const res = await client.post<TechnicianVpnResponse>('/vpn/tecnicos/', { nombre: nuevoNombre });
+                const res = await client.post<TechnicianVpnResponse>('/vpn/tecnicos/', {
+                    nombre: nuevoNombre,
+                    subredes_remotas: subredesRemotas.trim() || null,
+                });
                 toast.success("¡Acceso para Técnico creado!", { id: loadingToast });
                 setQrModalData({
                     script_text: res.data.archivo_conf,
@@ -73,6 +91,7 @@ export default function TunnelsVPN() {
                 });
             }
             setNuevoNombre("");
+            setSubredesRemotas("");
             setShowCreateModal(false);
             void fetchTunnels();
         } catch (error: unknown) {
@@ -92,6 +111,44 @@ export default function TunnelsVPN() {
         } catch {
             toast.error("Error al eliminar", { id: toastId });
         }
+    };
+
+    const toggleRoutedSubnet = (subred: string) => {
+        const current = subredesRemotas
+            .replace(/\n/g, ',')
+            .split(',')
+            .map(item => item.trim())
+            .filter(Boolean);
+        const next = current.includes(subred)
+            ? current.filter(item => item !== subred)
+            : [...current, subred];
+        setSubredesRemotas(next.join(', '));
+    };
+
+    const selectedSubnetSet = () => new Set(
+        subredesRemotas
+            .replace(/\n/g, ',')
+            .split(',')
+            .map(item => item.trim())
+            .filter(Boolean),
+    );
+
+    const toggleTunnelSubnets = (tunnelName: string) => {
+        const subnetSet = selectedSubnetSet();
+        const tunnelSubnets = routedSubnets
+            .filter(item => item.tunnel_nombre === tunnelName)
+            .map(item => item.subred);
+        const allSelected = tunnelSubnets.every(subred => subnetSet.has(subred));
+        tunnelSubnets.forEach(subred => allSelected ? subnetSet.delete(subred) : subnetSet.add(subred));
+        setSubredesRemotas([...subnetSet].join(', '));
+    };
+
+    const toggleAllSubnets = () => {
+        const subnetSet = selectedSubnetSet();
+        const available = [...new Set(routedSubnets.map(item => item.subred))];
+        const allSelected = available.every(subred => subnetSet.has(subred));
+        available.forEach(subred => allSelected ? subnetSet.delete(subred) : subnetSet.add(subred));
+        setSubredesRemotas([...subnetSet].join(', '));
     };
 
     const copiarAlPortapapeles = (texto: string) => {
@@ -171,6 +228,11 @@ export default function TunnelsVPN() {
                                     <p className="text-emerald-600 dark:text-emerald-400 font-mono text-lg font-black mt-1 flex items-center gap-2">
                                         {tunnel.ip_asignada} {isMobile && <DevicePhoneMobileIcon className="w-5 h-5 text-blue-500"/>}
                                     </p>
+                                    {tunnel.subredes_remotas && (
+                                        <p className="mt-2 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                            Subredes: <span className="font-mono text-indigo-600 dark:text-indigo-400">{tunnel.subredes_remotas}</span>
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 mb-6 mt-auto">
@@ -233,6 +295,66 @@ export default function TunnelsVPN() {
                             <div>
                                 <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 block">Identificador</label>
                                 <input type="text" value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Ej: Router-Principal o Tec-Juan..." className="w-full p-4 text-sm font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-emerald-500 text-slate-900 dark:text-white transition-colors" required autoFocus />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 block">
+                                    {tipoTunnel === 'mikrotik' ? 'Subredes detrás del MikroTik' : 'Subredes que podrá alcanzar'}
+                                </label>
+                                <textarea
+                                    rows={3}
+                                    value={subredesRemotas}
+                                    onChange={(e) => setSubredesRemotas(e.target.value)}
+                                    placeholder="Ej: 192.168.21.0/24, 10.10.9.0/24"
+                                    className="w-full resize-none p-4 text-sm font-mono font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-emerald-500 text-slate-900 dark:text-white transition-colors"
+                                />
+                                <p className="mt-1.5 text-[10px] leading-relaxed text-slate-500">
+                                    {tipoTunnel === 'mikrotik'
+                                        ? 'La VPS enviará estas redes por este peer. Puedes separar varias con coma o salto de línea.'
+                                        : 'Estas rutas se incluirán en AllowedIPs del archivo y QR del dispositivo.'}
+                                </p>
+                                {tipoTunnel === 'tecnico' && routedSubnets.length > 0 && (
+                                    <div className="mt-3 space-y-2">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Rutas disponibles por MikroTik</p>
+                                            <button type="button" onClick={toggleAllSubnets} className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wide text-white">
+                                                {routedSubnets.every(item => selectedSubnetSet().has(item.subred)) ? 'Quitar todas' : 'Acceso global'}
+                                            </button>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {[...new Set(routedSubnets.map(item => item.tunnel_nombre))].map(tunnelName => {
+                                                const tunnelSubnets = routedSubnets.filter(item => item.tunnel_nombre === tunnelName);
+                                                const selected = tunnelSubnets.every(item => selectedSubnetSet().has(item.subred));
+                                                return (
+                                                    <button
+                                                        key={tunnelName}
+                                                        type="button"
+                                                        onClick={() => toggleTunnelSubnets(tunnelName)}
+                                                        className={`rounded-lg border px-2.5 py-1.5 text-[9px] font-black transition-colors ${selected ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400'}`}
+                                                    >
+                                                        {tunnelName} · {tunnelSubnets.length} red{tunnelSubnets.length === 1 ? '' : 'es'}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {routedSubnets.map((item) => {
+                                                const selected = subredesRemotas.includes(item.subred);
+                                                return (
+                                                    <button
+                                                        key={`${item.tunnel_nombre}-${item.subred}`}
+                                                        type="button"
+                                                        onClick={() => toggleRoutedSubnet(item.subred)}
+                                                        className={`rounded-lg border px-2.5 py-1.5 text-left text-[10px] font-bold transition-colors ${selected ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300' : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400'}`}
+                                                        title={item.tunnel_nombre}
+                                                    >
+                                                        <span className="block font-mono">{item.subred}</span>
+                                                        <span className="block max-w-32 truncate text-[8px] opacity-70">{item.tunnel_nombre}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div className="flex gap-3">
                                 <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
