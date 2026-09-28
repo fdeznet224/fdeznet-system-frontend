@@ -78,6 +78,8 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
                 { name: 'monto_promesa', label: 'Deuda Promesa', desc: 'Saldo total a liquidar en la prórroga' },
                 { name: 'fecha_limite_promesa', label: 'Venc. Promesa', desc: 'Fecha acordada para pagar la prórroga' },
                 { name: 'detalle_cobro', label: 'Detalle Cobro', desc: 'Resumen completo de las fechas cobradas y no cobradas' },
+                { name: 'total_a_pagar', label: 'Total a Pagar', desc: 'Todo lo que debe el cliente: atrasos, mes actual y extras' },
+                { name: 'desglose_total', label: 'Desglose Total', desc: 'Lista de cada mes y servicio extra con su monto (solo si hay más de uno)' },
                 { name: 'monto_servicio_original', label: 'Servicio Original', desc: 'Monto del servicio antes del ajuste por suspensión' },
                 { name: 'ajuste_suspension', label: 'Ajuste Suspensión', desc: 'Importe descontado por días sin servicio' },
                 { name: 'cargos_adicionales', label: 'Cargos Extra', desc: 'Suma de cargos adicionales de la factura' },

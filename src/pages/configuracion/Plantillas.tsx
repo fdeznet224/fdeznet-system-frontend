@@ -67,6 +67,7 @@ export default function Plantillas() {
         { tag: '{saldo_favor}', desc: 'Dinero Sobrante' }, { tag: '{monto_promesa}', desc: 'Deuda a pagar' },
         { tag: '{fecha_limite_promesa}', desc: 'Día límite de la prórroga' }, { tag: '{referencia}', desc: 'Folio o Detalle' },
         { tag: '{detalle_cobro}', desc: 'Fechas y días cobrados' }, { tag: '{periodo_desde}', desc: 'Inicio del periodo' },
+        { tag: '{total_a_pagar}', desc: 'Total con atrasos y extras' }, { tag: '{desglose_total}', desc: 'Lista de lo que se debe' },
         { tag: '{periodo_hasta}', desc: 'Fin del periodo' }, { tag: '{dias_con_servicio}', desc: 'Días cobrados' },
         { tag: '{dias_sin_servicio}', desc: 'Días no cobrados' }, { tag: '{ajuste_suspension}', desc: 'Descuento por corte' },
         { tag: '{monto_servicio_original}', desc: 'Servicio antes del ajuste' }, { tag: '{cargos_adicionales}', desc: 'Otros cargos' },
