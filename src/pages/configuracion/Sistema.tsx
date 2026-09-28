@@ -15,6 +15,7 @@ interface ConfigSistema {
     aviso_pantalla_corte: boolean;
     corte_solo_whatsapp: boolean;
     corte_whatsapp_kbps: number;
+    baja_automatica_dias: number;
     dia_generacion_factura: number; 
     generar_facturas_automaticamente: boolean;
     hora_ejecucion_corte: string;
@@ -38,6 +39,7 @@ export default function Sistema() {
         aviso_pantalla_corte: false,
         corte_solo_whatsapp: false,
         corte_whatsapp_kbps: 128,
+        baja_automatica_dias: 90,
         dia_generacion_factura: 1, 
         generar_facturas_automaticamente: true,
         hora_ejecucion_corte: "03:00",
@@ -148,6 +150,18 @@ export default function Sistema() {
                                     </select>
                                     <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">Facebook e Instagram comparten servidores con WhatsApp: abrirán, pero a esta velocidad son prácticamente inutilizables. Las llamadas de WhatsApp quedan bloqueadas.</p>
                                 </div>
+                            </div>
+
+                            <div className="p-4 bg-slate-50 dark:bg-[#151b2b] rounded-xl border border-slate-200 dark:border-slate-800">
+                                <label className="font-black block text-slate-900 dark:text-white text-sm">Baja automática por falta de pago</label>
+                                <p className="text-xs text-slate-500 mt-1 mb-3">Tras estos días suspendido, el servicio se da de baja: deja de facturarse, se genera la orden de retiro del equipo y la deuda de lo consumido queda en el cliente.</p>
+                                <select className="w-full bg-slate-100 dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white font-black outline-none focus:border-rose-500 transition"
+                                    value={config.baja_automatica_dias} onChange={e => handleChange('baja_automatica_dias', Number(e.target.value))}>
+                                    <option value={0}>Desactivada</option>
+                                    <option value={60}>60 días suspendido</option>
+                                    <option value={90}>90 días suspendido (recomendado)</option>
+                                    <option value={120}>120 días suspendido</option>
+                                </select>
                             </div>
                         </div>
                     </div>

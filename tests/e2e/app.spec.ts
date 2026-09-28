@@ -168,6 +168,7 @@ async function mockApi(page: Page) {
         aviso_pantalla_corte: false,
         corte_solo_whatsapp: false,
         corte_whatsapp_kbps: 128,
+        baja_automatica_dias: 90,
         dia_generacion_factura: 1,
         generar_facturas_automaticamente: true,
         hora_ejecucion_corte: '03:00',
