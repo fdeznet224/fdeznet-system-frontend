@@ -23,6 +23,7 @@ const publicActions = [
   ['reportar_pago', 'Reportar y validar pago'], ['promesa_pago', 'Registrar promesa de pago'],
   ['estado_servicio', 'Consultar servicio y saldo'], ['datos_pago', 'Enviar datos bancarios'],
   ['diagnostico_tecnico', 'Diagnóstico del propio cliente'],
+  ['hablar_asesor', 'Hablar con un asesor (pausa el bot 2 h)'],
 ];
 const techActions = [
   ['tecnico_diagnostico', 'PPPoE, ONU, potencia y ficha completa'],
