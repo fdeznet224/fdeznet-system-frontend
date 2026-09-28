@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { 
     Cog6ToothIcon, BellAlertIcon, ScissorsIcon, 
     CheckCircleIcon, ArrowLeftIcon, ClockIcon, 
-    CalendarDaysIcon, ShieldCheckIcon
+    CalendarDaysIcon, ShieldCheckIcon, ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 
 interface ConfigSistema {
@@ -13,6 +13,8 @@ interface ConfigSistema {
     activar_corte_automatico: boolean;
     activar_notificaciones: boolean;
     aviso_pantalla_corte: boolean;
+    corte_solo_whatsapp: boolean;
+    corte_whatsapp_kbps: number;
     dia_generacion_factura: number; 
     generar_facturas_automaticamente: boolean;
     hora_ejecucion_corte: string;
@@ -34,6 +36,8 @@ export default function Sistema() {
         activar_corte_automatico: true,
         activar_notificaciones: true,
         aviso_pantalla_corte: false,
+        corte_solo_whatsapp: false,
+        corte_whatsapp_kbps: 128,
         dia_generacion_factura: 1, 
         generar_facturas_automaticamente: true,
         hora_ejecucion_corte: "03:00",
@@ -62,8 +66,8 @@ export default function Sistema() {
     const guardarCambios = async () => {
         setSaving(true);
         try {
-            await client.put('/configuracion/sistema', config);
-            toast.success("¡Configuración guardada!");
+            const res = await client.put<{ mensaje?: string }>('/configuracion/sistema', config);
+            toast.success(res.data?.mensaje || "¡Configuración guardada!");
         } catch {
             toast.error("Error al guardar cambios"); 
         } finally { 
@@ -121,6 +125,29 @@ export default function Sistema() {
                                 </label>
                                 <input type="time" className="w-full bg-slate-100 dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white font-black outline-none focus:border-rose-500 transition text-center tracking-widest"
                                     value={config.hora_ejecucion_corte || ''} onChange={e => handleChange('hora_ejecucion_corte', e.target.value)} />
+                            </div>
+
+                            <div className="p-4 bg-slate-50 dark:bg-[#151b2b] rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <label className="font-black block text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                                            <ChatBubbleLeftRightIcon className="w-4 h-4 text-emerald-500"/> Suspendidos solo con WhatsApp
+                                        </label>
+                                        <p className="text-xs text-slate-500 mt-1">El cliente suspendido no puede navegar, pero conserva WhatsApp lento para escribir al bot, pedir promesa de pago o enviar su comprobante.</p>
+                                    </div>
+                                    <Toggle checked={config.corte_solo_whatsapp} onChange={(value) => handleChange('corte_solo_whatsapp', value)} color="emerald" />
+                                </div>
+                                <div className={`transition-all ${!config.corte_solo_whatsapp ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">Velocidad por cliente suspendido</label>
+                                    <select className="w-full bg-slate-100 dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white font-black outline-none focus:border-emerald-500 transition"
+                                        value={config.corte_whatsapp_kbps} onChange={e => handleChange('corte_whatsapp_kbps', Number(e.target.value))}>
+                                        <option value={64}>64 kbps · solo texto</option>
+                                        <option value={128}>128 kbps · texto y audios (recomendado)</option>
+                                        <option value={256}>256 kbps · texto, audios y fotos</option>
+                                        <option value={512}>512 kbps · más holgado</option>
+                                    </select>
+                                    <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">Facebook e Instagram comparten servidores con WhatsApp: abrirán, pero a esta velocidad son prácticamente inutilizables. Las llamadas de WhatsApp quedan bloqueadas.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
