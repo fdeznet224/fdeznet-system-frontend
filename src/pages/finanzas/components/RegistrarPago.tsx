@@ -26,7 +26,7 @@ interface ClienteBusqueda {
 interface EstadoCuenta {
     total: number | string;
     incluye: string[];
-    detalle: { texto: string; actual: boolean }[];
+    detalle: { texto: string; monto?: number | string; actual: boolean }[];
     facturas: { id: number; saldo_pendiente: number | string }[];
     suspendido: boolean;
     factura_promesa_id: number | null;
@@ -355,9 +355,12 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                             {estadoCuenta.detalle.map((item, index) => (
                                                 <li key={index} className={item.actual
                                                     ? 'flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'
-                                                    : 'flex items-center gap-2 px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-200'}>
-                                                    <span className="min-w-0 break-words">{item.actual ? '' : '• '}{item.texto}</span>
-                                                    {item.actual && <span className="shrink-0 rounded-md bg-emerald-600 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">Mes actual</span>}
+                                                    : 'flex items-center justify-between gap-2 px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-200'}>
+                                                    <span className="min-w-0 flex-1 break-words">
+                                                        {item.actual ? '' : '• '}{item.texto}
+                                                        {item.actual && <span className="ml-2 inline-block rounded-md bg-emerald-600 px-2 py-0.5 align-middle text-[9px] font-black uppercase tracking-wider text-white">Mes actual</span>}
+                                                    </span>
+                                                    {item.monto != null && <span className="shrink-0 font-black tabular-nums">${Number(item.monto).toFixed(2)}</span>}
                                                 </li>
                                             ))}
                                         </ul>

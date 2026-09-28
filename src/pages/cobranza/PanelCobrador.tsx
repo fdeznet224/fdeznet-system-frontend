@@ -70,7 +70,7 @@ interface BillingInvoice {
 interface EstadoCuenta {
     total: number | string;
     incluye: string[];
-    detalle: { texto: string; actual: boolean }[];
+    detalle: { texto: string; monto?: number | string; actual: boolean }[];
     facturas: { id: number; saldo_pendiente: number | string }[];
     suspendido: boolean;
     factura_promesa_id: number | null;
@@ -155,7 +155,7 @@ export default function PanelCobrador() {
     const [promesas, setPromesas] = useState<BillingInvoice[]>([]);
     const [loading, setLoading] = useState(false);
     const [filtro, setFiltro] = useState('');
-    const [cobroTotal, setCobroTotal] = useState<{ total: number; detalle: { texto: string; actual: boolean }[] } | null>(null);
+    const [cobroTotal, setCobroTotal] = useState<{ total: number; detalle: { texto: string; monto?: number | string; actual: boolean }[] } | null>(null);
     
     const totalCobradoHoy = historial.reduce((acc, curr) => acc + Number(curr.monto), 0);
     const totalEfectivo = historial.filter(h => h.metodo === 'efectivo').reduce((acc, curr) => acc + Number(curr.monto), 0);
@@ -225,7 +225,7 @@ export default function PanelCobrador() {
         const clienteId = ordered[0].cliente.id;
         let principal = ordered[0];
         let total = ordered.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
-        let detalle = ordered.map((invoice) => ({ texto: invoiceConcept(invoice), actual: false }));
+        let detalle: EstadoCuenta['detalle'] = ordered.map((invoice) => ({ texto: invoiceConcept(invoice), monto: invoice.saldo_pendiente, actual: false }));
 
         if (online && clienteId) {
             const toastId = toast.loading('Calculando total…');
@@ -610,9 +610,12 @@ export default function PanelCobrador() {
                                             {(cobroTotal?.detalle || []).map((item, index) => (
                                                 <li key={index} className={item.actual
                                                     ? 'flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'
-                                                    : 'flex items-center gap-2 px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-200'}>
-                                                    <span className="min-w-0 break-words">{item.actual ? '' : '• '}{item.texto}</span>
-                                                    {item.actual && <span className="shrink-0 rounded-md bg-emerald-600 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">Mes actual</span>}
+                                                    : 'flex items-center justify-between gap-2 px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-200'}>
+                                                    <span className="min-w-0 flex-1 break-words">
+                                                        {item.actual ? '' : '• '}{item.texto}
+                                                        {item.actual && <span className="ml-2 inline-block rounded-md bg-emerald-600 px-2 py-0.5 align-middle text-[9px] font-black uppercase tracking-wider text-white">Mes actual</span>}
+                                                    </span>
+                                                    {item.monto != null && <span className="shrink-0 font-black tabular-nums">${Number(item.monto).toFixed(2)}</span>}
                                                 </li>
                                             ))}
                                         </ul>
