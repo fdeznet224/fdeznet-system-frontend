@@ -66,26 +66,17 @@ interface BillingInvoice {
     servicio?: { id?: number; alias?: string | null; direccion?: string | null; estado?: string | null } | null;
 }
 
-interface ReactivationQuote {
-    factura_id: number;
-    concepto?: string | null;
-    fecha_vencimiento: string;
-    periodo_desde?: string | null;
-    periodo_hasta?: string | null;
-    descripcion: string;
-    dias_con_servicio: number;
-    dias_sin_servicio: number;
-    ajuste_suspension: number;
-    cargos_adicionales: number;
-    saldo_pendiente: number;
+
+interface EstadoCuenta {
+    total: number | string;
+    incluye: string[];
+    facturas: { id: number; saldo_pendiente: number | string }[];
+    suspendido: boolean;
+    factura_promesa_id: number | null;
 }
 
 interface InvoiceListResponse {
     items?: BillingInvoice[];
-}
-
-interface CobroResultResponse {
-    facturas_pendientes_cant?: number;
 }
 
 interface PaymentHistoryItem {
@@ -121,19 +112,6 @@ function formatDateLong(value?: string | null) {
     const [year, month, day] = value.slice(0, 10).split('-').map(Number);
     if (!year || !month || !day) return value;
     return `${day} de ${MESES_ES[month - 1]} de ${year}`;
-}
-
-function invoiceMonth(invoice?: BillingInvoice | null) {
-    const value = invoice?.mes_correspondiente;
-    if (!value) return formatDateLong(invoice?.periodo_desde);
-    const match = value.match(/^(\d{4})-(\d{1,2})$/);
-    if (match) {
-        const month = `${MESES_ES[Number(match[2]) - 1]} de ${match[1]}`;
-        return month.charAt(0).toUpperCase() + month.slice(1);
-    }
-    const englishMonths = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-    const month = value.replace(/january|february|march|april|may|june|july|august|september|october|november|december/i, (name) => MESES_ES[englishMonths.indexOf(name.toLowerCase())]);
-    return month.charAt(0).toUpperCase() + month.slice(1);
 }
 
 function invoiceConcept(invoice?: BillingInvoice | null) {
@@ -183,9 +161,7 @@ export default function PanelCobrador() {
     const [promesas, setPromesas] = useState<BillingInvoice[]>([]);
     const [loading, setLoading] = useState(false);
     const [filtro, setFiltro] = useState('');
-    const [bulkInvoices, setBulkInvoices] = useState<BillingInvoice[]>([]);
-    const [modalInvoices, setModalInvoices] = useState<BillingInvoice[]>([]);
-    const [invoiceSelection, setInvoiceSelection] = useState<string>('');
+    const [cobroTotal, setCobroTotal] = useState<{ total: number; incluye: string[] } | null>(null);
     
     const totalCobradoHoy = historial.reduce((acc, curr) => acc + Number(curr.monto), 0);
     const totalEfectivo = historial.filter(h => h.metodo === 'efectivo').reduce((acc, curr) => acc + Number(curr.monto), 0);
@@ -195,24 +171,10 @@ export default function PanelCobrador() {
     // ESTADOS DEL MODAL
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedFactura, setSelectedFactura] = useState<BillingInvoice | null>(null);
-    const [selectedConceptIds, setSelectedConceptIds] = useState<number[]>([]);
     const [modo, setModo] = useState<'pagar' | 'promesa'>('pagar'); // 👈 Nuevo estado para las tabs
     const [formCobro, setFormCobro] = useState<{ metodo: PaymentMethod; referencia: string; monto: number }>({ metodo: 'efectivo', referencia: '', monto: 0 });
     const [fechaPromesa, setFechaPromesa] = useState('');
     const [procesando, setProcesando] = useState(false);
-
-    const toggleConcept = (concept: BillingConcept) => {
-        setSelectedConceptIds(current => {
-            const next = current.includes(concept.id)
-                ? current.filter(id => id !== concept.id)
-                : [...current, concept.id];
-            const total = (selectedFactura?.conceptos || [])
-                .filter(item => next.includes(item.id))
-                .reduce((sum, item) => sum + Number(item.saldo_pendiente), 0);
-            setFormCobro(form => ({ ...form, monto: Number(total.toFixed(2)) }));
-            return next;
-        });
-    };
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -261,177 +223,72 @@ export default function PanelCobrador() {
         }
     };
 
-    const selectInvoiceForPayment = (factura: BillingInvoice) => {
-        setBulkInvoices([]);
-        setInvoiceSelection(String(factura.id));
-        setSelectedFactura(factura);
-        setSelectedConceptIds(
-            (factura.conceptos || [])
-                .filter(concepto => Number(concepto.saldo_pendiente) > 0)
-                .map(concepto => concepto.id),
-        );
-        setFormCobro({ metodo: 'efectivo', referencia: '', monto: factura.saldo_pendiente });
+    // Un solo cobro por cliente: mensualidad, prorrateo, extras y reconexión.
+    const openClientCharge = async (invoices: BillingInvoice[]) => {
+        const ordered = [...invoices]
+            .sort((a, b) => a.fecha_vencimiento.localeCompare(b.fecha_vencimiento) || a.id - b.id);
+        if (!ordered[0]) return;
+        const clienteId = ordered[0].cliente.id;
+        let principal = ordered[0];
+        let total = ordered.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
+        let incluye = [...new Set(ordered.map(invoiceConcept))];
+
+        if (online && clienteId) {
+            const toastId = toast.loading('Calculando total…');
+            try {
+                const { data } = await client.post<EstadoCuenta>(`/finanzas/clientes/${clienteId}/estado-cuenta`);
+                total = Number(data.total);
+                incluye = data.incluye;
+                principal = ordered.find((item) => item.id === data.factura_promesa_id) || principal;
+                toast.dismiss(toastId);
+                if (total <= 0) {
+                    toast.success('El cliente no tiene saldo pendiente');
+                    void fetchData();
+                    return;
+                }
+            } catch (error: unknown) {
+                const detail = axios.isAxiosError<{ detail?: string }>(error)
+                    ? error.response?.data?.detail
+                    : undefined;
+                toast.error(detail || 'No se pudo calcular el total', { id: toastId });
+                return;
+            }
+        } else if (ordered.some((invoice) => invoice.servicio?.estado === 'suspendido')) {
+            toast.error('La reactivación requiere conexión para calcular los días reales');
+            return;
+        }
+
+        setSelectedFactura(principal);
+        setCobroTotal({ total: Number(total.toFixed(2)), incluye });
+        setFormCobro({ metodo: 'efectivo', referencia: '', monto: Number(total.toFixed(2)) });
         setModo('pagar');
         const date = new Date();
         date.setDate(date.getDate() + 3);
         const initialDate = date.toISOString().split('T')[0];
         setFechaPromesa(
-            factura.fecha_maxima_promesa && initialDate > factura.fecha_maxima_promesa
-                ? factura.fecha_maxima_promesa
+            principal.fecha_maxima_promesa && initialDate > principal.fecha_maxima_promesa
+                ? principal.fecha_maxima_promesa
                 : initialDate,
         );
-    };
-
-    const handleOpenCobrar = async (factura: BillingInvoice) => {
-        setBulkInvoices([]);
-        let facturaActual = factura;
-        if (factura.servicio?.estado === 'suspendido') {
-            if (!online) {
-                toast.error('La reactivación requiere conexión para calcular los días reales');
-                return;
-            }
-            const toastId = toast.loading('Calculando días con servicio…');
-            try {
-                const { data } = await client.post<ReactivationQuote>(
-                    `/finanzas/facturas/${factura.id}/cotizar-reactivacion`,
-                );
-                facturaActual = {
-                    ...factura,
-                    id: data.factura_id,
-                    concepto: data.concepto,
-                    fecha_vencimiento: data.fecha_vencimiento,
-                    descripcion: data.descripcion,
-                    saldo_pendiente: Number(data.saldo_pendiente),
-                    dias_con_servicio: data.dias_con_servicio,
-                    dias_sin_servicio: data.dias_sin_servicio,
-                    ajuste_suspension: Number(data.ajuste_suspension),
-                    cargos_adicionales_total: Number(data.cargos_adicionales),
-                };
-                toast.success('Factura recalculada', { id: toastId });
-            } catch (error: unknown) {
-                const detail = axios.isAxiosError<{ detail?: string }>(error)
-                    ? error.response?.data?.detail
-                    : undefined;
-                toast.error(detail || 'No se pudo calcular la reactivación', { id: toastId });
-                return;
-            }
-        }
-        setModalInvoices([facturaActual]);
-        selectInvoiceForPayment(facturaActual);
         setIsModalOpen(true);
-    };
-
-    const handleOpenAllInvoices = async (invoices: BillingInvoice[]) => {
-        const orderedInvoices = [...invoices]
-            .sort((a, b) => a.fecha_vencimiento.localeCompare(b.fecha_vencimiento) || a.id - b.id);
-        if (orderedInvoices.length < 2) {
-            if (orderedInvoices[0]) void handleOpenCobrar(orderedInvoices[0]);
-            return;
-        }
-        if (!online) {
-            setModalInvoices(orderedInvoices);
-            selectInvoiceForPayment(orderedInvoices[0]);
-            setIsModalOpen(true);
-            toast('Modo offline: selecciona una factura para cobrar');
-            return;
-        }
-        const toastId = toast.loading('Preparando facturas…');
-        try {
-            const prepared: BillingInvoice[] = [];
-            for (const invoice of orderedInvoices) {
-                if (invoice.servicio?.estado !== 'suspendido') {
-                    prepared.push(invoice);
-                    continue;
-                }
-                const { data } = await client.post<ReactivationQuote>(`/finanzas/facturas/${invoice.id}/cotizar-reactivacion`);
-                const actualizada = {
-                    ...invoice,
-                    id: data.factura_id,
-                    concepto: data.concepto,
-                    fecha_vencimiento: data.fecha_vencimiento,
-                    periodo_desde: data.periodo_desde,
-                    periodo_hasta: data.periodo_hasta,
-                    descripcion: data.descripcion,
-                    saldo_pendiente: Number(data.saldo_pendiente),
-                    dias_con_servicio: data.dias_con_servicio,
-                    dias_sin_servicio: data.dias_sin_servicio,
-                    ajuste_suspension: Number(data.ajuste_suspension),
-                    cargos_adicionales_total: Number(data.cargos_adicionales),
-                };
-                if (Number(actualizada.saldo_pendiente) > 0) prepared.push(actualizada);
-            }
-            if (prepared.length === 0) {
-                toast.success('El cliente no tiene facturas pendientes', { id: toastId });
-                void fetchData();
-                return;
-            }
-            const total = prepared.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
-            setModalInvoices(prepared);
-            setBulkInvoices(prepared);
-            setInvoiceSelection('all');
-            setSelectedFactura(prepared[0]);
-            setSelectedConceptIds([]);
-            setFormCobro({ metodo: 'efectivo', referencia: '', monto: Number(total.toFixed(2)) });
-            setModo('pagar');
-            setIsModalOpen(true);
-            toast.dismiss(toastId);
-        } catch (error: unknown) {
-            const detail = axios.isAxiosError<{ detail?: string }>(error)
-                ? error.response?.data?.detail
-                : undefined;
-            toast.error(detail || 'No se pudieron preparar las facturas', { id: toastId });
-        }
-    };
-
-    const handleInvoiceSelection = (value: string) => {
-        if (value === 'all') {
-            if (!online) return;
-            const total = modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
-            setBulkInvoices(modalInvoices);
-            setInvoiceSelection('all');
-            setSelectedFactura(modalInvoices[0] || null);
-            setSelectedConceptIds([]);
-            setFormCobro((current) => ({ ...current, monto: Number(total.toFixed(2)) }));
-            setModo('pagar');
-            return;
-        }
-        const invoice = modalInvoices.find(item => item.id === Number(value));
-        if (invoice) selectInvoiceForPayment(invoice);
     };
 
     const handleProcesarCobro = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedFactura) return;
+        const cliente = selectedFactura.cliente;
         setProcesando(true);
         const toastId = toast.loading("Procesando...");
         try {
-            if (bulkInvoices.length > 1) {
-                const lote = Date.now();
-                for (const invoice of bulkInvoices) {
-                    await client.post('/finanzas/cobrar', {
-                        factura_id: invoice.id,
-                        metodo_pago: formCobro.metodo,
-                        monto_recibido: Number(invoice.saldo_pendiente),
-                        referencia: formCobro.referencia || 'POS total facturas',
-                        clave_idempotencia: `pos-facturas-${lote}-${invoice.id}`,
-                    });
-                }
-                toast.success('Facturas cobradas', { id: toastId });
-                setIsModalOpen(false);
-                setBulkInvoices([]);
-                void fetchData();
-                return;
-            }
             const result = await submitOperation(
-                'pago_factura',
+                'pago_cliente',
                 {
-                    factura_id: selectedFactura.id,
+                    cliente_id: cliente.id,
                     metodo_pago: formCobro.metodo,
                     monto_recibido: Number(formCobro.monto),
-                    referencia: formCobro.referencia || `POS #${selectedFactura.id}`,
-                    concepto_ids: selectedConceptIds,
+                    referencia: formCobro.referencia || null,
                 },
-                `Cobro factura #${selectedFactura.id}`,
+                `Cobro ${cliente.nombre}`,
             );
             toast.success(
                 result.queued
@@ -441,7 +298,7 @@ export default function PanelCobrador() {
             );
             setIsModalOpen(false);
             if (result.queued) {
-                setFacturas((current) => current.filter((item) => item.id !== selectedFactura.id));
+                setFacturas((current) => current.filter((item) => item.cliente.id !== cliente.id));
                 setHistorial((current) => [{
                     factura_id: selectedFactura.id,
                     metodo: formCobro.metodo,
@@ -449,10 +306,8 @@ export default function PanelCobrador() {
                     pendiente: true,
                 }, ...current]);
             } else {
-                const respuesta = result.response as CobroResultResponse | undefined;
-                if ((respuesta?.facturas_pendientes_cant || 0) > 0) {
-                    toast(`${respuesta?.facturas_pendientes_cant} factura(s) pendiente(s) del mismo cliente`);
-                }
+                const respuesta = result.response as { reactivado?: boolean } | undefined;
+                if (respuesta?.reactivado) toast.success('Servicio reactivado 🚀');
                 void fetchData();
             }
         } catch (error) {
@@ -529,8 +384,9 @@ export default function PanelCobrador() {
         ));
     }, [facturas, filtro]);
 
-    const saldoAFavor = bulkInvoices.length <= 1 && formCobro.monto > (selectedFactura?.saldo_pendiente || 0)
-        ? formCobro.monto - Number(selectedFactura?.saldo_pendiente || 0)
+    const totalACobrar = cobroTotal?.total || 0;
+    const saldoAFavor = formCobro.monto > totalACobrar
+        ? formCobro.monto - totalACobrar
         : 0;
 
     return (
@@ -596,7 +452,7 @@ export default function PanelCobrador() {
                                         <button
                                             type="button"
                                             className="flex w-full items-center justify-between gap-3 p-4 pl-6 text-left active:bg-slate-50 dark:active:bg-slate-800/40"
-                                            onClick={() => void handleOpenAllInvoices(group.facturas)}
+                                            onClick={() => void openClientCharge(group.facturas)}
                                         >
                                             <div className="min-w-0">
                                                 <h3 className="truncate text-base font-black text-slate-900 dark:text-white">{group.cliente.nombre}</h3>
@@ -633,7 +489,7 @@ export default function PanelCobrador() {
                             </div>
                         ) : (
                             promesas.map((f) => (
-                                <div key={f.id} onClick={() => void handleOpenCobrar(f)} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer">
+                                <div key={f.id} onClick={() => void openClientCharge([f])} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer">
                                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500"></div>
                                     <div className="pl-2">
                                         <h3 className="font-black text-slate-900 dark:text-white text-base">{f.cliente.nombre}</h3>
@@ -753,61 +609,24 @@ export default function PanelCobrador() {
                                         </button>
                                     </div>
 
-                                    {/* CONCEPTO A PAGAR */}
-                                    <div className="mb-6">
-                                        <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
-                                            Debe {modalInvoices.length} factura{modalInvoices.length === 1 ? '' : 's'} · ${formatMoney(modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0))}
-                                        </div>
-                                        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2 px-1">Comprobante a pagar</label>
-                                        <select
-                                            value={invoiceSelection}
-                                            onChange={(event) => handleInvoiceSelection(event.target.value)}
-                                            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-800 dark:bg-[#11131a] dark:text-white"
-                                        >
-                                            {modalInvoices.length > 1 && online && <option value="all">Todas las facturas — ${formatMoney(modalInvoices.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0))}</option>}
-                                            {modalInvoices.map((invoice) => (
-                                                <option key={invoice.id} value={invoice.id}>
-                                                    {invoiceMonth(invoice)} · {invoiceIsOverdue(invoice) ? 'Atrasada' : 'Reciente'} — ${formatMoney(invoice.saldo_pendiente)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {selectedFactura && (
-                                            <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[10px] dark:border-slate-800 dark:bg-slate-900/60">
-                                                <span><b className="mr-1 uppercase tracking-wider text-slate-400">Folio:</b>#{selectedFactura.id}</span>
-                                                <span><b className="mr-1 uppercase tracking-wider text-slate-400">Mes:</b>{invoiceMonth(selectedFactura)}</span>
-                                                <span className="col-span-2"><b className="mr-1 uppercase tracking-wider text-slate-400">Periodo:</b>{selectedFactura.periodo_desde && selectedFactura.periodo_hasta ? `${formatDateLong(selectedFactura.periodo_desde)} al ${formatDateLong(selectedFactura.periodo_hasta)}` : formatDateLong(selectedFactura.fecha_vencimiento)}</span>
-                                                <span><b className="mr-1 uppercase tracking-wider text-slate-400">Vence:</b>{formatDateLong(selectedFactura.fecha_vencimiento)}</span>
-                                                <span><b className="mr-1 uppercase tracking-wider text-slate-400">Con servicio:</b>{selectedFactura.dias_con_servicio ?? 0} días</span>
-                                                <span><b className="mr-1 uppercase tracking-wider text-slate-400">Sin servicio:</b>{selectedFactura.dias_sin_servicio ?? 0} días</span>
-                                            </div>
-                                        )}
-                                        {bulkInvoices.length <= 1 && (selectedFactura?.conceptos?.length || 0) > 0 && (
-                                            <div className="mt-3 space-y-2">
-                                                <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Selecciona qué pagar</p>
-                                                {selectedFactura?.conceptos?.filter(item => Number(item.saldo_pendiente) > 0).map(item => (
-                                                    <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-                                                        <input type="checkbox" className="h-5 w-5 rounded text-emerald-600" checked={selectedConceptIds.includes(item.id)} onChange={() => toggleConcept(item)} />
-                                                        <span className="min-w-0 flex-1">
-                                                            <span className="block truncate text-sm font-black text-slate-800 dark:text-white">{item.concepto}</span>
-                                                            <span className="block text-[10px] font-bold text-slate-500">{item.tipo === 'servicio_adicional' ? 'Servicio adicional' : item.tipo === 'internet_prorrateado' ? 'Prorrateo' : item.afecta_corte ? 'Internet' : 'Concepto adicional'}{item.numero_cuota ? ` · Cuota ${item.numero_cuota}/${item.total_cuotas}` : ''}</span>
-                                                            {item.descripcion && <span className="mt-1 block text-[10px] text-slate-400">{item.descripcion}</span>}
-                                                        </span>
-                                                        <span className="font-black text-slate-900 dark:text-white">${formatMoney(item.saldo_pendiente)}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
+                                    {/* TOTAL A PAGAR: un solo cobro */}
+                                    <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-center dark:border-rose-500/20 dark:bg-rose-500/10">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-rose-500">Total a pagar</p>
+                                        <p className="mt-1 text-3xl font-black text-rose-700 dark:text-rose-300">${formatMoney(totalACobrar)}</p>
+                                        {(cobroTotal?.incluye.length || 0) > 0 && (
+                                            <p className="mt-2 text-xs font-bold text-rose-600/80 dark:text-rose-300/80">Incluye: {cobroTotal?.incluye.join(' · ')}</p>
                                         )}
                                     </div>
 
                                     {/* TABS DE ACCIÓN */}
-                                    {bulkInvoices.length <= 1 && <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-xl mb-6 shadow-sm dark:shadow-lg">
+                                    <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-xl mb-6 shadow-sm dark:shadow-lg">
                                         <button onClick={() => setModo('pagar')} className={`py-3 rounded-lg text-sm font-bold transition-all ${modo === 'pagar' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
                                             Registrar Pago
                                         </button>
                                         <button onClick={() => setModo('promesa')} className={`py-3 rounded-lg text-sm font-bold transition-all ${modo === 'promesa' ? 'bg-orange-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
                                             Crear Promesa
                                         </button>
-                                    </div>}
+                                    </div>
 
                                     {/* FORMULARIOS */}
                                     <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar">
@@ -822,14 +641,14 @@ export default function PanelCobrador() {
                                                             type="number" step="0.01" required
                                                             className="w-full border-b-2 border-transparent bg-transparent pb-1 pl-10 text-center text-6xl font-black text-slate-900 outline-none transition-all placeholder-slate-300 focus:border-emerald-500 dark:text-white dark:placeholder-slate-800 sm:text-7xl"
                                                             style={{ fontSize: 'clamp(3.75rem, 12vw, 5rem)', lineHeight: 1 }}
-                                                            placeholder="0.00" value={formCobro.monto || ''} readOnly={bulkInvoices.length > 1} onChange={e => setFormCobro({...formCobro, monto: Number(e.target.value)})}
+                                                            placeholder="0.00" value={formCobro.monto || ''} onChange={e => setFormCobro({...formCobro, monto: Number(e.target.value)})}
                                                         />
                                                     </div>
-                                                    {bulkInvoices.length <= 1 && (
-                                                        <p className="mt-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                                                            Edita el monto para registrar un abono o recibir una cantidad mayor.
-                                                        </p>
-                                                    )}
+                                                    <p className="mt-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                                        {formCobro.monto > 0 && formCobro.monto < totalACobrar
+                                                            ? `Abono: quedarán $${(totalACobrar - formCobro.monto).toFixed(2)} pendientes`
+                                                            : 'Edita el monto para registrar un abono o recibir una cantidad mayor.'}
+                                                    </p>
                                                     {saldoAFavor > 0 && (
                                                         <div className="mt-4 text-emerald-600 dark:text-emerald-400 text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 inline-block px-4 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-500/20 animate-in fade-in slide-in-from-bottom-2">
                                                             Genera Saldo a Favor: +${saldoAFavor.toFixed(2)}

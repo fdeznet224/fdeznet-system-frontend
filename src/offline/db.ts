@@ -2,6 +2,7 @@ export type SyncOperationType =
   | 'orden_estado'
   | 'soporte_incidencia'
   | 'pago_factura'
+  | 'pago_cliente'
 
 export type SyncOperationStatus = 'queued' | 'conflict'
 
