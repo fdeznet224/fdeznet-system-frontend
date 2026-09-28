@@ -70,6 +70,7 @@ interface BillingInvoice {
 interface EstadoCuenta {
     total: number | string;
     incluye: string[];
+    detalle: { texto: string; actual: boolean }[];
     facturas: { id: number; saldo_pendiente: number | string }[];
     suspendido: boolean;
     factura_promesa_id: number | null;
@@ -143,13 +144,6 @@ function invoiceIsOverdue(invoice: BillingInvoice) {
     );
 }
 
-function formatMoney(value?: number | string | null) {
-    return Number(value || 0).toLocaleString('es-MX', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
-
 export default function PanelCobrador() {
     const navigate = useNavigate();
     const { online } = useSync();
@@ -161,7 +155,7 @@ export default function PanelCobrador() {
     const [promesas, setPromesas] = useState<BillingInvoice[]>([]);
     const [loading, setLoading] = useState(false);
     const [filtro, setFiltro] = useState('');
-    const [cobroTotal, setCobroTotal] = useState<{ total: number; incluye: string[] } | null>(null);
+    const [cobroTotal, setCobroTotal] = useState<{ total: number; detalle: { texto: string; actual: boolean }[] } | null>(null);
     
     const totalCobradoHoy = historial.reduce((acc, curr) => acc + Number(curr.monto), 0);
     const totalEfectivo = historial.filter(h => h.metodo === 'efectivo').reduce((acc, curr) => acc + Number(curr.monto), 0);
@@ -231,14 +225,14 @@ export default function PanelCobrador() {
         const clienteId = ordered[0].cliente.id;
         let principal = ordered[0];
         let total = ordered.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
-        let incluye = [...new Set(ordered.map(invoiceConcept))];
+        let detalle = ordered.map((invoice) => ({ texto: invoiceConcept(invoice), actual: false }));
 
         if (online && clienteId) {
             const toastId = toast.loading('Calculando total…');
             try {
                 const { data } = await client.post<EstadoCuenta>(`/finanzas/clientes/${clienteId}/estado-cuenta`);
                 total = Number(data.total);
-                incluye = data.incluye;
+                detalle = data.detalle;
                 principal = ordered.find((item) => item.id === data.factura_promesa_id) || principal;
                 toast.dismiss(toastId);
                 if (total <= 0) {
@@ -259,7 +253,7 @@ export default function PanelCobrador() {
         }
 
         setSelectedFactura(principal);
-        setCobroTotal({ total: Number(total.toFixed(2)), incluye });
+        setCobroTotal({ total: Number(total.toFixed(2)), detalle });
         setFormCobro({ metodo: 'efectivo', referencia: '', monto: Number(total.toFixed(2)) });
         setModo('pagar');
         const date = new Date();
@@ -610,12 +604,18 @@ export default function PanelCobrador() {
                                     </div>
 
                                     {/* TOTAL A PAGAR: un solo cobro */}
-                                    <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-center dark:border-rose-500/20 dark:bg-rose-500/10">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-rose-500">Total a pagar</p>
-                                        <p className="mt-1 text-3xl font-black text-rose-700 dark:text-rose-300">${formatMoney(totalACobrar)}</p>
-                                        {(cobroTotal?.incluye.length || 0) > 0 && (
-                                            <p className="mt-2 text-xs font-bold text-rose-600/80 dark:text-rose-300/80">Incluye: {cobroTotal?.incluye.join(' · ')}</p>
-                                        )}
+                                    <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#11131a]">
+                                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Se está cobrando</p>
+                                        <ul className="space-y-1.5 text-left">
+                                            {(cobroTotal?.detalle || []).map((item, index) => (
+                                                <li key={index} className={item.actual
+                                                    ? 'flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                                    : 'flex items-center gap-2 px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-200'}>
+                                                    <span className="min-w-0 break-words">{item.actual ? '' : '• '}{item.texto}</span>
+                                                    {item.actual && <span className="shrink-0 rounded-md bg-emerald-600 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">Mes actual</span>}
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
 
                                     {/* TABS DE ACCIÓN */}
@@ -634,7 +634,7 @@ export default function PanelCobrador() {
                                             <form onSubmit={handleProcesarCobro} className="flex flex-col flex-1 h-full">
                                                 
                                                 <div className="mb-6 bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center shadow-sm dark:shadow-lg">
-                                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-4">Monto Recibido</label>
+                                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-4">Total a pagar</label>
                                                     <div className="relative inline-block w-full max-w-[260px]">
                                                         <span className="absolute left-0 top-1/2 -translate-y-1/2 text-4xl font-bold text-emerald-500">$</span>
                                                         <input 

@@ -26,6 +26,7 @@ interface ClienteBusqueda {
 interface EstadoCuenta {
     total: number | string;
     incluye: string[];
+    detalle: { texto: string; actual: boolean }[];
     facturas: { id: number; saldo_pendiente: number | string }[];
     suspendido: boolean;
     factura_promesa_id: number | null;
@@ -348,12 +349,18 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                             <>
                                 {/* Total a pagar: un solo cobro con todo incluido */}
                                 {estadoCuenta && totalPendiente > 0 ? (
-                                    <div className="mb-5 rounded-[1.5rem] border border-rose-200 bg-rose-50 p-5 text-center dark:border-rose-500/20 dark:bg-rose-500/10">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-rose-500">Total a pagar</p>
-                                        <p className="mt-1 text-4xl font-black text-rose-700 dark:text-rose-300">${totalPendiente.toFixed(2)}</p>
-                                        {estadoCuenta.incluye.length > 0 && (
-                                            <p className="mt-2 text-xs font-bold text-rose-600/80 dark:text-rose-300/80">Incluye: {estadoCuenta.incluye.join(' · ')}</p>
-                                        )}
+                                    <div className="mb-5 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#12141a]">
+                                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Se está cobrando</p>
+                                        <ul className="space-y-1.5 text-left">
+                                            {estadoCuenta.detalle.map((item, index) => (
+                                                <li key={index} className={item.actual
+                                                    ? 'flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                                    : 'flex items-center gap-2 px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-200'}>
+                                                    <span className="min-w-0 break-words">{item.actual ? '' : '• '}{item.texto}</span>
+                                                    {item.actual && <span className="shrink-0 rounded-md bg-emerald-600 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">Mes actual</span>}
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
                                 ) : (
                                     <div className="flex-1 flex flex-col items-center justify-center text-slate-500 bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-10 mb-6 shadow-sm">
@@ -379,7 +386,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                         {modo === 'pagar' ? (
                                             <form onSubmit={handleCobrar} className="flex flex-col flex-1">
                                                 <div className="mb-6 rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-[#12141a]">
-                                                    <label className="mb-3 block text-[10px] font-black uppercase tracking-widest text-slate-500">Monto recibido</label>
+                                                    <label className="mb-3 block text-[10px] font-black uppercase tracking-widest text-slate-500">Total a pagar</label>
                                                     <div className="relative mx-auto w-full max-w-[260px]">
                                                         <span className="absolute left-0 top-1/2 -translate-y-1/2 text-4xl font-black text-emerald-500">$</span>
                                                         <input
