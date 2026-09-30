@@ -12,6 +12,7 @@ import {
     ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 import CreateTemplateModal from './components/CreateTemplateModal';
+import { nombreFormaCobro, type FormaCobro } from '../../utils/formaCobro';
 
 export interface Plantilla {
     id: number;
@@ -23,6 +24,7 @@ export interface Plantilla {
     impuesto: number;
     recordatorio_whatsapp: boolean;
     aviso_factura?: string;
+    ciclo_facturacion?: FormaCobro;
 }
 
 export default function BillingTemplates() {
@@ -126,6 +128,7 @@ export default function BillingTemplates() {
                     plantillas.map((p) => {
                         const fechaGeneracion = getDiaGeneracion(p.dia_pago, p.dias_antes_emision);
                         const fechaCorte = getDiaCorte(p.dia_pago, p.dias_tolerancia);
+                        const porInstalacion = p.ciclo_facturacion === 'aniversario';
 
                         return (
                             <div key={p.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-xl transition-all flex flex-col hover:border-pink-500/50">
@@ -133,7 +136,10 @@ export default function BillingTemplates() {
                                 <div className="p-5 border-b border-slate-100 dark:border-slate-800/50 flex justify-between items-start bg-slate-50 dark:bg-slate-950/30 transition-colors">
                                     <div>
                                         <h3 className="text-lg font-black text-slate-900 dark:text-white transition-colors">{p.nombre}</h3>
-                                        <div className="flex items-center gap-2 mt-2">
+                                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                                            <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-500/20 transition-colors">
+                                                {nombreFormaCobro(p.ciclo_facturacion || 'calendario')}
+                                            </span>
                                             <span className="text-[10px] font-black text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 transition-colors">
                                                 IVA: {p.impuesto}%
                                             </span>
@@ -158,21 +164,21 @@ export default function BillingTemplates() {
                                         <div className="relative">
                                             <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-pink-500 border-2 border-white dark:border-[#0f172a] shadow-sm"></div>
                                             <p className="text-[10px] text-pink-600 dark:text-pink-400 uppercase font-black tracking-widest mb-0.5">Generación</p>
-                                            <p className="text-lg font-black text-slate-900 dark:text-white transition-colors">Día {fechaGeneracion}</p>
+                                            <p className="text-lg font-black text-slate-900 dark:text-white transition-colors">{porInstalacion ? `${p.dias_antes_emision} días antes del pago` : `Día ${fechaGeneracion}`}</p>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">{p.dias_antes_emision} días de anticipación</p>
                                         </div>
 
                                         <div className="relative">
                                             <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-indigo-500 border-2 border-white dark:border-[#0f172a] shadow-sm"></div>
                                             <p className="text-[10px] text-indigo-600 dark:text-indigo-400 uppercase font-black tracking-widest mb-0.5">Pago</p>
-                                            <p className="text-lg font-black text-slate-900 dark:text-white transition-colors">Día {p.dia_pago}</p>
+                                            <p className="text-lg font-black text-slate-900 dark:text-white transition-colors">{porInstalacion ? 'Día de instalación' : `Día ${p.dia_pago}`}</p>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">Vencimiento</p>
                                         </div>
 
                                         <div className="relative">
                                             <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white dark:border-[#0f1219] shadow-sm"></div>
                                             <p className="text-[10px] text-rose-600 dark:text-rose-400 uppercase font-black tracking-widest mb-0.5">Corte</p>
-                                            <p className="text-lg font-black text-slate-900 dark:text-white transition-colors">Día {fechaCorte}</p>
+                                            <p className="text-lg font-black text-slate-900 dark:text-white transition-colors">{porInstalacion ? `${p.dias_tolerancia} días después del pago` : `Día ${fechaCorte}`}</p>
                                             <p className="text-xs text-slate-500 bg-slate-200 dark:bg-slate-800/50 inline-block px-1.5 py-0.5 rounded mt-1 font-bold transition-colors">
                                                 +{p.dias_tolerancia} días gracia
                                             </p>

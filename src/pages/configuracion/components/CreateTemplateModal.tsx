@@ -4,6 +4,7 @@ import client from '../../../api/axios';
 import { toast } from 'react-hot-toast';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { FORMAS_COBRO, type FormaCobro } from '../../../utils/formaCobro';
 
 interface FormState {
     nombre: string;
@@ -14,6 +15,7 @@ interface FormState {
     impuesto: number | string;
     recordatorio_whatsapp: boolean;
     aviso_factura: string;
+    ciclo_facturacion: FormaCobro;
 }
 
 interface Props {
@@ -37,7 +39,7 @@ interface InputNumberProps {
 
 interface StepProps {
     label: string;
-    day: number;
+    value: string;
     color: 'pink' | 'indigo' | 'rose';
 }
 
@@ -49,7 +51,8 @@ const DEFAULT_FORM: FormState = {
     cargo_reconexion: 30,
     impuesto: 0,
     recordatorio_whatsapp: true,
-    aviso_factura: 'whatsapp'
+    aviso_factura: 'whatsapp',
+    ciclo_facturacion: 'calendario'
 };
 
 const STEP_COLOR_CLASSES: Record<StepProps['color'], string> = {
@@ -80,7 +83,8 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                 cargo_reconexion: initialData.cargo_reconexion ?? DEFAULT_FORM.cargo_reconexion,
                 impuesto: initialData.impuesto ?? DEFAULT_FORM.impuesto,
                 recordatorio_whatsapp: initialData.recordatorio_whatsapp ?? DEFAULT_FORM.recordatorio_whatsapp,
-                aviso_factura: initialData.aviso_factura || 'whatsapp'
+                aviso_factura: initialData.aviso_factura || 'whatsapp',
+                ciclo_facturacion: initialData.ciclo_facturacion || DEFAULT_FORM.ciclo_facturacion
             });
         } else {
             setFormData({ ...DEFAULT_FORM });
@@ -131,6 +135,9 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
         const dia = val(formData.dia_pago) + val(formData.dias_tolerancia);
         return dia > 30 ? dia - 30 : dia;
     };
+    const porInstalacion = formData.ciclo_facturacion === 'aniversario';
+    const antes = val(formData.dias_antes_emision);
+    const gracia = val(formData.dias_tolerancia);
 
     return (
         /* ✅ ADAPTADO: Backdrop y contenedor adaptativos */
@@ -175,9 +182,40 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                                             />
                                         </div>
 
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-2 block">¿Qué día paga el cliente?</label>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {(Object.keys(FORMAS_COBRO) as FormaCobro[]).map((forma) => {
+                                                    const activa = formData.ciclo_facturacion === forma;
+                                                    return (
+                                                        <button
+                                                            key={forma}
+                                                            type="button"
+                                                            aria-pressed={activa}
+                                                            onClick={() => setFormData({ ...formData, ciclo_facturacion: forma })}
+                                                            className={`text-left p-4 rounded-xl border transition-colors ${activa ? 'border-pink-500 bg-pink-50 dark:bg-pink-500/10' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#1a1f2e] hover:border-slate-300 dark:hover:border-slate-600'}`}
+                                                        >
+                                                            <span className="block text-sm font-black text-slate-900 dark:text-white">{FORMAS_COBRO[forma].titulo}</span>
+                                                            <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">{FORMAS_COBRO[forma].descripcion}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            {initialData?.id && (
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 ml-1">Los clientes ya instalados conservan su forma de pago; el cambio aplica a las nuevas instalaciones.</p>
+                                            )}
+                                        </div>
+
                                         <div className="grid grid-cols-2 gap-5">
                                             <InputNumber label="Anticipación" sub="DÍAS ANTES" value={formData.dias_antes_emision} onChange={(v: string) => handleNumberChange('dias_antes_emision', v)} color="pink" />
-                                            <InputNumber label="Día de Pago" sub="DEL MES" value={formData.dia_pago} onChange={(v: string) => handleNumberChange('dia_pago', v)} color="indigo" />
+                                            {porInstalacion ? (
+                                                <div className="bg-slate-50 dark:bg-[#1a1f2e] p-4 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors">
+                                                    <label className="text-[10px] font-black uppercase mb-2 block text-indigo-600 dark:text-indigo-400">Día de Pago</label>
+                                                    <p className="text-sm font-black text-slate-900 dark:text-white">El de la instalación de cada cliente</p>
+                                                </div>
+                                            ) : (
+                                                <InputNumber label="Día de Pago" sub="DEL MES" value={formData.dia_pago} onChange={(v: string) => handleNumberChange('dia_pago', v)} color="indigo" />
+                                            )}
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-5">
@@ -222,9 +260,19 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                                     
                                     <div className="relative pl-8 space-y-12">
                                         <div className="absolute left-[11px] top-2 bottom-2 w-[2px] bg-slate-200 dark:bg-slate-800 transition-colors"></div>
-                                        <Step label="Generación" day={calcFechaGeneracion()} color="pink" />
-                                        <Step label="Pago" day={val(formData.dia_pago)} color="indigo" />
-                                        <Step label="Corte" day={calcFechaCorte()} color="rose" />
+                                        {porInstalacion ? (
+                                            <>
+                                                <Step label="Generación" value={`${antes} ${antes === 1 ? 'día' : 'días'} antes`} color="pink" />
+                                                <Step label="Pago" value="Día de instalación" color="indigo" />
+                                                <Step label="Corte" value={`${gracia} ${gracia === 1 ? 'día' : 'días'} después`} color="rose" />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Step label="Generación" value={`Día ${calcFechaGeneracion()}`} color="pink" />
+                                                <Step label="Pago" value={`Día ${val(formData.dia_pago)}`} color="indigo" />
+                                                <Step label="Corte" value={`Día ${calcFechaCorte()}`} color="rose" />
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </Dialog.Panel>
@@ -248,10 +296,10 @@ const InputNumber = ({ label, sub, value, onChange, color }: InputNumberProps) =
     </div>
 );
 
-const Step = ({ label, day, color }: StepProps) => (
+const Step = ({ label, value, color }: StepProps) => (
     <div className="relative">
         <div className={`absolute -left-[30px] top-0 w-6 h-6 rounded-full border-4 border-slate-50 dark:border-[#0b0e14] ${STEP_COLOR_CLASSES[color]} transition-colors`}></div>
         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 transition-colors">{label}</p>
-        <p className="text-3xl font-black text-slate-900 dark:text-white transition-colors">Día {day}</p>
+        <p className="text-2xl font-black text-slate-900 dark:text-white transition-colors">{value}</p>
     </div>
 );
