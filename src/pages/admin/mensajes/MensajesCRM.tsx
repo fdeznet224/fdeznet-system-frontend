@@ -10,6 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useWhatsApp } from '@/context/whatsapp/context';
 import { useBrand } from '@/context/brand/useBrand';
+import AgenteSugerencias from './AgenteSugerencias';
 
 // --- SVGs DE WHATSAPP ---
 const IconClock = () => <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" className="text-white/60"><path d="M8 0a8 8 0 1 0 8 8 8 8 0 0 0-8-8zm0 14.5a6.5 6.5 0 1 1 6.5-6.5 6.5 6.5 0 0 1-6.5 6.5zM8.5 4h-1v4.2l3 1.8.5-.8-2.5-1.5z"/></svg>;
@@ -126,6 +127,16 @@ export default function MensajesCRM() {
             }
         }
     }, [wsEvent, activeClienteId, clearUnread]);
+
+    const recargarChat = useCallback(async () => {
+        if (!activeClienteId) return;
+        try {
+            const res = await client.get<MensajeChat[]>(`/whatsapp/chat/${activeClienteId}`);
+            setMensajes(res.data);
+        } catch (error) {
+            console.warn('No fue posible recargar la conversación', error);
+        }
+    }, [activeClienteId]);
 
     const handleEnviarMensaje = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -400,6 +411,10 @@ export default function MensajesCRM() {
                                 );
                             })}
                             <div ref={messagesEndRef} />
+                        </div>
+
+                        <div className="max-h-80 shrink-0 overflow-y-auto bg-[#0b141a] px-3 pt-3 empty:hidden">
+                            <AgenteSugerencias clienteId={activeClienteId} onEnviada={() => void recargarChat()} />
                         </div>
 
                         <form onSubmit={handleEnviarMensaje} className="p-3 bg-[#202c33] flex items-end gap-3 shrink-0">
