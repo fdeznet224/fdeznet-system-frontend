@@ -31,6 +31,7 @@ export interface Sugerencia {
 }
 
 const NOMBRE_CONSULTA: Record<string, string> = {
+  registrar_nombre: 'Registró el nombre',
   identificar_cliente: 'Identificó al cliente',
   consultar_cuenta: 'Revisó la cuenta',
   diagnosticar_conexion: 'Diagnosticó la conexión',
@@ -52,6 +53,7 @@ function detalleConsulta(consulta: Consulta): string {
   if (r.error) return String(r.error);
   if (consulta.nombre === 'diagnosticar_conexion') return String(r.explicacion ?? r.codigo ?? '');
   if (consulta.nombre === 'consultar_cuenta') return `Total $${String(r.total_a_pagar ?? '0')}`;
+  if (consulta.nombre === 'registrar_nombre') return String(r.nombre ?? '');
   if (consulta.nombre === 'identificar_cliente') return r.identificado ? `Sí (${String(r.nombre ?? '')})` : 'No';
   if (consulta.nombre === 'leer_comprobante') return [r.estado, r.monto && `$${String(r.monto)}`].filter(Boolean).join(' · ');
   return '';
