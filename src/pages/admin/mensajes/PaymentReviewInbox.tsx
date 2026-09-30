@@ -148,6 +148,8 @@ export default function PaymentReviewInbox() {
   const [working, setWorking] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageFull, setImageFull] = useState(false);
+  const [esPdf, setEsPdf] = useState(false);
+  const [sinArchivo, setSinArchivo] = useState(false);
   const [clientId, setClientId] = useState<number | null>(null);
   const [clientLabel, setClientLabel] = useState('');
   const [amount, setAmount] = useState('');
@@ -203,12 +205,19 @@ export default function PaymentReviewInbox() {
     let active = true;
     let objectUrl: string | null = null;
     setImageUrl(null);
-    void client.get(selected.archivo_url, { responseType: 'blob' })
+    setSinArchivo(false);
+    void client.get<Blob>(selected.archivo_url, { responseType: 'blob' })
       .then((response) => {
         objectUrl = URL.createObjectURL(response.data);
-        if (active) setImageUrl(objectUrl);
+        if (!active) return;
+        setEsPdf(response.data.type === 'application/pdf');
+        setImageUrl(objectUrl);
       })
-      .catch(() => { if (active) setImageUrl(null); });
+      .catch(() => {
+        if (!active) return;
+        setImageUrl(null);
+        setSinArchivo(true);
+      });
     return () => {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -396,6 +405,15 @@ export default function PaymentReviewInbox() {
 
             <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] sm:p-5">
               <div className="space-y-3">
+                {imageUrl && esPdf ? (
+                  <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-10 text-center dark:border-slate-700 dark:bg-slate-950">
+                    <PhotoIcon className="h-12 w-12 text-slate-400" />
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">El cliente mandó el comprobante en PDF</p>
+                    <a href={imageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-500">
+                      <ArrowsPointingOutIcon className="h-5 w-5" /> Abrir PDF
+                    </a>
+                  </div>
+                ) : (
                 <button
                   type="button"
                   onClick={() => imageUrl && setImageFull(true)}
@@ -410,9 +428,10 @@ export default function PaymentReviewInbox() {
                       </span>
                     </>
                   ) : (
-                    <span className="flex h-64 items-center justify-center text-sm text-slate-500">Cargando imagen…</span>
+                    <span className="flex h-64 items-center justify-center text-sm text-slate-500">{sinArchivo ? 'Archivo no disponible' : 'Cargando comprobante…'}</span>
                   )}
                 </button>
+                )}
                 {selected.validacion_correo && (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
                     <p className="font-black">Transferencia encontrada en el correo del banco</p>
@@ -531,7 +550,7 @@ export default function PaymentReviewInbox() {
         )}
       </div>
 
-      {imageFull && imageUrl && (
+      {imageFull && imageUrl && !esPdf && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setImageFull(false)} role="dialog" aria-modal="true">
           <img src={imageUrl} alt="Comprobante completo" className="max-h-full max-w-full object-contain" />
           <button onClick={() => setImageFull(false)} className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20" aria-label="Cerrar">
