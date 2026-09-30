@@ -41,11 +41,12 @@ const NOMBRE_CONSULTA: Record<string, string> = {
 };
 
 const NOMBRE_ACCION: Record<string, string> = {
+  registrar_prospecto: 'Registrar interesado (orden de instalación y aviso al personal)',
   registrar_promesa: 'Registrar promesa',
   crear_orden_tecnica: 'Crear orden técnica',
   aplicar_comprobante: 'Aplicar comprobante (solo si el banco lo confirma)',
   solicitar_cambio_contrasena: 'Solicitar cambio de contraseña',
-  pasar_a_humano: 'Pasar a asesor',
+  pasar_a_humano: 'Pasar a asesor (avisa al personal)',
 };
 
 function detalleConsulta(consulta: Consulta): string {
@@ -63,6 +64,7 @@ function detalleAccion(accion: Accion): string {
   const a = accion.argumentos ?? {};
   if (accion.nombre === 'registrar_promesa') return `para el ${String(a.fecha ?? '')}`;
   if (accion.nombre === 'crear_orden_tecnica') return String(a.descripcion ?? '');
+  if (accion.nombre === 'registrar_prospecto') return [a.nombre, a.direccion, a.plan, a.telefono].filter(Boolean).map(String).join(' · ');
   if (accion.nombre === 'pasar_a_humano') return String(a.motivo ?? '');
   return '';
 }
