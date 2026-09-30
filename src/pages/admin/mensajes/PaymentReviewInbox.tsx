@@ -61,14 +61,23 @@ interface Deposito {
   coincide_hora: boolean;
   coincide_referencia: boolean;
   ligado: boolean;
+  titular: string[];
 }
 
-// Solo se preselecciona cuando no hay duda; si varios cuadran, elige la persona.
+const SENAL_TITULAR: Record<string, string> = {
+  nombre: 'Su nombre',
+  contrato: 'Su contrato',
+  concepto: 'Mismo concepto',
+  cuenta_origen: 'Misma cuenta de origen',
+};
+
+// Solo se preselecciona cuando no hay duda: mismo folio, o el único con hora
+// cercana en el que además coincide algo del titular. Si no, elige la persona.
 function depositoSugerido(depositos: Deposito[]): number | null {
-  const seguro = depositos.find((d) => d.ligado) || depositos.find((d) => d.coincide_referencia);
-  if (seguro) return seguro.id;
-  const porHora = depositos.filter((d) => d.coincide_hora);
-  return porHora.length === 1 ? porHora[0].id : null;
+  const porFolio = depositos.filter((d) => d.coincide_referencia);
+  if (porFolio.length === 1) return porFolio[0].id;
+  const delTitular = depositos.filter((d) => d.coincide_hora && d.titular.length > 0);
+  return delTitular.length === 1 ? delTitular[0].id : null;
 }
 
 interface ReviewResponse {
@@ -478,6 +487,12 @@ export default function PaymentReviewInbox() {
                           <span className="flex flex-wrap gap-1 pt-0.5">
                             {deposito.coincide_referencia && <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Mismo folio</span>}
                             {deposito.coincide_hora && <span className="rounded-full bg-indigo-100 px-2 py-0.5 font-bold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">Hora cercana</span>}
+                            {deposito.titular.map((senal) => (
+                              <span key={senal} className="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{SENAL_TITULAR[senal] ?? senal}</span>
+                            ))}
+                            {deposito.coincide_hora && deposito.titular.length === 0 && !deposito.coincide_referencia && (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">Nada del titular coincide</span>
+                            )}
                             {deposito.ligado && <span className="rounded-full bg-slate-200 px-2 py-0.5 font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200">Apartado para este</span>}
                           </span>
                         </span>
