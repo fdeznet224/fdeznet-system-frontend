@@ -15,6 +15,7 @@ import {
 
 import client from '@/api/axios';
 import type { ClientService } from '@/types/services';
+import { FORMAS_COBRO, nombreFormaCobro, type FormaCobro } from '@/utils/formaCobro';
 
 interface Props {
   clientId: number;
@@ -24,6 +25,10 @@ interface Props {
 interface NamedCatalog {
   id: number;
   nombre: string;
+}
+
+interface TemplateCatalog extends NamedCatalog {
+  ciclo_facturacion?: FormaCobro;
 }
 
 interface PlanCatalog extends NamedCatalog {
@@ -46,7 +51,8 @@ interface NewServiceForm {
   plantilla_id: string;
   tecnico_id: string;
   tipo_facturacion: 'prepago' | 'postpago';
-  ciclo_facturacion: 'calendario' | 'aniversario';
+  // '' = usar la forma de pago de la plantilla.
+  ciclo_facturacion: FormaCobro | '';
   meses_gratis: string;
   crear_orden: boolean;
 }
@@ -63,7 +69,7 @@ const initialForm = (): NewServiceForm => ({
   plantilla_id: '',
   tecnico_id: '',
   tipo_facturacion: 'prepago',
-  ciclo_facturacion: 'calendario',
+  ciclo_facturacion: '',
   meses_gratis: '0',
   crear_orden: true,
 });
@@ -110,7 +116,8 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
   const [routers, setRouters] = useState<NamedCatalog[]>([]);
   const [plans, setPlans] = useState<PlanCatalog[]>([]);
   const [zones, setZones] = useState<NamedCatalog[]>([]);
-  const [templates, setTemplates] = useState<NamedCatalog[]>([]);
+  const [templates, setTemplates] = useState<TemplateCatalog[]>([]);
+  const plantillaElegida = templates.find((item) => String(item.id) === form.plantilla_id);
   const [technicians, setTechnicians] = useState<TechnicianCatalog[]>([]);
   const [planService, setPlanService] = useState<ClientService | null>(null);
   const [planOptions, setPlanOptions] = useState<PlanCatalog[]>([]);
@@ -142,7 +149,7 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
       const [routerResponse, zoneResponse, templateResponse, usersResponse] = await Promise.all([
         client.get<NamedCatalog[]>('/network/routers/'),
         client.get<NamedCatalog[]>('/zonas/'),
-        client.get<NamedCatalog[]>('/configuracion/plantillas-facturacion/'),
+        client.get<TemplateCatalog[]>('/configuracion/plantillas-facturacion/'),
         client.get<TechnicianCatalog[]>('/usuarios'),
       ]);
       setRouters(routerResponse.data);
@@ -242,7 +249,7 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
         plantilla_id: form.plantilla_id ? Number(form.plantilla_id) : null,
         tecnico_id: form.tecnico_id ? Number(form.tecnico_id) : null,
         tipo_facturacion: form.tipo_facturacion,
-        ciclo_facturacion: form.ciclo_facturacion,
+        ciclo_facturacion: form.ciclo_facturacion || undefined,
         meses_gratis: Number(form.meses_gratis || 0),
         crear_orden: form.crear_orden,
       });
@@ -472,10 +479,11 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
                   </select>
                 </label>
                 <label className="text-xs font-black text-slate-500">
-                  Ciclo
+                  ¿Qué día paga?
                   <select value={form.ciclo_facturacion} onChange={(event) => setForm({ ...form, ciclo_facturacion: event.target.value as NewServiceForm['ciclo_facturacion'] })} className={`${inputClass} mt-2`}>
-                    <option value="calendario">Calendario</option>
-                    <option value="aniversario">Aniversario</option>
+                    <option value="">Según la plantilla{plantillaElegida ? ` (${nombreFormaCobro(plantillaElegida.ciclo_facturacion || 'calendario')})` : ''}</option>
+                    <option value="calendario">{FORMAS_COBRO.calendario.titulo}</option>
+                    <option value="aniversario">{FORMAS_COBRO.aniversario.titulo}</option>
                   </select>
                 </label>
               </div>

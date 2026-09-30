@@ -22,6 +22,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
+import { FORMAS_COBRO, nombreFormaCobro, type FormaCobro } from '@/utils/formaCobro';
 
 interface Props {
   isOpen: boolean;
@@ -39,6 +40,10 @@ interface RouterCatalog {
 interface NamedCatalog {
   id: number;
   nombre: string;
+}
+
+interface TemplateCatalog extends NamedCatalog {
+  ciclo_facturacion?: FormaCobro;
 }
 
 interface PlanCatalog extends NamedCatalog {
@@ -106,7 +111,8 @@ function apiErrorMessage(error: unknown, fallback: string) {
 }
 
 type TipoFacturacion = 'prepago' | 'postpago';
-type CicloFacturacion = 'calendario' | 'aniversario';
+// '' = usar la forma de pago de la plantilla.
+type CicloFacturacion = FormaCobro | '';
 
 type FormDataState = {
   nombre: string;
@@ -200,7 +206,7 @@ const createInitialFormData = (): FormDataState => {
     fecha_activacion: today,
     meses_gratis: '0',
     tipo_facturacion: 'prepago',
-    ciclo_facturacion: 'calendario',
+    ciclo_facturacion: '',
   };
 };
 
@@ -229,7 +235,7 @@ export default function CreateClientModal({
   } | null>(null);
 
   const [zonas, setZonas] = useState<NamedCatalog[]>([]);
-  const [plantillas, setPlantillas] = useState<NamedCatalog[]>([]);
+  const [plantillas, setPlantillas] = useState<TemplateCatalog[]>([]);
   const [planes, setPlanes] = useState<PlanCatalog[]>([]);
   const [redes, setRedes] = useState<NetworkCatalog[]>([]);
   const [ipsLibres, setIpsLibres] = useState<string[]>([]);
@@ -238,7 +244,7 @@ export default function CreateClientModal({
   const [puertosOcupados, setPuertosOcupados] = useState<number[]>([]);
   const [olts, setOlts] = useState<OltCatalog[]>([]);
   const [inventarioDisponible, setInventarioDisponible] = useState<InventoryCatalog[]>([]);
-  const [selectedPlantilla, setSelectedPlantilla] = useState<NamedCatalog | null>(null);
+  const [selectedPlantilla, setSelectedPlantilla] = useState<TemplateCatalog | null>(null);
   const [formData, setFormData] = useState<FormDataState>(createInitialFormData);
 
   useEffect(() => {
@@ -318,7 +324,7 @@ export default function CreateClientModal({
       const [resZonas, resPlantillas, resUsers, resOlts, resInventario] =
         await Promise.all([
           client.get<NamedCatalog[]>('/zonas/'),
-          client.get<NamedCatalog[]>('/configuracion/plantillas-facturacion'),
+          client.get<TemplateCatalog[]>('/configuracion/plantillas-facturacion'),
           client.get<TechnicianCatalog[]>('/usuarios/'),
           client.get<OltCatalog[]>('/olts/'),
           client.get<InventoryCatalog[]>('/inventario/?estado=DISPONIBLE'),
@@ -579,7 +585,7 @@ export default function CreateClientModal({
             fecha_activacion:
               formData.fecha_activacion || formData.fecha_instalacion || todayLocal(),
             tipo_facturacion: formData.tipo_facturacion,
-            ciclo_facturacion: formData.ciclo_facturacion,
+            ciclo_facturacion: formData.ciclo_facturacion || undefined,
             meses_gratis: Number(formData.meses_gratis || 0),
           },
         );
@@ -968,7 +974,7 @@ export default function CreateClientModal({
                       </div>
 
                       <div>
-                        <label className={labelClass}>Ciclo de facturación</label>
+                        <label className={labelClass}>¿Qué día paga?</label>
                         <select
                           className={flatInputClass}
                           value={formData.ciclo_facturacion}
@@ -979,8 +985,14 @@ export default function CreateClientModal({
                             })
                           }
                         >
-                          <option value="calendario">Calendario</option>
-                          <option value="aniversario">Aniversario</option>
+                          <option value="">
+                            Según la plantilla
+                            {selectedPlantilla
+                              ? ` (${nombreFormaCobro(selectedPlantilla.ciclo_facturacion || 'calendario')})`
+                              : ''}
+                          </option>
+                          <option value="calendario">{FORMAS_COBRO.calendario.titulo}</option>
+                          <option value="aniversario">{FORMAS_COBRO.aniversario.titulo}</option>
                         </select>
                       </div>
 

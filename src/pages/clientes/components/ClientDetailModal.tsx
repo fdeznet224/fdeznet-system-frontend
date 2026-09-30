@@ -19,6 +19,7 @@ import type { Cliente } from '@/types';
 import type { ClientService } from '@/types/services';
 import { openNativeMap } from '@/utils/nativeActions';
 import ClientServicesPanel from './ClientServicesPanel';
+import { nombreFormaCobro } from '@/utils/formaCobro';
 import './client-detail-sheet.css';
 
 interface Props {
@@ -935,7 +936,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                 <StatusPill label="Cliente" value={cliente?.estado || 'N/A'} className={estadoVisual(cliente?.estado)} />
                                                 <StatusPill label="Servicio" value={servicioActual.estado || 'N/A'} className={estadoVisual(servicioActual.estado)} />
                                                 <StatusPill label="Tipo" value={servicioActual.tipo_facturacion || 'N/A'} className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" />
-                                                <StatusPill label="Ciclo" value={servicioActual.ciclo_facturacion || 'N/A'} className="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300" />
+                                                <StatusPill label="Paga" value={nombreFormaCobro(servicioActual.ciclo_facturacion)} className="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300" />
                                             </div>
 
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -946,7 +947,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                 <DetailTile label="Fin periodo gratis" value={formatDate(servicioActual.fecha_fin_periodo_gratis)} />
                                                 <DetailTile label="Inicio de cobro" value={formatDate(servicioActual.fecha_inicio_cobro)} />
                                                 <DetailTile label="Próxima facturación" value={formatDate(servicioActual.proxima_facturacion)} highlight />
-                                                <DetailTile label="Día de pago / corte" value={`Día ${servicioActual.dia_vencimiento || servicioActual.dia_pago || 'N/A'} + ${servicioActual.dias_tolerancia ?? servicioActual.plantilla_dias_tolerancia ?? 0} días`} />
+                                                <DetailTile label="Día de pago / corte" value={`Día ${(servicioActual.ciclo_facturacion === 'aniversario' ? servicioActual.dia_vencimiento : servicioActual.dia_pago || servicioActual.dia_vencimiento) || 'N/A'} + ${servicioActual.dias_tolerancia ?? servicioActual.plantilla_dias_tolerancia ?? 0} días`} />
                                                 <DetailTile label="Meses gratis" value={`${servicioActual.meses_gratis ?? 0}`} />
                                                 <DetailTile label="Prorrateo" value={servicioActual.politica_prorrateo || 'N/A'} />
                                             </div>
