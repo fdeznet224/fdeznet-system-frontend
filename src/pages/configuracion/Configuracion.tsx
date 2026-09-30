@@ -4,7 +4,8 @@ import {
     MapPinIcon, ChatBubbleLeftRightIcon, ArrowUpTrayIcon, 
     UsersIcon, AdjustmentsHorizontalIcon, KeyIcon, 
     DocumentTextIcon, Cog6ToothIcon, QrCodeIcon,
-    CommandLineIcon, ShieldCheckIcon, PaintBrushIcon, CloudArrowUpIcon, CircleStackIcon, ArchiveBoxArrowDownIcon
+    CommandLineIcon, ShieldCheckIcon, PaintBrushIcon, CloudArrowUpIcon, CircleStackIcon, ArchiveBoxArrowDownIcon,
+    PuzzlePieceIcon
 } from '@heroicons/react/24/outline';
 
 export default function Configuracion() {
@@ -26,6 +27,14 @@ export default function Configuracion() {
             color: "text-cyan-500",
             bg: "bg-cyan-500/10",
             path: "/admin/configuracion/licencias"
+        },
+        {
+            titulo: "Integraciones y claves",
+            descripcion: "Correo bancario, inteligencia artificial, teléfonos de alerta y estado de las conexiones.",
+            icon: PuzzlePieceIcon,
+            color: "text-indigo-500",
+            bg: "bg-indigo-500/10",
+            path: "/admin/configuracion/integraciones"
         },
         {
             titulo: "Conexión WhatsApp",

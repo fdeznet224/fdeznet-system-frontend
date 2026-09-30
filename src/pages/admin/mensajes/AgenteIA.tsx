@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { SparklesIcon } from '@heroicons/react/24/outline';
@@ -36,7 +37,6 @@ const inputClass = 'w-full rounded-xl border border-slate-200 bg-slate-50 p-3 te
 
 export default function AgenteIA() {
   const [config, setConfig] = useState<Configuracion | null>(null);
-  const [apiKey, setApiKey] = useState('');
   const [guardando, setGuardando] = useState(false);
 
   const cargar = async () => {
@@ -54,12 +54,8 @@ export default function AgenteIA() {
     try {
       await client.put('/agente-ia/configuracion', {
         modo: config.modo,
-        url: config.url,
-        modelo: config.modelo,
         conocimiento: config.conocimiento,
-        api_key: apiKey.trim() || null,
       });
-      setApiKey('');
       toast.success('Agente actualizado');
       await cargar();
     } catch (error) {
@@ -100,27 +96,12 @@ export default function AgenteIA() {
           ))}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <label className="text-xs font-bold text-slate-500">
-            Clave de API {config.tiene_clave ? '(guardada)' : '(falta)'}
-            <input
-              type="password"
-              autoComplete="off"
-              className={`${inputClass} mt-1`}
-              placeholder={config.tiene_clave ? 'Déjalo vacío para conservarla' : 'Pega la clave de DeepSeek'}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
-          </label>
-          <label className="text-xs font-bold text-slate-500">
-            Modelo
-            <input className={`${inputClass} mt-1`} value={config.modelo} onChange={(e) => setConfig({ ...config, modelo: e.target.value })} />
-          </label>
-          <label className="text-xs font-bold text-slate-500">
-            Servidor (compatible con OpenAI)
-            <input className={`${inputClass} mt-1`} value={config.url} onChange={(e) => setConfig({ ...config, url: e.target.value })} />
-          </label>
-        </div>
+        <p className={`rounded-xl p-3 text-xs font-bold ${config.tiene_clave ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : 'bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300'}`}>
+          {config.tiene_clave
+            ? `Conectado a ${config.modelo}. `
+            : 'Falta la clave de IA; sin ella el agente no se puede encender. '}
+          <Link to="/admin/configuracion/integraciones" className="underline">Configurar en Integraciones y claves</Link>
+        </p>
 
         <label className="block text-xs font-bold text-slate-500">
           Conocimiento del negocio (planes, fichas, puntos de pago, reglas). El agente solo afirma lo que está aquí o en el sistema.
