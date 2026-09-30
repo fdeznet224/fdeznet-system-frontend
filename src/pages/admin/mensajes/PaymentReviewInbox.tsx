@@ -51,6 +51,26 @@ interface ReviewItem {
 }
 
 
+interface Deposito {
+  id: number;
+  monto: number;
+  referencia?: string | null;
+  concepto: string;
+  cuenta_destino?: string | null;
+  fecha?: string | null;
+  coincide_hora: boolean;
+  coincide_referencia: boolean;
+  ligado: boolean;
+}
+
+// Solo se preselecciona cuando no hay duda; si varios cuadran, elige la persona.
+function depositoSugerido(depositos: Deposito[]): number | null {
+  const seguro = depositos.find((d) => d.ligado) || depositos.find((d) => d.coincide_referencia);
+  if (seguro) return seguro.id;
+  const porHora = depositos.filter((d) => d.coincide_hora);
+  return porHora.length === 1 ? porHora[0].id : null;
+}
+
 interface ReviewResponse {
   items: ReviewItem[];
   total: number;
@@ -131,6 +151,9 @@ export default function PaymentReviewInbox() {
   const [results, setResults] = useState<ClientResult[]>([]);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailConfig, setEmailConfig] = useState<BankEmailConfig | null>(null);
+  const [depositos, setDepositos] = useState<Deposito[]>([]);
+  const [depositoId, setDepositoId] = useState<number | null>(null);
+  const [cargandoDepositos, setCargandoDepositos] = useState(false);
 
   const loadEmailConfig = useCallback(async () => {
     try {
@@ -209,6 +232,33 @@ export default function PaymentReviewInbox() {
     };
   }, [selected]);
 
+  const pendiente = selected?.estado === 'pendiente' || selected?.estado === 'procesando';
+  const montoParaBuscar = selected?.monto_detectado ? '' : amount;
+
+  useEffect(() => {
+    setDepositos([]);
+    setDepositoId(null);
+    if (!selected || !pendiente) return;
+    if (!selected.monto_detectado && !(Number(montoParaBuscar) > 0)) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      setCargandoDepositos(true);
+      const query = montoParaBuscar ? `?monto=${encodeURIComponent(montoParaBuscar)}` : '';
+      void client.get<{ depositos: Deposito[] }>(`/whatsapp/comprobantes-revision/${selected.id}/depositos${query}`)
+        .then((response) => {
+          if (!active) return;
+          setDepositos(response.data.depositos);
+          setDepositoId(depositoSugerido(response.data.depositos));
+        })
+        .catch(() => { if (active) setDepositos([]); })
+        .finally(() => { if (active) setCargandoDepositos(false); });
+    }, 300);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [selected, pendiente, montoParaBuscar]);
+
   useEffect(() => {
     const value = search.trim();
     if (value.length < 3) {
@@ -239,6 +289,7 @@ export default function PaymentReviewInbox() {
         ),
         monto: Number(amount),
         referencia: reference.trim() || null,
+        transaccion_correo_id: depositoId,
       });
       toast.success('Pago aprobado y procesado');
       setSelected(null);
@@ -391,10 +442,52 @@ export default function PaymentReviewInbox() {
                   {clientLabel && <p className="rounded-lg bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-300">Cliente: {clientLabel}</p>}
                   <label className="block text-xs font-bold text-slate-500">Monto confirmado<input type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} className="app-input mt-1 w-full" /></label>
                   <label className="block text-xs font-bold text-slate-500">Folio o referencia<input value={reference} onChange={(event) => setReference(event.target.value)} className="app-input mt-1 w-full" /></label>
+                  <fieldset className="space-y-2">
+                    <legend className="text-xs font-bold text-slate-500">Depósito del banco</legend>
+                    {cargandoDepositos && <p className="text-xs text-slate-500">Buscando depósitos…</p>}
+                    {!cargandoDepositos && depositos.length === 0 && (
+                      <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800">
+                        {selected.monto_detectado || Number(amount) > 0
+                          ? 'No hay depósitos libres de ese monto en los días de búsqueda.'
+                          : 'Escribe el monto para buscar el depósito.'}
+                      </p>
+                    )}
+                    {!cargandoDepositos && depositos.filter((d) => d.coincide_hora || d.coincide_referencia).length > 1 && !depositoId && (
+                      <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                        Varios depósitos cuadran con la captura. Compara el concepto y la cuenta antes de elegir.
+                      </p>
+                    )}
+                    {depositos.map((deposito) => (
+                      <label
+                        key={deposito.id}
+                        className={`flex cursor-pointer gap-3 rounded-xl border p-3 text-xs ${depositoId === deposito.id ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20' : 'border-slate-200 dark:border-slate-700'}`}
+                      >
+                        <input
+                          type="radio"
+                          name="deposito"
+                          className="mt-0.5"
+                          checked={depositoId === deposito.id}
+                          onChange={() => setDepositoId(deposito.id)}
+                        />
+                        <span className="min-w-0 space-y-0.5">
+                          <span className="block font-black text-slate-800 dark:text-white">
+                            ${deposito.monto.toFixed(2)} · cuenta {deposito.cuenta_destino || '—'}{deposito.fecha ? ` · ${formatDate(deposito.fecha)}` : ''}
+                          </span>
+                          <span className="block break-words text-slate-600 dark:text-slate-300">{deposito.concepto || 'Sin concepto'}</span>
+                          <span className="block break-all text-slate-400">Ref. {deposito.referencia || '—'}</span>
+                          <span className="flex flex-wrap gap-1 pt-0.5">
+                            {deposito.coincide_referencia && <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Mismo folio</span>}
+                            {deposito.coincide_hora && <span className="rounded-full bg-indigo-100 px-2 py-0.5 font-bold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">Hora cercana</span>}
+                            {deposito.ligado && <span className="rounded-full bg-slate-200 px-2 py-0.5 font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200">Apartado para este</span>}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
                   {selected.factura_sugerida && <p className="text-xs text-slate-500">Factura sugerida #{selected.factura_sugerida.id} · Saldo ${Number(selected.factura_sugerida.saldo_pendiente).toFixed(2)}</p>}
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <button onClick={() => void reject()} disabled={working} className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-100 px-4 py-3 font-bold text-rose-700 disabled:opacity-50 dark:bg-rose-950/40 dark:text-rose-300"><XCircleIcon className="h-5 w-5" /> Rechazar</button>
-                    <button onClick={() => void approve()} disabled={working} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white disabled:opacity-50"><CheckCircleIcon className="h-5 w-5" /> Aprobar</button>
+                    <button onClick={() => void approve()} disabled={working || !depositoId} title={depositoId ? undefined : 'Elige el depósito del banco'} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white disabled:opacity-50"><CheckCircleIcon className="h-5 w-5" /> Aprobar</button>
                   </div>
                 </div>
               ) : (
