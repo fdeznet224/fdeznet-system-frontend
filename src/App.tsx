@@ -39,6 +39,7 @@ const MapaClientes = lazy(() => import('@/pages/monitoreo/MapaClientes'));
 const MensajesCRM = lazy(() => import('@/pages/admin/mensajes/MensajesCRM'));
 const WhatsAppOutbox = lazy(() => import('@/pages/admin/mensajes/WhatsAppOutbox'));
 const PaymentReviewInbox = lazy(() => import('@/pages/admin/mensajes/PaymentReviewInbox'));
+const AgenteIA = lazy(() => import('@/pages/admin/mensajes/AgenteIA'));
 const InventarioPanel = lazy(() => import('@/pages/infraestructura/inventario/InventarioPanel'));
 const CajasNap = lazy(() => import('@/pages/infraestructura/naps/CajasNap'));
 const Facturas = lazy(() => import('@/pages/finanzas/Facturas'));
@@ -233,6 +234,7 @@ function App() {
                 <Route path="/admin/mensajes" element={protectedPage(<MensajesCRM />, ['admin'])} />
                 <Route path="/admin/whatsapp/salidas" element={protectedPage(<WhatsAppOutbox />, ['admin', 'supervisor'])} />
                 <Route path="/admin/whatsapp/comprobantes" element={protectedPage(<PaymentReviewInbox />, ['admin', 'supervisor'])} />
+                <Route path="/admin/whatsapp/agente" element={protectedPage(<AgenteIA />, ['admin'])} />
                 
                 {/* Sub-rutas de Configuración */}
                 <Route path="/admin/configuracion/zonas" element={protectedPage(<Zonas />, ['admin'])} />

@@ -15,7 +15,7 @@ import {
     ChevronRightIcon, ComputerDesktopIcon, CubeIcon,
     CpuChipIcon, ClipboardDocumentListIcon, MapIcon,
     ShieldCheckIcon, MagnifyingGlassIcon, ArchiveBoxIcon, BriefcaseIcon,
-    SunIcon, MoonIcon, ChatBubbleLeftRightIcon
+    SunIcon, MoonIcon, ChatBubbleLeftRightIcon, SparklesIcon
 } from '@heroicons/react/24/outline';
 
 import ChatModal from '@/components/chat/ChatModal';
@@ -529,6 +529,7 @@ const allMenus: MenuItem[] = [
             { name: 'Bajas / Recuperación', path: '/admin/bajas', icon: ArchiveBoxIcon, roles: ['admin', 'supervisor'] },
             { name: 'Bandeja WhatsApp', path: '/admin/whatsapp/salidas', icon: ChatBubbleLeftRightIcon, roles: ['admin', 'supervisor'] },
             { name: 'Comprobantes por revisar', path: '/admin/whatsapp/comprobantes', icon: BanknotesIcon, roles: ['admin', 'supervisor'] },
+            { name: 'Agente de IA', path: '/admin/whatsapp/agente', icon: SparklesIcon, roles: ['admin'] },
             { name: 'Inventario / Bodega', path: '/admin/inventario', icon: ArchiveBoxIcon, roles: ['admin'] },
         ]
     },
