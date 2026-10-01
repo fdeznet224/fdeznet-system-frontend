@@ -7,6 +7,7 @@ import client from '@/api/axios';
 
 export interface BankEmailConfig {
   activo: boolean;
+  validar_pagos_con?: 'correo' | 'captura';
   auto_aprobar: boolean;
   proveedor: string;
   correo?: string | null;
@@ -83,6 +84,16 @@ export default function CorreoBancarioConfig() {
   }, []);
 
   useEffect(() => { void loadEmailConfig(); }, [loadEmailConfig]);
+
+  const guardarModo = async (modo: 'correo' | 'captura') => {
+    try {
+      const response = await client.put<BankEmailConfig>('/correo-bancario/modo-validacion', { validar_pagos_con: modo });
+      setEmailConfig(response.data);
+      toast.success(modo === 'captura' ? 'Los pagos se confirman solo con la captura' : 'Los pagos se confirman con el correo del banco');
+    } catch (error) {
+      toast.error(errorMessage(error, 'No se pudo cambiar el modo'));
+    }
+  };
 
   const updateEmailConfig = <K extends keyof BankEmailConfig>(key: K, value: BankEmailConfig[K]) => {
     setEmailConfig((current) => (current ? { ...current, [key]: value } : current));
@@ -186,6 +197,31 @@ export default function CorreoBancarioConfig() {
               : 'Desactivado hasta configurar y probar Gmail'}
           </span>
         </span>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-black uppercase tracking-wide text-slate-500">Cómo se confirman los pagos</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          {([
+            ['captura', 'Solo con la captura', 'Se aplica al momento con los datos de la captura (folio, o monto, fecha y hora). Cada transferencia genera un código único: si alguien vuelve a mandar la misma captura, rebota.'],
+            ['correo', 'Con el correo del banco', 'Se aplica cuando llega el aviso del banco a Gmail con el mismo folio, o con el mismo monto y hora. Más seguro, pero depende de que el correo llegue.'],
+          ] as const).map(([valor, titulo, descripcion]) => {
+            const activo = (emailConfig.validar_pagos_con ?? 'correo') === valor;
+            return (
+              <button
+                key={valor}
+                type="button"
+                aria-pressed={activo}
+                onClick={() => { if (!activo) void guardarModo(valor); }}
+                className={`rounded-xl border p-4 text-left transition-colors ${activo ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700'}`}
+              >
+                <span className="block font-black text-slate-900 dark:text-white">{titulo}</span>
+                <span className="mt-1 block text-xs text-slate-500">{descripcion}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-slate-500">Las cuentas receptoras de abajo se usan en los dos modos para rechazar comprobantes de transferencias a otras cuentas.</p>
       </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {['1. Captura los datos', '2. Prueba y guarda', '3. Activa la validación'].map((step, index) => (
