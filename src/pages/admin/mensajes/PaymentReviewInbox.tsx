@@ -137,9 +137,19 @@ const MOTIVOS: Record<string, string> = {
   correo_confirmado_revision_manual: 'Confirmado por el banco: falta aprobar',
   monto_no_coincide: 'El monto no cubre la deuda',
   beneficiario_no_es_del_isp: 'El comprobante es de una transferencia a otra cuenta',
+  verificado_en_banco_sin_correo: 'Aprobado: verificado en el banco sin correo',
 };
 
 const motivo = (valor: string) => MOTIVOS[valor] ?? valor.replaceAll('_', ' ');
+
+function esAdministrador(): boolean {
+  try {
+    const usuario = JSON.parse(localStorage.getItem('user') || '{}') as { rol?: string };
+    return usuario.rol === 'admin';
+  } catch {
+    return false;
+  }
+}
 
 export default function PaymentReviewInbox() {
   const [status, setStatus] = useState<ReviewStatus | 'todos'>('pendiente');
@@ -161,6 +171,9 @@ export default function PaymentReviewInbox() {
   const [depositos, setDepositos] = useState<Deposito[]>([]);
   const [depositoId, setDepositoId] = useState<number | null>(null);
   const [cargandoDepositos, setCargandoDepositos] = useState(false);
+  const [verificadoEnBanco, setVerificadoEnBanco] = useState(false);
+  const [notaVerificacion, setNotaVerificacion] = useState('');
+  const admin = esAdministrador();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -196,6 +209,8 @@ export default function PaymentReviewInbox() {
     setSearch('');
     setResults([]);
     setImageFull(false);
+    setVerificadoEnBanco(false);
+    setNotaVerificacion('');
   }, [selected]);
 
   useEffect(() => {
@@ -295,7 +310,9 @@ export default function PaymentReviewInbox() {
         ),
         monto: Number(amount),
         referencia: reference.trim() || null,
-        transaccion_correo_id: depositoId,
+        transaccion_correo_id: verificadoEnBanco ? null : depositoId,
+        verificado_en_banco: verificadoEnBanco,
+        notas: verificadoEnBanco ? notaVerificacion.trim() : null,
       });
       toast.success('Pago aprobado y procesado');
       setSelected(null);
@@ -508,7 +525,7 @@ export default function PaymentReviewInbox() {
                           key={deposito.id}
                           className={`flex cursor-pointer gap-3 rounded-xl border p-3 text-xs ${depositoId === deposito.id ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500 dark:bg-emerald-950/20' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700'}`}
                         >
-                          <input type="radio" name="deposito" className="mt-0.5" checked={depositoId === deposito.id} onChange={() => setDepositoId(deposito.id)} />
+                          <input type="radio" name="deposito" className="mt-0.5" checked={depositoId === deposito.id} onChange={() => { setDepositoId(deposito.id); setVerificadoEnBanco(false); }} />
                           <span className="min-w-0 space-y-0.5">
                             <span className="block text-sm font-black text-slate-800 dark:text-white">
                               {money(deposito.monto)} · cuenta {deposito.cuenta_destino || '—'}
@@ -531,13 +548,37 @@ export default function PaymentReviewInbox() {
                         </label>
                       ))}
                     </div>
+                    {admin && (
+                      <div className="space-y-2 rounded-xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
+                        <label className="flex cursor-pointer items-start gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={verificadoEnBanco}
+                            onChange={(event) => { setVerificadoEnBanco(event.target.checked); if (event.target.checked) setDepositoId(null); }}
+                          />
+                          El correo del banco no llegó: lo verifiqué en la app del banco
+                        </label>
+                        {verificadoEnBanco && (
+                          <>
+                            <input
+                              value={notaVerificacion}
+                              onChange={(event) => setNotaVerificacion(event.target.value)}
+                              placeholder="Dónde lo viste, ej.: app Azteca, 30/09 08:58, $300"
+                              className="app-input w-full text-sm"
+                            />
+                            <p className="text-[11px] text-slate-500">Se registra con tu usuario, el folio ya no se podrá usar en otro pago y se avisa a los administradores.</p>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </fieldset>
 
                   <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">{motivo(selected.motivo_revision)}{selected.notas_revision ? ` · ${selected.notas_revision}` : ''}</p>
 
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => void reject()} disabled={working} className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-100 px-4 py-3 font-bold text-rose-700 disabled:opacity-50 dark:bg-rose-950/40 dark:text-rose-300"><XCircleIcon className="h-5 w-5" /> Rechazar</button>
-                    <button onClick={() => void approve()} disabled={working || !depositoId || !clientId} title={!clientId ? 'Elige el cliente' : !depositoId ? 'Elige el depósito del banco' : undefined} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white disabled:opacity-50"><CheckCircleIcon className="h-5 w-5" /> Aprobar</button>
+                    <button onClick={() => void approve()} disabled={working || !clientId || (verificadoEnBanco ? notaVerificacion.trim().length < 5 : !depositoId)} title={!clientId ? 'Elige el cliente' : verificadoEnBanco ? 'Escribe dónde lo verificaste' : !depositoId ? 'Elige el depósito del banco' : undefined} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white disabled:opacity-50"><CheckCircleIcon className="h-5 w-5" /> Aprobar</button>
                   </div>
                 </div>
               ) : (
