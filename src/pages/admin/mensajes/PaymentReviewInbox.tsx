@@ -144,6 +144,9 @@ const MOTIVOS: Record<string, string> = {
   fecha_de_captura_invalida: 'La fecha de la captura no cuadra',
   captura_incompleta: 'Falta el folio o la fecha y hora en la captura',
   sin_deuda_pendiente: 'El cliente ya no tenía deuda',
+  monto_mayor_al_normal: 'Monto mayor a lo normal: revisa antes de aplicar',
+  segundo_pago_del_mes: 'Segundo pago por captura este mes',
+  muchas_capturas_hoy: 'El mismo chat mandó varias capturas hoy',
 };
 
 const motivo = (valor: string) => MOTIVOS[valor] ?? valor.replaceAll('_', ' ');
