@@ -529,7 +529,6 @@ const allMenus: MenuItem[] = [
             { name: 'Bajas / Recuperación', path: '/admin/bajas', icon: ArchiveBoxIcon, roles: ['admin', 'supervisor'] },
             { name: 'Bandeja WhatsApp', path: '/admin/whatsapp/salidas', icon: ChatBubbleLeftRightIcon, roles: ['admin', 'supervisor'] },
             { name: 'Comprobantes por revisar', path: '/admin/whatsapp/comprobantes', icon: BanknotesIcon, roles: ['admin', 'supervisor'] },
-            { name: 'Agente de IA', path: '/admin/whatsapp/agente', icon: SparklesIcon, roles: ['admin'] },
             { name: 'Inventario / Bodega', path: '/admin/inventario', icon: ArchiveBoxIcon, roles: ['admin'] },
         ]
     },
@@ -559,7 +558,7 @@ const allMenus: MenuItem[] = [
             { name: 'Zonas y Áreas', path: '/admin/configuracion/zonas', icon: GlobeAltIcon },
             { name: 'Usuarios Sistema', path: '/admin/configuracion/usuarios', icon: UsersIcon },
             { name: 'Plantillas Mensajes', path: '/admin/configuracion/mensajes', icon: DocumentTextIcon },
-            { name: 'Flujo Bot WhatsApp', path: '/admin/configuracion/bot-whatsapp', icon: ChatBubbleLeftRightIcon },
+            { name: 'Bot de WhatsApp', path: '/admin/configuracion/bot-whatsapp', icon: SparklesIcon },
             { name: 'Conexión WhatsApp', path: '/admin/configuracion/whatsapp-qr', icon: SignalIcon },
             { name: 'Plantillas Fact.', path: '/admin/configuracion/plantillas-facturacion', icon: BanknotesIcon },
             { name: 'Perfiles PPPoE', path: '/admin/configuracion/pppoe', icon: ServerStackIcon },

@@ -45,8 +45,8 @@ export default function Configuracion() {
             path: "/admin/configuracion/whatsapp-qr"
         },
         {
-            titulo: "Flujo del Bot WhatsApp",
-            descripcion: "Personaliza el comando, menú, pagos y diagnóstico técnico del autoservicio.",
+            titulo: "Bot de WhatsApp",
+            descripcion: "Elige si contesta el agente de IA o el bot de flujo, y configura su conocimiento y sus menús.",
             icon: ChatBubbleLeftRightIcon,
             color: "text-emerald-500",
             bg: "bg-emerald-500/10",

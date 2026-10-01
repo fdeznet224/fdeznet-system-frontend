@@ -91,7 +91,7 @@ function SeccionIA() {
           <span className="block font-black text-slate-900 dark:text-white">Inteligencia artificial (agente de WhatsApp)</span>
           <span className="block text-xs text-slate-500">
             {conexion.tiene_clave ? 'Clave guardada' : 'Sin clave'} · El modo y el conocimiento se configuran en{' '}
-            <Link to="/admin/whatsapp/agente" className="font-bold text-violet-600 hover:underline">Agente de IA</Link>
+            <Link to="/admin/configuracion/bot-whatsapp" className="font-bold text-violet-600 hover:underline">Bot de WhatsApp</Link>
           </span>
         </span>
       </div>

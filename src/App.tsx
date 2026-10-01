@@ -39,7 +39,6 @@ const MapaClientes = lazy(() => import('@/pages/monitoreo/MapaClientes'));
 const MensajesCRM = lazy(() => import('@/pages/admin/mensajes/MensajesCRM'));
 const WhatsAppOutbox = lazy(() => import('@/pages/admin/mensajes/WhatsAppOutbox'));
 const PaymentReviewInbox = lazy(() => import('@/pages/admin/mensajes/PaymentReviewInbox'));
-const AgenteIA = lazy(() => import('@/pages/admin/mensajes/AgenteIA'));
 const InventarioPanel = lazy(() => import('@/pages/infraestructura/inventario/InventarioPanel'));
 const CajasNap = lazy(() => import('@/pages/infraestructura/naps/CajasNap'));
 const Facturas = lazy(() => import('@/pages/finanzas/Facturas'));
@@ -57,7 +56,7 @@ const Sistema = lazy(() => import('@/pages/configuracion/Sistema'));
 const Integraciones = lazy(() => import('@/pages/configuracion/Integraciones'));
 const StorageManagement = lazy(() => import('@/pages/configuracion/StorageManagement'));
 const BackupManagement = lazy(() => import('@/pages/configuracion/BackupManagement'));
-const BotFlowBuilder = lazy(() => import('@/pages/configuracion/BotFlowBuilder'));
+const BotWhatsapp = lazy(() => import('@/pages/configuracion/BotWhatsapp'));
 const MarcaBlanca = lazy(() => import('@/pages/configuracion/MarcaBlanca'));
 const LicenciasVersiones = lazy(() => import('@/pages/configuracion/LicenciasVersiones'));
 const WhatsappPage = lazy(() => import('@/pages/configuracion/WhatsappPage'));
@@ -236,7 +235,7 @@ function App() {
                 <Route path="/admin/mensajes" element={protectedPage(<MensajesCRM />, ['admin'])} />
                 <Route path="/admin/whatsapp/salidas" element={protectedPage(<WhatsAppOutbox />, ['admin', 'supervisor'])} />
                 <Route path="/admin/whatsapp/comprobantes" element={protectedPage(<PaymentReviewInbox />, ['admin', 'supervisor'])} />
-                <Route path="/admin/whatsapp/agente" element={protectedPage(<AgenteIA />, ['admin'])} />
+                <Route path="/admin/whatsapp/agente" element={<Navigate to="/admin/configuracion/bot-whatsapp" replace />} />
                 
                 {/* Sub-rutas de Configuración */}
                 <Route path="/admin/configuracion/zonas" element={protectedPage(<Zonas />, ['admin'])} />
@@ -250,7 +249,7 @@ function App() {
                 <Route path="/admin/configuracion/sistema" element={protectedPage(<Sistema />, ['admin'])} />
                 <Route path="/admin/configuracion/almacenamiento" element={protectedPage(<StorageManagement />, ['admin'])} />
                 <Route path="/admin/configuracion/respaldos" element={protectedPage(<BackupManagement />, ['admin'])} />
-                <Route path="/admin/configuracion/bot-whatsapp" element={protectedPage(<BotFlowBuilder />, ['admin'])} />
+                <Route path="/admin/configuracion/bot-whatsapp" element={protectedPage(<BotWhatsapp />, ['admin'])} />
                 <Route path="/admin/configuracion/vpn" element={protectedPage(<TunnelsVPN />, ['admin'])} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
