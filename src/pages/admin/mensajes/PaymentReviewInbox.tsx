@@ -136,6 +136,7 @@ const MOTIVOS: Record<string, string> = {
   correo_confirmado_cliente_no_identificado: 'Falta indicar el cliente',
   correo_confirmado_revision_manual: 'Confirmado por el banco: falta aprobar',
   monto_no_coincide: 'El monto no cubre la deuda',
+  beneficiario_no_es_del_isp: 'El comprobante es de una transferencia a otra cuenta',
 };
 
 const motivo = (valor: string) => MOTIVOS[valor] ?? valor.replaceAll('_', ' ');
