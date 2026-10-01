@@ -197,6 +197,51 @@ export default function TechDashboard() {
         }
     };
 
+    const ordenesAgenda = ordenes.filter((orden) => orden.tipo !== 'retiro');
+    const ordenesRetiro = ordenes.filter((orden) => orden.tipo === 'retiro');
+
+    const renderOrden = (orden: TechnicianOrder) => (
+        <div key={`orden-${orden.id}`} className="bg-white dark:bg-[#1a1f2e] border border-blue-200 dark:border-blue-900/50 rounded-2xl p-4 shadow-sm space-y-3 relative">
+            <div className="absolute left-0 top-4 bottom-4 w-1 bg-blue-500 rounded-r-full"></div>
+            <div className="pl-2">
+                <div className="flex items-center justify-between gap-2">
+                    <h4 className="font-black text-slate-800 dark:text-white">{orden.cliente?.nombre || orden.prospecto_nombre || `Orden #${orden.id}`}</h4>
+                    <span className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-400">{orden.estado.replace('_', ' ')}</span>
+                </div>
+                <p className="text-slate-500 text-[10px] mt-1">
+                    #{orden.id} · {orden.tipo.replace('_', ' ')}
+                    {orden.servicio ? ` · ${orden.servicio.alias} (#${orden.servicio.id})` : ''}
+                </p>
+                <p className="text-slate-500 text-[10px] mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5" /> {orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección'}</p>
+            </div>
+            {orden.tipo === 'retiro' && orden.estado === 'trabajando' ? (
+                <div className="ml-2 space-y-2">
+                    <select
+                        value={retireConditions[orden.id] || 'funcional'}
+                        onChange={(event) => setRetireConditions({ ...retireConditions, [orden.id]: event.target.value })}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-950"
+                    >
+                        <option value="funcional">ONU funcional</option>
+                        <option value="danada">ONU dañada</option>
+                        <option value="incompleta">ONU incompleta</option>
+                        <option value="perdida">Equipo no recuperado</option>
+                    </select>
+                    <button type="button" onClick={() => void handleConfirmarRetiroOrden(orden)} className="h-11 w-full rounded-xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
+                        Confirmar retiro
+                    </button>
+                </div>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => void handleAvanzarOrden(orden)}
+                    className="ml-2 w-[calc(100%-0.5rem)] h-11 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95"
+                >
+                    {orden.estado === 'asignada' ? 'Marcar en camino' : orden.estado === 'en_camino' ? 'Iniciar trabajo' : 'Finalizar con conexión'}
+                </button>
+            )}
+        </div>
+    );
+
     return (
         /* ✅ ADAPTADO: Fondo principal transiciona al tema elegido */
         <div className="min-h-screen bg-slate-50 dark:bg-[#0f1219] text-slate-900 dark:text-white font-sans flex flex-col overflow-hidden transition-colors duration-300">
@@ -249,7 +294,7 @@ export default function TechDashboard() {
                                 <div className="relative z-10 flex items-center justify-between">
                                     <div>
                                         <span className="text-purple-600 dark:text-purple-400 text-[10px] font-black uppercase tracking-widest transition-colors">Nuevas</span>
-                                        <h2 className="text-5xl font-black text-slate-800 dark:text-white mt-1 transition-colors">{ordenes.length + instalaciones.length}</h2>
+                                        <h2 className="text-5xl font-black text-slate-800 dark:text-white mt-1 transition-colors">{ordenesAgenda.length + instalaciones.length}</h2>
                                         <p className="text-slate-500 dark:text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-wider transition-colors">Órdenes e instalaciones</p>
                                     </div>
                                     <ClipboardDocumentListIcon className="w-14 h-14 text-purple-600 dark:text-purple-500 opacity-20 dark:opacity-30 group-hover:scale-110 transition-transform" />
@@ -261,7 +306,7 @@ export default function TechDashboard() {
                                 <div className="relative z-10 flex items-center justify-between">
                                     <div>
                                         <span className="text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-widest transition-colors">Equipos</span>
-                                        <h2 className="text-5xl font-black text-slate-800 dark:text-white mt-1 transition-colors">{retiros.length}</h2>
+                                        <h2 className="text-5xl font-black text-slate-800 dark:text-white mt-1 transition-colors">{ordenesRetiro.length + retiros.length}</h2>
                                         <p className="text-slate-500 dark:text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-wider transition-colors">Bajas por recoger</p>
                                     </div>
                                     <ArchiveBoxArrowDownIcon className="w-14 h-14 text-orange-600 dark:text-orange-500 opacity-20 dark:opacity-30 group-hover:scale-110 transition-transform" />
@@ -275,48 +320,8 @@ export default function TechDashboard() {
                 {activeTab === 'agenda' && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-4">
                         <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 transition-colors">Agenda de Instalaciones</h3>
-                        {ordenes.length === 0 && instalaciones.length === 0 && <p className="text-center text-slate-500 dark:text-slate-600 text-sm py-10 font-bold">Sin órdenes asignadas</p>}
-                        {ordenes.map((orden) => (
-                            <div key={`orden-${orden.id}`} className="bg-white dark:bg-[#1a1f2e] border border-blue-200 dark:border-blue-900/50 rounded-2xl p-4 shadow-sm space-y-3 relative">
-                                <div className="absolute left-0 top-4 bottom-4 w-1 bg-blue-500 rounded-r-full"></div>
-                                <div className="pl-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <h4 className="font-black text-slate-800 dark:text-white">{orden.cliente?.nombre || orden.prospecto_nombre || `Orden #${orden.id}`}</h4>
-                                        <span className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-400">{orden.estado.replace('_', ' ')}</span>
-                                    </div>
-                                    <p className="text-slate-500 text-[10px] mt-1">
-                                        #{orden.id} · {orden.tipo.replace('_', ' ')}
-                                        {orden.servicio ? ` · ${orden.servicio.alias} (#${orden.servicio.id})` : ''}
-                                    </p>
-                                    <p className="text-slate-500 text-[10px] mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5" /> {orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección'}</p>
-                                </div>
-                                {orden.tipo === 'retiro' && orden.estado === 'trabajando' ? (
-                                    <div className="ml-2 space-y-2">
-                                        <select
-                                            value={retireConditions[orden.id] || 'funcional'}
-                                            onChange={(event) => setRetireConditions({ ...retireConditions, [orden.id]: event.target.value })}
-                                            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-950"
-                                        >
-                                            <option value="funcional">ONU funcional</option>
-                                            <option value="danada">ONU dañada</option>
-                                            <option value="incompleta">ONU incompleta</option>
-                                            <option value="perdida">Equipo no recuperado</option>
-                                        </select>
-                                        <button type="button" onClick={() => void handleConfirmarRetiroOrden(orden)} className="h-11 w-full rounded-xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
-                                            Confirmar retiro
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => void handleAvanzarOrden(orden)}
-                                        className="ml-2 w-[calc(100%-0.5rem)] h-11 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95"
-                                    >
-                                        {orden.estado === 'asignada' ? 'Marcar en camino' : orden.estado === 'en_camino' ? 'Iniciar trabajo' : 'Finalizar con conexión'}
-                                    </button>
-                                )}
-                            </div>
-                        ))}
+                        {ordenesAgenda.length === 0 && instalaciones.length === 0 && <p className="text-center text-slate-500 dark:text-slate-600 text-sm py-10 font-bold">Sin órdenes asignadas</p>}
+                        {ordenesAgenda.map(renderOrden)}
                         {instalaciones.map((item) => (
                             <div key={item.id} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800/50 rounded-2xl p-4 shadow-sm dark:shadow-lg space-y-4 relative transition-colors">
                                 <div className="absolute left-0 top-4 bottom-4 w-1 bg-purple-500 rounded-r-full"></div>
@@ -337,7 +342,8 @@ export default function TechDashboard() {
                 {activeTab === 'retiros' && (
                     <div className="animate-in fade-in slide-in-from-left-4 duration-300 space-y-4">
                         <h3 className="text-[10px] font-black text-orange-600 dark:text-orange-500 uppercase tracking-widest px-1 transition-colors">Retiro de Equipos</h3>
-                        {retiros.length === 0 && <p className="text-center text-slate-500 dark:text-slate-600 text-sm py-10 font-bold">Sin retiros pendientes</p>}
+                        {ordenesRetiro.length === 0 && retiros.length === 0 && <p className="text-center text-slate-500 dark:text-slate-600 text-sm py-10 font-bold">Sin retiros pendientes</p>}
+                        {ordenesRetiro.map(renderOrden)}
                         {retiros.map((item) => (
                             <div key={item.id} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800/50 rounded-2xl p-4 shadow-sm dark:shadow-lg space-y-4 relative transition-colors">
                                 <div className="absolute left-0 top-4 bottom-4 w-1 bg-orange-500 rounded-r-full"></div>
