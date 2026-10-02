@@ -33,6 +33,7 @@ interface ReviewItem {
   fecha_revision?: string | null;
   revisado_por?: string | null;
   pago_id?: number | null;
+  auditoria_banco?: string | null;
   factura_sugerida?: {
     id: number;
     saldo_pendiente: number;
@@ -72,6 +73,16 @@ const SENAL_TITULAR: Record<string, string> = {
 
 // Solo se preselecciona cuando no hay duda: mismo folio, o el único con hora
 // cercana en el que además coincide algo del titular. Si no, elige la persona.
+// Nota informativa: el pago ya está aplicado; no se avisa por WhatsApp.
+const AUDITORIA_BANCO: Record<string, string> = {
+  pendiente: 'Correo del banco: aún no aparece',
+  prioridad: 'Correo del banco: aún no aparece',
+  confirmado: 'Correo del banco: depósito confirmado',
+  sin_deposito: 'Nota: no llegó correo del banco (normal fuera de horario)',
+  interna_azteca: 'Azteca a Azteca: el banco no manda correo',
+  fuera_de_horario: 'Pago fuera de horario: el banco no manda correo',
+};
+
 function depositoSugerido(depositos: Deposito[]): number | null {
   const porFolio = depositos.filter((d) => d.coincide_referencia);
   if (porFolio.length === 1) return porFolio[0].id;
@@ -410,6 +421,9 @@ export default function PaymentReviewInbox() {
                 <span className="inline-flex items-center gap-1 text-xs"><ClockIcon className="h-4 w-4" /> {formatDate(item.fecha_recepcion)}</span>
               </div>
               <p className="mt-1 text-xs font-bold text-amber-700 dark:text-amber-300">{motivo(item.motivo_revision)}</p>
+              {item.auditoria_banco === 'sin_deposito' && (
+                <p className="mt-1 text-xs text-slate-500">{AUDITORIA_BANCO.sin_deposito}</p>
+              )}
             </button>
           ))}
         </section>
@@ -605,6 +619,9 @@ export default function PaymentReviewInbox() {
                 <div className="rounded-xl bg-slate-50 p-4 text-sm dark:bg-slate-800">
                   <p className="font-bold capitalize text-slate-800 dark:text-white">{selected.estado}</p>
                   <p className="mt-1 text-slate-500">{selected.notas_revision || 'Sin notas'} {selected.revisado_por ? `· ${selected.revisado_por}` : ''}</p>
+                  {selected.auditoria_banco && AUDITORIA_BANCO[selected.auditoria_banco] && (
+                    <p className="mt-2 text-xs text-slate-500">{AUDITORIA_BANCO[selected.auditoria_banco]}</p>
+                  )}
                 </div>
               )}
             </div>
