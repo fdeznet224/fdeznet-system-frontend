@@ -84,6 +84,7 @@ interface ReviewResponse {
   total: number;
   pagina: number;
   limite: number;
+  validar_pagos_con?: 'correo' | 'captura';
 }
 
 interface ClientResult {
@@ -139,6 +140,7 @@ const MOTIVOS: Record<string, string> = {
   beneficiario_no_es_del_isp: 'El comprobante es de una transferencia a otra cuenta',
   verificado_en_banco_sin_correo: 'Aprobado: verificado en el banco sin correo',
   aprobado_por_captura: 'Aprobado con los datos de la captura',
+  aprobado_en_panel_por_captura: 'Aprobado en el panel con la captura',
   captura_ya_utilizada: 'Esa captura ya se usó en otro pago',
   captura_antigua: 'La transferencia es de hace varios días',
   fecha_de_captura_invalida: 'La fecha de la captura no cuadra',
@@ -182,6 +184,9 @@ export default function PaymentReviewInbox() {
   const [cargandoDepositos, setCargandoDepositos] = useState(false);
   const [verificadoEnBanco, setVerificadoEnBanco] = useState(false);
   const [notaVerificacion, setNotaVerificacion] = useState('');
+  // En modo captura el depósito del banco es opcional: fuera de horario o de
+  // Azteca a Azteca no llega correo.
+  const [modoCaptura, setModoCaptura] = useState(false);
   const admin = esAdministrador();
 
   const load = useCallback(async () => {
@@ -191,6 +196,7 @@ export default function PaymentReviewInbox() {
         `/whatsapp/comprobantes-revision?estado=${status}&limite=100`,
       );
       setItems(response.data.items);
+      setModoCaptura(response.data.validar_pagos_con === 'captura');
       setSelected((current) => (
         current
           ? response.data.items.find((item) => item.id === current.id) || null
@@ -514,7 +520,7 @@ export default function PaymentReviewInbox() {
                   </div>
 
                   <fieldset className="space-y-2">
-                    <legend className="text-xs font-black uppercase tracking-wide text-slate-500">3. Depósito del banco</legend>
+                    <legend className="text-xs font-black uppercase tracking-wide text-slate-500">3. Depósito del banco{modoCaptura ? ' (opcional)' : ''}</legend>
                     {cargandoDepositos && <p className="text-xs text-slate-500">Buscando depósitos…</p>}
                     {!cargandoDepositos && depositos.length === 0 && (
                       <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800">
@@ -557,7 +563,12 @@ export default function PaymentReviewInbox() {
                         </label>
                       ))}
                     </div>
-                    {admin && (
+                    {modoCaptura && !depositoId && (
+                      <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+                        Opcional: puedes aprobar con la captura aunque el banco no haya mandado correo. El folio queda bloqueado para otro pago.
+                      </p>
+                    )}
+                    {admin && !modoCaptura && (
                       <div className="space-y-2 rounded-xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
                         <label className="flex cursor-pointer items-start gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
                           <input
@@ -587,7 +598,7 @@ export default function PaymentReviewInbox() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => void reject()} disabled={working} className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-100 px-4 py-3 font-bold text-rose-700 disabled:opacity-50 dark:bg-rose-950/40 dark:text-rose-300"><XCircleIcon className="h-5 w-5" /> Rechazar</button>
-                    <button onClick={() => void approve()} disabled={working || !clientId || (verificadoEnBanco ? notaVerificacion.trim().length < 5 : !depositoId)} title={!clientId ? 'Elige el cliente' : verificadoEnBanco ? 'Escribe dónde lo verificaste' : !depositoId ? 'Elige el depósito del banco' : undefined} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white disabled:opacity-50"><CheckCircleIcon className="h-5 w-5" /> Aprobar</button>
+                    <button onClick={() => void approve()} disabled={working || !clientId || (verificadoEnBanco ? notaVerificacion.trim().length < 5 : !depositoId && !modoCaptura)} title={!clientId ? 'Elige el cliente' : verificadoEnBanco ? 'Escribe dónde lo verificaste' : !depositoId && !modoCaptura ? 'Elige el depósito del banco' : undefined} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white disabled:opacity-50"><CheckCircleIcon className="h-5 w-5" /> Aprobar</button>
                   </div>
                 </div>
               ) : (
