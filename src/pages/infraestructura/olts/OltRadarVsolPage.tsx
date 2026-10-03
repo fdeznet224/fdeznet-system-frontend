@@ -634,7 +634,9 @@ function matchesStatus(row: RadarRow, filter: StatusFilter): boolean {
 
 export default function OltRadarVsolPage() {
   const [olts, setOlts] = useState<OltConfigItem[]>([]);
-  const [oltId, setOltId] = useState<number>(1);
+  // Ninguna OLT al entrar: se escanea solo la que el usuario elige.
+  const [oltId, setOltId] = useState<number | null>(null);
+  const [cargandoOlts, setCargandoOlts] = useState(true);
   const [monitoreo, setMonitoreo] = useState<OltMonitoreoApi | null>(null);
   const [clientes, setClientes] = useState<OltClientSearchItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -652,28 +654,19 @@ export default function OltRadarVsolPage() {
     try {
       const items = await getOlts();
       setOlts(items);
-
-      setOltId((current) => {
-        if (items.some((olt) => Number(olt.id) === Number(current))) return current;
-
-        const firstApi =
-          items.find((olt) => olt.api_enabled || olt.tipo_integracion === "vsol_api") ||
-          items[0];
-
-        return firstApi?.id ? Number(firstApi.id) : 1;
-      });
+      setOltId((current) => (items.some((olt) => Number(olt.id) === Number(current)) ? current : null));
+      return items;
     } catch {
       setOlts([]);
+      return [];
+    } finally {
+      setCargandoOlts(false);
     }
   }, []);
 
-  const load = useCallback(async () => {
-    if (!oltId) return;
-
-    const oltActual = olts.find((olt) => Number(olt.id) === Number(oltId));
-
-    // Si ya cargamos catálogo de OLTs y no existe la seleccionada, no consultamos.
-    if (olts.length > 0 && !oltActual) return;
+  const scan = useCallback(async (id: number, catalogo: OltConfigItem[]) => {
+    const oltActual = catalogo.find((olt) => Number(olt.id) === Number(id));
+    if (!oltActual) return;
 
     const tipoIntegracion = String(oltActual?.tipo_integracion || "vsol_api").toLowerCase();
     const usarApiVsol =
@@ -686,7 +679,7 @@ export default function OltRadarVsolPage() {
 
     try {
       const [monitorData, clientData] = await Promise.all([
-        usarApiVsol ? getOltMonitoreoApi(oltId) : getOltMonitoreoSnmp(oltId),
+        usarApiVsol ? getOltMonitoreoApi(id) : getOltMonitoreoSnmp(id),
         getClientesForOltSearch(),
       ]);
 
@@ -697,10 +690,30 @@ export default function OltRadarVsolPage() {
     } finally {
       setLoading(false);
     }
-  }, [oltId, olts]);
+  }, []);
 
-  useEffect(() => { loadOlts(); }, [loadOlts]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void loadOlts(); }, [loadOlts]);
+
+  const elegirOlt = (id: number) => {
+    setOltId(id);
+    setMonitoreo(null);
+    setSelected(null);
+    setSearch("");
+    setPon("todos");
+    setStatus("todos");
+    void scan(id, olts);
+  };
+
+  const cambiarOlt = () => {
+    setOltId(null);
+    setMonitoreo(null);
+    setSelected(null);
+    setError(null);
+  };
+
+  const load = () => {
+    if (oltId) void scan(oltId, olts);
+  };
 
   useEffect(() => {
     if (selected) document.body.classList.add("olt-sheet-open");
@@ -719,31 +732,33 @@ export default function OltRadarVsolPage() {
     setShowOltModal(true);
   };
 
-  const handleOpenEditOlt = () => {
-    if (!selectedOlt) {
+  const handleOpenEditOlt = (olt: OltConfigItem | undefined = selectedOlt) => {
+    if (!olt) {
       toast.error("Selecciona una OLT primero.");
       return;
     }
 
-    setEditingOlt(selectedOlt);
+    setEditingOlt(olt);
     setShowOltModal(true);
   };
 
   const handleOltSaved = async () => {
+    const editadaEsLaActual = Boolean(editingOlt && oltId && Number(editingOlt.id) === Number(oltId));
     setShowOltModal(false);
     setEditingOlt(null);
-    await loadOlts();
-    await load();
+    const items = await loadOlts();
+    // Solo se vuelve a escanear si se editó la OLT que ya se estaba viendo.
+    if (editadaEsLaActual && oltId) await scan(oltId, items);
   };
 
-  const handleDeleteOlt = async () => {
-    if (!selectedOlt) {
+  const handleDeleteOlt = async (olt: OltConfigItem | undefined = selectedOlt) => {
+    if (!olt) {
       toast.error("Selecciona una OLT primero.");
       return;
     }
 
     const ok = window.confirm(
-      `¿Eliminar la OLT "${selectedOlt.nombre || selectedOlt.ip || selectedOlt.id}"?\n\n` +
+      `¿Eliminar la OLT "${olt.nombre || olt.ip || olt.id}"?\n\n` +
       "Si tiene clientes o cajas NAP vinculadas, el backend puede bloquear la eliminación para proteger tus datos."
     );
 
@@ -752,11 +767,10 @@ export default function OltRadarVsolPage() {
     setDeletingOlt(true);
 
     try {
-      await client.delete(`/olts/${selectedOlt.id}`);
+      await client.delete(`/olts/${olt.id}`);
       toast.success("OLT eliminada correctamente");
 
-      setMonitoreo(null);
-      setSelected(null);
+      if (Number(olt.id) === Number(oltId)) cambiarOlt();
       await loadOlts();
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Error al eliminar OLT"));
@@ -851,41 +865,89 @@ export default function OltRadarVsolPage() {
         </div>
       </div>
 
+      {!selectedOlt ? (
+        <section className="olt-card" aria-label="Elegir OLT">
+          <div className="olt-card__body">
+            <div className="olt-picker__head">
+              <div>
+                <h2 className="olt-picker__title">¿Qué OLT quieres escanear?</h2>
+                <p className="olt-page__subtitle">El escaneo empieza solo cuando eliges una OLT.</p>
+              </div>
+              <button className="olt-btn olt-btn--light" type="button" onClick={handleOpenNewOlt}>
+                + Nueva OLT
+              </button>
+            </div>
+
+            {cargandoOlts && <div className="olt-empty">Cargando OLTs...</div>}
+            {!cargandoOlts && olts.length === 0 && (
+              <div className="olt-empty">No hay OLTs registradas. Agrega una con «+ Nueva OLT».</div>
+            )}
+
+            <div className="olt-picker__grid">
+              {olts.map((olt) => (
+                <article key={olt.id} className="olt-picker__item">
+                  <div className="olt-picker__info">
+                    <strong>{olt.nombre || `OLT ${olt.id}`}</strong>
+                    <div className="olt-mini-info">
+                      <span>{olt.ip || "Sin IP"}</span>
+                      <span>{olt.tecnologia || "GPON"}</span>
+                      <span>{olt.tipo_integracion || "vsol_api"}</span>
+                      {olt.is_active === false && <span>Inactiva</span>}
+                    </div>
+                  </div>
+                  <div className="olt-picker__actions">
+                    <button
+                      className="olt-btn"
+                      type="button"
+                      onClick={() => elegirOlt(Number(olt.id))}
+                      aria-label={`Escanear ${olt.nombre || `OLT ${olt.id}`}`}
+                    >
+                      Escanear
+                    </button>
+                    <button className="olt-btn olt-btn--light" type="button" onClick={() => handleOpenEditOlt(olt)}>
+                      Editar
+                    </button>
+                    <button
+                      className="olt-btn olt-btn--light"
+                      type="button"
+                      onClick={() => void handleDeleteOlt(olt)}
+                      disabled={deletingOlt}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : (
+      <>
       <section className="olt-hero-card">
         <div className="olt-hero-actions">
-          <select className="olt-select" value={oltId} onChange={(event) => setOltId(Number(event.target.value))}>
-            {olts.length === 0 && <option value={1}>OLT ID 1</option>}
-            {olts.map((olt) => (
-              <option key={olt.id} value={olt.id}>
-                {olt.nombre || `OLT ${olt.id}`} {olt.ip ? `· ${olt.ip}` : ""}
-              </option>
-            ))}
-          </select>
+          <div className="olt-picker__info">
+            <span className="olt-picker__label">Escaneando</span>
+            <strong>{selectedOlt.nombre || `OLT ${selectedOlt.id}`}</strong>
+          </div>
 
-          <button className="olt-btn" type="button" onClick={load} disabled={loading}>
-            {loading ? "Actualizando..." : "⟳ Actualizar"}
-          </button>
-
-          <button className="olt-btn olt-btn--light" type="button" onClick={handleOpenNewOlt}>
-            + Nueva OLT
-          </button>
-
-          <button className="olt-btn olt-btn--light" type="button" onClick={handleOpenEditOlt} disabled={!selectedOlt}>
-            Editar OLT
-          </button>
-
-          <button className="olt-btn olt-btn--light" type="button" onClick={handleDeleteOlt} disabled={!selectedOlt || deletingOlt}>
-            {deletingOlt ? "Eliminando..." : "Eliminar OLT"}
-          </button>
+          <div className="olt-picker__actions">
+            <button className="olt-btn" type="button" onClick={load} disabled={loading}>
+              {loading ? "Escaneando..." : "⟳ Volver a escanear"}
+            </button>
+            <button className="olt-btn olt-btn--light" type="button" onClick={cambiarOlt} disabled={loading}>
+              Cambiar OLT
+            </button>
+            <button className="olt-btn olt-btn--light" type="button" onClick={() => handleOpenEditOlt()}>
+              Editar OLT
+            </button>
+          </div>
         </div>
 
-        {selectedOlt && (
-          <div className="olt-mini-info">
-            <span>{selectedOlt.tecnologia || "GPON"}</span>
-            <span>{selectedOlt.ip || "N/A"}</span>
-            <span>{selectedOlt.tipo_integracion || "vsol_api"}</span>
-          </div>
-        )}
+        <div className="olt-mini-info">
+          <span>{selectedOlt.tecnologia || "GPON"}</span>
+          <span>{selectedOlt.ip || "N/A"}</span>
+          <span>{selectedOlt.tipo_integracion || "vsol_api"}</span>
+        </div>
       </section>
 
       <section className="olt-card">
@@ -1068,6 +1130,8 @@ export default function OltRadarVsolPage() {
           </div>
         </div>
       </section>
+      </>
+      )}
 
       {showOltModal && (
         <OltFormModal

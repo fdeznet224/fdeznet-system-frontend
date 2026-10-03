@@ -1200,3 +1200,78 @@ html:not(.dark) .olt-empty {
     background: transparent;
   }
 }
+
+/* Elegir la OLT antes de escanear */
+.olt-picker__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.olt-picker__title {
+  margin: 0;
+  font-size: clamp(18px, 2.2vw, 22px);
+  font-weight: 950;
+  color: var(--olt-text);
+}
+
+.olt-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 12px;
+}
+
+.olt-picker__item {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid var(--olt-border);
+  border-radius: 18px;
+  padding: 16px;
+  background: var(--olt-soft);
+}
+
+.olt-picker__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.olt-picker__info strong {
+  font-size: 16px;
+  font-weight: 950;
+  color: var(--olt-text);
+  overflow-wrap: anywhere;
+}
+
+.olt-picker__info .olt-mini-info {
+  margin-top: 8px;
+}
+
+.olt-picker__label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--olt-muted);
+}
+
+.olt-picker__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.olt-picker__actions .olt-btn {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 640px) {
+  .olt-hero-actions {
+    grid-template-columns: 1fr;
+  }
+}

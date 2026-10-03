@@ -37,6 +37,11 @@ async function mockApi(page: Page) {
         token_type: 'bearer',
         user: { id: 1, usuario: 'admin-e2e', rol: 'admin' },
       }
+    } else if (url.pathname.endsWith('/olts/') && route.request().method() === 'GET') {
+      body = [
+        { id: 1, nombre: 'OLT Centro', ip: '10.0.0.2', tecnologia: 'GPON', tipo_integracion: 'vsol_api', api_enabled: true },
+        { id: 2, nombre: 'OLT Paraíso', ip: '10.0.0.3', tecnologia: 'GPON', tipo_integracion: 'vsol_api', api_enabled: true },
+      ]
     } else if (url.pathname.endsWith('/whatsapp/no-leidos')) {
       body = {}
     } else if (url.pathname.endsWith('/whatsapp/chat/1')) {
@@ -438,13 +443,29 @@ test('carga el panel técnico tipado', async ({ page }) => {
   await expect(page.getByText('Buscar o escanear QR...')).toBeVisible()
 })
 
-test('carga el radar OLT activo con una API vacía', async ({ page }) => {
+test('el radar OLT no escanea hasta elegir la OLT', async ({ page }) => {
+  const escaneos: string[] = []
+  page.on('request', (request) => {
+    if (/\/olts\/\d+\/monitoreo/.test(request.url())) escaneos.push(request.url())
+  })
   await authenticateAs(page)
   await mockApi(page)
   await page.goto('/admin/radar')
 
   await expect(page.getByRole('heading', { name: 'Radar OLT / Fibra' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '¿Qué OLT quieres escanear?' })).toBeVisible()
+  await expect(page.getByText('OLT Paraíso')).toBeVisible()
+  expect(escaneos).toHaveLength(0)
+
+  await page.getByRole('button', { name: 'Escanear OLT Paraíso' }).click()
+  await expect(page.getByText('Escaneando', { exact: true })).toBeVisible()
   await expect(page.locator('.olt-empty:visible')).toHaveText('Sin resultados.')
+  expect(escaneos).toHaveLength(1)
+  expect(escaneos[0]).toContain('/olts/2/monitoreo')
+
+  await page.getByRole('button', { name: 'Cambiar OLT' }).click()
+  await expect(page.getByRole('heading', { name: '¿Qué OLT quieres escanear?' })).toBeVisible()
+  expect(escaneos).toHaveLength(1)
 })
 
 test('carga el panel principal con sus contratos tipados', async ({ page }) => {
