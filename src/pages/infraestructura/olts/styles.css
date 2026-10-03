@@ -1275,3 +1275,37 @@ html:not(.dark) .olt-empty {
     grid-template-columns: 1fr;
   }
 }
+
+/* Causa de la última caída y acciones de la ONU */
+.olt-causa {
+  margin: 10px 0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 13px;
+  border: 1px solid var(--olt-border);
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--olt-text);
+}
+
+.olt-causa--corte_luz { border-color: #fcd34d; background: #fef3c7; color: #78350f; }
+.olt-causa--fibra { border-color: #fda4af; background: #ffe4e6; color: #881337; }
+.dark .olt-causa--corte_luz { background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.35); color: #fde68a; }
+.dark .olt-causa--fibra { background: rgba(244, 63, 94, 0.14); border-color: rgba(244, 63, 94, 0.35); color: #fecdd3; }
+
+.olt-causa-lista { margin-top: 6px; }
+
+.olt-historial-caidas {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.olt-historial-caidas .olt-causa { margin: 6px 0; }
+
+.olt-sheet-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.olt-sheet-actions .olt-btn { flex: 1 1 auto; }

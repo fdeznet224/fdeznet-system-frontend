@@ -21,6 +21,7 @@ import {
   type OltMonitoreoApi,
   type OltMonitoreoCliente,
   type OltOnuApiItem,
+  type OltOnuDetalle,
   type OltSavePayload,
 } from "./types";
 import "./styles.css";
@@ -67,6 +68,37 @@ function StatusPill({ onu }: { onu: OltOnuApiItem }) {
       {online ? "● Online" : "● Offline"}
     </span>
   );
+}
+
+// Causa de la última caída según la OLT: separa los cortes de luz del
+// cliente de los problemas de fibra, que sí requieren técnico.
+function CausaCaidaPill({ onu }: { onu: OltOnuApiItem }) {
+  const causa = onu.causa_ultima_caida;
+  if (!causa) return null;
+  const etiqueta = causa.tipo === "corte_luz" ? "⚡ Sin luz eléctrica" : causa.tipo === "fibra" ? "✂ Posible falla de fibra" : causa.original;
+  const clase = causa.tipo === "fibra" ? "olt-pill--critical" : "olt-pill--warning";
+  return <span className={`olt-pill ${clase}`} title={causa.detalle}>{etiqueta}</span>;
+}
+
+/** PON y número de ONU a partir de "GPON0/1:3". */
+function ubicacionOnu(onu: OltOnuApiItem): { pon: number; onuid: number } | null {
+  const texto = String(onu.onu_id || "");
+  const numero = Number(texto.split(":").pop());
+  const pon = Number(onu.pon_id ?? (texto.match(/\/(\d+):/) || [])[1]);
+  return Number.isInteger(pon) && pon > 0 && Number.isInteger(numero) && numero > 0 ? { pon, onuid: numero } : null;
+}
+
+function formatearDuracion(segundos: number | null): string {
+  if (!segundos) return "N/A";
+  const dias = Math.floor(segundos / 86400);
+  const horas = Math.floor((segundos % 86400) / 3600);
+  const minutos = Math.floor((segundos % 3600) / 60);
+  return dias > 0 ? `${dias} d ${horas} h` : horas > 0 ? `${horas} h ${minutos} min` : `${minutos} min`;
+}
+
+function formatearDistancia(metros: number | null): string {
+  if (!metros) return "N/A";
+  return metros >= 1000 ? `${(metros / 1000).toFixed(2)} km` : `${metros} m`;
 }
 
 function PowerPill({ rx }: { rx?: string }) {
@@ -188,14 +220,54 @@ function TopologyMini({ row, oltName }: { row: RadarRow; oltName?: string }) {
 
 function BottomSheetDetail({
   row,
+  oltId,
   oltName,
   onClose,
 }: {
   row: RadarRow;
+  oltId: number;
   oltName?: string;
   onClose: () => void;
 }) {
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const ubicacion = useMemo(() => ubicacionOnu(row.onu), [row.onu]);
+  const online = isOnuOnline(row.onu);
+  const [detalle, setDetalle] = useState<OltOnuDetalle | null>(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+  const [errorDetalle, setErrorDetalle] = useState<string | null>(null);
+  const [reiniciando, setReiniciando] = useState(false);
+
+  useEffect(() => {
+    if (!ubicacion) return;
+    let activo = true;
+    setCargandoDetalle(true);
+    setErrorDetalle(null);
+    client
+      .get<{ data: OltOnuDetalle }>(`/olts/${oltId}/onus/${ubicacion.pon}/${ubicacion.onuid}/detalle`)
+      .then((respuesta) => { if (activo) setDetalle(respuesta.data.data); })
+      .catch((error: unknown) => { if (activo) setErrorDetalle(getErrorMessage(error, "No se pudo leer la ONU")); })
+      .finally(() => { if (activo) setCargandoDetalle(false); });
+    return () => { activo = false; };
+  }, [oltId, ubicacion]);
+
+  const reiniciar = async () => {
+    if (!ubicacion || !row.serial) return;
+    const nombre = row.client?.nombre || row.owner?.nombre || "sin cliente";
+    const ok = window.confirm(
+      `¿Reiniciar la ONU ${row.serial} (${nombre})?\n\n` +
+      "Es un reinicio normal, no borra su configuración. El cliente se queda sin internet 1 a 2 minutos."
+    );
+    if (!ok) return;
+    setReiniciando(true);
+    try {
+      await client.post(`/olts/${oltId}/onus/${ubicacion.pon}/${ubicacion.onuid}/reiniciar`, { serial: row.serial });
+      toast.success("La ONU se está reiniciando; vuelve en 1 a 2 minutos.");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "No se pudo reiniciar la ONU"));
+    } finally {
+      setReiniciando(false);
+    }
+  };
 
   const closeOnSwipe = (event: TouchEvent<HTMLDivElement>) => {
     if (touchStartY === null) return;
@@ -244,6 +316,49 @@ function BottomSheetDetail({
           <div className="olt-sheet-status-row">
             <StatusPill onu={row.onu} />
             <PowerPill rx={row.onu.rx_power} />
+            <CausaCaidaPill onu={row.onu} />
+          </div>
+
+          {row.onu.causa_ultima_caida && (
+            <div className={`olt-causa olt-causa--${row.onu.causa_ultima_caida.tipo}`}>
+              <strong>Última caída:</strong> {row.onu.causa_ultima_caida.detalle}
+              {row.onu.last_deregister_time && row.onu.last_deregister_time !== "N/A" ? ` · ${row.onu.last_deregister_time}` : ""}
+            </div>
+          )}
+
+          <h4 className="olt-section-title">Diagnóstico en la OLT</h4>
+          {cargandoDetalle && <div className="olt-empty">Consultando la ONU...</div>}
+          {errorDetalle && <div className="olt-alert">{errorDetalle}</div>}
+          {detalle && (
+            <div className="olt-sheet-info-grid">
+              <DetailField label="Distancia a la OLT" value={formatearDistancia(detalle.distancia_m)} />
+              <DetailField label="Encendida desde hace" value={formatearDuracion(detalle.encendida_segundos)} />
+              <DetailField label="Temperatura" value={detalle.temperatura_c ? `${detalle.temperatura_c} °C` : "N/A"} />
+              <DetailField label="Voltaje" value={detalle.voltaje_v ? `${detalle.voltaje_v} V` : "N/A"} />
+              <DetailField label="Rango RX aceptado" value={detalle.rx_minimo_dbm != null && detalle.rx_maximo_dbm != null ? `${detalle.rx_minimo_dbm} a ${detalle.rx_maximo_dbm} dBm` : "N/A"} />
+              <DetailField label="Firmware" value={detalle.firmware || "N/A"} />
+            </div>
+          )}
+          {detalle && detalle.historial_caidas.length > 0 && (
+            <ul className="olt-historial-caidas">
+              {detalle.historial_caidas.map((caida, index) => (
+                <li key={`${caida.fecha}-${index}`} className={`olt-causa olt-causa--${caida.tipo}`}>
+                  <strong>{caida.fecha || "Sin fecha"}</strong> · {caida.detalle}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="olt-sheet-actions">
+            <button
+              className="olt-btn"
+              type="button"
+              onClick={() => void reiniciar()}
+              disabled={reiniciando || !ubicacion || !row.serial || !online}
+              title={!online ? "La ONU está apagada o sin señal: no se puede reiniciar" : undefined}
+            >
+              {reiniciando ? "Reiniciando..." : "⟳ Reiniciar ONU"}
+            </button>
           </div>
 
           <h4 className="olt-section-title">Topología</h4>
@@ -1048,7 +1163,10 @@ export default function OltRadarVsolPage() {
 
                   return (
                     <tr key={`${row.serial}-${row.onu.onu_id}-${index}`}>
-                      <td><StatusPill onu={row.onu} /></td>
+                      <td>
+                        <StatusPill onu={row.onu} />
+                        {!isOnuOnline(row.onu) && <div className="olt-causa-lista"><CausaCaidaPill onu={row.onu} /></div>}
+                      </td>
                       <td><strong>{row.onu.onu_id || "N/A"}</strong></td>
                       <td>{row.serial || "N/A"}</td>
                       <td>
@@ -1122,6 +1240,7 @@ export default function OltRadarVsolPage() {
                       <span>RX {parsePower(row.onu.rx_power) !== null ? `${row.onu.rx_power} dBm` : "N/A"}</span>
                       <span>TX {parsePower(row.onu.tx_power) !== null ? `${row.onu.tx_power} dBm` : "N/A"}</span>
                       <PowerPill rx={row.onu.rx_power} />
+                      {!online && <CausaCaidaPill onu={row.onu} />}
                     </div>
                   </article>
                 );
@@ -1147,6 +1266,7 @@ export default function OltRadarVsolPage() {
       {selected && (
         <BottomSheetDetail
           row={selected}
+          oltId={Number(oltId)}
           oltName={selectedOlt?.nombre}
           onClose={() => setSelected(null)}
         />

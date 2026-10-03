@@ -37,6 +37,38 @@ async function mockApi(page: Page) {
         token_type: 'bearer',
         user: { id: 1, usuario: 'admin-e2e', rol: 'admin' },
       }
+    } else if (url.pathname.endsWith('/olts/2/monitoreo-api')) {
+      body = {
+        status: 'success',
+        data: {
+          clientes_activos: [],
+          clientes_caidos: [],
+          onus_api: [
+            {
+              onu_id: 'GPON0/1:3', pon_id: '1', serial: 'HWTC0000AAAA', identificador: 'HWTC0000AAAA',
+              estado_fisico: 'online', status: 'online', rx_power: '-19.96', tx_power: '2.33', modelo: 'HG8145V5',
+              causa_ultima_caida: { tipo: 'corte_luz', detalle: 'Se quedó sin luz eléctrica (apagón o la desconectaron)', original: 'Power Off' },
+            },
+            {
+              onu_id: 'GPON0/1:4', pon_id: '1', serial: 'HWTC0000BBBB', identificador: 'HWTC0000BBBB',
+              estado_fisico: 'offline', status: 'offline', modelo: 'unknown',
+              causa_ultima_caida: { tipo: 'fibra', detalle: 'Perdió la señal de la fibra', original: 'ONU Signal LOS' },
+            },
+          ],
+        },
+      }
+    } else if (url.pathname.endsWith('/olts/2/onus/1/3/detalle')) {
+      body = {
+        status: 'success',
+        data: {
+          pon: 1, onuid: 3, distancia_m: 1440, temperatura_c: 40, voltaje_v: 3.32, corriente_laser_ma: 10,
+          rx_dbm: -19.96, tx_dbm: 2.33, rx_minimo_dbm: -25, rx_maximo_dbm: -8, encendida_segundos: 89035,
+          firmware: 'V5R022C00S266', version_hardware: '2C6D.A', estado_operativo: 'enable', estado_admin: 'unlock',
+          historial_caidas: [{ fecha: '2026/10/01 21:10:05', tipo: 'corte_luz', detalle: 'Se quedó sin luz eléctrica', original: 'Power Off' }],
+        },
+      }
+    } else if (url.pathname.endsWith('/olts/2/onus/1/3/reiniciar')) {
+      body = { status: 'success', data: { reiniciada: true } }
     } else if (url.pathname.endsWith('/olts/') && route.request().method() === 'GET') {
       body = [
         { id: 1, nombre: 'OLT Centro', ip: '10.0.0.2', tecnologia: 'GPON', tipo_integracion: 'vsol_api', api_enabled: true },
@@ -457,15 +489,40 @@ test('el radar OLT no escanea hasta elegir la OLT', async ({ page }) => {
   await expect(page.getByText('OLT Paraíso')).toBeVisible()
   expect(escaneos).toHaveLength(0)
 
-  await page.getByRole('button', { name: 'Escanear OLT Paraíso' }).click()
+  await page.getByRole('button', { name: 'Escanear OLT Centro' }).click()
   await expect(page.getByText('Escaneando', { exact: true })).toBeVisible()
   await expect(page.locator('.olt-empty:visible')).toHaveText('Sin resultados.')
   expect(escaneos).toHaveLength(1)
-  expect(escaneos[0]).toContain('/olts/2/monitoreo')
+  expect(escaneos[0]).toContain('/olts/1/monitoreo')
 
   await page.getByRole('button', { name: 'Cambiar OLT' }).click()
   await expect(page.getByRole('heading', { name: '¿Qué OLT quieres escanear?' })).toBeVisible()
   expect(escaneos).toHaveLength(1)
+})
+
+test('el radar muestra la causa de la caída, el diagnóstico y reinicia la ONU', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.goto('/admin/radar')
+  await page.getByRole('button', { name: 'Escanear OLT Paraíso' }).click()
+
+  // La ONU caída avisa que es problema de fibra, no de luz.
+  await expect(page.locator('.olt-pill:visible', { hasText: '✂ Posible falla de fibra' }).first()).toBeVisible()
+
+  await page.locator('button:visible', { hasText: 'Ver datos' }).first().click()
+  await expect(page.getByText('Distancia a la OLT')).toBeVisible()
+  await expect(page.getByText('1.44 km')).toBeVisible()
+  await expect(page.getByText('24 h 43 min').or(page.getByText('1 d 0 h'))).toBeVisible()
+  await expect(page.getByText('Última caída:')).toBeVisible()
+
+  const reinicio = page.waitForRequest((request) => (
+    request.url().includes('/olts/2/onus/1/3/reiniciar') && request.method() === 'POST'
+  ))
+  page.once('dialog', (dialog) => void dialog.accept())
+  await page.getByRole('button', { name: '⟳ Reiniciar ONU' }).click()
+  const peticion = await reinicio
+  expect(peticion.postDataJSON()).toEqual({ serial: 'HWTC0000AAAA' })
+  await expect(page.getByText('La ONU se está reiniciando')).toBeVisible()
 })
 
 test('carga el panel principal con sus contratos tipados', async ({ page }) => {

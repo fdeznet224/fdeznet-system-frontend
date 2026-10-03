@@ -51,6 +51,7 @@ export interface OltOnuApiItem {
   last_register_time?: string;
   last_deregister_time?: string;
   last_deregister_reason?: string;
+  causa_ultima_caida?: OltCausaCaida | null;
   rx_power?: string;
   tx_power?: string;
   rx_state?: string;
@@ -191,4 +192,29 @@ export function isOnuOnline(onu?: Pick<OltOnuApiItem, "estado_fisico" | "status"
   const status = String(onu.estado_fisico || onu.status || "").toLowerCase();
   const phase = String(onu.phase_state || "").toLowerCase();
   return status === "online" || phase === "working" || parsePower(onu.rx_power) !== null;
+}
+
+export interface OltCausaCaida {
+  tipo: "corte_luz" | "fibra" | "otra";
+  detalle: string;
+  original: string;
+}
+
+export interface OltOnuDetalle {
+  pon: number;
+  onuid: number;
+  distancia_m: number | null;
+  temperatura_c: number | null;
+  voltaje_v: number | null;
+  corriente_laser_ma: number | null;
+  rx_dbm: number | null;
+  tx_dbm: number | null;
+  rx_minimo_dbm: number | null;
+  rx_maximo_dbm: number | null;
+  encendida_segundos: number | null;
+  firmware: string | null;
+  version_hardware: string | null;
+  estado_operativo: string | null;
+  estado_admin: string | null;
+  historial_caidas: Array<OltCausaCaida & { fecha?: string | null }>;
 }
