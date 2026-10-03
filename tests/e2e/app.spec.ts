@@ -655,6 +655,20 @@ test('carga facturas y su resumen financiero', async ({ page }) => {
   await expect(page.getByText('Pendiente (1)')).toBeVisible()
 })
 
+test('busca facturas por nombre o contrato en todas las fechas', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.goto('/admin/facturas')
+
+  const peticion = page.waitForRequest((request) => (
+    request.url().includes('/finanzas/listado-completo')
+    && new URL(request.url()).searchParams.get('busqueda') === 'BD0F'
+  ))
+  await page.getByRole('searchbox', { name: 'Buscar factura por nombre, contrato o folio' }).fill('BD0F')
+  await peticion
+  await expect(page.getByText('Buscando «BD0F» en todas las fechas')).toBeVisible()
+})
+
 test('muestra la configuración activa del motor WhatsApp', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)

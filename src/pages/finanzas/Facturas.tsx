@@ -20,6 +20,7 @@ interface Factura extends PaymentInvoice {
     fecha_anulacion?: string | null;
     cliente?: {
         nombre?: string | null;
+        cedula?: string | null;
         ip_asignada?: string | null;
     } | null;
     servicio?: {
@@ -89,8 +90,11 @@ export default function Facturas() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedFactura, setSelectedFactura] = useState<Factura | null>(null);
     const [filtros, setFiltros] = useState<FacturaFilters>({ ...INITIAL_FILTERS });
+    // Nombre, contrato o folio: busca en todas las fechas.
+    const [busqueda, setBusqueda] = useState('');
+    const busquedaActiva = busqueda.trim();
 
-    const fetchFacturas = useCallback(async (activeFilters: FacturaFilters) => {
+    const fetchFacturas = useCallback(async (activeFilters: FacturaFilters, texto = '') => {
         setLoading(true);
         try {
             const res = await client.get<FacturasResponse>('/finanzas/listado-completo', {
@@ -99,7 +103,8 @@ export default function Facturas() {
                     end_date: activeFilters.fin,
                     tipo_fecha: activeFilters.tipoFecha,
                     estado: activeFilters.estado,
-                    router_id: activeFilters.routerId || undefined
+                    router_id: activeFilters.routerId || undefined,
+                    busqueda: texto || undefined,
                 }
             });
             setFacturas(res.data.items);
@@ -134,7 +139,7 @@ export default function Facturas() {
                 nueva_fecha_facturacion: nuevaFecha || null,
             });
             toast.success('Factura anulada correctamente', { id: toastId });
-            await fetchFacturas(filtros);
+            await fetchFacturas(filtros, busquedaActiva);
         } catch (error: unknown) {
             const detail = (error as { response?: { data?: { detail?: string } } })
                 ?.response?.data?.detail;
@@ -151,6 +156,18 @@ export default function Facturas() {
         }, 0);
         return () => window.clearTimeout(initialLoad);
     }, [fetchFacturas]);
+
+    // Busca mientras se escribe (desde 2 letras) y vuelve al mes al borrar.
+    const [busquedaAplicada, setBusquedaAplicada] = useState('');
+    useEffect(() => {
+        if (busquedaActiva === busquedaAplicada) return;
+        if (busquedaActiva && busquedaActiva.length < 2) return;
+        const timer = window.setTimeout(() => {
+            setBusquedaAplicada(busquedaActiva);
+            void fetchFacturas(filtros, busquedaActiva);
+        }, 400);
+        return () => window.clearTimeout(timer);
+    }, [busquedaActiva, busquedaAplicada, fetchFacturas, filtros]);
 
     return (
         <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 h-[calc(100dvh-80px)] md:h-[calc(100vh-100px)] overflow-hidden transition-colors duration-300">
@@ -190,6 +207,31 @@ export default function Facturas() {
                     <ResumenCard label="Anulado" cantidad={resumen.anuladas_cant} total={resumen.anuladas_total} color="slate" />
                 </div>
             )}
+
+            {/* BUSCADOR (Fijo) */}
+            <div className="flex-none shrink-0">
+                <div className="relative">
+                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="search"
+                        value={busqueda}
+                        onChange={e => setBusqueda(e.target.value)}
+                        placeholder="Buscar por nombre, contrato o folio"
+                        aria-label="Buscar factura por nombre, contrato o folio"
+                        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm text-slate-800 shadow-sm outline-none transition-colors focus:border-blue-500 dark:border-slate-700 dark:bg-[#1a1f2e] dark:text-white"
+                    />
+                    {busqueda && (
+                        <button onClick={() => setBusqueda('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white" title="Borrar búsqueda">
+                            <XCircleIcon className="h-5 w-5" />
+                        </button>
+                    )}
+                </div>
+                {busquedaAplicada && (
+                    <p className="mt-1 px-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        Buscando «{busquedaAplicada}» en todas las fechas · {facturas.length} factura{facturas.length === 1 ? '' : 's'}
+                    </p>
+                )}
+            </div>
 
             {/* FILTROS MÓVIL DESPLEGABLES (Fijo cuando se abre) */}
             {mostrarFiltrosMovil && (
@@ -232,7 +274,7 @@ export default function Facturas() {
                             <option value="anulada">❌ Anuladas</option>
                         </select>
                     </div>
-                    <button onClick={() => void fetchFacturas(filtros)} className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl flex items-center justify-center gap-2 font-black text-sm transition active:scale-95 shadow-md mt-2">
+                    <button onClick={() => void fetchFacturas(filtros, busquedaActiva)} className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl flex items-center justify-center gap-2 font-black text-sm transition active:scale-95 shadow-md mt-2">
                         {loading ? <ArrowPathIcon className="w-5 h-5 animate-spin"/> : <MagnifyingGlassIcon className="w-5 h-5" />}
                         Aplicar Filtros
                     </button>
@@ -275,7 +317,7 @@ export default function Facturas() {
                         <option value="anulada">❌ Anuladas</option>
                     </select>
                 </div>
-                <button onClick={() => void fetchFacturas(filtros)} className="w-full bg-blue-600 hover:bg-blue-500 text-white h-[36px] rounded-xl flex items-center justify-center gap-2 font-black text-xs transition active:scale-95 shadow-md">
+                <button onClick={() => void fetchFacturas(filtros, busquedaActiva)} className="w-full bg-blue-600 hover:bg-blue-500 text-white h-[36px] rounded-xl flex items-center justify-center gap-2 font-black text-xs transition active:scale-95 shadow-md">
                     {loading ? <ArrowPathIcon className="w-4 h-4 animate-spin"/> : <MagnifyingGlassIcon className="w-4 h-4" />}
                     Filtrar
                 </button>
@@ -300,13 +342,15 @@ export default function Facturas() {
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                             {loading && facturas.length === 0 ? (
                                 <tr><td colSpan={6} className="p-8 text-center"><ArrowPathIcon className="w-6 h-6 animate-spin mx-auto text-blue-500"/></td></tr>
+                            ) : facturas.length === 0 ? (
+                                <tr><td colSpan={6} className="p-8 text-center font-bold text-slate-500">No se encontraron facturas.</td></tr>
                             ) : facturas.map(f => {
                                 const isVencida = new Date(f.fecha_vencimiento) < new Date() && f.estado === 'pendiente';
                                 return (
                                     <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition group bg-transparent">
                                         <td className="p-4 font-mono text-slate-400">#{f.id.toString().padStart(6, '0')}</td>
                                         <td className="p-4">
-                                            <div className="font-black text-slate-800 dark:text-white text-sm">{f.cliente?.nombre}</div>
+                                            <div className="font-black text-slate-800 dark:text-white text-sm">{f.cliente?.nombre}{f.cliente?.cedula && <span className="ml-2 font-mono text-[10px] font-bold text-slate-500">Contrato {f.cliente.cedula}</span>}</div>
                                             <div className="text-[10px] text-slate-500 font-mono">
                                                 {f.servicio ? `${f.servicio.alias} · #${f.servicio.id}` : 'Servicio principal'} · {f.cliente?.ip_asignada}
                                             </div>
@@ -376,6 +420,7 @@ export default function Facturas() {
                                         <div>
                                             <span className="text-[10px] font-mono font-black text-slate-400 dark:text-slate-500">#{f.id.toString().padStart(6, '0')}</span>
                                             <h3 className="font-black text-slate-900 dark:text-white text-base mt-0.5 leading-tight">{f.cliente?.nombre}</h3>
+                                            {f.cliente?.cedula && <span className="text-[10px] font-mono font-bold text-slate-500">Contrato {f.cliente.cedula}</span>}
                                             <span className="text-[10px] text-slate-500 font-mono mt-1 block">
                                                 {f.servicio ? `${f.servicio.alias} · Servicio #${f.servicio.id}` : 'Servicio principal'} · {f.cliente?.ip_asignada}
                                             </span>
@@ -439,7 +484,7 @@ export default function Facturas() {
             </div>
 
             {selectedFactura && (
-                <PaymentModal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} factura={selectedFactura} onSuccess={() => void fetchFacturas(filtros)} />
+                <PaymentModal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} factura={selectedFactura} onSuccess={() => void fetchFacturas(filtros, busquedaActiva)} />
             )}
         </div>
     );
