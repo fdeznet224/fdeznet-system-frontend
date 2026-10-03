@@ -1309,3 +1309,8 @@ html:not(.dark) .olt-empty {
 }
 
 .olt-sheet-actions .olt-btn { flex: 1 1 auto; }
+
+.olt-pill--reinicio { color: #1e3a8a; background: #dbeafe; border: 1px solid #93c5fd; }
+.dark .olt-pill--reinicio { color: #bfdbfe; background: rgba(59, 130, 246, 0.16); border-color: rgba(59, 130, 246, 0.35); }
+.olt-causa--reinicio { border-color: #93c5fd; background: #eff6ff; color: #1e3a8a; }
+.dark .olt-causa--reinicio { background: rgba(59, 130, 246, 0.14); border-color: rgba(59, 130, 246, 0.35); color: #bfdbfe; }

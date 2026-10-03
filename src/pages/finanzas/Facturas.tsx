@@ -117,6 +117,57 @@ export default function Facturas() {
         }
     }, []);
 
+    const [descargandoId, setDescargandoId] = useState<number | null>(null);
+    const [emitiendo, setEmitiendo] = useState(false);
+
+    const descargarPdf = async (factura: Factura) => {
+        setDescargandoId(factura.id);
+        try {
+            const res = await client.get<Blob>(`/finanzas/facturas/${factura.id}/pdf`, { responseType: 'blob' });
+            const url = URL.createObjectURL(res.data);
+            const enlace = document.createElement('a');
+            enlace.href = url;
+            enlace.download = `factura-${factura.id.toString().padStart(6, '0')}.pdf`;
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+        } catch {
+            toast.error('No se pudo generar el PDF');
+        } finally {
+            setDescargandoId(null);
+        }
+    };
+
+    // Lo mismo que hace el proceso automático diario: solo emite las facturas
+    // que ya tocan y no existen; nunca adelanta meses.
+    const emisionMasiva = async () => {
+        const ok = window.confirm(
+            'Emisión masiva\n\nGenera ahora las facturas que ya tocan y que todavía no se emitieron ' +
+            '(lo mismo que hace el proceso automático cada día). No adelanta meses ni duplica facturas.\n\n¿Continuar?'
+        );
+        if (!ok) return;
+        setEmitiendo(true);
+        const toastId = toast.loading('Emitiendo facturas…');
+        try {
+            const res = await client.post<{ detalles?: Record<string, number> }>('/finanzas/generar-masivo');
+            const d = res.data.detalles || {};
+            const generadas = d.facturas_generadas ?? 0;
+            toast.success(
+                generadas > 0
+                    ? `${generadas} factura${generadas === 1 ? '' : 's'} emitida${generadas === 1 ? '' : 's'}`
+                    : 'No había facturas pendientes de emitir: ya estaban al día',
+                { id: toastId, duration: 6000 },
+            );
+            await fetchFacturas(filtros, busquedaActiva);
+        } catch (error: unknown) {
+            const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+            toast.error(detail || 'No se pudo hacer la emisión masiva', { id: toastId });
+        } finally {
+            setEmitiendo(false);
+        }
+    };
+
     const handleAnular = async (factura: Factura) => {
         const motivo = window.prompt('Motivo de la anulación (mínimo 5 caracteres):');
         if (!motivo) return;
@@ -190,10 +241,12 @@ export default function Facturas() {
                     </button>
 
                     <button
-                        onClick={() => { /* lógica masiva */ }}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2.5 md:px-4 md:py-2.5 rounded-xl font-extrabold shadow-md active:scale-95 transition text-[10px] md:text-sm tracking-wide uppercase md:normal-case"
+                        onClick={() => void emisionMasiva()}
+                        disabled={emitiendo}
+                        title="Emite ahora las facturas que ya tocan y no se han emitido"
+                        className="disabled:opacity-60 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2.5 md:px-4 md:py-2.5 rounded-xl font-extrabold shadow-md active:scale-95 transition text-[10px] md:text-sm tracking-wide uppercase md:normal-case"
                     >
-                        <span>Emisión Masiva</span>
+                        <span>{emitiendo ? 'Emitiendo…' : 'Emisión Masiva'}</span>
                     </button>
                 </div>
             </div>
@@ -392,7 +445,7 @@ export default function Facturas() {
                                                 {!['anulada', 'sin_cargo'].includes(f.estado) && (
                                                     <button onClick={() => void handleAnular(f)} className="text-rose-600 hover:text-white hover:bg-rose-600 p-2 rounded-lg transition border border-rose-200 dark:border-rose-500/20" title="Anular factura"><XCircleIcon className="w-4 h-4" /></button>
                                                 )}
-                                                <button className="text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 p-2 rounded-lg border border-slate-200 dark:border-slate-700 transition" title="PDF"><PrinterIcon className="w-4 h-4" /></button>
+                                                <button onClick={() => void descargarPdf(f)} disabled={descargandoId === f.id} className="text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 p-2 rounded-lg border border-slate-200 dark:border-slate-700 transition disabled:opacity-50" title="Descargar PDF" aria-label={`Descargar PDF de la factura ${f.id}`}>{descargandoId === f.id ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : <PrinterIcon className="w-4 h-4" />}</button>
                                             </div>
                                         </td>
                                     </tr>
@@ -472,8 +525,8 @@ export default function Facturas() {
                                                 <XCircleIcon className="w-5 h-5"/> Anular
                                             </button>
                                         )}
-                                        <button className="flex-1 bg-slate-50 dark:bg-[#0f1219] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
-                                            <PrinterIcon className="w-5 h-5"/> PDF
+                                        <button onClick={() => void descargarPdf(f)} disabled={descargandoId === f.id} className="flex-1 bg-slate-50 dark:bg-[#0f1219] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm disabled:opacity-50">
+                                            {descargandoId === f.id ? <ArrowPathIcon className="w-5 h-5 animate-spin"/> : <PrinterIcon className="w-5 h-5"/>} PDF
                                         </button>
                                     </div>
                                 </div>

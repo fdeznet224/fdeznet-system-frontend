@@ -195,7 +195,7 @@ export function isOnuOnline(onu?: Pick<OltOnuApiItem, "estado_fisico" | "status"
 }
 
 export interface OltCausaCaida {
-  tipo: "corte_luz" | "fibra" | "otra";
+  tipo: "corte_luz" | "fibra" | "reinicio" | "otra";
   detalle: string;
   original: string;
 }

@@ -75,8 +75,13 @@ function StatusPill({ onu }: { onu: OltOnuApiItem }) {
 function CausaCaidaPill({ onu }: { onu: OltOnuApiItem }) {
   const causa = onu.causa_ultima_caida;
   if (!causa) return null;
-  const etiqueta = causa.tipo === "corte_luz" ? "⚡ Sin luz eléctrica" : causa.tipo === "fibra" ? "✂ Posible falla de fibra" : causa.original;
-  const clase = causa.tipo === "fibra" ? "olt-pill--critical" : "olt-pill--warning";
+  const etiqueta = {
+    corte_luz: "⚡ Sin luz eléctrica",
+    fibra: "✂ Posible falla de fibra",
+    reinicio: "⟳ Reiniciada desde el sistema",
+    otra: causa.original,
+  }[causa.tipo] ?? causa.original;
+  const clase = causa.tipo === "fibra" ? "olt-pill--critical" : causa.tipo === "reinicio" ? "olt-pill--reinicio" : "olt-pill--warning";
   return <span className={`olt-pill ${clase}`} title={causa.detalle}>{etiqueta}</span>;
 }
 

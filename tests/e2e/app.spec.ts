@@ -733,6 +733,29 @@ test('carga facturas y su resumen financiero', async ({ page }) => {
   await expect(page.getByText('Pendiente (1)')).toBeVisible()
 })
 
+test('descarga el PDF de una factura y hace la emisión masiva', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/finanzas/facturas/42/pdf', (route) => route.fulfill({
+    status: 200, contentType: 'application/pdf', body: '%PDF-1.4 prueba',
+  }))
+  await page.route('**/api/finanzas/generar-masivo', (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ mensaje: 'ok', detalles: { facturas_generadas: 3 } }),
+  }))
+  await page.goto('/admin/facturas')
+
+  const descarga = page.waitForEvent('download')
+  await page.locator('button:visible', { hasText: 'PDF' }).or(page.getByRole('button', { name: 'Descargar PDF de la factura 42' })).first().click()
+  expect((await descarga).suggestedFilename()).toBe('factura-000042.pdf')
+
+  page.once('dialog', (dialog) => void dialog.accept())
+  const emision = page.waitForRequest((request) => request.url().includes('/finanzas/generar-masivo') && request.method() === 'POST')
+  await page.getByRole('button', { name: 'Emisión Masiva' }).click()
+  await emision
+  await expect(page.getByText('3 facturas emitidas')).toBeVisible()
+})
+
 test('busca facturas por nombre o contrato en todas las fechas', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)
