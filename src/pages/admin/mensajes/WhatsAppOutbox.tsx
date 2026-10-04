@@ -333,12 +333,13 @@ export default function WhatsAppOutbox() {
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
         <SummaryCard label="Total" value={data?.resumen.total || 0} icon={PaperAirplaneIcon} />
+        {/* Las tarjetas de estado suman el Total (En cola ya incluye "procesando"). */}
         <SummaryCard label="En cola" value={(data?.resumen.pendiente || 0) + (data?.resumen.procesando || 0)} icon={QueueListIcon} />
+        <SummaryCard label="Enviados" value={data?.resumen.enviado || 0} icon={PaperAirplaneIcon} />
         <SummaryCard label="Entregados" value={data?.resumen.entregado || 0} icon={CheckCircleIcon} />
         <SummaryCard label="Leídos" value={data?.resumen.leido || 0} icon={CheckCircleIcon} />
         <SummaryCard label="Fallidos" value={data?.resumen.fallido || 0} icon={ExclamationTriangleIcon} danger />
         <SummaryCard label="Inciertos" value={data?.resumen.incierto || 0} icon={ClockIcon} warning />
-        <SummaryCard label="Procesando" value={data?.resumen.procesando || 0} icon={ArrowPathIcon} />
         <SummaryCard label="Cola actual" value={data?.cola_memoria || 0} icon={QueueListIcon} />
       </section>
 
