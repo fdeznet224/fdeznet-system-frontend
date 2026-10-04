@@ -640,6 +640,25 @@ test('impide que el cajero abra las herramientas técnicas', async ({ page }) =>
   await expect(page.getByText('Recaudado Hoy')).toBeVisible()
 })
 
+test('si la red falla un momento al volver a la app, la lista se carga sin error', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  let fallos = 0
+  // Como el celular al regresar de otra app: la primera consulta sale sin red.
+  await page.route('**/api/clientes/listado-completo-unificado', async (route) => {
+    if (fallos === 0) {
+      fallos += 1
+      return route.abort('internetdisconnected')
+    }
+    return route.fallback()
+  })
+  await page.goto('/admin/clientes')
+
+  await expect(page.locator(':is(td, article):visible', { hasText: 'Cliente E2E' }).first()).toBeVisible({ timeout: 10000 })
+  await expect(page.getByText('Error al cargar datos')).toHaveCount(0)
+  expect(fallos).toBe(1)
+})
+
 test('el supervisor entra a clientes y no ve inventario', async ({ page }) => {
   await authenticateAs(page, 'supervisor')
   await mockApi(page)
