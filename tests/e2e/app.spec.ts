@@ -701,6 +701,28 @@ test('un error de validación al guardar un cliente se muestra sin romper la pan
   await expect(page.getByRole('button', { name: 'Guardar Datos' })).toBeVisible()
 })
 
+test('el técnico ve su siguiente contrato aunque no tenga internet', async ({ page }) => {
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  let sinInternet = false
+  await page.route('**/api/contratos/apartados', (route) => sinInternet
+    ? route.abort('internetdisconnected')
+    : route.fulfill({ json: { apartados: [
+      { codigo: 'A7F2', reservado_en: '2026-10-04T08:00:00', vence_en: '2026-11-03T08:00:00' },
+      { codigo: 'C31B', reservado_en: '2026-10-04T08:00:00', vence_en: '2026-11-03T08:00:00' },
+    ] } }))
+  await page.goto('/tech/dashboard')
+  await expect(page.getByText('A7F2')).toBeVisible()
+  await expect(page.getByText('C31B')).toBeVisible()
+
+  // En la caja NAP, sin señal: el contrato sigue ahí, guardado en el celular.
+  // (La app ya está cargada; solo el servidor no responde.)
+  sinInternet = true
+  await page.reload()
+  await expect(page.getByText('A7F2')).toBeVisible()
+  await expect(page.getByText('Sin internet: estos son los que tienes guardados en tu celular.')).toBeVisible({ timeout: 15000 })
+})
+
 test('carga una instalación técnica preasignada', async ({ page }) => {
   await authenticateAs(page, 'tecnico')
   await mockApi(page)

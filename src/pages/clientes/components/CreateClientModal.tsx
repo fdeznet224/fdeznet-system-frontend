@@ -121,6 +121,8 @@ type FormDataState = {
   olt_id: string;
   onu_id: string;
   zona_id: string;
+  // Contrato que el técnico escribió en el conector (apartado); vacío = nuevo.
+  contrato_apartado: string;
   plantilla_id: string;
   router_id: string;
   plan_id: string;
@@ -189,6 +191,7 @@ const createInitialFormData = (): FormDataState => {
     olt_id: '',
     onu_id: '',
     zona_id: '',
+    contrato_apartado: '',
     plantilla_id: '',
     router_id: '',
     plan_id: '',
@@ -543,6 +546,7 @@ export default function CreateClientModal({
         olt_id: formData.olt_id ? Number(formData.olt_id) : null,
         onu_id: formData.onu_id ? Number(formData.onu_id) : null,
         zona_id: formData.zona_id ? Number(formData.zona_id) : null,
+        contrato_apartado: formData.contrato_apartado.trim().toUpperCase() || null,
         plantilla_id: formData.plantilla_id ? Number(formData.plantilla_id) : null,
         red_id: formData.red_id ? Number(formData.red_id) : null,
         caja_nap_id: formData.caja_nap_id ? Number(formData.caja_nap_id) : null,
@@ -873,6 +877,20 @@ export default function CreateClientModal({
                             placeholder="Dirección de instalación"
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className={labelClass}>Contrato que escribió el técnico</label>
+                        <input
+                          className={`${flatInputClass} font-mono uppercase tracking-widest`}
+                          value={formData.contrato_apartado}
+                          maxLength={4}
+                          onChange={(e) =>
+                            setFormData({ ...formData, contrato_apartado: e.target.value.toUpperCase().replace(/[^0-9A-F]/g, '') })
+                          }
+                          placeholder="Ej: A7F2 (vacío = generar uno nuevo)"
+                        />
+                        <p className="mt-1 text-[11px] text-slate-500">Si el técnico ya lo escribió en el conector, ponlo aquí para que el cliente quede con ese número.</p>
                       </div>
 
                       <div>

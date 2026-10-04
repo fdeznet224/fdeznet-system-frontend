@@ -22,7 +22,10 @@ client.defaults.headers.get['Expires'] = '0';
 // reintentan cuando la página está visible y hay red; las escrituras nunca,
 // para no duplicar un cobro o una acción.
 const ESPERAS_REINTENTO_MS = [800, 2000, 4000];
-const ESPERA_MAXIMA_RED_MS = 15000;
+// Al volver de otra app la red regresa en menos de un segundo; si tras esto
+// sigue sin red (por ejemplo, en una caja NAP sin señal) no se reintenta y
+// cada pantalla usa lo que tenga guardado.
+const ESPERA_MAXIMA_RED_MS = 3000;
 
 type ConfigConReintento = InternalAxiosRequestConfig & { _reintentosRed?: number };
 
@@ -63,10 +66,12 @@ client.interceptors.response.use(
         if (config && metodo === 'get' && esErrorDeRed(error)) {
             const intento = config._reintentosRed ?? 0;
             if (intento < ESPERAS_REINTENTO_MS.length) {
-                config._reintentosRed = intento + 1;
                 await esperarPaginaLista();
-                await esperar(ESPERAS_REINTENTO_MS[intento]);
-                return client.request(config);
+                if (navigator.onLine) {
+                    config._reintentosRed = intento + 1;
+                    await esperar(ESPERAS_REINTENTO_MS[intento]);
+                    return client.request(config);
+                }
             }
         }
         // Errores 401 (sesión vencida): volver al inicio de sesión.

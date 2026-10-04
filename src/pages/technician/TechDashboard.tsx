@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import ChatModal from '@/components/chat/ChatModal';
+import ContratosApartados from './ContratosApartados';
 import { useSync } from '@/context/sync/context';
 import { useBrand } from '@/context/brand/useBrand';
 import { cachedRequest, notifySessionChanged } from '../../offline/db';
@@ -265,6 +266,8 @@ export default function TechDashboard() {
                 {/* PESTAÑA: INICIO (KPIs + Acceso a Búsqueda) */}
                 {activeTab === 'inicio' && (
                     <div className="animate-in fade-in duration-500 flex flex-col gap-4">
+
+                        <ContratosApartados />
                         
                         {/* ACCESO RÁPIDO A BÚSQUEDA / ESCÁNER ADAPTATIVO */}
                         <div 
