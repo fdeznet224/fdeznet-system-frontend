@@ -2,7 +2,6 @@ import {
     useState, useEffect, useCallback,
     type ComponentType, type ReactNode
 } from 'react';
-import axios from 'axios';
 import client from '@/api/axios';
 import type { ClientService } from '@/types/services';
 import { serviceDisplayName } from '@/types/services';
@@ -16,6 +15,7 @@ import {
     ClockIcon, ArrowDownTrayIcon, ArrowUpTrayIcon
 } from '@heroicons/react/24/outline';
 import ChatModal from '@/components/chat/ChatModal';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface ClientReference {
     id: number;
@@ -100,13 +100,6 @@ interface Props {
 type ToolMode = 'menu' | 'estado_real' | 'consumo_vivo' | 'suspender_reactivar' | 'eliminar' | 'dar_de_baja';
 
 type ContentProps = Omit<Props, 'cliente'> & { cliente: ClientReference };
-
-function apiErrorMessage(error: unknown, fallback: string) {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || fallback;
-    }
-    return fallback;
-}
 
 export default function ClientToolsModal(props: Props) {
     if (!props.isOpen || !props.cliente) return null;

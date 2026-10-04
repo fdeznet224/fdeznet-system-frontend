@@ -1,6 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -23,6 +22,7 @@ import {
 
 import client from '@/api/axios';
 import { FORMAS_COBRO, nombreFormaCobro, type FormaCobro } from '@/utils/formaCobro';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface Props {
   isOpen: boolean;
@@ -101,13 +101,6 @@ interface CreatedClientRecord {
 
 interface ActivationResponse extends Partial<CreatedClientRecord> {
   cliente?: CreatedClientRecord;
-}
-
-function apiErrorMessage(error: unknown, fallback: string) {
-  if (axios.isAxiosError<{ detail?: string }>(error)) {
-    return error.response?.data?.detail || fallback;
-  }
-  return fallback;
 }
 
 type TipoFacturacion = 'prepago' | 'postpago';

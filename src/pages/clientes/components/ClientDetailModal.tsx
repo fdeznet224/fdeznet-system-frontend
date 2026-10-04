@@ -6,7 +6,6 @@ import {
     type ReactNode,
 } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import axios from 'axios';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import {
@@ -21,6 +20,7 @@ import { openNativeMap } from '@/utils/nativeActions';
 import ClientServicesPanel from './ClientServicesPanel';
 import { nombreFormaCobro } from '@/utils/formaCobro';
 import './client-detail-sheet.css';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface Props {
     isOpen: boolean;
@@ -145,13 +145,6 @@ interface InfoRowProps {
     label: string;
     value?: ReactNode;
     copy?: boolean;
-}
-
-function apiErrorMessage(error: unknown, fallback: string) {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || fallback;
-    }
-    return fallback;
 }
 
 function classNames(...classes: string[]) {

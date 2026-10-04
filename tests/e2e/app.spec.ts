@@ -657,6 +657,31 @@ test('el supervisor entra a clientes y no ve inventario', async ({ page }) => {
   await expect(page.getByText('Inventario / Bodega')).toHaveCount(0)
 })
 
+test('un error de validación al guardar un cliente se muestra sin romper la pantalla', async ({ page }, testInfo) => {
+  // El manejo del error es el mismo; la lista móvil abre la ficha con otro gesto.
+  test.skip(testInfo.project.name === 'mobile-chrome', 'la ficha se abre distinto en móvil')
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/clientes/1', async (route) => {
+    if (route.request().method() !== 'PUT') return route.fallback()
+    await route.fulfill({
+      status: 422,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: [{
+        type: 'value_error', loc: ['body', 'mac_address'], msg: 'Value error, La MAC debe contener 12 dígitos hexadecimales',
+        input: 'HWTCC099CCAC', ctx: {},
+      }] }),
+    })
+  })
+  await page.goto('/admin/clientes')
+  await page.locator(':visible', { hasText: /^Cliente E2E$/ }).first().click()
+  await page.getByRole('button', { name: 'Editar' }).click()
+  await page.getByRole('button', { name: 'Guardar Datos' }).click()
+
+  await expect(page.getByText('MAC: La MAC debe contener 12 dígitos hexadecimales')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Guardar Datos' })).toBeVisible()
+})
+
 test('carga una instalación técnica preasignada', async ({ page }) => {
   await authenticateAs(page, 'tecnico')
   await mockApi(page)

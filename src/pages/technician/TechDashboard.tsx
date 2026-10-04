@@ -1,6 +1,5 @@
 import { useState, useEffect, type ComponentType } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import {
@@ -20,6 +19,7 @@ import { useSync } from '@/context/sync/context';
 import { useBrand } from '@/context/brand/useBrand';
 import { cachedRequest, notifySessionChanged } from '../../offline/db';
 import { submitOperation } from '../../offline/sync';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface TechnicianUser {
     id: number;
@@ -61,13 +61,6 @@ interface NavButtonProps {
     label: string;
     active: boolean;
     onClick: () => void;
-}
-
-function apiErrorMessage(error: unknown, fallback: string) {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || fallback;
-    }
-    return fallback;
 }
 
 export default function TechDashboard() {
