@@ -42,6 +42,13 @@ interface NamedCatalog {
   nombre: string;
 }
 
+// La zona dice qué MikroTik, OLT y plantilla de cobro le tocan.
+interface ZonaCatalog extends NamedCatalog {
+  router_id?: number | null;
+  olt_id?: number | null;
+  plantilla_id?: number | null;
+}
+
 interface TemplateCatalog extends NamedCatalog {
   ciclo_facturacion?: FormaCobro;
 }
@@ -227,7 +234,7 @@ export default function CreateClientModal({
     estado?: string;
   } | null>(null);
 
-  const [zonas, setZonas] = useState<NamedCatalog[]>([]);
+  const [zonas, setZonas] = useState<ZonaCatalog[]>([]);
   const [plantillas, setPlantillas] = useState<TemplateCatalog[]>([]);
   const [planes, setPlanes] = useState<PlanCatalog[]>([]);
   const [redes, setRedes] = useState<NetworkCatalog[]>([]);
@@ -316,7 +323,7 @@ export default function CreateClientModal({
     try {
       const [resZonas, resPlantillas, resUsers, resOlts, resInventario] =
         await Promise.all([
-          client.get<NamedCatalog[]>('/zonas/'),
+          client.get<ZonaCatalog[]>('/zonas/'),
           client.get<TemplateCatalog[]>('/configuracion/plantillas-facturacion'),
           client.get<TechnicianCatalog[]>('/usuarios/'),
           client.get<OltCatalog[]>('/olts/'),
@@ -361,6 +368,24 @@ export default function CreateClientModal({
     };
   }, [formData.fecha_activacion, formData.fecha_instalacion, formData.meses_gratis]);
 
+  // Al elegir la zona se preseleccionan su OLT, su MikroTik (con red, IP libre
+  // y planes) y su plantilla de cobro. Todo sigue siendo editable.
+  const elegirZona = (zonaId: string) => {
+    const zona = zonas.find((z) => z.id === Number(zonaId));
+    setFormData((prev) => ({
+      ...prev,
+      zona_id: zonaId,
+      ...(zona?.olt_id ? { olt_id: String(zona.olt_id), onu_id: '' } : {}),
+      ...(zona?.plantilla_id ? { plantilla_id: String(zona.plantilla_id) } : {}),
+    }));
+    if (zona?.plantilla_id) {
+      setSelectedPlantilla(plantillas.find((p) => p.id === zona.plantilla_id) || null);
+    }
+    if (zona?.router_id && String(zona.router_id) !== formData.router_id) {
+      void cargarRouter(String(zona.router_id));
+    }
+  };
+
   const handlePlantillaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = Number(e.target.value);
 
@@ -371,8 +396,11 @@ export default function CreateClientModal({
     setSelectedPlantilla(plantillas.find((p) => p.id === id) || null);
   };
 
-  const handleRouterChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const rId = e.target.value;
+  const handleRouterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    void cargarRouter(e.target.value);
+  };
+
+  const cargarRouter = async (rId: string) => {
     const routerObj = routers.find((r) => r.id.toString() === rId);
     setPppoePasswordMode('aleatoria');
 
@@ -399,6 +427,8 @@ export default function CreateClientModal({
 
       setRedes(resRedes.data);
       setPlanes(resPlanes.data);
+      // Con una sola red en el MikroTik, se elige sola y toma la primera IP libre.
+      if (resRedes.data.length === 1) void cargarRed(String(resRedes.data[0].id));
 
       if (routerObj?.tipo_seguridad === 'pppoe') {
         try {
@@ -422,14 +452,16 @@ export default function CreateClientModal({
     }
   };
 
-  const handleRedChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const netId = e.target.value;
+  const handleRedChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    void cargarRed(e.target.value);
+  };
 
-    setFormData({
-      ...formData,
+  const cargarRed = async (netId: string) => {
+    setFormData((prev) => ({
+      ...prev,
       red_id: netId,
       ip_asignada: '',
-    });
+    }));
     setIpsLibres([]);
 
     if (!netId) return;
@@ -786,9 +818,7 @@ export default function CreateClientModal({
                           <select
                             className={`${flatInputClass} pl-12`}
                             value={formData.zona_id}
-                            onChange={(e) =>
-                              setFormData({ ...formData, zona_id: e.target.value })
-                            }
+                            onChange={(e) => elegirZona(e.target.value)}
                           >
                             <option value="">Seleccionar Zona...</option>
                             {zonas.map((z) => (

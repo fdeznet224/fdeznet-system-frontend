@@ -884,6 +884,67 @@ test('carga la administración de usuarios y routers asignados', async ({ page }
   await expect(page.getByText('Routers Permitidos')).toBeVisible()
 })
 
+function campo(page: Page, etiqueta: string) {
+  // Selector que sigue a su etiqueta (directo o dentro de su contenedor).
+  return page.locator(`xpath=//label[normalize-space()="${etiqueta}"]/following-sibling::*[1][self::select or self::div]/descendant-or-self::select[1]`).first()
+}
+
+async function mockInfraestructuraZona(page: Page) {
+  await page.route('**/api/zonas/', (route) => route.request().method() === 'GET'
+    ? route.fulfill({ json: [{ id: 3, nombre: 'Vicente Guerrero', router_id: 1, olt_id: 2, plantilla_id: 1 }] })
+    : route.fallback())
+  await page.route('**/api/configuracion/plantillas-facturacion', (route) => route.fulfill({
+    json: [{ id: 1, nombre: 'Pago día 1 / Corte día 11', dia_pago: 1 }, { id: 2, nombre: 'Pago día 15 / Corte día 25', dia_pago: 15 }],
+  }))
+  await page.route('**/api/network/redes/router/1', (route) => route.fulfill({ json: [{ id: 5, nombre: 'Red VG', cidr: '10.10.10.0/24' }] }))
+  await page.route('**/api/planes/router/1', (route) => route.fulfill({ json: [{ id: 9, nombre: 'Plus', precio: 420 }] }))
+  await page.route('**/api/network/redes/5/ips-libres', (route) => route.fulfill({ json: ['10.10.10.112', '10.10.10.113'] }))
+  await page.route('**/api/configuracion/pppoe-default', (route) => route.fulfill({ json: { modo: 'fija', password: 'fdez1234' } }))
+}
+
+test('al elegir la zona se preseleccionan OLT, MikroTik, plantilla, red e IP', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile-chrome', 'el formulario es el mismo en móvil')
+  await authenticateAs(page)
+  await mockApi(page)
+  await mockInfraestructuraZona(page)
+  await page.goto('/admin/clientes')
+  await page.getByRole('button', { name: 'Nuevo cliente' }).click()
+
+  await page.getByPlaceholder('Nombre del cliente').fill('Cliente Zona')
+  await page.getByPlaceholder('Número de contacto').fill('9611234567')
+  await campo(page, 'Zona / Colonia').selectOption('3')
+  await expect(campo(page, 'OLT Base')).toHaveValue('2')
+
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await expect(campo(page, 'Plantilla de cobro')).toHaveValue('1')
+  await expect(campo(page, 'Router')).toHaveValue('1')
+  await expect(campo(page, 'Plan contratado').locator('option', { hasText: 'Plus' })).toHaveCount(1)
+
+  await campo(page, 'Plan contratado').selectOption('9')
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await expect(campo(page, 'Red')).toHaveValue('5')
+  await expect(campo(page, 'IP asignada')).toHaveValue('10.10.10.112')
+})
+
+test('la zona guarda su MikroTik, OLT y plantilla de cobro', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await mockInfraestructuraZona(page)
+  let guardado: unknown = null
+  await page.route('**/api/zonas/3', async (route) => {
+    guardado = route.request().postDataJSON()
+    await route.fulfill({ json: { id: 3, ...(guardado as object) } })
+  })
+  await page.goto('/admin/configuracion/zonas')
+
+  await expect(page.getByText('Router E2E · OLT Paraíso')).toBeVisible()
+  await expect(page.locator('p', { hasText: 'Pago día 1 / Corte día 11' })).toBeVisible()
+  await page.getByTitle('Editar Zona').click()
+  await page.getByLabel('Plantilla de cobro').selectOption('2')
+  await page.getByRole('button', { name: 'Actualizar Cambios' }).click()
+  await expect.poll(() => guardado).toEqual({ nombre: 'Vicente Guerrero', router_id: 1, olt_id: 2, plantilla_id: 2 })
+})
+
 test('carga la administración de zonas', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)

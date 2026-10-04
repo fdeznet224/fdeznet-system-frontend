@@ -11,7 +11,24 @@ import { apiErrorMessage } from '@/utils/apiError';
 interface Zone {
     id: number;
     nombre: string;
+    router_id?: number | null;
+    olt_id?: number | null;
+    plantilla_id?: number | null;
 }
+
+interface Catalogo { id: number; nombre: string; }
+interface OltCatalogo extends Catalogo { router_id?: number | null; }
+interface PlantillaCatalogo extends Catalogo { dia_pago?: number | null; }
+
+interface ZonaForm {
+    nombre: string;
+    router_id: string;
+    olt_id: string;
+    plantilla_id: string;
+}
+
+const FORM_VACIO: ZonaForm = { nombre: '', router_id: '', olt_id: '', plantilla_id: '' };
+const aId = (valor: string) => (valor ? Number(valor) : null);
 
 const getApiError = (error: unknown, fallback: string) => {
     return apiErrorMessage(error, fallback);
@@ -22,19 +39,53 @@ export default function Zonas() {
     const [zonas, setZonas] = useState<Zone[]>([]);
     
     // Estados del formulario
-    const [nombre, setNombre] = useState('');
+    const [form, setForm] = useState<ZonaForm>(FORM_VACIO);
     const [editandoId, setEditandoId] = useState<number | null>(null);
     const [procesando, setProcesando] = useState(false);
+    const [routers, setRouters] = useState<Catalogo[]>([]);
+    const [olts, setOlts] = useState<OltCatalogo[]>([]);
+    const [plantillas, setPlantillas] = useState<PlantillaCatalogo[]>([]);
+    const nombre = form.nombre;
 
     const fetchZonas = useCallback(async () => {
         try {
-            const res = await client.get<Zone[]>('/zonas/');
-            setZonas(res.data);
+            const [resZonas, resRouters, resOlts, resPlantillas] = await Promise.all([
+                client.get<Zone[]>('/zonas/'),
+                client.get<Catalogo[]>('/network/routers/'),
+                client.get<OltCatalogo[]>('/olts/'),
+                client.get<PlantillaCatalogo[]>('/configuracion/plantillas-facturacion'),
+            ]);
+            setZonas(resZonas.data);
+            setRouters(resRouters.data);
+            setOlts(resOlts.data);
+            setPlantillas(resPlantillas.data);
         } catch (error) {
             console.error(error);
             toast.error("Error al cargar las zonas");
         }
     }, []);
+
+    const nombreDe = (lista: Catalogo[], id?: number | null) => lista.find((item) => item.id === id)?.nombre;
+    // Solo las OLTs del MikroTik elegido (o todas si aún no se elige).
+    const oltsDelRouter = olts.filter((olt) => !form.router_id || !olt.router_id || olt.router_id === Number(form.router_id));
+
+    const elegirOlt = (valor: string) => {
+        const olt = olts.find((item) => item.id === Number(valor));
+        setForm((actual) => ({
+            ...actual,
+            olt_id: valor,
+            // La OLT ya dice a qué MikroTik está conectada.
+            router_id: olt?.router_id ? String(olt.router_id) : actual.router_id,
+        }));
+    };
+
+    const elegirRouter = (valor: string) => {
+        setForm((actual) => {
+            const olt = olts.find((item) => item.id === Number(actual.olt_id));
+            const oltDeOtroRouter = olt?.router_id && valor && olt.router_id !== Number(valor);
+            return { ...actual, router_id: valor, olt_id: oltDeOtroRouter ? '' : actual.olt_id };
+        });
+    };
 
     useEffect(() => {
         const initialLoad = window.setTimeout(() => void fetchZonas(), 0);
@@ -50,19 +101,23 @@ export default function Zonas() {
         setProcesando(true);
         const load = toast.loading(editandoId ? "Actualizando zona..." : "Creando zona...");
         
+        const datos = {
+            nombre: nombre.trim(),
+            router_id: aId(form.router_id),
+            olt_id: aId(form.olt_id),
+            plantilla_id: aId(form.plantilla_id),
+        };
         try {
             if (editandoId) {
-                // Petición PUT para Editar
-                await client.put(`/zonas/${editandoId}`, { nombre });
+                await client.put(`/zonas/${editandoId}`, datos);
                 toast.success("Zona actualizada correctamente", { id: load });
             } else {
-                // Petición POST para Crear
-                await client.post('/zonas/', { nombre });
+                await client.post('/zonas/', datos);
                 toast.success("Zona creada correctamente", { id: load });
             }
             
             // Limpiar formulario y recargar
-            setNombre('');
+            setForm(FORM_VACIO);
             setEditandoId(null);
             void fetchZonas();
         } catch (error: unknown) {
@@ -73,14 +128,21 @@ export default function Zonas() {
     };
 
     const iniciarEdicion = (zona: Zone) => {
-        setNombre(zona.nombre);
+        setForm({
+            nombre: zona.nombre,
+            router_id: zona.router_id ? String(zona.router_id) : '',
+            olt_id: zona.olt_id ? String(zona.olt_id) : '',
+            plantilla_id: zona.plantilla_id ? String(zona.plantilla_id) : '',
+        });
         setEditandoId(zona.id);
     };
 
     const cancelarEdicion = () => {
-        setNombre('');
+        setForm(FORM_VACIO);
         setEditandoId(null);
     };
+
+    const campoClase = `w-full bg-white dark:bg-slate-950 border rounded-xl p-3 text-slate-900 dark:text-white text-sm outline-none transition-all focus:ring-2 shadow-sm ${editandoId ? 'border-indigo-300 dark:border-indigo-700 focus:border-indigo-500 focus:ring-indigo-500/20' : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20'}`;
 
     const handleEliminar = async (id: number, nombreZona: string) => {
         if (!confirm(`¿Estás seguro de eliminar la zona "${nombreZona}"?\n\nEsta acción fallará si hay clientes asignados a ella.`)) return;
@@ -111,7 +173,7 @@ export default function Zonas() {
                 </button>
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white transition-colors">Gestión de Zonas</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">Organiza tu cobertura por sectores geográficos.</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">Cada zona dice qué MikroTik, OLT y día de pago le tocan; al dar de alta un cliente se eligen solos.</p>
                 </div>
             </div>
 
@@ -143,9 +205,33 @@ export default function Zonas() {
                                     required 
                                     className={`w-full bg-white dark:bg-slate-950 border rounded-xl p-3.5 text-slate-900 dark:text-white text-sm outline-none transition-all focus:ring-2 shadow-sm ${editandoId ? 'border-indigo-300 dark:border-indigo-700 focus:border-indigo-500 focus:ring-indigo-500/20' : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20'}`}
                                     value={nombre} 
-                                    onChange={e => setNombre(e.target.value)} 
+                                    onChange={e => setForm({ ...form, nombre: e.target.value })} 
                                 />
                             </div>
+
+                            <label className="block">
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black ml-1 uppercase tracking-wider">MikroTik que la atiende</span>
+                                <select className={campoClase} value={form.router_id} onChange={e => elegirRouter(e.target.value)}>
+                                    <option value="">Sin asignar</option>
+                                    {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                                </select>
+                            </label>
+
+                            <label className="block">
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black ml-1 uppercase tracking-wider">OLT</span>
+                                <select className={campoClase} value={form.olt_id} onChange={e => elegirOlt(e.target.value)}>
+                                    <option value="">Sin OLT (radioenlace)</option>
+                                    {oltsDelRouter.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                                </select>
+                            </label>
+
+                            <label className="block">
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black ml-1 uppercase tracking-wider">Plantilla de cobro</span>
+                                <select className={campoClase} value={form.plantilla_id} onChange={e => setForm({ ...form, plantilla_id: e.target.value })}>
+                                    <option value="">Sin asignar</option>
+                                    {plantillas.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                                </select>
+                            </label>
                             
                             <button 
                                 type="submit" 
@@ -170,7 +256,14 @@ export default function Zonas() {
                                 </div>
                                 <div className="overflow-hidden pr-2">
                                     <p className="font-black text-slate-800 dark:text-white text-base truncate transition-colors">{z.nombre}</p>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">ID: {z.id}</p>
+                                    <p className="mt-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-snug">
+                                        {nombreDe(routers, z.router_id) || <span className="text-amber-600">Sin MikroTik</span>}
+                                        {' · '}
+                                        {z.olt_id ? (nombreDe(olts, z.olt_id) || `OLT ${z.olt_id}`) : 'Sin OLT'}
+                                    </p>
+                                    <p className="text-[11px] font-bold text-slate-400">
+                                        {nombreDe(plantillas, z.plantilla_id) || <span className="text-amber-600">Sin plantilla de cobro</span>}
+                                    </p>
                                 </div>
                             </div>
 
