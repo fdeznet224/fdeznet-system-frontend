@@ -737,6 +737,57 @@ test('al reabrir la app sin internet el técnico entra directo a su panel', asyn
   await expect(page.getByText('Buscar o escanear QR...')).toBeVisible()
 })
 
+test('el técnico activa la solicitud y ve contrato, PPPoE y señal', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation'])
+  await context.setGeolocation({ latitude: 17.1, longitude: -93.2 })
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  await page.route('**/api/contratos/apartados', (route) => route.fulfill({ json: { apartados: [{ codigo: 'A7F2', reservado_en: '2026-10-04T08:00:00', vence_en: '2026-11-03T08:00:00' }] } }))
+  await page.route('**/api/ordenes/41/activacion**', (route) => route.fulfill({ json: {
+    solicitud: { id: 41, version: 2, nombre: 'Ana Lopez', telefono: '5550001111', direccion: 'Calle 1 #20', zona_id: 2, plan_id: 11, cliente_id: null },
+    zonas: [{ id: 2, nombre: 'Paraíso', plantilla_id: 2 }],
+    zona_id: 2,
+    infraestructura: {
+      router: { id: 3, nombre: 'MikroTik Paraíso', modo: 'pppoe' },
+      olt: { id: 2, nombre: 'OLT Paraíso' },
+      red: { id: 5, nombre: 'Clientes', cidr: '10.10.9.0/24' },
+      planes: [{ id: 11, nombre: 'Plan 300', precio: 300 }, { id: 12, nombre: 'Plan 400', precio: 400 }],
+      naps: [{ id: 8, nombre: 'NAP-03', capacidad: 8 }],
+      plantilla_id: 2,
+    },
+    plantillas: [{ id: 1, nombre: 'Día 1' }, { id: 2, nombre: 'Día 15' }],
+    onus: [{ id: 4, identificador: 'ZTEG00000001', modelo: 'F660' }],
+    usuario_pppoe: 'Ana_Lopez',
+  } }))
+  let enviado: Record<string, unknown> | null = null
+  await page.route('**/api/ordenes/41/activar', async (route) => {
+    enviado = route.request().postDataJSON()
+    await route.fulfill({ json: {
+      contrato: 'A7F2', nombre: 'Ana Lopez', plan: 'Plan 400', modo: 'pppoe', usuario_pppoe: 'Ana_Lopez',
+      password_pppoe: 'clave123', ip: '10.10.9.60', onu: 'ZTEG00000001',
+      senal: { potencia: '-19.50 dBm', estado: 'online', recomendacion: '¡Señal EXCELENTE!' },
+      cambios: ['plan Plan 300 → Plan 400'],
+    } })
+  })
+  await page.goto('/tech/activar/41')
+
+  await expect(page.getByLabel('Nombre del titular')).toHaveValue('Ana Lopez')
+  await expect(page.getByLabel('Contrato escrito en el conector')).toHaveValue('A7F2')
+  await page.getByRole('combobox', { name: 'Plan', exact: true }).selectOption('12')
+  await page.getByLabel('ONU instalada (serial o MAC)').fill('ZTEG00000001')
+  await page.getByRole('combobox', { name: 'Caja NAP', exact: true }).selectOption('8')
+  await page.getByRole('combobox', { name: 'Puerto', exact: true }).selectOption('3')
+  await page.getByRole('button', { name: 'Capturar ubicación GPS' }).click()
+  await expect(page.getByRole('button', { name: 'Ubicación capturada' })).toBeVisible()
+  await page.getByRole('button', { name: 'Activar cliente' }).click()
+
+  await expect(page.getByText('Servicio activo y orden cerrada')).toBeVisible()
+  await expect(page.getByText('clave123')).toBeVisible()
+  await expect(page.getByText('-19.50 dBm')).toBeVisible()
+  await expect(page.getByText('plan Plan 300 → Plan 400')).toBeVisible()
+  expect(enviado).toMatchObject({ version: 2, zona_id: 2, plan_id: 12, plantilla_id: 2, contrato_apartado: 'A7F2', onu_id: 4, caja_nap_id: 8, puerto_nap: 3 })
+})
+
 test('carga una instalación técnica preasignada', async ({ page }) => {
   await authenticateAs(page, 'tecnico')
   await mockApi(page)

@@ -228,13 +228,24 @@ export default function TechDashboard() {
                     </button>
                 </div>
             ) : (
-                <button
+                <>
+                {orden.tipo === 'instalacion' && (
+                    <button
+                        type="button"
+                        onClick={() => navigate(`/tech/activar/${orden.id}`)}
+                        className="ml-2 w-[calc(100%-0.5rem)] h-11 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95"
+                    >
+                        Activar cliente
+                    </button>
+                )}
+                {!(orden.tipo === 'instalacion' && orden.estado === 'trabajando') && <button
                     type="button"
                     onClick={() => void handleAvanzarOrden(orden)}
                     className="ml-2 w-[calc(100%-0.5rem)] h-11 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95"
                 >
                     {orden.estado === 'asignada' ? 'Marcar en camino' : orden.estado === 'en_camino' ? 'Iniciar trabajo' : 'Finalizar con conexión'}
-                </button>
+                </button>}
+                </>
             )}
         </div>
     );
@@ -271,6 +282,13 @@ export default function TechDashboard() {
                     <div className="animate-in fade-in duration-500 flex flex-col gap-4">
 
                         <ContratosApartados />
+                        <button
+                            type="button"
+                            onClick={() => navigate('/tech/activar/nueva')}
+                            className="h-12 w-full rounded-2xl border border-dashed border-blue-300 bg-blue-50 text-[11px] font-black uppercase tracking-widest text-blue-700 active:scale-95 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
+                        >
+                            + Nueva instalación
+                        </button>
                         
                         {/* ACCESO RÁPIDO A BÚSQUEDA / ESCÁNER ADAPTATIVO */}
                         <div 

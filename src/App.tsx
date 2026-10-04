@@ -68,6 +68,7 @@ const TechDashboard = lazy(() => import('@/pages/technician/TechDashboard'));
 const ClientTechView = lazy(() => import('@/pages/technician/ClientTechView'));
 const TechSearch = lazy(() => import('@/pages/technician/TechSearch'));
 const TechInstallForm = lazy(() => import('@/pages/technician/TechInstallForm'));
+const TechActivar = lazy(() => import('@/pages/technician/TechActivar'));
 const QrScanner = lazy(() => import('@/pages/tools/QrScanner'));
 const OltRadarVsolPage = lazy(() => import('@/pages/infraestructura/olts/OltRadarVsolPage'));
 
@@ -188,6 +189,7 @@ function App() {
             <Route path="/tech/buscar" element={protectedPage(<TechSearch />, ['tecnico'])} />
             <Route path="/tech/cliente/:cedula" element={protectedPage(<ClientTechView />, ['tecnico'])} />
             <Route path="/tech/instalar/:cedula" element={protectedPage(<TechInstallForm />, ['tecnico'])} />
+            <Route path="/tech/activar/:ordenId" element={protectedPage(<TechActivar />, ['tecnico'])} />
 
             {/* COBRANZA (MOVIL) */}
             <Route

@@ -26,6 +26,13 @@ interface UserCatalog {
 interface ZoneCatalog {
     id: number;
     nombre: string;
+    router_id?: number | null;
+}
+
+interface PlanCatalog {
+    id: number;
+    nombre: string;
+    precio: number;
 }
 
 interface OrderFormData {
@@ -33,6 +40,7 @@ interface OrderFormData {
     telefono: string;
     direccion: string;
     zona_id: string;
+    plan_id: string;
     tecnico_id: string;
     estado: string;
     caja_nap_id?: number;
@@ -46,12 +54,26 @@ export default function CreateOrdenModal({ isOpen, onClose, onSuccess, sugerenci
     // Catálogos
     const [tecnicos, setTecnicos] = useState<UserCatalog[]>([]);
     const [zonas, setZonas] = useState<ZoneCatalog[]>([]);
+    const [planes, setPlanes] = useState<PlanCatalog[]>([]);
+
+    // Los planes son los del MikroTik de la zona.
+    const routerZona = zonas.find((zona) => zona.id === Number(formData.zona_id))?.router_id;
+    useEffect(() => {
+        if (!routerZona) {
+            setPlanes([]);
+            return;
+        }
+        client.get<PlanCatalog[]>(`/planes/router/${routerZona}`)
+            .then((res) => setPlanes(res.data))
+            .catch(() => setPlanes([]));
+    }, [routerZona]);
 
     const [formData, setFormData] = useState<OrderFormData>({
         nombre: '',
         telefono: '',
         direccion: '',
         zona_id: '',
+        plan_id: '',
         tecnico_id: '',
         // Valores por defecto para orden pendiente
         estado: 'pendiente_instalacion', 
@@ -75,7 +97,7 @@ export default function CreateOrdenModal({ isOpen, onClose, onSuccess, sugerenci
                     // Reset form
                     setFormData({
                         nombre: '', telefono: '', direccion: '', 
-                        zona_id: '', tecnico_id: '', 
+                        zona_id: '', plan_id: '', tecnico_id: '', 
                         estado: 'pendiente_instalacion',
                         caja_nap_id: sugerencia?.caja_nap_id,
                         puerto_nap: sugerencia?.puerto_nap,
@@ -100,15 +122,16 @@ export default function CreateOrdenModal({ isOpen, onClose, onSuccess, sugerenci
                 prospecto_nombre: formData.nombre,
                 prospecto_telefono: formData.telefono,
                 prospecto_direccion: formData.direccion,
-                tecnico_id: Number(formData.tecnico_id),
+                tecnico_id: formData.tecnico_id ? Number(formData.tecnico_id) : null,
+                zona_id: formData.zona_id ? Number(formData.zona_id) : null,
+                plan_id: formData.plan_id ? Number(formData.plan_id) : null,
                 caja_nap_sugerida_id: formData.caja_nap_id || null,
                 puerto_nap_sugerido: formData.puerto_nap || null,
-                descripcion: `Zona sugerida: ${formData.zona_id}`,
             };
 
             await client.post('/ordenes/', payload);
             
-            toast.success("Orden Creada y Asignada", { id: loadToast });
+            toast.success("Solicitud de instalación creada", { id: loadToast });
             
             // Opcional: Abrir WhatsApp para notificar al técnico
             const tecnico = tecnicos.find((item) => item.id === Number(formData.tecnico_id));
@@ -188,13 +211,21 @@ _Por favor gestionar en la App._`;
                                     <div>
                                         <label className={labelClass}>Zona / Colonia</label>
                                         <div className="relative">
-                                            <select required className={`${inputClass} pl-10 appearance-none`} value={formData.zona_id} onChange={e => setFormData({...formData, zona_id: e.target.value})}>
+                                            <select required className={`${inputClass} pl-10 appearance-none`} value={formData.zona_id} onChange={e => setFormData({...formData, zona_id: e.target.value, plan_id: ''})}>
                                                 <option value="">Seleccionar...</option>
                                                 {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
                                             </select>
                                             <MapIcon className="w-5 h-5 text-slate-500 absolute left-3 top-3"/>
                                         </div>
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label className={labelClass}>Plan que pidió</label>
+                                    <select className={inputClass} value={formData.plan_id} disabled={!formData.zona_id} onChange={e => setFormData({...formData, plan_id: e.target.value})}>
+                                        <option value="">{formData.zona_id ? 'Por definir (lo elige el técnico)' : 'Elige primero la zona'}</option>
+                                        {planes.map(p => <option key={p.id} value={p.id}>{p.nombre} · ${p.precio}</option>)}
+                                    </select>
                                 </div>
 
                                 <div>
@@ -212,12 +243,11 @@ _Por favor gestionar en la App._`;
                                     <WrenchScrewdriverIcon className="w-4 h-4"/> Asignar Técnico Responsable
                                 </label>
                                 <select 
-                                    required 
                                     className="w-full bg-[#0b0c10] border border-orange-500/30 text-white rounded-lg p-3 outline-none focus:border-orange-500 transition"
                                     value={formData.tecnico_id} 
                                     onChange={e => setFormData({...formData, tecnico_id: e.target.value})}
                                 >
-                                    <option value="">-- Seleccionar Técnico Disponible --</option>
+                                    <option value="">Sin asignar por ahora</option>
                                     {tecnicos.map(t => (
                                         <option key={t.id} value={t.id}>👷 {t.usuario} ({t.nombre_completo})</option>
                                     ))}
