@@ -21,7 +21,11 @@ interface ChatModalProps {
     onClose: () => void;
     cliente: { id: number; nombre: string; telefono: string } | null;
     onMessagesRead?: () => void;
+    /** Chat que no es de un cliente (p. ej. "/ordenes/41/chat" de un prospecto). */
+    ruta?: string;
 }
+
+const REVISAR_CHAT_MS = 8000;
 
 interface ChatMessage {
     id?: number | string;
@@ -32,7 +36,7 @@ interface ChatMessage {
     ack?: number;
 }
 
-function PrivateChatMedia({ reference, clientId }: { reference: string; clientId: number }) {
+function PrivateChatMedia({ reference, base }: { reference: string; base: string }) {
     const [blobUrl, setBlobUrl] = useState<string | null>(null);
     const [failed, setFailed] = useState(false);
     const filename = decodeURIComponent(reference.split('/').pop() || reference.replace('whatsapp-media://', ''));
@@ -42,7 +46,7 @@ function PrivateChatMedia({ reference, clientId }: { reference: string; clientId
         let active = true;
         let temporaryUrl: string | null = null;
         void client.get(
-            `/whatsapp/chat/${clientId}/archivo/${encodeURIComponent(filename)}`,
+            `${base}/archivo/${encodeURIComponent(filename)}`,
             { responseType: 'blob' },
         ).then((response) => {
             if (!active) return;
@@ -55,7 +59,7 @@ function PrivateChatMedia({ reference, clientId }: { reference: string; clientId
             active = false;
             if (temporaryUrl) URL.revokeObjectURL(temporaryUrl);
         };
-    }, [clientId, filename]);
+    }, [base, filename]);
 
     if (failed) {
         return <div className="p-3 rounded-lg text-xs font-bold text-red-500">Archivo no disponible</div>;
@@ -89,7 +93,7 @@ function PrivateChatMedia({ reference, clientId }: { reference: string; clientId
     );
 }
 
-export default function ChatModal({ isOpen, onClose, cliente, onMessagesRead }: ChatModalProps) {
+export default function ChatModal({ isOpen, onClose, cliente, onMessagesRead, ruta }: ChatModalProps) {
     const [mensaje, setMensaje] = useState("");
     const [sending, setSending] = useState(false);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -97,25 +101,31 @@ export default function ChatModal({ isOpen, onClose, cliente, onMessagesRead }: 
 
     const { wsEvent, clearUnread } = useWhatsApp();
     const clientId = cliente?.id;
+    const base = ruta || (clientId ? `/whatsapp/chat/${clientId}` : '');
 
     const loadChat = useCallback(async () => {
-        if (!clientId) return;
+        if (!base) return;
         try {
-            clearUnread(clientId);
-            const res = await client.get<ChatMessage[]>(`/whatsapp/chat/${clientId}`);
+            if (!ruta && clientId) clearUnread(clientId);
+            const res = await client.get<ChatMessage[]>(base);
             setChatMessages(res.data);
             onMessagesRead?.();
         } catch (error) { console.error("Error cargando chat", error); }
-    }, [clearUnread, clientId, onMessagesRead]);
+    }, [base, clearUnread, clientId, onMessagesRead, ruta]);
 
     useEffect(() => {
-        if (!isOpen || !clientId) return;
+        if (!isOpen || !base) return;
         const initialLoad = window.setTimeout(() => void loadChat(), 0);
-        return () => window.clearTimeout(initialLoad);
-    }, [clientId, isOpen, loadChat]);
+        // Los avisos en vivo llegan por cliente; el chat de un prospecto se revisa cada tanto.
+        const revision = ruta ? window.setInterval(() => void loadChat(), REVISAR_CHAT_MS) : undefined;
+        return () => {
+            window.clearTimeout(initialLoad);
+            if (revision) window.clearInterval(revision);
+        };
+    }, [base, isOpen, loadChat, ruta]);
 
     useEffect(() => {
-        if (!isOpen || !clientId || !wsEvent) return;
+        if (ruta || !isOpen || !clientId || !wsEvent) return;
         if (
             wsEvent.type === 'NEW_MESSAGE'
             && wsEvent.data.cliente_id === clientId
@@ -134,13 +144,13 @@ export default function ChatModal({ isOpen, onClose, cliente, onMessagesRead }: 
             clearUnread(clientId);
             onMessagesRead?.();
         }
-    }, [clearUnread, clientId, isOpen, onMessagesRead, wsEvent]);
+    }, [clearUnread, clientId, isOpen, onMessagesRead, ruta, wsEvent]);
 
     const handleEnviarMensaje = async () => {
-        if (!mensaje.trim() || !cliente?.id) return;
+        if (!mensaje.trim() || !base) return;
         setSending(true);
         try {
-            await client.post(`/whatsapp/chat/${cliente.id}/enviar`, { mensaje: mensaje });
+            await client.post(`${base}/enviar`, { mensaje: mensaje });
             setMensaje("");
             await loadChat();
         } catch { toast.error("Error al enviar"); }
@@ -153,7 +163,7 @@ export default function ChatModal({ isOpen, onClose, cliente, onMessagesRead }: 
         const urls = texto.match(urlRegex);
 
         if (urls && urls.length > 0) {
-            return <PrivateChatMedia reference={urls[0]} clientId={clientId!} />;
+            return <PrivateChatMedia reference={urls[0]} base={base} />;
         }
         
         // TEXTO NORMAL (Padding derecho para no chocar con la hora)

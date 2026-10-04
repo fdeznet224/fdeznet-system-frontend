@@ -154,7 +154,7 @@ export default function Orders() {
         try {
             const [resOrdenes, resUnread, resTecnicos, resZonas, resPlanes] = await Promise.all([
                 client.get<OrdenApi[]>('/ordenes/?tipo=instalacion'),
-                client.get<Record<string, UnreadSummary>>('/whatsapp/no-leidos'),
+                client.get<Record<string, UnreadSummary>>('/ordenes/chat/no-leidos'),
                 client.get<Tecnico[]>('/bajas/tecnicos/disponibles').catch(() => ({ data: [] as Tecnico[] })),
                 client.get<Catalogo[]>('/zonas/').catch(() => ({ data: [] as Catalogo[] })),
                 client.get<Catalogo[]>('/planes/').catch(() => ({ data: [] as Catalogo[] })),
@@ -188,21 +188,23 @@ export default function Orders() {
         }
     }, []);
 
+    const refrescarNoLeidos = useCallback(async () => {
+        try {
+            const res = await client.get<Record<string, UnreadSummary>>('/ordenes/chat/no-leidos');
+            setUnreadCounts(res.data);
+        } catch (error) {
+            console.warn('No fue posible actualizar los mensajes no leídos', error);
+        }
+    }, []);
+
     useEffect(() => {
         const initialLoad = window.setTimeout(() => void fetchData(), 0);
-        const interval = window.setInterval(async () => {
-            try {
-                const res = await client.get<Record<string, UnreadSummary>>('/whatsapp/no-leidos');
-                setUnreadCounts(res.data);
-            } catch (error) {
-                console.warn('No fue posible actualizar los mensajes no leídos', error);
-            }
-        }, 10000);
+        const interval = window.setInterval(() => void refrescarNoLeidos(), 10000);
         return () => {
             window.clearTimeout(initialLoad);
             window.clearInterval(interval);
         };
-    }, [fetchData]);
+    }, [fetchData, refrescarNoLeidos]);
 
     const handleDelete = async (orden: ServiceOrder) => {
         if (!confirm(`¿Cancelar la instalación de ${orden.nombre}?`)) return;
@@ -457,7 +459,7 @@ export default function Orders() {
                 onClose={() => setIsCreateModalOpen(false)}
                 onSuccess={() => { void fetchData(); setIsCreateModalOpen(false); setSearchParams({}); }}
             />
-            <ChatModal isOpen={showChatModal} onClose={() => { setShowChatModal(false); void fetchData(); }} cliente={targetCliente} onMessagesRead={fetchData} />
+            <ChatModal isOpen={showChatModal} onClose={() => { setShowChatModal(false); void refrescarNoLeidos(); }} cliente={targetCliente} ruta={targetCliente ? `/ordenes/${targetCliente.id}/chat` : undefined} onMessagesRead={refrescarNoLeidos} />
         </div>
     );
 }

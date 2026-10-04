@@ -956,6 +956,33 @@ test('las instalaciones muestran zona, plan, origen y se filtran por técnico', 
   await expect(page.locator('article', { hasText: 'Ana Lopez' })).toBeVisible()
 })
 
+test('el chat de un prospecto abre su conversación y no la de otro cliente', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  const pedidas: string[] = []
+  page.on('request', (request) => { if (request.url().includes('/chat')) pedidas.push(new URL(request.url()).pathname) })
+  await page.route('**/api/ordenes/chat/no-leidos', (route) => route.fulfill({ json: { 41: { count: 2 } } }))
+  await page.route('**/api/ordenes/?tipo=instalacion', (route) => route.fulfill({ json: [
+    { id: 41, version: 1, estado: 'pendiente', prospecto_nombre: 'Ana Lopez', prospecto_telefono: '5550001111', prospecto_direccion: 'Calle 1', tecnico: null },
+  ] }))
+  await page.route('**/api/ordenes/41/chat', (route) => route.fulfill({ json: [
+    { id: 1, direccion: 'entrada', mensaje: 'Quiero contratar internet', fecha: '2026-10-04T09:00:00', ack: 0 },
+  ] }))
+  let enviado: unknown = null
+  await page.route('**/api/ordenes/41/chat/enviar', async (route) => {
+    enviado = route.request().postDataJSON()
+    await route.fulfill({ json: { status: 'encolado' } })
+  })
+  await page.goto('/admin/ordenes')
+
+  await page.locator('article', { hasText: 'Ana Lopez' }).getByRole('button', { name: '2 sin leer' }).click()
+  await expect(page.getByText('Quiero contratar internet')).toBeVisible()
+  await page.getByPlaceholder('Escribe un mensaje...').fill('Hola Ana, con gusto')
+  await page.getByPlaceholder('Escribe un mensaje...').press('Enter')
+  await expect.poll(() => enviado).toEqual({ mensaje: 'Hola Ana, con gusto' })
+  expect(pedidas.some((ruta) => ruta.startsWith('/api/whatsapp/chat/'))).toBe(false)
+})
+
 test('el admin asigna técnico y fecha a una orden de instalación', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)
