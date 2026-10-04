@@ -101,12 +101,15 @@ export default function TechDashboard() {
                     await client.get('/ordenes/')
                 ).data),
             ]);
-            const pendientes = clientesResult.data.filter((c) => c.estado === 'pendiente_instalacion');
-            setInstalaciones(pendientes);
-
             const activeOrders = ordenesResult.data.filter((orden) =>
                 !['terminada', 'cancelada'].includes(orden.estado)
             );
+            // Un cliente con orden de instalación ya aparece como orden; no se repite.
+            const conOrden = new Set(activeOrders.map((orden) => orden.cliente_id ?? orden.cliente?.id));
+            const pendientes = clientesResult.data.filter((c) =>
+                c.estado === 'pendiente_instalacion' && !conOrden.has(c.id)
+            );
+            setInstalaciones(pendientes);
             const formalRetirementClients = new Set(
                 activeOrders.filter((orden) => orden.tipo === 'retiro').map((orden) => orden.cliente_id),
             );

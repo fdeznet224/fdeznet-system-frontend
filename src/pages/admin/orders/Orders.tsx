@@ -9,7 +9,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 import CreateOrdenModal from './components/CreateOrdenModal';
-import ChatModal from '@/components/chat/ChatModal'; 
+import ChatModal from '@/components/chat/ChatModal';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface ServiceOrder {
     id: number;
@@ -19,7 +20,8 @@ interface ServiceOrder {
     direccion?: string | null;
     user_pppoe?: string | null;
     zona?: { nombre?: string | null } | null;
-    tecnico?: { nombre_completo?: string | null; usuario: string } | null;
+    tecnico?: { id?: number; nombre_completo?: string | null; usuario: string } | null;
+    fecha_programada?: string | null;
     version?: number;
     servicio?: {
         id: number;
@@ -28,6 +30,15 @@ interface ServiceOrder {
         estado: string;
     } | null;
 }
+
+interface Tecnico {
+    id: number;
+    nombre_completo?: string | null;
+    usuario: string;
+}
+
+/** "2026-10-05T09:00:00" -> "2026-10-05T09:00" para el campo de fecha y hora. */
+const aCampoFecha = (valor?: string | null) => (valor ? valor.slice(0, 16) : '');
 
 interface UnreadSummary {
     count: number;
@@ -53,14 +64,18 @@ export default function Orders() {
     const [showChatModal, setShowChatModal] = useState(false);
     const [targetCliente, setTargetCliente] = useState<ServiceOrder | null>(null);
     const [unreadCounts, setUnreadCounts] = useState<Record<string, UnreadSummary>>({});
+    const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
+    const [guardandoId, setGuardandoId] = useState<number | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [resOrdenes, resUnread] = await Promise.all([
-                client.get<Array<{ id: number; version: number; estado: string; cliente?: { nombre?: string; telefono?: string; direccion?: string }; servicio?: { id: number; alias: string; direccion?: string | null; estado: string } | null; prospecto_nombre?: string; prospecto_telefono?: string; prospecto_direccion?: string; tecnico?: { nombre?: string; usuario: string } }>>('/ordenes/?tipo=instalacion'),
-                client.get<Record<string, UnreadSummary>>('/whatsapp/no-leidos')
+            const [resOrdenes, resUnread, resTecnicos] = await Promise.all([
+                client.get<Array<{ id: number; version: number; estado: string; fecha_programada?: string | null; cliente?: { nombre?: string; telefono?: string; direccion?: string }; servicio?: { id: number; alias: string; direccion?: string | null; estado: string } | null; prospecto_nombre?: string; prospecto_telefono?: string; prospecto_direccion?: string; tecnico?: { id?: number; nombre?: string; usuario: string } }>>('/ordenes/?tipo=instalacion'),
+                client.get<Record<string, UnreadSummary>>('/whatsapp/no-leidos'),
+                client.get<Tecnico[]>('/bajas/tecnicos/disponibles').catch(() => ({ data: [] as Tecnico[] })),
             ]);
+            setTecnicos(resTecnicos.data);
             
             const pendientes = resOrdenes.data
                 .filter((orden) => !['terminada', 'cancelada'].includes(orden.estado))
@@ -71,7 +86,8 @@ export default function Orders() {
                     direccion: orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || '',
                     estado: orden.estado,
                     user_pppoe: null,
-                    tecnico: orden.tecnico ? { nombre_completo: orden.tecnico.nombre, usuario: orden.tecnico.usuario } : null,
+                    tecnico: orden.tecnico ? { id: orden.tecnico.id, nombre_completo: orden.tecnico.nombre, usuario: orden.tecnico.usuario } : null,
+                    fecha_programada: orden.fecha_programada,
                     version: orden.version,
                     servicio: orden.servicio,
                 }));
@@ -117,6 +133,58 @@ export default function Orders() {
             toast.error("Error al eliminar", { id: load });
         }
     };
+
+    // Asignar técnico (o quitarlo) y la fecha de la visita.
+    const actualizarOrden = async (orden: ServiceOrder, cambios: { tecnico_id?: number | null; fecha_programada?: string | null }, mensaje: string) => {
+        setGuardandoId(orden.id);
+        const load = toast.loading('Guardando...');
+        try {
+            await client.patch(`/ordenes/${orden.id}`, cambios);
+            toast.success(mensaje, { id: load });
+            await fetchData();
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'No se pudo actualizar la orden'), { id: load });
+        } finally {
+            setGuardandoId(null);
+        }
+    };
+
+    const asignarTecnico = (orden: ServiceOrder, valor: string) => {
+        const tecnico = tecnicos.find((t) => t.id === Number(valor));
+        void actualizarOrden(
+            orden,
+            { tecnico_id: tecnico ? tecnico.id : null },
+            tecnico ? `Asignada a ${tecnico.nombre_completo || tecnico.usuario}` : 'Orden sin técnico',
+        );
+    };
+
+    const programar = (orden: ServiceOrder, valor: string) => {
+        void actualizarOrden(orden, { fecha_programada: valor ? `${valor}:00` : null }, valor ? 'Visita programada' : 'Fecha quitada');
+    };
+
+    const selectorTecnico = (orden: ServiceOrder, clase: string) => (
+        <select
+            aria-label={`Técnico de ${orden.nombre}`}
+            value={orden.tecnico?.id ?? ''}
+            disabled={guardandoId === orden.id}
+            onChange={(e) => asignarTecnico(orden, e.target.value)}
+            className={clase}
+        >
+            <option value="">Sin asignar</option>
+            {tecnicos.map((t) => <option key={t.id} value={t.id}>{t.nombre_completo || t.usuario}</option>)}
+        </select>
+    );
+
+    const campoFecha = (orden: ServiceOrder, clase: string) => (
+        <input
+            type="datetime-local"
+            aria-label={`Fecha de visita de ${orden.nombre}`}
+            value={aCampoFecha(orden.fecha_programada)}
+            disabled={guardandoId === orden.id}
+            onChange={(e) => programar(orden, e.target.value)}
+            className={clase}
+        />
+    );
 
     const filteredOrders = useMemo(() => {
         return ordenes.filter(o => 
@@ -200,7 +268,7 @@ export default function Orders() {
                             <tr>
                                 <th className="px-6 py-4">Prospecto / Cliente</th>
                                 <th className="px-6 py-4">Ubicación</th>
-                                <th className="px-6 py-4">Técnico Asignado</th>
+                                <th className="px-6 py-4">Técnico y visita</th>
                                 <th className="px-6 py-4 text-right">Acciones</th>
                             </tr>
                         </thead>
@@ -228,13 +296,10 @@ export default function Orders() {
                                                 <div className="text-slate-600 dark:text-slate-400 text-xs truncate max-w-[250px]">{orden.direccion}</div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                {orden.tecnico ? (
-                                                    <span className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-black">
-                                                        {orden.tecnico.nombre_completo || orden.tecnico.usuario}
-                                                    </span>
-                                                ) : (
-                                                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 px-3 py-1.5 rounded-lg text-[10px] font-black border border-slate-200 dark:border-slate-700">SIN ASIGNAR</span>
-                                                )}
+                                                <div className="flex flex-col gap-1.5">
+                                                    {selectorTecnico(orden, `rounded-lg border px-2 py-1.5 text-xs font-black outline-none ${orden.tecnico ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400' : 'border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800'}`)}
+                                                    {campoFecha(orden, 'rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300')}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-2">
@@ -261,6 +326,10 @@ export default function Orders() {
                                 </div>
                                 <p className="text-slate-500 dark:text-slate-400 text-xs mb-3 truncate">{orden.direccion}</p>
                                 {orden.servicio && <p className="mb-3 text-[10px] font-black uppercase text-blue-600 dark:text-blue-400">{orden.servicio.alias} · Servicio #{orden.servicio.id}</p>}
+                                <div className="mb-3 grid grid-cols-1 gap-2">
+                                    {selectorTecnico(orden, 'min-h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200')}
+                                    {campoFecha(orden, 'min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300')}
+                                </div>
                                 <div className="flex gap-2">
                                     <button onClick={() => { setTargetCliente(orden); setShowChatModal(true); }} className="flex-1 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-black uppercase text-slate-600 dark:text-slate-300">Chat</button>
                                     <button onClick={() => handleDelete(orden.id)} className="px-4 py-2 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-lg border border-rose-100 dark:border-rose-500/20 text-[10px] font-black uppercase">Cancelar</button>

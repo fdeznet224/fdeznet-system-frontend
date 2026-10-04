@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react'; 
+import axios from 'axios';
+import { apiErrorMessage } from '@/utils/apiError';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -68,8 +70,17 @@ export default function Login() {
             
         } catch (error) {
             console.error(error);
-            // ✅ MEJORA: Depender de App.tsx para el color del Toast
-            toast.error("Usuario o contraseña incorrectos");
+            // Sin respuesta del servidor no es la contraseña: es la conexión.
+            const sinRespuesta = axios.isAxiosError(error) && !error.response;
+            if (sinRespuesta || !navigator.onLine) {
+                toast.error("Sin internet: para iniciar sesión necesitas conexión. Tu contraseña no es el problema.");
+            } else if (axios.isAxiosError(error) && error.response?.status === 429) {
+                toast.error("Demasiados intentos. Espera unos minutos y vuelve a intentar.");
+            } else if (axios.isAxiosError(error) && error.response?.status === 401) {
+                toast.error("Usuario o contraseña incorrectos");
+            } else {
+                toast.error(apiErrorMessage(error, "No se pudo iniciar sesión. Intenta de nuevo."));
+            }
         } finally {
             setIsLoading(false);
         }

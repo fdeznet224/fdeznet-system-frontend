@@ -866,6 +866,27 @@ test('carga las órdenes desde su módulo administrativo', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Nueva Orden' })).toBeVisible()
 })
 
+test('el admin asigna técnico y fecha a una orden de instalación', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  const cambios: unknown[] = []
+  await page.route('**/api/bajas/tecnicos/disponibles', (route) =>
+    route.fulfill({ json: [{ id: 7, nombre_completo: 'Técnico Uno', usuario: 'tec1' }] }))
+  await page.route('**/api/ordenes/?tipo=instalacion', (route) => route.fulfill({
+    json: [{ id: 41, version: 1, estado: 'pendiente', prospecto_nombre: 'Prospecto Demo', prospecto_telefono: '5550000000', prospecto_direccion: 'Calle 1', tecnico: null, fecha_programada: null }],
+  }))
+  await page.route('**/api/ordenes/41', async (route) => {
+    cambios.push(route.request().postDataJSON())
+    await route.fulfill({ json: { id: 41 } })
+  })
+  await page.goto('/admin/ordenes')
+
+  await page.locator('select[aria-label="Técnico de Prospecto Demo"]:visible').selectOption('7')
+  await expect.poll(() => cambios).toEqual([{ tecnico_id: 7 }])
+  await page.locator('input[aria-label="Fecha de visita de Prospecto Demo"]:visible').fill('2026-10-05T09:30')
+  await expect.poll(() => cambios.at(-1)).toEqual({ fecha_programada: '2026-10-05T09:30:00' })
+})
+
 test('carga las transacciones y sus filtros financieros', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)
