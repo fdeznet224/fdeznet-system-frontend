@@ -152,6 +152,8 @@ const MOTIVOS: Record<string, string> = {
   verificado_en_banco_sin_correo: 'Aprobado: verificado en el banco sin correo',
   aprobado_por_captura: 'Aprobado con los datos de la captura',
   aprobado_en_panel_por_captura: 'Aprobado en el panel con la captura',
+  pagado_manualmente: 'Cerrado: el pago se registró a mano',
+  no_es_comprobante: 'La imagen no es un comprobante',
   captura_ya_utilizada: 'Esa captura ya se usó en otro pago',
   captura_antigua: 'La transferencia es de hace varios días',
   fecha_de_captura_invalida: 'La fecha de la captura no cuadra',
