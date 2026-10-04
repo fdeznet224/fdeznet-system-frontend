@@ -723,6 +723,20 @@ test('el técnico ve su siguiente contrato aunque no tenga internet', async ({ p
   await expect(page.getByText('Sin internet: estos son los que tienes guardados en tu celular.')).toBeVisible({ timeout: 15000 })
 })
 
+test('al reabrir la app sin internet el técnico entra directo a su panel', async ({ page }) => {
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  await page.goto('/tech/dashboard')
+  await expect(page.getByText('FdezNet Tech')).toBeVisible()
+
+  // Cerró la app con wifi y datos apagados; al abrirla entra por "/".
+  await page.route('**/api/**', (route) => route.abort('internetdisconnected'))
+  await page.goto('/')
+  await expect(page).toHaveURL(/\/tech\/dashboard/)
+  await expect(page.getByText('FdezNet Tech')).toBeVisible()
+  await expect(page.getByText('Buscar o escanear QR...')).toBeVisible()
+})
+
 test('carga una instalación técnica preasignada', async ({ page }) => {
   await authenticateAs(page, 'tecnico')
   await mockApi(page)

@@ -4,7 +4,7 @@ import axios from 'axios';
 import { apiErrorMessage } from '@/utils/apiError';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { notifySessionChanged } from '@/offline/db';
 import { useBrand } from '@/context/brand/useBrand';
 import {
@@ -32,6 +32,18 @@ interface LoginResponse {
     user: LoginUser;
 }
 
+const ROLES: AppRole[] = ['admin', 'supervisor', 'cajero', 'tecnico'];
+
+/** Rol de la sesión guardada en este dispositivo, si hay una. */
+function rolGuardado(): AppRole | null {
+    try {
+        const rol = (JSON.parse(localStorage.getItem('user') || 'null') as { rol?: string } | null)?.rol?.trim().toLowerCase();
+        return ROLES.find((item) => item === rol) ?? null;
+    } catch {
+        return null;
+    }
+}
+
 export default function Login() {
     const { brand } = useBrand();
     const [username, setUsername] = useState<string>('');
@@ -39,6 +51,10 @@ export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const navigate = useNavigate();
+    // La app instalada abre en "/": si ya hay sesión en el dispositivo se entra
+    // directo, también sin internet. Si la sesión venció, el servidor responde
+    // 401 al volver la conexión y se regresa aquí.
+    const [rolInicial] = useState(rolGuardado);
 
     const handleLogin = async (e: FormEvent) => {
         e.preventDefault();
@@ -85,6 +101,8 @@ export default function Login() {
             setIsLoading(false);
         }
     };
+
+    if (rolInicial) return <Navigate to={defaultPathForRole(rolInicial)} replace />;
 
     return (
         /* ✅ ADAPTADO: Fondo y texto transicionan suavemente entre temas */
