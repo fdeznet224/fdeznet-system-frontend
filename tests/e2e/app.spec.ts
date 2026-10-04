@@ -927,8 +927,33 @@ test('carga las órdenes desde su módulo administrativo', async ({ page }) => {
   await mockApi(page)
   await page.goto('/admin/ordenes')
 
-  await expect(page.getByRole('heading', { name: /Ordenes de Servicio/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Instalaciones' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Nueva Orden' })).toBeVisible()
+})
+
+test('las instalaciones muestran zona, plan, origen y se filtran por técnico', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/zonas/', (route) => route.fulfill({ json: [{ id: 2, nombre: 'Paraíso' }] }))
+  await page.route('**/api/planes/', (route) => route.fulfill({ json: [{ id: 11, nombre: 'Estándar', precio: 350 }] }))
+  await page.route('**/api/ordenes/?tipo=instalacion', (route) => route.fulfill({ json: [
+    { id: 41, version: 1, estado: 'pendiente', motivo: 'prospecto_whatsapp', created_at: new Date().toISOString(), zona_id: 2, plan_id: 11,
+      prospecto_nombre: 'Ana Lopez', prospecto_telefono: '5550001111', prospecto_direccion: 'Calle 1 · https://maps.google.com/?q=16.7,-93.1', tecnico: null },
+    { id: 42, version: 1, estado: 'asignada', created_at: new Date().toISOString(), prospecto_nombre: 'Luis Perez',
+      prospecto_direccion: 'Calle 2', tecnico: { id: 7, nombre: 'Técnico Uno', usuario: 'tec1' } },
+  ] }))
+  await page.goto('/admin/ordenes')
+
+  const ana = page.locator('article', { hasText: 'Ana Lopez' })
+  await expect(ana.getByText('Paraíso')).toBeVisible()
+  await expect(ana.getByText('Estándar · $350')).toBeVisible()
+  await expect(ana.getByText('Agente IA')).toBeVisible()
+  await expect(ana.getByRole('link', { name: 'Ver ubicación' })).toHaveAttribute('href', 'https://maps.google.com/?q=16.7,-93.1')
+  await expect(page.locator('article', { hasText: 'Luis Perez' }).getByText('Sin zona')).toBeVisible()
+
+  await page.getByRole('button', { name: /Sin técnico/ }).click()
+  await expect(page.locator('article')).toHaveCount(1)
+  await expect(page.locator('article', { hasText: 'Ana Lopez' })).toBeVisible()
 })
 
 test('el admin asigna técnico y fecha a una orden de instalación', async ({ page }) => {
@@ -1050,7 +1075,7 @@ test('la zona guarda su MikroTik, OLT y plantilla de cobro', async ({ page }) =>
   await page.getByTitle('Editar Zona').click()
   await page.getByLabel('Plantilla de cobro').selectOption('2')
   await page.getByRole('button', { name: 'Actualizar Cambios' }).click()
-  await expect.poll(() => guardado).toEqual({ nombre: 'Vicente Guerrero', router_id: 1, olt_id: 2, plantilla_id: 2 })
+  await expect.poll(() => guardado).toEqual({ nombre: 'Vicente Guerrero', router_id: 1, olt_id: 2, plantilla_id: 2, colonias: null })
 })
 
 test('carga la administración de zonas', async ({ page }) => {

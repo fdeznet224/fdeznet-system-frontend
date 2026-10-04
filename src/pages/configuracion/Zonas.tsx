@@ -14,6 +14,7 @@ interface Zone {
     router_id?: number | null;
     olt_id?: number | null;
     plantilla_id?: number | null;
+    colonias?: string | null;
 }
 
 interface Catalogo { id: number; nombre: string; }
@@ -25,9 +26,10 @@ interface ZonaForm {
     router_id: string;
     olt_id: string;
     plantilla_id: string;
+    colonias: string;
 }
 
-const FORM_VACIO: ZonaForm = { nombre: '', router_id: '', olt_id: '', plantilla_id: '' };
+const FORM_VACIO: ZonaForm = { nombre: '', router_id: '', olt_id: '', plantilla_id: '', colonias: '' };
 const aId = (valor: string) => (valor ? Number(valor) : null);
 
 const getApiError = (error: unknown, fallback: string) => {
@@ -106,6 +108,7 @@ export default function Zonas() {
             router_id: aId(form.router_id),
             olt_id: aId(form.olt_id),
             plantilla_id: aId(form.plantilla_id),
+            colonias: form.colonias.trim() || null,
         };
         try {
             if (editandoId) {
@@ -133,6 +136,7 @@ export default function Zonas() {
             router_id: zona.router_id ? String(zona.router_id) : '',
             olt_id: zona.olt_id ? String(zona.olt_id) : '',
             plantilla_id: zona.plantilla_id ? String(zona.plantilla_id) : '',
+            colonias: zona.colonias || '',
         });
         setEditandoId(zona.id);
     };
@@ -232,6 +236,18 @@ export default function Zonas() {
                                     {plantillas.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                                 </select>
                             </label>
+
+                            <label className="block">
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black ml-1 uppercase tracking-wider">Colonias que cubre</span>
+                                <textarea
+                                    rows={3}
+                                    className={`${campoClase} py-2`}
+                                    placeholder="Ej: Barrio Nuevo, El Recreo, Las Flores"
+                                    value={form.colonias}
+                                    onChange={e => setForm({ ...form, colonias: e.target.value })}
+                                />
+                                <span className="mt-1 block text-[11px] text-slate-400">Separadas por coma. El agente de WhatsApp las usa para saber a qué zona pertenece un interesado.</span>
+                            </label>
                             
                             <button 
                                 type="submit" 
@@ -264,6 +280,7 @@ export default function Zonas() {
                                     <p className="text-[11px] font-bold text-slate-400">
                                         {nombreDe(plantillas, z.plantilla_id) || <span className="text-amber-600">Sin plantilla de cobro</span>}
                                     </p>
+                                    {z.colonias && <p className="mt-0.5 text-[11px] text-slate-400 line-clamp-2">Colonias: {z.colonias}</p>}
                                 </div>
                             </div>
 
