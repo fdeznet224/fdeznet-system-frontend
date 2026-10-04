@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
@@ -12,6 +11,7 @@ import {
     MapPinIcon, XCircleIcon, IdentificationIcon,
     CpuChipIcon
 } from '@heroicons/react/24/outline';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface ClientInstallation {
     id: number;
@@ -65,13 +65,6 @@ interface InstallationFormData {
     latitud: string;
     longitud: string;
     mac_address: string;
-}
-
-function apiErrorMessage(error: unknown, fallback: string) {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || fallback;
-    }
-    return fallback;
 }
 
 export default function TechInstallForm() {

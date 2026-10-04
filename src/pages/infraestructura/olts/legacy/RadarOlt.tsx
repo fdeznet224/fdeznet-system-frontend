@@ -8,6 +8,7 @@ import {
     TrashIcon, XMarkIcon,
     SignalIcon, ServerIcon,
 } from '@heroicons/react/24/outline';
+import { apiErrorMessage } from '@/utils/apiError';
 
 type SignalLevel = 'optima' | 'alerta' | 'offline' | 'intruso';
 
@@ -411,8 +412,8 @@ function OltFormModal({ olt, onClose, onSuccess }: OltFormModalProps) {
     };
 
     const getErrorMessage = (error: unknown) => {
-        if (axios.isAxiosError<{ detail?: string; mensaje?: string }>(error)) {
-            return error.response?.data?.detail || error.response?.data?.mensaje || error.message;
+        if (axios.isAxiosError(error)) {
+            return apiErrorMessage(error, error.message);
         }
         return error instanceof Error ? error.message : "Error inesperado";
     };

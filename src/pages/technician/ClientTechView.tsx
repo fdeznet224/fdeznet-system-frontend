@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import {
@@ -10,6 +9,7 @@ import {
     KeyIcon, MapPinIcon, ChatBubbleLeftRightIcon,
     XMarkIcon, PaperAirplaneIcon
 } from '@heroicons/react/24/outline';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface TechData {
     id: number;
@@ -51,10 +51,7 @@ interface DiagnosticoResponse {
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || fallback;
-    }
-    return fallback;
+    return apiErrorMessage(error, fallback);
 }
 
 export default function ClientTechView() {

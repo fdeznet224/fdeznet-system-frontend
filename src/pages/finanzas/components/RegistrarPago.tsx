@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
-import axios from 'axios';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { Transition } from '@headlessui/react';
@@ -8,6 +7,7 @@ import {
     ShieldExclamationIcon, CreditCardIcon, CalendarDaysIcon,
     CheckCircleIcon, ChevronLeftIcon, IdentificationIcon, MapPinIcon
 } from '@heroicons/react/24/outline';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface Props {
     onCancel: () => void; 
@@ -38,10 +38,7 @@ interface CobroResponse {
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || fallback;
-    }
-    return fallback;
+    return apiErrorMessage(error, fallback);
 }
 
 function classNames(...classes: string[]) {

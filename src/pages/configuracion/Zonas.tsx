@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { 
@@ -7,6 +6,7 @@ import {
     PencilSquareIcon, TrashIcon, XMarkIcon 
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface Zone {
     id: number;
@@ -14,10 +14,7 @@ interface Zone {
 }
 
 const getApiError = (error: unknown, fallback: string) => {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || fallback;
-    }
-    return fallback;
+    return apiErrorMessage(error, fallback);
 };
 
 export default function Zonas() {

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { ArrowLeftIcon, ChatBubbleLeftRightIcon, SparklesIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
 import AgenteIA, { type ConfiguracionAgente, type ModoAgente } from '@/pages/admin/mensajes/AgenteIA';
 import BotFlowBuilder from './BotFlowBuilder';
+import { apiErrorMessage } from '@/utils/apiError';
 
 const OPCIONES: { valor: ModoAgente; titulo: string; descripcion: string }[] = [
   { valor: 'automatico', titulo: 'Agente de IA', descripcion: 'Contesta solo, las 24 horas, consultando el sistema: cuenta, conexión, promesas y comprobantes.' },
@@ -38,7 +38,7 @@ export default function BotWhatsapp() {
       setModo(valor);
       toast.success(valor === 'apagado' ? 'Ahora contesta el bot de flujo' : 'Ahora contesta el agente de IA');
     } catch (error) {
-      const detalle = axios.isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail : null;
+      const detalle = apiErrorMessage(error, '');
       toast.error(detalle || 'No se pudo cambiar');
     } finally {
       setCambiando(false);

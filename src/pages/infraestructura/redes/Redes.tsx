@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import axios from 'axios';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import {
@@ -14,13 +13,10 @@ import {
 } from '@heroicons/react/24/outline';
 import CreateRedModal from './components/CreateRedModal';
 import type { RedRecord, RouterOption } from './types';
+import { apiErrorMessage } from '@/utils/apiError';
 
 const getErrorMessage = (error: unknown, fallback: string) => {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || fallback;
-    }
-
-    return fallback;
+    return apiErrorMessage(error, fallback);
 };
 
 export default function RedesIP() {

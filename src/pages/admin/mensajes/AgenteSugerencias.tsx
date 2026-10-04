@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { SparklesIcon, PaperAirplaneIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
 import { useWhatsApp } from '@/context/whatsapp/context';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface Consulta {
   nombre: string;
@@ -70,8 +70,7 @@ function detalleAccion(accion: Accion): string {
 }
 
 function mensajeError(error: unknown, respaldo: string) {
-  if (axios.isAxiosError<{ detail?: string }>(error)) return error.response?.data?.detail || respaldo;
-  return respaldo;
+  return apiErrorMessage(error, respaldo);
 }
 
 interface Props {

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import {
   ArrowPathIcon,
@@ -16,6 +15,7 @@ import {
 import client from '@/api/axios';
 import type { ClientService } from '@/types/services';
 import { FORMAS_COBRO, nombreFormaCobro, type FormaCobro } from '@/utils/formaCobro';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface Props {
   clientId: number;
@@ -75,10 +75,7 @@ const initialForm = (): NewServiceForm => ({
 });
 
 function errorMessage(error: unknown, fallback: string) {
-  if (axios.isAxiosError<{ detail?: string }>(error)) {
-    return error.response?.data?.detail || fallback;
-  }
-  return fallback;
+  return apiErrorMessage(error, fallback);
 }
 
 function statusClass(status: string) {

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -18,6 +17,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 import client from '@/api/axios';
+import { apiErrorMessage } from '@/utils/apiError';
 
 type OutboxStatus =
   | 'pendiente'
@@ -97,10 +97,7 @@ const statuses: Array<{ value: '' | OutboxStatus; label: string }> = [
 const retryable = new Set<OutboxStatus>(['fallido', 'incierto']);
 
 function errorMessage(error: unknown, fallback: string) {
-  if (axios.isAxiosError<{ detail?: string }>(error)) {
-    return error.response?.data?.detail || fallback;
-  }
-  return fallback;
+  return apiErrorMessage(error, fallback);
 }
 
 function formatDate(value?: string | null) {

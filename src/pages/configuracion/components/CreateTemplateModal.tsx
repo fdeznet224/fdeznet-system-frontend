@@ -1,10 +1,10 @@
 import { useState, useEffect, Fragment } from 'react';
-import axios from 'axios';
 import client from '../../../api/axios';
 import { toast } from 'react-hot-toast';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { FORMAS_COBRO, type FormaCobro } from '../../../utils/formaCobro';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface FormState {
     nombre: string;
@@ -62,10 +62,7 @@ const STEP_COLOR_CLASSES: Record<StepProps['color'], string> = {
 };
 
 function getErrorMessage(error: unknown) {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || "Error al guardar";
-    }
-    return "Error al guardar";
+    return apiErrorMessage(error, "Error al guardar");
 }
 
 export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initialData }: Props) {

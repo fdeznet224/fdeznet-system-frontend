@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
 import client from '@/api/axios';
 import AgenteSugerencias from './AgenteSugerencias';
+import { apiErrorMessage } from '@/utils/apiError';
 
 export type ModoAgente = 'apagado' | 'sugerencia' | 'automatico';
 
@@ -51,7 +51,7 @@ export default function AgenteIA() {
       toast.success('Conocimiento guardado');
       await cargar();
     } catch (error) {
-      const detalle = axios.isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail : null;
+      const detalle = apiErrorMessage(error, '');
       toast.error(detalle || 'No se pudo guardar');
     } finally {
       setGuardando(false);

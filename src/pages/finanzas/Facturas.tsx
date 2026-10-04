@@ -8,6 +8,7 @@ import {
     XCircleIcon
 } from '@heroicons/react/24/outline';
 import PaymentModal, { type PaymentInvoice } from './components/PaymentModal';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface Factura extends PaymentInvoice {
     servicio_id?: number | null;
@@ -161,7 +162,7 @@ export default function Facturas() {
             );
             await fetchFacturas(filtros, busquedaActiva);
         } catch (error: unknown) {
-            const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+            const detail = apiErrorMessage(error, '');
             toast.error(detail || 'No se pudo hacer la emisión masiva', { id: toastId });
         } finally {
             setEmitiendo(false);
@@ -192,8 +193,7 @@ export default function Facturas() {
             toast.success('Factura anulada correctamente', { id: toastId });
             await fetchFacturas(filtros, busquedaActiva);
         } catch (error: unknown) {
-            const detail = (error as { response?: { data?: { detail?: string } } })
-                ?.response?.data?.detail;
+            const detail = apiErrorMessage(error, '');
             toast.error(detail || 'No fue posible anular la factura', { id: toastId });
         }
     };

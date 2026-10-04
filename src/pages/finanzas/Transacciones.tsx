@@ -7,6 +7,7 @@ import {
     CalendarDaysIcon, UserIcon, TicketIcon, CreditCardIcon,
     ExclamationTriangleIcon, XMarkIcon, XCircleIcon
 } from '@heroicons/react/24/outline';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface PaymentReportItem {
     id: number;
@@ -204,8 +205,7 @@ export default function Transacciones() {
             setCorrectionReason('');
             await fetchPagos();
         } catch (error: unknown) {
-            const detail = (error as { response?: { data?: { detail?: string } } })
-                ?.response?.data?.detail;
+            const detail = apiErrorMessage(error, '');
             toast.error(detail || 'No fue posible corregir el cobro', { id: toastId });
         } finally {
             setCorrecting(false);
@@ -235,8 +235,7 @@ export default function Transacciones() {
             toast('El pago del cliente correcto no fue modificado', { icon: 'ℹ️' });
             await fetchPagos();
         } catch (error: unknown) {
-            const detail = (error as { response?: { data?: { detail?: string } } })
-                ?.response?.data?.detail;
+            const detail = apiErrorMessage(error, '');
             toast.error(detail || 'No fue posible anular el pago', { id: toastId });
         }
     };

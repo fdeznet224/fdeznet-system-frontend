@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import axios from 'axios';
 import client from '../../../api/axios';
 import { toast } from 'react-hot-toast';
 import { 
     XMarkIcon, BanknotesIcon, CreditCardIcon, 
     CheckCircleIcon, ArrowPathIcon
 } from '@heroicons/react/24/outline';
+import { apiErrorMessage } from '@/utils/apiError';
 
 export interface PaymentInvoice {
     id: number;
@@ -44,10 +44,7 @@ interface Props {
 }
 
 function getErrorMessage(error: unknown) {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || "Error en la transacción";
-    }
-    return "Error en la transacción";
+    return apiErrorMessage(error, "Error en la transacción");
 }
 
 export default function PaymentModal({ isOpen, onClose, factura, onSuccess }: Props) {

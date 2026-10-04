@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { 
@@ -7,6 +6,7 @@ import {
     SignalIcon, PencilSquareIcon 
 } from '@heroicons/react/24/outline';
 import type { RedRecord, RouterOption } from '../types';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface Props {
     isOpen: boolean;
@@ -17,11 +17,7 @@ interface Props {
 }
 
 const getErrorMessage = (error: unknown) => {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || "Error al procesar";
-    }
-
-    return "Error al procesar";
+    return apiErrorMessage(error, "Error al procesar");
 };
 
 export default function CreateRedModal({ isOpen, onClose, onSuccess, routers, redToEdit }: Props) {

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { 
     XMarkIcon, CubeIcon, MapPinIcon, MapIcon, 
     PencilSquareIcon 
 } from '@heroicons/react/24/outline';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface Zona { id: number; nombre: string; }
 interface Olt { id: number; nombre: string; router_id?: number | null; }
@@ -31,11 +31,7 @@ interface Props {
 }
 
 const getErrorMessage = (error: unknown) => {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || "Error al guardar";
-    }
-
-    return "Error al guardar";
+    return apiErrorMessage(error, "Error al guardar");
 };
 
 export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, olts, napToEdit }: Props) {

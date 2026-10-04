@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -12,6 +11,7 @@ import {
 
 import CreateNapModal from './components/CreateNapModal';
 import NapDetailsModal from './components/NapDetailsModal'; 
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface CajaNap {
     id: number;
@@ -31,11 +31,7 @@ interface Zona { id: number; nombre: string; }
 interface Olt { id: number; nombre: string; router_id?: number | null; }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || fallback;
-    }
-
-    return fallback;
+    return apiErrorMessage(error, fallback);
 };
 
 export default function CajasNap() {

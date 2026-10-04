@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { 
@@ -7,6 +6,7 @@ import {
     AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline';
 import type { PlanRecord, RouterOption } from '../types';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface Props {
     isOpen: boolean;
@@ -29,11 +29,7 @@ interface InputSimpleProps {
 }
 
 const getErrorMessage = (error: unknown) => {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || "Error en la operación";
-    }
-
-    return "Error en la operación";
+    return apiErrorMessage(error, "Error en la operación");
 };
 
 export default function PlanModal({ isOpen, plan, onClose, onSuccess, routers }: Props) {

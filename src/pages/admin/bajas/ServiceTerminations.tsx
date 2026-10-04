@@ -7,8 +7,8 @@ import {
   UserIcon,
 } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
-import axios from 'axios'
 import client from '@/api/axios'
+import { apiErrorMessage } from '@/utils/apiError'
 
 interface Technician {
   id: number
@@ -62,10 +62,7 @@ const statusLabels: Record<string, string> = {
 }
 
 function errorMessage(error: unknown, fallback: string) {
-  if (axios.isAxiosError<{ detail?: string }>(error)) {
-    return error.response?.data?.detail || fallback
-  }
-  return fallback
+  return apiErrorMessage(error, fallback)
 }
 
 export default function ServiceTerminations() {

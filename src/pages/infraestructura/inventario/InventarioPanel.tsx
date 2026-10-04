@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, Fragment } from 'react';
-import axios from 'axios';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { Dialog, Transition } from '@headlessui/react';
@@ -12,6 +11,7 @@ import {
     TruckIcon, ExclamationTriangleIcon, MagnifyingGlassIcon,
     FunnelIcon
 } from '@heroicons/react/24/outline';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface EquipoInventario {
     id: number;
@@ -43,10 +43,7 @@ interface KpiCardProps {
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || fallback;
-    }
-    return fallback;
+    return apiErrorMessage(error, fallback);
 }
 
 export default function InventarioPanel() {

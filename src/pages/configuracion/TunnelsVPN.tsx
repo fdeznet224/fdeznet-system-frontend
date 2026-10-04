@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
@@ -9,6 +8,7 @@ import {
     BoltIcon, XMarkIcon, DevicePhoneMobileIcon, 
     QrCodeIcon, ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
+import { apiErrorMessage } from '@/utils/apiError';
 
 interface VpnTunnel {
     id: number;
@@ -32,10 +32,7 @@ interface RoutedSubnet {
 }
 
 const getApiError = (error: unknown, fallback: string) => {
-    if (axios.isAxiosError<{ detail?: string }>(error)) {
-        return error.response?.data?.detail || fallback;
-    }
-    return fallback;
+    return apiErrorMessage(error, fallback);
 };
 
 export default function TunnelsVPN() {

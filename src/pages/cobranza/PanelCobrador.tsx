@@ -3,7 +3,6 @@ import {
     type ComponentType
 } from 'react';
 import client from '../../api/axios';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Dialog, Transition } from '@headlessui/react';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +15,7 @@ import {
     ChartPieIcon, HomeIcon, CreditCardIcon, CalendarDaysIcon, 
     CheckCircleIcon, IdentificationIcon
 } from '@heroicons/react/24/outline';
+import { apiErrorMessage } from '@/utils/apiError';
 
 type PaymentMethod = 'efectivo' | 'transferencia';
 
@@ -241,9 +241,7 @@ export default function PanelCobrador() {
                     return;
                 }
             } catch (error: unknown) {
-                const detail = axios.isAxiosError<{ detail?: string }>(error)
-                    ? error.response?.data?.detail
-                    : undefined;
+                const detail = apiErrorMessage(error, '');
                 toast.error(detail || 'No se pudo calcular el total', { id: toastId });
                 return;
             }
@@ -330,9 +328,7 @@ export default function PanelCobrador() {
             setFiltro('');
             fetchData();
         } catch (error: unknown) {
-            const detail = axios.isAxiosError<{ detail?: string }>(error)
-                ? error.response?.data?.detail
-                : undefined;
+            const detail = apiErrorMessage(error, '');
             toast.error(
                 detail || "Error al guardar promesa",
                 { id: toastId },
