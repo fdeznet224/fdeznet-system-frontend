@@ -57,6 +57,18 @@ interface ChatMessage {
     fecha: string;
 }
 
+// Sesión PPPoE y consumo en el MikroTik: sirve también sin ONU (radio enlace).
+interface EstadoConexion {
+    online: boolean;
+    uptime?: string | null;
+    ip?: string | null;
+    bajada: number;
+    subida: number;
+    error?: string;
+}
+
+const mbps = (bps: number) => `${(bps / 1_000_000).toFixed(bps >= 10_000_000 ? 0 : 1)} Mbps`;
+
 interface DiagnosticoResponse {
     data: {
         potencia: string;
@@ -76,6 +88,9 @@ export default function ClientTechView() {
 
     const [isDiagnosing, setIsDiagnosing] = useState(false);
     const [reiniciando, setReiniciando] = useState(false);
+    const [enLinea, setEnLinea] = useState<EstadoConexion | null>(null);
+    const [revisandoConexion, setRevisandoConexion] = useState(false);
+    const [consumoEnVivo, setConsumoEnVivo] = useState(false);
     const [liveSignal, setLiveSignal] = useState<{ potencia: string, mensaje: string } | null>(null);
 
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -89,7 +104,7 @@ export default function ClientTechView() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const res = await client.get<TechData>(`/clientes/${cedula}/portal`);
+                const res = await client.get<TechData>(`/clientes/${encodeURIComponent(cedula ?? '')}/portal`);
                 setData(res.data);
             } catch {
                 toast.error("Cliente no encontrado");
@@ -100,6 +115,60 @@ export default function ClientTechView() {
         };
         fetchData();
     }, [cedula, navigate]);
+
+    const revisarConexion = useCallback(async (clienteIdConexion: number) => {
+        setRevisandoConexion(true);
+        try {
+            const [conexion, trafico] = await Promise.all([
+                client.get<{ online: boolean; mensaje?: string; datos?: { uptime?: string; ip_actual?: string } }>(`/network/diagnostico/conexion/${clienteIdConexion}`),
+                client.get<{ velocidad_bajada?: number; velocidad_subida?: number }>(`/network/diagnostico/trafico/${clienteIdConexion}`),
+            ]);
+            setEnLinea({
+                online: Boolean(conexion.data.online),
+                uptime: conexion.data.datos?.uptime,
+                ip: conexion.data.datos?.ip_actual,
+                bajada: Number(trafico.data.velocidad_bajada || 0),
+                subida: Number(trafico.data.velocidad_subida || 0),
+                error: conexion.data.online ? undefined : conexion.data.mensaje,
+            });
+        } catch {
+            setEnLinea({ online: false, bajada: 0, subida: 0, error: 'No se pudo consultar el MikroTik' });
+        } finally {
+            setRevisandoConexion(false);
+        }
+    }, []);
+
+    // Al abrir la ficha se revisa una vez la conexión.
+    const idConexion = data?.id;
+    useEffect(() => {
+        if (!idConexion) return;
+        const inicial = window.setTimeout(() => void revisarConexion(idConexion), 0);
+        return () => window.clearTimeout(inicial);
+    }, [idConexion, revisarConexion]);
+
+    // Consumo en vivo: solo el tráfico, cada 3 s, mientras esté encendido.
+    useEffect(() => {
+        if (!consumoEnVivo || !idConexion) return;
+        let activo = true;
+        const leer = async () => {
+            try {
+                const { data: trafico } = await client.get<{ velocidad_bajada?: number; velocidad_subida?: number }>(`/network/diagnostico/trafico/${idConexion}`);
+                if (!activo) return;
+                setEnLinea((previo) => previo && {
+                    ...previo,
+                    bajada: Number(trafico.velocidad_bajada || 0),
+                    subida: Number(trafico.velocidad_subida || 0),
+                });
+            } catch {
+                if (activo) setConsumoEnVivo(false);
+            }
+        };
+        const intervalo = window.setInterval(() => void leer(), 3000);
+        return () => {
+            activo = false;
+            window.clearInterval(intervalo);
+        };
+    }, [consumoEnVivo, idConexion]);
 
     // Reinicio normal de la ONU (no borra su configuración): el cliente se queda sin internet 1 a 2 minutos.
     const handleReiniciarOnu = async () => {
@@ -191,6 +260,8 @@ export default function ClientTechView() {
     const tieneFacturasVencidas = (data.facturas_pendientes ?? 0) > 0;
     const estaSuspendido = data.estado === 'suspendido' || data.estado === 'cortado';
     const velocidadMb = data.velocidad_bajada / 1024;
+    // La sesión PPPoE en vivo manda; mientras llega, el último estado sincronizado.
+    const estaOnline = enLinea ? enLinea.online : data.is_online;
 
     return (
         /* ✅ ADAPTADO: Fondo transiciona suavemente de claro a oscuro */
@@ -207,11 +278,11 @@ export default function ClientTechView() {
                 </div>
                 <div className={`px-2 py-1 rounded-lg border text-[10px] font-bold uppercase ${estaSuspendido
                         ? 'bg-rose-50 dark:bg-rose-500 text-rose-600 dark:text-white border-rose-200 dark:border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.2)] dark:shadow-[0_0_10px_rgba(244,63,94,0.4)]'
-                        : data.is_online
+                        : estaOnline
                             ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-500'
                             : 'bg-slate-100 dark:bg-slate-700/50 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400'
                     }`}>
-                    {estaSuspendido ? 'Suspendido' : (data.is_online ? 'Online' : 'Offline')}
+                    {estaSuspendido ? 'Suspendido' : (estaOnline ? 'Online' : 'Offline')}
                 </div>
             </div>
 
@@ -220,12 +291,12 @@ export default function ClientTechView() {
                 {/* 1. STATUS DE CONEXIÓN */}
                 <div className={`p-6 rounded-[2rem] border text-center relative overflow-hidden transition-all duration-300 ${estaSuspendido
                         ? 'bg-gradient-to-br from-rose-50 dark:from-rose-900/40 to-white dark:to-[#0f1219] border-rose-200 dark:border-rose-500 shadow-md dark:shadow-[0_0_40px_rgba(244,63,94,0.2)]'
-                        : data.is_online
+                        : estaOnline
                             ? 'bg-gradient-to-br from-emerald-50/50 dark:from-[#1a1f2e] to-white dark:to-[#0f1219] border-emerald-200 dark:border-emerald-500/30 shadow-md dark:shadow-[0_0_30px_rgba(16,185,129,0.1)]'
                             : 'bg-gradient-to-br from-slate-100 dark:from-[#1a1f2e] to-white dark:to-[#0f1219] border-slate-200 dark:border-slate-800 shadow-sm'
                     }`}>
                     <div className="relative z-10 flex flex-col items-center">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-3 ${estaSuspendido ? 'bg-rose-100 dark:bg-rose-500 text-rose-600 dark:text-white animate-pulse' : (data.is_online ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' : 'bg-slate-200 dark:bg-slate-800 text-slate-500')
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-3 ${estaSuspendido ? 'bg-rose-100 dark:bg-rose-500 text-rose-600 dark:text-white animate-pulse' : (estaOnline ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' : 'bg-slate-200 dark:bg-slate-800 text-slate-500')
                             }`}>
                             {estaSuspendido ? <XMarkIcon className="w-8 h-8" /> : <SignalIcon className="w-8 h-8" />}
                         </div>
@@ -401,6 +472,49 @@ export default function ClientTechView() {
                             <p className="text-xs font-mono font-bold text-slate-800 dark:text-white transition-colors">{data.ip_asignada}</p>
                         </div>
                     </div>
+                </div>
+
+                {/* CONEXIÓN EN EL MIKROTIK */}
+                <div className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-3xl p-5 space-y-3 shadow-sm dark:shadow-xl">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <GlobeAmericasIcon className="w-4 h-4" /> Conexión PPPoE y consumo
+                        </h3>
+                        <button type="button" aria-label="Revisar conexión" onClick={() => void revisarConexion(data.id)} disabled={revisandoConexion}
+                            className="rounded-xl border border-slate-200 p-2 text-slate-500 active:scale-90 dark:border-slate-700">
+                            <ArrowPathIcon className={`h-4 w-4 ${revisandoConexion ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
+                    {!enLinea ? (
+                        <p className="text-sm text-slate-500">Consultando el MikroTik...</p>
+                    ) : (
+                        <>
+                            <p className={`rounded-2xl p-3 text-sm font-black ${enLinea.online ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'}`}>
+                                {enLinea.online
+                                    ? `Conectado${enLinea.uptime ? ` hace ${enLinea.uptime}` : ''}${enLinea.ip ? ` · IP ${enLinea.ip}` : ''}`
+                                    : `Sin sesión PPPoE${enLinea.error ? ` · ${enLinea.error}` : ''}`}
+                            </p>
+                            {enLinea.online && (
+                                <>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="rounded-2xl bg-slate-50 p-3 dark:bg-[#0f1219]">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Bajada ahora</p>
+                                        <p className="mt-1 font-mono text-lg font-black text-slate-800 dark:text-white">{mbps(enLinea.bajada)}</p>
+                                    </div>
+                                    <div className="rounded-2xl bg-slate-50 p-3 dark:bg-[#0f1219]">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Subida ahora</p>
+                                        <p className="mt-1 font-mono text-lg font-black text-slate-800 dark:text-white">{mbps(enLinea.subida)}</p>
+                                    </div>
+                                </div>
+                                <button type="button" onClick={() => setConsumoEnVivo((v) => !v)}
+                                    className={`flex h-10 w-full items-center justify-center gap-2 rounded-xl text-[11px] font-black uppercase tracking-widest active:scale-95 ${consumoEnVivo ? 'bg-emerald-600 text-white' : 'border border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300'}`}>
+                                    {consumoEnVivo && <span className="h-2 w-2 animate-pulse rounded-full bg-white" />}
+                                    {consumoEnVivo ? 'Viendo consumo en vivo · detener' : 'Ver consumo en vivo'}
+                                </button>
+                                </>
+                            )}
+                        </>
+                    )}
                 </div>
 
                 {/* 4. CREDENCIALES PPPoE */}

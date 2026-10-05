@@ -4,7 +4,6 @@ import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import {
 
-    MagnifyingGlassIcon,
     PowerIcon, 
     MapPinIcon, 
     ChatBubbleLeftRightIcon,
@@ -17,6 +16,7 @@ import {
 import ChatModal from '@/components/chat/ChatModal';
 import { rutaEnMaps } from '@/utils/mapas';
 import ContratosApartados from './ContratosApartados';
+import BuscadorClientes from './BuscadorClientes';
 import { useSync } from '@/context/sync/context';
 import { useBrand } from '@/context/brand/useBrand';
 import { cachedRequest, notifySessionChanged } from '../../offline/db';
@@ -332,6 +332,9 @@ export default function TechDashboard() {
                 {activeTab === 'inicio' && (
                     <div className="animate-in fade-in duration-500 flex flex-col gap-4">
 
+                        {/* BÚSQUEDA: lo primero de la pantalla */}
+                        <BuscadorClientes />
+
                         <ContratosApartados />
                         <button
                             type="button"
@@ -341,17 +344,6 @@ export default function TechDashboard() {
                             + Nueva instalación
                         </button>
                         
-                        {/* ACCESO RÁPIDO A BÚSQUEDA / ESCÁNER ADAPTATIVO */}
-                        <div 
-                            onClick={() => navigate('/tech/buscar')}
-                            className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 flex items-center justify-between shadow-sm dark:shadow-lg cursor-pointer active:scale-95 transition-all group hover:border-emerald-500/30 dark:hover:border-emerald-500/30"
-                        >
-                            <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-300 transition-colors">
-                                <MagnifyingGlassIcon className="w-6 h-6" />
-                                <span className="text-sm font-black tracking-tight">Buscar cliente por contrato, nombre o IP</span>
-                            </div>
-                        </div>
-
                         {/* TARJETAS DE KPIs ADAPTATIVAS */}
                         <div className="grid grid-cols-1 gap-4">
                             <div onClick={() => setActiveTab('agenda')} className="bg-white dark:bg-gradient-to-br dark:from-[#1a1f2e] dark:to-[#0f1219] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md dark:shadow-xl relative overflow-hidden active:scale-95 transition-all cursor-pointer group hover:border-purple-500/30 dark:hover:border-purple-500/30">

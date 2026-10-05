@@ -472,7 +472,7 @@ test('carga el panel técnico tipado', async ({ page }) => {
   await page.goto('/tech/dashboard')
 
   await expect(page.getByText('FdezNet Tech')).toBeVisible()
-  await expect(page.getByText('Buscar cliente por contrato, nombre o IP')).toBeVisible()
+  await expect(page.getByLabel('Buscar cliente')).toBeVisible()
 })
 
 test('el radar OLT no escanea hasta elegir la OLT', async ({ page }) => {
@@ -734,7 +734,7 @@ test('al reabrir la app sin internet el técnico entra directo a su panel', asyn
   await page.goto('/')
   await expect(page).toHaveURL(/\/tech\/dashboard/)
   await expect(page.getByText('FdezNet Tech')).toBeVisible()
-  await expect(page.getByText('Buscar cliente por contrato, nombre o IP')).toBeVisible()
+  await expect(page.getByLabel('Buscar cliente')).toBeVisible()
 })
 
 test('el técnico activa la solicitud y ve contrato, PPPoE y señal', async ({ page, context }) => {
@@ -866,6 +866,8 @@ test('el técnico busca por contrato con el botón y ve la ficha técnica de un 
     },
     suggested_user: 'Cliente_Ajeno', suggested_pass: 'x', identificador_onu: 'HWTC00000009', olt_nombre: 'OLT E2E',
   } }))
+  await page.route('**/api/network/diagnostico/conexion/50', (route) => route.fulfill({ json: { online: true, metodo: 'PPPoE', datos: { uptime: '2h15m', ip_actual: '10.0.0.9' } } }))
+  await page.route('**/api/network/diagnostico/trafico/50', (route) => route.fulfill({ json: { velocidad_bajada: 12_000_000, velocidad_subida: 1_500_000 } }))
   await page.goto('/tech/buscar')
 
   await expect(page.getByRole('button', { name: /QR/i })).toHaveCount(0)
@@ -880,6 +882,11 @@ test('el técnico busca por contrato con el botón y ve la ficha técnica de un 
   await expect(page.getByRole('list', { name: 'Lo que debe' }).getByText('Mensualidad Octubre')).toBeVisible()
   await expect(page.getByText('$300 · 24/08/2026')).toBeVisible()
   await expect(page.getByRole('link', { name: /Cómo llegar/ })).toHaveAttribute('href', /destination=16\.39586%2C-92\.69331/)
+  // Sesión PPPoE y consumo: sirve aunque el cliente no tenga ONU (radio enlace).
+  await expect(page.getByText('Conectado hace 2h15m · IP 10.0.0.9')).toBeVisible()
+  await expect(page.getByText('12 Mbps')).toBeVisible()
+  await expect(page.getByText('1.5 Mbps')).toBeVisible()
+
   // Reinicio de la ONU desde la ficha.
   let reiniciada = false
   await page.route('**/api/clientes/50/reiniciar-onu', async (route) => { reiniciada = true; await route.fulfill({ json: { status: 'success' } }) })

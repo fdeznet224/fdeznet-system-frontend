@@ -113,7 +113,7 @@ export default function TechSearch() {
                             /* ✅ ADAPTADO: Tarjeta de resultados clara vs oscura */
                             <div 
                                 key={c.id}
-                                onClick={() => navigate(`/tech/cliente/${c.cedula ?? c.id}`)}
+                                onClick={() => navigate(`/tech/cliente/${encodeURIComponent(c.cedula ?? String(c.id))}`)}
                                 className="bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-md active:scale-[0.98] transition-all cursor-pointer flex justify-between items-center group hover:border-blue-500/40 dark:hover:border-blue-500/40"
                             >
                                 <div className="overflow-hidden pr-3">
