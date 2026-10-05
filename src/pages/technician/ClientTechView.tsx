@@ -32,6 +32,7 @@ interface TechData {
     fecha_corte: string | null;
     // Chat y llamada: solo con sus clientes asignados.
     es_cliente_asignado?: boolean;
+    puede_reiniciar_onu?: boolean;
     total_deuda: number | null;
     facturas_pendientes: number | null;
     cuenta?: {
@@ -74,6 +75,7 @@ export default function ClientTechView() {
     const [loading, setLoading] = useState(true);
 
     const [isDiagnosing, setIsDiagnosing] = useState(false);
+    const [reiniciando, setReiniciando] = useState(false);
     const [liveSignal, setLiveSignal] = useState<{ potencia: string, mensaje: string } | null>(null);
 
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -98,6 +100,21 @@ export default function ClientTechView() {
         };
         fetchData();
     }, [cedula, navigate]);
+
+    // Reinicio normal de la ONU (no borra su configuración): el cliente se queda sin internet 1 a 2 minutos.
+    const handleReiniciarOnu = async () => {
+        if (!data) return;
+        if (!window.confirm(`¿Reiniciar la ONU de ${data.nombre}?\n\nEs un reinicio normal, no borra su configuración. Se queda sin internet 1 a 2 minutos.`)) return;
+        setReiniciando(true);
+        try {
+            await client.post(`/clientes/${data.id}/reiniciar-onu`);
+            toast.success('La ONU se está reiniciando; vuelve en 1 a 2 minutos.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'No se pudo reiniciar la ONU'));
+        } finally {
+            setReiniciando(false);
+        }
+    };
 
     const handleDiagnosticoVivo = async () => {
         if (!data?.id) return;
@@ -362,10 +379,21 @@ export default function ClientTechView() {
                                     </div>
                                     <p className="text-[9px] text-slate-500 font-mono font-bold mt-1.5 uppercase tracking-widest">SN: {data.identificador_onu || 'N/A'}</p>
                                 </div>
-                                <button onClick={handleDiagnosticoVivo} disabled={isDiagnosing} className={`p-3 rounded-xl transition-all ${isDiagnosing ? 'bg-slate-200 dark:bg-slate-800' : 'bg-emerald-100 dark:bg-emerald-600/10 text-emerald-600 dark:text-emerald-500 border border-emerald-200 dark:border-emerald-500/20 active:scale-90 shadow-md dark:shadow-lg'}`}>
+                                <button aria-label="Revisar señal en vivo" onClick={handleDiagnosticoVivo} disabled={isDiagnosing} className={`p-3 rounded-xl transition-all ${isDiagnosing ? 'bg-slate-200 dark:bg-slate-800' : 'bg-emerald-100 dark:bg-emerald-600/10 text-emerald-600 dark:text-emerald-500 border border-emerald-200 dark:border-emerald-500/20 active:scale-90 shadow-md dark:shadow-lg'}`}>
                                     <ArrowPathIcon className={`w-5 h-5 ${isDiagnosing ? 'animate-spin' : ''}`} />
                                 </button>
                             </div>
+                            {data.puede_reiniciar_onu && (
+                                <button
+                                    type="button"
+                                    onClick={() => void handleReiniciarOnu()}
+                                    disabled={reiniciando}
+                                    className="relative z-10 mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 text-[11px] font-black uppercase tracking-widest text-amber-700 active:scale-95 disabled:opacity-60 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+                                >
+                                    <ArrowPathIcon className={`h-4 w-4 ${reiniciando ? 'animate-spin' : ''}`} />
+                                    {reiniciando ? 'Reiniciando...' : 'Reiniciar ONU'}
+                                </button>
+                            )}
                         </div>
 
                         <div className="p-3 bg-slate-50 dark:bg-[#0f1219] rounded-2xl border border-slate-200 dark:border-slate-800/50 transition-colors">

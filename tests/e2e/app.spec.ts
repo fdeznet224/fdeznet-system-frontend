@@ -857,7 +857,7 @@ test('el técnico busca por contrato con el botón y ve la ficha técnica de un 
     id: 50, nombre: 'Cliente Ajeno', cedula: 'AJ01', telefono: '5551112222', direccion: 'Calle 9', estado: 'activo',
     ip_asignada: '10.0.0.9', is_online: true, nap_nombre: 'P1-SJ-1-A', puerto_nap: 2, router_nombre: 'Router E2E',
     plan_nombre: 'Plan E2E', precio_plan: 300, velocidad_bajada: 10240, velocidad_subida: 5120,
-    es_cliente_asignado: false, total_deuda: 300, facturas_pendientes: 1, fecha_corte: '2026-09-25', saldo_a_favor: 0, latitud: 16.39586, longitud: -92.69331,
+    es_cliente_asignado: false, puede_reiniciar_onu: true, total_deuda: 300, facturas_pendientes: 1, fecha_corte: '2026-09-25', saldo_a_favor: 0, latitud: 16.39586, longitud: -92.69331,
     cuenta: {
       estado_servicio: 'suspendido',
       explicacion: 'Suspendido desde el 01/10/2026 por adeudo de $300 (Mensualidad Octubre, venció el 25/09/2026). Se reactiva al pagar o con una promesa de pago.',
@@ -880,6 +880,13 @@ test('el técnico busca por contrato con el botón y ve la ficha técnica de un 
   await expect(page.getByRole('list', { name: 'Lo que debe' }).getByText('Mensualidad Octubre')).toBeVisible()
   await expect(page.getByText('$300 · 24/08/2026')).toBeVisible()
   await expect(page.getByRole('link', { name: /Cómo llegar/ })).toHaveAttribute('href', /destination=16\.39586%2C-92\.69331/)
+  // Reinicio de la ONU desde la ficha.
+  let reiniciada = false
+  await page.route('**/api/clientes/50/reiniciar-onu', async (route) => { reiniciada = true; await route.fulfill({ json: { status: 'success' } }) })
+  page.once('dialog', (dialog) => void dialog.accept())
+  await page.getByRole('button', { name: 'Reiniciar ONU' }).click()
+  await expect.poll(() => reiniciada).toBe(true)
+  await expect(page.getByText('La ONU se está reiniciando')).toBeVisible()
   // Desde la búsqueda la ficha es solo técnica: sin chat ni llamada a un cliente que no es suyo.
   await expect(page.getByRole('link', { name: /Llamar/ })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'WhatsApp al cliente' })).toHaveCount(0)
