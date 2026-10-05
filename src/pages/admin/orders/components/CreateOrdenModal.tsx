@@ -56,6 +56,17 @@ export default function CreateOrdenModal({ isOpen, onClose, onSuccess, sugerenci
     const [zonas, setZonas] = useState<ZoneCatalog[]>([]);
     const [planes, setPlanes] = useState<PlanCatalog[]>([]);
 
+    const [formData, setFormData] = useState<OrderFormData>({
+        nombre: '',
+        telefono: '',
+        direccion: '',
+        zona_id: '',
+        plan_id: '',
+        tecnico_id: '',
+        // Valores por defecto para orden pendiente
+        estado: 'pendiente_instalacion', 
+    });
+
     // Los planes son los del MikroTik de la zona.
     const routerZona = zonas.find((zona) => zona.id === Number(formData.zona_id))?.router_id;
     useEffect(() => {
@@ -67,17 +78,6 @@ export default function CreateOrdenModal({ isOpen, onClose, onSuccess, sugerenci
             .then((res) => setPlanes(res.data))
             .catch(() => setPlanes([]));
     }, [routerZona]);
-
-    const [formData, setFormData] = useState<OrderFormData>({
-        nombre: '',
-        telefono: '',
-        direccion: '',
-        zona_id: '',
-        plan_id: '',
-        tecnico_id: '',
-        // Valores por defecto para orden pendiente
-        estado: 'pendiente_instalacion', 
-    });
 
     // Cargar Técnicos y Zonas al abrir
     useEffect(() => {

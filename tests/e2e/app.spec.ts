@@ -934,6 +934,36 @@ test('carga las órdenes desde su módulo administrativo', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Nueva Orden' })).toBeVisible()
 })
 
+test('nueva solicitud desde Instalaciones con zona y plan', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route(/\/api\/zonas\/?$/, (route) => route.fulfill({ json: [{ id: 5, nombre: 'Flores Magon', router_id: 4 }] }))
+  await page.route(/\/api\/usuarios\/?$/, (route) => route.fulfill({ json: [{ id: 7, usuario: 'tec1', nombre_completo: 'Técnico Uno', rol: 'tecnico' }] }))
+  await page.route('**/api/planes/router/4', (route) => route.fulfill({ json: [{ id: 9, nombre: 'Estándar', precio: 300 }] }))
+  let creada: Record<string, unknown> | null = null
+  await page.route(/\/api\/ordenes\/$/, async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    creada = route.request().postDataJSON()
+    await route.fulfill({ status: 201, json: { id: 77 } })
+  })
+  const errores: string[] = []
+  page.on('pageerror', (error) => errores.push(error.message))
+  await page.goto('/admin/ordenes')
+
+  await page.getByRole('button', { name: 'Nueva Orden' }).click()
+  const ventana = page.getByRole('dialog')
+  await ventana.getByPlaceholder('Ej: Juan Pérez').fill('Ana Lopez')
+  await ventana.getByPlaceholder('55...').fill('9611234567')
+  await ventana.locator('select').nth(0).selectOption('5')
+  await ventana.locator('select').nth(1).selectOption('9')
+  await ventana.getByPlaceholder('Calle, Número, Referencias...').fill('Calle 3, casa azul')
+  await ventana.getByRole('button', { name: 'Crear Orden' }).click()
+
+  await expect.poll(() => creada).toMatchObject({ tipo: 'instalacion', prospecto_nombre: 'Ana Lopez', zona_id: 5, plan_id: 9, tecnico_id: null })
+  expect(errores).toEqual([])
+  await expect(page.getByText('No pudimos cargar')).toHaveCount(0)
+})
+
 test('las instalaciones muestran zona, plan, origen y se filtran por técnico', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)
