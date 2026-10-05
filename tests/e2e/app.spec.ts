@@ -999,6 +999,10 @@ test('el admin asigna técnico y fecha a una orden de instalación', async ({ pa
     cambios.push(route.request().postDataJSON())
     await route.fulfill({ json: { id: 41 } })
   })
+  await page.route('**/api/ordenes/agenda?**', (route) => route.fulfill({ json: {
+    fecha: '2026-10-05', laboral: true, horario: { inicio: '08:00', fin: '14:00' }, siguiente_libre: '10:30',
+    bloques: [{ hora: '08:30', orden_id: 9, nombre: 'Cliente Ocupado' }, { hora: '10:30', orden_id: null, nombre: null }],
+  } }))
   await page.goto('/admin/ordenes')
 
   await page.locator('select[aria-label="Técnico de Prospecto Demo"]:visible').selectOption('7')
@@ -1007,12 +1011,14 @@ test('el admin asigna técnico y fecha a una orden de instalación', async ({ pa
   const ventana = page.getByRole('dialog', { name: /Editar solicitud de Prospecto Demo/ })
   await ventana.getByLabel('Nombre').fill('Prospecto Demo Lopez')
   await ventana.getByLabel('Otro día').fill('2026-10-05')
-  await ventana.getByRole('combobox', { name: 'Hora' }).selectOption('09:30')
+  // El bloque de las 8:30 ya lo tiene otro cliente: se propone el siguiente libre.
+  await expect(ventana.getByRole('radio', { name: /08:30 Cliente Ocupado/ })).toBeDisabled()
+  await expect(ventana.getByRole('radio', { name: /10:30/ })).toHaveAttribute('aria-checked', 'true')
   await ventana.getByRole('button', { name: 'Guardar' }).click()
   await expect.poll(() => cambios.at(-1)).toMatchObject({
     prospecto_nombre: 'Prospecto Demo Lopez',
     prospecto_direccion: 'Calle 1',
-    fecha_programada: '2026-10-05T09:30:00',
+    fecha_programada: '2026-10-05T10:30:00',
   })
 })
 

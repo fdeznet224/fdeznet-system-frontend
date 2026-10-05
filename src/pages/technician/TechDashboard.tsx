@@ -189,7 +189,8 @@ export default function TechDashboard() {
                     ? { ...item, estado: siguiente, version: item.version + 1 }
                     : item
             ));
-            toast.success(result.queued ? 'Avance guardado para sincronizar' : 'Avance registrado');
+            const aviso = siguiente === 'en_camino' ? ' · el cliente recibirá un WhatsApp de que vas en camino' : '';
+            toast.success((result.queued ? 'Avance guardado para sincronizar' : 'Avance registrado') + aviso);
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'No se pudo actualizar la orden');
         }

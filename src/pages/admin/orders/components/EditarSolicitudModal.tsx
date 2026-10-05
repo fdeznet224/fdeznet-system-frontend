@@ -31,11 +31,12 @@ interface Props {
     onSaved: () => void;
 }
 
-// Horario de visitas cada media hora, de 8:00 a 19:30.
-const HORAS = Array.from({ length: 24 }, (_, i) => {
-    const h = 8 + Math.floor(i / 2);
-    return `${String(h).padStart(2, '0')}:${i % 2 ? '30' : '00'}`;
-});
+interface Agenda {
+    laboral: boolean;
+    horario?: { inicio: string; fin: string } | null;
+    bloques: { hora: string; orden_id?: number | null; nombre?: string | null }[];
+    siguiente_libre?: string | null;
+}
 
 const fechaLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -55,6 +56,7 @@ export default function EditarSolicitudModal({ solicitud, zonas, tecnicos, onClo
     const [form, setForm] = useState({ nombre: '', telefono: '', direccion: '', zona_id: '', plan_id: '', tecnico_id: '', dia: '', hora: '' });
     const [planes, setPlanes] = useState<Plan[]>([]);
     const [guardando, setGuardando] = useState(false);
+    const [agenda, setAgenda] = useState<Agenda | null>(null);
     const rapidos = useMemo(diasRapidos, []);
 
     useEffect(() => {
@@ -81,6 +83,27 @@ export default function EditarSolicitudModal({ solicitud, zonas, tecnicos, onClo
         }
         client.get<Plan[]>(`/planes/router/${routerZona}`).then((r) => setPlanes(r.data)).catch(() => setPlanes([]));
     }, [routerZona]);
+
+    // Bloques del día según el horario de atención y lo que ya tiene el técnico.
+    const solicitudId = solicitud?.id;
+    useEffect(() => {
+        if (!form.dia || !solicitudId) {
+            setAgenda(null);
+            return;
+        }
+        const params = new URLSearchParams({ fecha: form.dia, excluir_orden_id: String(solicitudId) });
+        if (form.tecnico_id) params.set('tecnico_id', form.tecnico_id);
+        client.get<Agenda>(`/ordenes/agenda?${params.toString()}`)
+            .then(({ data }) => {
+                setAgenda(data);
+                // Si no hay hora elegida, o la elegida ya está ocupada, se propone la siguiente libre.
+                setForm((f) => {
+                    const ocupada = data.bloques.some((b) => b.hora === f.hora && b.orden_id);
+                    return !f.hora || ocupada ? { ...f, hora: data.siguiente_libre || '' } : f;
+                });
+            })
+            .catch(() => setAgenda(null));
+    }, [form.dia, form.tecnico_id, solicitudId]);
 
     if (!solicitud) return null;
     const cambiar = (cambios: Partial<typeof form>) => setForm((f) => ({ ...f, ...cambios }));
@@ -165,30 +188,42 @@ export default function EditarSolicitudModal({ solicitud, zonas, tecnicos, onClo
                             <span className={etiqueta}>Día de la visita</span>
                             <div className="flex flex-wrap gap-2">
                                 {rapidos.map((d) => (
-                                    <button key={d.valor} type="button" aria-pressed={form.dia === d.valor} onClick={() => cambiar({ dia: d.valor, hora: form.hora || '09:00' })}
+                                    <button key={d.valor} type="button" aria-pressed={form.dia === d.valor} onClick={() => cambiar({ dia: d.valor })}
                                         className={`rounded-xl border px-3 py-2 text-xs font-black transition ${form.dia === d.valor ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}>
                                         {d.texto}
                                     </button>
                                 ))}
-                                <input type="date" aria-label="Otro día" value={form.dia} onChange={(e) => cambiar({ dia: e.target.value, hora: form.hora || '09:00' })}
+                                <input type="date" aria-label="Otro día" value={form.dia} onChange={(e) => cambiar({ dia: e.target.value })}
                                     className="min-h-9 rounded-xl border border-slate-200 bg-white px-2 text-xs font-bold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300" />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <label className="block"><span className={etiqueta}>Hora</span>
-                                <select value={form.hora} disabled={!form.dia} onChange={(e) => cambiar({ hora: e.target.value })} className={campo}>
-                                    <option value="">—</option>
-                                    {HORAS.map((h) => <option key={h} value={h}>{h}</option>)}
-                                </select></label>
-                            <div className="flex items-end">
-                                {form.dia && (
-                                    <button type="button" onClick={() => cambiar({ dia: '', hora: '' })} className="min-h-11 w-full rounded-xl text-xs font-black text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
-                                        Quitar visita
-                                    </button>
+                        {form.dia && (
+                            <div>
+                                <span className={etiqueta}>Hora de llegada{agenda?.horario ? ` · horario ${agenda.horario.inicio} a ${agenda.horario.fin}` : ''}</span>
+                                {agenda && !agenda.laboral ? (
+                                    <p className="rounded-xl bg-amber-50 p-3 text-xs font-bold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">Ese día no se trabaja según el horario de atención.</p>
+                                ) : (
+                                    <div role="radiogroup" aria-label="Hora de llegada" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                        {[...(form.hora && agenda && !agenda.bloques.some((b) => b.hora === form.hora) ? [{ hora: form.hora, orden_id: null, nombre: null }] : []), ...(agenda?.bloques || [])].map((b) => {
+                                            const elegido = form.hora === b.hora;
+                                            return (
+                                                <button key={b.hora} type="button" role="radio" aria-checked={elegido} disabled={Boolean(b.orden_id)} onClick={() => cambiar({ hora: b.hora })}
+                                                    className={`rounded-xl border px-2 py-2 text-left transition disabled:cursor-not-allowed ${elegido
+                                                        ? 'border-blue-600 bg-blue-600 text-white'
+                                                        : b.orden_id
+                                                            ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-900'
+                                                            : 'border-slate-200 bg-white text-slate-700 hover:border-blue-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'}`}>
+                                                    <span className="block text-sm font-black">{b.hora}</span>
+                                                    <span className="block truncate text-[10px] font-bold">{b.orden_id ? b.nombre || 'Ocupado' : elegido ? 'Elegido' : 'Libre'}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 )}
+                                <button type="button" onClick={() => cambiar({ dia: '', hora: '' })} className="mt-2 text-xs font-black text-rose-600">Quitar visita</button>
                             </div>
-                        </div>
-                        <p className="text-[11px] text-slate-500">El técnico ve la visita en su agenda, ordenada por hora, y aquí aparece en "Visitas hoy".</p>
+                        )}
+                        <p className="text-[11px] text-slate-500">La primera visita es media hora después de abrir (traslado) y cada instalación ocupa 2 horas. Si el técnico termina antes, solo marca "En camino" a la siguiente y el cliente recibe un WhatsApp avisándole.</p>
                     </section>
                 </div>
 
