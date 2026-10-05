@@ -7,8 +7,11 @@ import {
     CheckCircleIcon,
     ClipboardDocumentIcon,
     MapPinIcon,
+    QrCodeIcon,
     SignalIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { Scanner } from '@yudiel/react-qr-scanner';
 
 import client from '../../api/axios';
 import { useSync } from '@/context/sync/context';
@@ -85,9 +88,95 @@ const VACIO: Formulario = {
     mac_address: '', potencia: '',
 };
 
+const NUEVO = '__nuevo';
+const OTRO = '__otro';
+
+/** "AA:BB:CC..." y "aabbcc..." son la misma ONU. */
+const normalizarSerie = (valor: string) => valor.toUpperCase().replace(/[^0-9A-Z]/g, '');
+
 const etiqueta = 'mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400';
 const campo = 'w-full min-h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white';
 const tarjeta = 'space-y-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900';
+
+type OnuDisponible = Catalogo['onus'][number];
+
+/** Buscar la ONU en el inventario disponible, elegirla de la lista o escanear su código. */
+function SelectorOnu({ onus, valor, elegida, onCambiar }: {
+    onus: OnuDisponible[];
+    valor: string;
+    elegida?: OnuDisponible;
+    onCambiar: (valor: string) => void;
+}) {
+    const [escaneando, setEscaneando] = useState(false);
+    const [abierta, setAbierta] = useState(false);
+    const busqueda = normalizarSerie(valor);
+    const coincidencias = onus.filter((o) => !busqueda || normalizarSerie(o.identificador).includes(busqueda)).slice(0, 30);
+
+    const alEscanear = (codigo: string) => {
+        setEscaneando(false);
+        const leido = normalizarSerie(codigo);
+        const onu = onus.find((o) => normalizarSerie(o.identificador) === leido)
+            || onus.find((o) => leido.includes(normalizarSerie(o.identificador)));
+        onCambiar(onu ? onu.identificador : codigo.trim());
+        if (onu) toast.success(`ONU ${onu.identificador}`);
+        else toast.error('Ese código no está en el inventario disponible');
+    };
+
+    return (
+        <div>
+            <span className={etiqueta}>ONU instalada ({onus.length} disponibles)</span>
+            <div className="flex gap-2">
+                <input
+                    aria-label="ONU instalada"
+                    value={valor}
+                    onFocus={() => setAbierta(true)}
+                    onChange={(e) => { onCambiar(e.target.value); setAbierta(true); }}
+                    placeholder="Busca por serial o MAC"
+                    className={`${campo} font-mono uppercase`}
+                />
+                <button type="button" aria-label="Escanear código de la ONU" onClick={() => setEscaneando(true)}
+                    className="flex min-h-12 shrink-0 items-center gap-1 rounded-xl bg-slate-900 px-3 text-xs font-black text-white dark:bg-blue-600">
+                    <QrCodeIcon className="h-5 w-5" /> Escanear
+                </button>
+            </div>
+            {elegida ? (
+                <p className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald-600"><CheckCircleIcon className="h-4 w-4" /> {elegida.identificador}{elegida.modelo ? ` · ${elegida.modelo}` : ''}</p>
+            ) : valor && coincidencias.length === 0 ? (
+                <p className="mt-1 text-xs font-bold text-rose-600">Ninguna ONU disponible coincide. Revisa el serial o regístrala en Inventario.</p>
+            ) : null}
+            {abierta && !elegida && coincidencias.length > 0 && (
+                <ul role="listbox" aria-label="ONUs disponibles" className="mt-2 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+                    {coincidencias.map((o) => (
+                        <li key={o.id}>
+                            <button type="button" role="option" aria-selected={false} onClick={() => { onCambiar(o.identificador); setAbierta(false); }}
+                                className="flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-3 text-left last:border-0 hover:bg-blue-50 dark:border-slate-800 dark:hover:bg-slate-800">
+                                <span className="font-mono text-sm font-black">{o.identificador}</span>
+                                <span className="text-[11px] text-slate-500">{o.modelo || ''}</span>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            {escaneando && (
+                <div role="dialog" aria-label="Escanear ONU" className="fixed inset-0 z-50 flex flex-col bg-black">
+                    <div className="flex items-center justify-between p-4 pt-[calc(1rem+env(safe-area-inset-top))] text-white">
+                        <p className="text-sm font-black">Apunta al código de barras o QR de la ONU</p>
+                        <button type="button" aria-label="Cerrar escáner" onClick={() => setEscaneando(false)} className="rounded-full bg-white/10 p-2"><XMarkIcon className="h-6 w-6" /></button>
+                    </div>
+                    <div className="flex flex-1 items-center justify-center p-4">
+                        <div className="aspect-square w-full max-w-sm overflow-hidden rounded-3xl">
+                            <Scanner
+                                onScan={(res) => { const codigo = res?.[0]?.rawValue; if (codigo) alEscanear(codigo); }}
+                                onError={() => { toast.error('No se pudo abrir la cámara'); setEscaneando(false); }}
+                                formats={['code_128', 'code_39', 'qr_code', 'ean_13', 'data_matrix']}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 /** Nueva solicitud levantada por el técnico en el domicilio; luego se activa. */
 function NuevaSolicitud() {
@@ -205,9 +294,17 @@ export default function TechActivar() {
     const esDhcp = infra?.router?.modo === 'dhcp';
     const nap = infra?.naps.find((n) => String(n.id) === form.caja_nap_id);
     const onuElegida = useMemo(
-        () => catalogo?.onus.find((o) => o.identificador.toUpperCase() === form.onu.trim().toUpperCase()),
+        () => catalogo?.onus.find((o) => normalizarSerie(o.identificador) === normalizarSerie(form.onu)),
         [catalogo, form.onu],
     );
+    const [escribiendoOtro, setEscribiendoOtro] = useState(false);
+    const modoContrato = contratos.includes(form.contrato_apartado) && !escribiendoOtro
+        ? 'apartado'
+        : escribiendoOtro || form.contrato_apartado ? OTRO : NUEVO;
+    const elegirContrato = (valor: string) => {
+        setEscribiendoOtro(valor === OTRO);
+        cambiar({ contrato_apartado: valor === NUEVO || valor === OTRO ? '' : valor });
+    };
     const cambiar = (cambios: Partial<Formulario>) => setForm((f) => ({ ...f, ...cambios }));
 
     const elegirZona = async (zonaId: string) => {
@@ -425,29 +522,39 @@ export default function TechActivar() {
 
                 <div className={tarjeta}>
                     {!catalogo.solicitud.cliente_id && (
-                        <label className="block"><span className={etiqueta}>Contrato escrito en el conector</span>
-                            <input
-                                list="contratos-apartados"
-                                value={form.contrato_apartado}
-                                onChange={(e) => cambiar({ contrato_apartado: e.target.value.toUpperCase() })}
-                                placeholder="Sin contrato apartado: se genera uno"
-                                className={`${campo} font-mono uppercase`}
-                            />
-                            <datalist id="contratos-apartados">{contratos.map((c) => <option key={c} value={c} />)}</datalist>
-                        </label>
+                        <div>
+                            <label className="block"><span className={etiqueta}>Contrato escrito en el conector</span>
+                                <select
+                                    value={modoContrato === 'apartado' ? form.contrato_apartado : modoContrato}
+                                    onChange={(e) => elegirContrato(e.target.value)}
+                                    className={`${campo} font-mono`}
+                                >
+                                    {contratos.map((c, i) => <option key={c} value={c}>{c}{i === 0 ? ' · siguiente' : ''}</option>)}
+                                    <option value={NUEVO}>Que el sistema genere uno</option>
+                                    <option value={OTRO}>Escribir otro contrato apartado</option>
+                                </select>
+                            </label>
+                            {modoContrato === OTRO && (
+                                <input
+                                    aria-label="Contrato apartado"
+                                    value={form.contrato_apartado}
+                                    onChange={(e) => cambiar({ contrato_apartado: e.target.value.toUpperCase() })}
+                                    placeholder="Ej. A7F2"
+                                    className={`${campo} mt-2 font-mono uppercase`}
+                                />
+                            )}
+                            {contratos.length === 0 && modoContrato === NUEVO && (
+                                <p className="mt-1 text-xs text-slate-500">No tienes contratos apartados guardados; se generará uno al activar.</p>
+                            )}
+                        </div>
                     )}
                     {infra?.olt && (
-                        <label className="block"><span className={etiqueta}>ONU instalada (serial o MAC)</span>
-                            <input
-                                list="onus-disponibles"
-                                value={form.onu}
-                                onChange={(e) => cambiar({ onu: e.target.value })}
-                                placeholder="Escribe o escanea el serial"
-                                className={`${campo} font-mono uppercase`}
-                            />
-                            <datalist id="onus-disponibles">{catalogo.onus.map((o) => <option key={o.id} value={o.identificador}>{o.modelo || ''}</option>)}</datalist>
-                            {form.onu && !onuElegida && <span className="mt-1 block text-xs font-bold text-rose-600">No está en el inventario disponible.</span>}
-                        </label>
+                        <SelectorOnu
+                            onus={catalogo.onus}
+                            valor={form.onu}
+                            elegida={onuElegida}
+                            onCambiar={(onu) => cambiar({ onu })}
+                        />
                     )}
                     {esDhcp && (
                         <label className="block"><span className={etiqueta}>MAC WAN/CPE que ve el MikroTik</span>

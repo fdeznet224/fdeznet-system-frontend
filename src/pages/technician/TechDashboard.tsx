@@ -45,6 +45,7 @@ interface TechnicianOrder {
     tipo: string;
     estado: string;
     version: number;
+    fecha_programada?: string | null;
     cliente_id?: number;
     prospecto_nombre?: string;
     prospecto_direccion?: string;
@@ -194,7 +195,10 @@ export default function TechDashboard() {
         }
     };
 
-    const ordenesAgenda = ordenes.filter((orden) => orden.tipo !== 'retiro');
+    // Primero las que tienen visita, por hora; luego las que no tienen fecha.
+    const ordenesAgenda = ordenes
+        .filter((orden) => orden.tipo !== 'retiro')
+        .sort((a, b) => (a.fecha_programada || '9999').localeCompare(b.fecha_programada || '9999'));
     const ordenesRetiro = ordenes.filter((orden) => orden.tipo === 'retiro');
 
     const renderOrden = (orden: TechnicianOrder) => (
@@ -209,6 +213,11 @@ export default function TechDashboard() {
                     #{orden.id} · {orden.tipo.replace('_', ' ')}
                     {orden.servicio ? ` · ${orden.servicio.alias} (#${orden.servicio.id})` : ''}
                 </p>
+                {orden.fecha_programada && (
+                    <p className="mt-2 inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-black text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                        Visita: {new Date(orden.fecha_programada).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} · {orden.fecha_programada.slice(11, 16)}
+                    </p>
+                )}
                 <p className="text-slate-500 text-[10px] mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5" /> {orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección'}</p>
             </div>
             {orden.tipo === 'retiro' && orden.estado === 'trabajando' ? (

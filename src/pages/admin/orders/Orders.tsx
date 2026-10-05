@@ -11,6 +11,7 @@ import {
 
 import CreateOrdenModal from './components/CreateOrdenModal';
 import ChatModal from '@/components/chat/ChatModal';
+import EditarSolicitudModal from './components/EditarSolicitudModal';
 import { apiErrorMessage } from '@/utils/apiError';
 
 interface ServiceOrder {
@@ -25,6 +26,7 @@ interface ServiceOrder {
     fecha_programada?: string | null;
     creada?: string | null;
     desdeWhatsapp: boolean;
+    esProspecto: boolean;
     version?: number;
     servicio?: { id: number; alias: string; direccion?: string | null; estado: string } | null;
 }
@@ -56,6 +58,7 @@ interface Catalogo {
     id: number;
     nombre: string;
     precio?: number;
+    router_id?: number | null;
 }
 
 interface UnreadSummary {
@@ -72,8 +75,17 @@ const ESTADOS: Record<string, { texto: string; clase: string }> = {
     trabajando: { texto: 'Instalando', clase: 'bg-violet-50 text-violet-700 ring-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/20' },
 };
 
-/** "2026-10-05T09:00:00" -> "2026-10-05T09:00" para el campo de fecha y hora. */
-const aCampoFecha = (valor?: string | null) => (valor ? valor.slice(0, 16) : '');
+/** "2026-10-05T09:30:00" -> "Hoy 09:30" / "Lun 5 oct · 09:30". */
+function textoVisita(valor: string) {
+    const fecha = new Date(valor);
+    const hora = valor.slice(11, 16);
+    if (esHoy(valor)) return `Hoy · ${hora}`;
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    if (fecha.toDateString() === manana.toDateString()) return `Mañana · ${hora}`;
+    const dia = fecha.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
+    return `${dia.charAt(0).toUpperCase()}${dia.slice(1)} · ${hora}`;
+}
 
 const RE_ENLACE = /https?:\/\/\S+/;
 
@@ -148,6 +160,7 @@ export default function Orders() {
     const [zonas, setZonas] = useState<Catalogo[]>([]);
     const [planes, setPlanes] = useState<Catalogo[]>([]);
     const [guardandoId, setGuardandoId] = useState<number | null>(null);
+    const [editando, setEditando] = useState<ServiceOrder | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -176,6 +189,7 @@ export default function Orders() {
                     fecha_programada: orden.fecha_programada,
                     creada: orden.created_at,
                     desdeWhatsapp: orden.motivo === 'prospecto_whatsapp',
+                    esProspecto: !orden.cliente,
                     version: orden.version,
                     servicio: orden.servicio,
                 })));
@@ -244,10 +258,6 @@ export default function Orders() {
             { tecnico_id: tecnico ? tecnico.id : null },
             tecnico ? `Asignada a ${tecnico.nombre_completo || tecnico.usuario}` : 'Orden sin técnico',
         );
-    };
-
-    const programar = (orden: ServiceOrder, valor: string) => {
-        void actualizarOrden(orden, { fecha_programada: valor ? `${valor}:00` : null }, valor ? 'Visita programada' : 'Fecha quitada');
     };
 
     const nombreDe = (lista: Catalogo[], id?: number | null) => lista.find((item) => item.id === id);
@@ -415,17 +425,19 @@ export default function Orders() {
                                             {tecnicos.map((t) => <option key={t.id} value={t.id}>{t.nombre_completo || t.usuario}</option>)}
                                         </select>
                                     </label>
-                                    <label className="block">
+                                    <div>
                                         <span className="mb-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400"><CalendarDaysIcon className="h-3.5 w-3.5" /> Visita</span>
-                                        <input
-                                            type="datetime-local"
-                                            aria-label={`Fecha de visita de ${orden.nombre}`}
-                                            value={aCampoFecha(orden.fecha_programada)}
-                                            disabled={guardandoId === orden.id}
-                                            onChange={(e) => programar(orden, e.target.value)}
-                                            className={campoClase}
-                                        />
-                                    </label>
+                                        <button
+                                            type="button"
+                                            aria-label={`Agendar visita de ${orden.nombre}`}
+                                            onClick={() => setEditando(orden)}
+                                            className={`min-h-10 w-full rounded-xl border px-3 text-left text-xs font-black transition ${orden.fecha_programada
+                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                                : 'border-dashed border-slate-300 bg-white text-slate-500 hover:border-blue-400 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-950'}`}
+                                        >
+                                            {orden.fecha_programada ? textoVisita(orden.fecha_programada) : 'Agendar visita'}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="mt-3 flex items-center gap-2">
@@ -438,6 +450,13 @@ export default function Orders() {
                                     >
                                         <ChatBubbleLeftRightIcon className="h-4 w-4" />
                                         {noLeidos > 0 ? `${noLeidos} sin leer` : 'WhatsApp'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditando(orden)}
+                                        className="h-10 rounded-xl border border-slate-200 px-4 text-xs font-black text-slate-700 transition hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:text-slate-200"
+                                    >
+                                        Editar
                                     </button>
                                     <button
                                         type="button"
@@ -458,6 +477,13 @@ export default function Orders() {
                 sugerencia={sugerencia}
                 onClose={() => setIsCreateModalOpen(false)}
                 onSuccess={() => { void fetchData(); setIsCreateModalOpen(false); setSearchParams({}); }}
+            />
+            <EditarSolicitudModal
+                solicitud={editando}
+                zonas={zonas}
+                tecnicos={tecnicos}
+                onClose={() => setEditando(null)}
+                onSaved={() => { setEditando(null); void fetchData(); }}
             />
             <ChatModal isOpen={showChatModal} onClose={() => { setShowChatModal(false); void refrescarNoLeidos(); }} cliente={targetCliente} ruta={targetCliente ? `/ordenes/${targetCliente.id}/chat` : undefined} onMessagesRead={refrescarNoLeidos} />
         </div>

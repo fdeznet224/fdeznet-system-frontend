@@ -774,7 +774,10 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y señal', async ({ p
   await expect(page.getByLabel('Nombre del titular')).toHaveValue('Ana Lopez')
   await expect(page.getByLabel('Contrato escrito en el conector')).toHaveValue('A7F2')
   await page.getByRole('combobox', { name: 'Plan', exact: true }).selectOption('12')
-  await page.getByLabel('ONU instalada (serial o MAC)').fill('ZTEG00000001')
+  await expect(page.getByRole('combobox', { name: 'Contrato escrito en el conector' }).locator('option')).toHaveText(['A7F2 · siguiente', 'Que el sistema genere uno', 'Escribir otro contrato apartado'])
+  await page.getByLabel('ONU instalada', { exact: true }).fill('zteg')
+  await page.getByRole('option', { name: /ZTEG00000001/ }).click()
+  await expect(page.getByText('ZTEG00000001 · F660')).toBeVisible()
   await page.getByRole('combobox', { name: 'Caja NAP', exact: true }).selectOption('8')
   await page.getByRole('combobox', { name: 'Puerto', exact: true }).selectOption('3')
   await page.getByRole('button', { name: 'Capturar ubicación GPS' }).click()
@@ -1000,8 +1003,17 @@ test('el admin asigna técnico y fecha a una orden de instalación', async ({ pa
 
   await page.locator('select[aria-label="Técnico de Prospecto Demo"]:visible').selectOption('7')
   await expect.poll(() => cambios).toEqual([{ tecnico_id: 7 }])
-  await page.locator('input[aria-label="Fecha de visita de Prospecto Demo"]:visible').fill('2026-10-05T09:30')
-  await expect.poll(() => cambios.at(-1)).toEqual({ fecha_programada: '2026-10-05T09:30:00' })
+  await page.getByRole('button', { name: 'Agendar visita de Prospecto Demo' }).click()
+  const ventana = page.getByRole('dialog', { name: /Editar solicitud de Prospecto Demo/ })
+  await ventana.getByLabel('Nombre').fill('Prospecto Demo Lopez')
+  await ventana.getByLabel('Otro día').fill('2026-10-05')
+  await ventana.getByRole('combobox', { name: 'Hora' }).selectOption('09:30')
+  await ventana.getByRole('button', { name: 'Guardar' }).click()
+  await expect.poll(() => cambios.at(-1)).toMatchObject({
+    prospecto_nombre: 'Prospecto Demo Lopez',
+    prospecto_direccion: 'Calle 1',
+    fecha_programada: '2026-10-05T09:30:00',
+  })
 })
 
 test('carga las transacciones y sus filtros financieros', async ({ page }) => {
