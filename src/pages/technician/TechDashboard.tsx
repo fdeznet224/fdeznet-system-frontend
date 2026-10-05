@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import ChatModal from '@/components/chat/ChatModal';
+import { rutaEnMaps } from '@/utils/mapas';
 import ContratosApartados from './ContratosApartados';
 import { useSync } from '@/context/sync/context';
 import { useBrand } from '@/context/brand/useBrand';
@@ -49,12 +50,15 @@ interface TechnicianOrder {
     cliente_id?: number;
     prospecto_nombre?: string;
     prospecto_direccion?: string;
-    cliente?: Pick<TechnicianClient, 'id' | 'nombre' | 'direccion'>;
+    cliente?: Pick<TechnicianClient, 'id' | 'nombre' | 'direccion'> & { telefono?: string | null; latitud?: number | null; longitud?: number | null };
+    prospecto_telefono?: string | null;
     servicio?: {
         id: number;
         alias: string;
         direccion?: string | null;
         estado: string;
+        latitud?: number | null;
+        longitud?: number | null;
     } | null;
 }
 
@@ -79,6 +83,7 @@ export default function TechDashboard() {
 
     const [showChatModal, setShowChatModal] = useState(false);
     const [targetCliente, setTargetCliente] = useState<TechnicianClient | null>(null);
+    const [chatOrden, setChatOrden] = useState<TechnicianOrder | null>(null);
     const [retireConditions, setRetireConditions] = useState<Record<number, string>>({});
 
     useEffect(() => {
@@ -202,6 +207,41 @@ export default function TechDashboard() {
         .sort((a, b) => (a.fecha_programada || '9999').localeCompare(b.fecha_programada || '9999'));
     const ordenesRetiro = ordenes.filter((orden) => orden.tipo === 'retiro');
 
+    // Coordinar la visita: escribirle por WhatsApp y abrir la ruta en Google Maps.
+    const renderContacto = (orden: TechnicianOrder) => {
+        const ruta = rutaEnMaps({
+            latitud: orden.servicio?.latitud ?? orden.cliente?.latitud,
+            longitud: orden.servicio?.longitud ?? orden.cliente?.longitud,
+            direccion: orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion,
+        });
+        const nombre = orden.cliente?.nombre || orden.prospecto_nombre || `Orden #${orden.id}`;
+        return (
+            <div className="ml-2 grid grid-cols-2 gap-2">
+                <button
+                    type="button"
+                    aria-label={`WhatsApp a ${nombre}`}
+                    onClick={() => setChatOrden(orden)}
+                    className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-[10px] font-black uppercase tracking-widest text-emerald-700 active:scale-95 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
+                >
+                    <ChatBubbleLeftRightIcon className="h-4 w-4" /> WhatsApp
+                </button>
+                {ruta ? (
+                    <a
+                        href={ruta}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Cómo llegar con ${nombre}`}
+                        className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 text-[10px] font-black uppercase tracking-widest text-blue-700 active:scale-95 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
+                    >
+                        <MapPinIcon className="h-4 w-4" /> Cómo llegar
+                    </a>
+                ) : (
+                    <span className="flex h-11 items-center justify-center rounded-xl border border-dashed border-slate-200 text-[10px] font-bold text-slate-400 dark:border-slate-700">Sin ubicación</span>
+                )}
+            </div>
+        );
+    };
+
     const renderOrden = (orden: TechnicianOrder) => (
         <div key={`orden-${orden.id}`} className="bg-white dark:bg-[#1a1f2e] border border-blue-200 dark:border-blue-900/50 rounded-2xl p-4 shadow-sm space-y-3 relative">
             <div className="absolute left-0 top-4 bottom-4 w-1 bg-blue-500 rounded-r-full"></div>
@@ -219,8 +259,9 @@ export default function TechDashboard() {
                         Visita: {new Date(orden.fecha_programada).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} · {orden.fecha_programada.slice(11, 16)}
                     </p>
                 )}
-                <p className="text-slate-500 text-[10px] mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5" /> {orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección'}</p>
+                <p className="text-slate-500 text-[10px] mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5" /> {(orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección').replace(/\s*·?\s*https?:\/\/\S+/g, '')}</p>
             </div>
+            {renderContacto(orden)}
             {orden.tipo === 'retiro' && orden.estado === 'trabajando' ? (
                 <div className="ml-2 space-y-2">
                     <select
@@ -402,6 +443,16 @@ export default function TechDashboard() {
             </div>
 
             <ChatModal isOpen={showChatModal} onClose={() => setShowChatModal(false)} cliente={targetCliente} />
+            <ChatModal
+                isOpen={Boolean(chatOrden)}
+                onClose={() => setChatOrden(null)}
+                cliente={chatOrden ? {
+                    id: chatOrden.id,
+                    nombre: chatOrden.cliente?.nombre || chatOrden.prospecto_nombre || `Orden #${chatOrden.id}`,
+                    telefono: chatOrden.cliente?.telefono || chatOrden.prospecto_telefono || '',
+                } : null}
+                ruta={chatOrden ? `/ordenes/${chatOrden.id}/chat` : undefined}
+            />
         </div>
     );
 }

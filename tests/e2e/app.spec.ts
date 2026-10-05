@@ -854,7 +854,7 @@ test('el técnico busca por contrato con el botón y ve la ficha de un cliente q
     id: 50, nombre: 'Cliente Ajeno', cedula: 'AJ01', telefono: '5551112222', direccion: 'Calle 9', estado: 'activo',
     ip_asignada: '10.0.0.9', is_online: true, nap_nombre: 'P1-SJ-1-A', puerto_nap: 2, router_nombre: 'Router E2E',
     plan_nombre: 'Plan E2E', precio_plan: 300, velocidad_bajada: 10240, velocidad_subida: 5120,
-    estado_cuenta_visible: false, total_deuda: null, facturas_pendientes: null, fecha_corte: null,
+    estado_cuenta_visible: false, total_deuda: null, facturas_pendientes: null, fecha_corte: null, latitud: 16.39586, longitud: -92.69331,
     suggested_user: 'Cliente_Ajeno', suggested_pass: 'x', identificador_onu: 'HWTC00000009', olt_nombre: 'OLT E2E',
   } }))
   await page.goto('/tech/buscar')
@@ -868,6 +868,27 @@ test('el técnico busca por contrato con el botón y ve la ficha de un cliente q
   await expect(page.getByText('P1-SJ-1-A')).toBeVisible()
   await expect(page.getByText('Solo lo ve administración')).toBeVisible()
   await expect(page.getByText('SALDO DEUDOR')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /Cómo llegar/ })).toHaveAttribute('href', /destination=16\.39586%2C-92\.69331/)
+  await expect(page.getByRole('link', { name: /Llamar/ })).toHaveAttribute('href', 'tel:5551112222')
+  await expect(page.getByRole('button', { name: 'WhatsApp al cliente' })).toBeVisible()
+})
+
+test('desde su agenda el técnico escribe al prospecto y abre la ruta de su ubicación', async ({ page }) => {
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  await page.route(/\/api\/ordenes\/$/, (route) => route.fulfill({ json: [{
+    id: 41, tipo: 'instalacion', estado: 'asignada', version: 1, prospecto_nombre: 'Ana Lopez', prospecto_telefono: '5550001111',
+    prospecto_direccion: 'Casa azul · https://maps.google.com/?q=16.7521,-93.1152', fecha_programada: null,
+  }] }))
+  const pedidas: string[] = []
+  await page.route('**/api/ordenes/41/chat', (route) => { pedidas.push('chat'); return route.fulfill({ json: [] }) })
+  await page.goto('/tech/dashboard')
+  await page.getByRole('button', { name: 'Agenda', exact: true }).click()
+
+  await expect(page.getByRole('link', { name: 'Cómo llegar con Ana Lopez' }).first()).toHaveAttribute('href', /destination=16\.7521%2C-93\.1152/)
+  await page.getByRole('button', { name: 'WhatsApp a Ana Lopez' }).first().click()
+  await expect(page.getByRole('dialog', { name: 'Chat con Ana Lopez' })).toBeVisible()
+  await expect.poll(() => pedidas.length).toBeGreaterThan(0)
 })
 
 test('busca un cliente desde el encabezado global', async ({ page }) => {
