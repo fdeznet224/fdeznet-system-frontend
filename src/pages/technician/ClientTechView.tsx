@@ -30,10 +30,18 @@ interface TechData {
     precio_plan: number;
     velocidad_bajada: number;
     fecha_corte: string | null;
-    // El estado de cuenta solo viene de los clientes asignados al técnico.
-    estado_cuenta_visible?: boolean;
+    // Chat y llamada: solo con sus clientes asignados.
+    es_cliente_asignado?: boolean;
     total_deuda: number | null;
     facturas_pendientes: number | null;
+    cuenta?: {
+        estado_servicio: string;
+        explicacion: string;
+        adeudos: { concepto: string; monto: number; vence?: string | null; vencido: boolean }[];
+        ultimo_pago?: { fecha?: string | null; monto: number; metodo?: string | null } | null;
+        promesa?: { fecha?: string | null } | null;
+        suspendido_desde?: string | null;
+    } | null;
     suggested_user: string;
     suggested_pass: string;
     identificador_onu: string;
@@ -158,9 +166,9 @@ export default function ClientTechView() {
 
     if (!data) return null;
 
-    // Estado de cuenta, chat y llamada: solo de sus clientes asignados.
-    const cuentaVisible = data.estado_cuenta_visible !== false;
-    const esSuCliente = cuentaVisible;
+    // Chat y llamada: solo con sus clientes asignados. El estado de cuenta lo ve siempre.
+    const esSuCliente = data.es_cliente_asignado !== false;
+    const cuenta = data.cuenta;
     const rutaCliente = rutaEnMaps({ latitud: data.latitud, longitud: data.longitud, direccion: data.direccion });
     const deuda = Number(data.total_deuda ?? 0);
     const tieneFacturasVencidas = (data.facturas_pendientes ?? 0) > 0;
@@ -239,12 +247,6 @@ export default function ClientTechView() {
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                         {/* TARJETA IZQUIERDA */}
-                        {!cuentaVisible ? (
-                        <div className="p-4 rounded-3xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-[#0f1219] flex flex-col justify-center h-40">
-                            <p className="text-[9px] font-black uppercase mb-1 tracking-widest text-slate-400">ESTADO DE CUENTA</p>
-                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Solo lo ve administración: este cliente no está en tus órdenes.</p>
-                        </div>
-                        ) : (
                         <div className={`p-4 rounded-3xl border flex flex-col justify-between h-40 transition-colors ${deuda > 0 ? 'bg-rose-50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/30' : 'bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/30'}`}>
                             <div>
                                 <p className={`text-[9px] font-black uppercase mb-1 tracking-widest ${deuda > 0 ? 'text-rose-500 dark:text-rose-400/80' : 'text-emerald-600 dark:text-emerald-400/80'}`}>
@@ -263,7 +265,6 @@ export default function ClientTechView() {
                             </div>
                         </div>
 
-                        )}
 
                         {/* TARJETA DERECHA */}
                         <div className="p-4 rounded-3xl bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-800 flex flex-col justify-between h-40 transition-colors">
@@ -278,6 +279,43 @@ export default function ClientTechView() {
                             </div>
                         </div>
                     </div>
+
+                    {cuenta && (
+                        <div className="space-y-3">
+                            <p className={`rounded-2xl p-3 text-sm font-bold leading-snug ${cuenta.estado_servicio === 'suspendido'
+                                ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                                : cuenta.adeudos.some((a) => a.vencido)
+                                    ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300'
+                                    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'}`}>
+                                {cuenta.explicacion}
+                            </p>
+                            {cuenta.adeudos.length > 0 && (
+                                <ul aria-label="Lo que debe" className="divide-y divide-slate-100 rounded-2xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+                                    {cuenta.adeudos.map((a, i) => (
+                                        <li key={`${a.concepto}-${i}`} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">{a.concepto}</p>
+                                                <p className={`text-[11px] font-bold ${a.vencido ? 'text-rose-600' : 'text-slate-500'}`}>{a.vencido ? 'Venció' : 'Vence'} el {a.vence || '—'}</p>
+                                            </div>
+                                            <span className="shrink-0 font-mono text-sm font-black text-slate-900 dark:text-white">${a.monto.toLocaleString('es-MX')}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="rounded-2xl bg-slate-50 p-3 dark:bg-[#0f1219]">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Último pago</p>
+                                    <p className="mt-1 font-bold text-slate-700 dark:text-slate-200">
+                                        {cuenta.ultimo_pago ? `$${cuenta.ultimo_pago.monto.toLocaleString('es-MX')} · ${cuenta.ultimo_pago.fecha}` : 'Sin pagos'}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl bg-slate-50 p-3 dark:bg-[#0f1219]">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Promesa de pago</p>
+                                    <p className="mt-1 font-bold text-slate-700 dark:text-slate-200">{cuenta.promesa ? `Para el ${cuenta.promesa.fecha}` : 'Ninguna activa'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* 3. CONFIGURACIÓN DE RED */}

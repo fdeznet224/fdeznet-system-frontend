@@ -857,7 +857,13 @@ test('el técnico busca por contrato con el botón y ve la ficha técnica de un 
     id: 50, nombre: 'Cliente Ajeno', cedula: 'AJ01', telefono: '5551112222', direccion: 'Calle 9', estado: 'activo',
     ip_asignada: '10.0.0.9', is_online: true, nap_nombre: 'P1-SJ-1-A', puerto_nap: 2, router_nombre: 'Router E2E',
     plan_nombre: 'Plan E2E', precio_plan: 300, velocidad_bajada: 10240, velocidad_subida: 5120,
-    estado_cuenta_visible: false, total_deuda: null, facturas_pendientes: null, fecha_corte: null, latitud: 16.39586, longitud: -92.69331,
+    es_cliente_asignado: false, total_deuda: 300, facturas_pendientes: 1, fecha_corte: '2026-09-25', saldo_a_favor: 0, latitud: 16.39586, longitud: -92.69331,
+    cuenta: {
+      estado_servicio: 'suspendido',
+      explicacion: 'Suspendido desde el 01/10/2026 por adeudo de $300 (Mensualidad Octubre, venció el 25/09/2026). Se reactiva al pagar o con una promesa de pago.',
+      adeudos: [{ concepto: 'Mensualidad Octubre', monto: 300, vence: '25/09/2026', vencido: true }],
+      ultimo_pago: { fecha: '24/08/2026', monto: 300, metodo: 'transferencia' }, promesa: null, suspendido_desde: '01/10/2026',
+    },
     suggested_user: 'Cliente_Ajeno', suggested_pass: 'x', identificador_onu: 'HWTC00000009', olt_nombre: 'OLT E2E',
   } }))
   await page.goto('/tech/buscar')
@@ -869,8 +875,10 @@ test('el técnico busca por contrato con el botón y ve la ficha técnica de un 
   await page.getByText('Cliente Ajeno').click()
 
   await expect(page.getByText('P1-SJ-1-A')).toBeVisible()
-  await expect(page.getByText('Solo lo ve administración')).toBeVisible()
-  await expect(page.getByText('SALDO DEUDOR')).toHaveCount(0)
+  // El estado de cuenta sí se ve, para explicar en campo por qué lo suspendieron.
+  await expect(page.getByText(/Suspendido desde el 01\/10\/2026 por adeudo de \$300/)).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Lo que debe' }).getByText('Mensualidad Octubre')).toBeVisible()
+  await expect(page.getByText('$300 · 24/08/2026')).toBeVisible()
   await expect(page.getByRole('link', { name: /Cómo llegar/ })).toHaveAttribute('href', /destination=16\.39586%2C-92\.69331/)
   // Desde la búsqueda la ficha es solo técnica: sin chat ni llamada a un cliente que no es suyo.
   await expect(page.getByRole('link', { name: /Llamar/ })).toHaveCount(0)
