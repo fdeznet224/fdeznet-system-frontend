@@ -17,6 +17,7 @@ import client from '../../api/axios';
 import { useSync } from '@/context/sync/context';
 import { cachedRequest, getCachedValue, setCachedValue } from '../../offline/db';
 import { apiErrorMessage } from '@/utils/apiError';
+import SugerenciaNap from '@/components/naps/SugerenciaNap';
 
 interface Opcion {
     id: number;
@@ -560,6 +561,9 @@ export default function TechActivar() {
                         <label className="block"><span className={etiqueta}>MAC WAN/CPE que ve el MikroTik</span>
                             <input value={form.mac_address} onChange={(e) => cambiar({ mac_address: e.target.value })} placeholder="AA:BB:CC:DD:EE:FF" className={`${campo} font-mono uppercase`} /></label>
                     )}
+                    <button type="button" onClick={capturarGps} className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl border text-xs font-black uppercase tracking-widest ${form.latitud ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400' : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300'}`}>
+                        <MapPinIcon className="h-5 w-5" /> {form.latitud ? 'Ubicación capturada' : 'Capturar ubicación GPS'}
+                    </button>
                     <div className="grid grid-cols-2 gap-3">
                         <label className="block"><span className={etiqueta}>Caja NAP</span>
                             <select value={form.caja_nap_id} onChange={(e) => cambiar({ caja_nap_id: e.target.value, puerto_nap: '' })} className={campo}>
@@ -574,13 +578,18 @@ export default function TechActivar() {
                                 ))}
                             </select></label>
                     </div>
+                    <SugerenciaNap
+                        latitud={form.latitud}
+                        longitud={form.longitud}
+                        zonaId={form.zona_id}
+                        permitidas={(infra?.naps || []).map((n) => n.id)}
+                        elegidaId={form.caja_nap_id}
+                        onElegir={(id) => cambiar({ caja_nap_id: String(id), puerto_nap: '' })}
+                    />
                     {infra?.olt && (
                         <label className="block"><span className={etiqueta}>Potencia medida (dBm, opcional)</span>
                             <input inputMode="decimal" value={form.potencia} onChange={(e) => cambiar({ potencia: e.target.value })} placeholder="-19.5" className={campo} /></label>
                     )}
-                    <button type="button" onClick={capturarGps} className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl border text-xs font-black uppercase tracking-widest ${form.latitud ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400' : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300'}`}>
-                        <MapPinIcon className="h-5 w-5" /> {form.latitud ? 'Ubicación capturada' : 'Capturar ubicación GPS'}
-                    </button>
                 </div>
 
                 <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">

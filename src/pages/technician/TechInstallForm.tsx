@@ -12,6 +12,7 @@ import {
     CpuChipIcon
 } from '@heroicons/react/24/outline';
 import { apiErrorMessage } from '@/utils/apiError';
+import SugerenciaNap from '@/components/naps/SugerenciaNap';
 
 interface ClientInstallation {
     id: number;
@@ -405,6 +406,27 @@ export default function TechInstallForm() {
                         )}
                     </div>
                     
+                    {/* 🟢 GPS */}
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <label className={labelStyle}>Ubicación Instalación</label>
+                        {!formData.latitud ? (
+                            <button type="button" onClick={capturarUbicacion} className="w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border-2 border-dashed border-blue-200 dark:border-blue-800 py-4 rounded-2xl font-black text-xs tracking-widest uppercase flex flex-col items-center justify-center gap-2 transition-all active:scale-95">
+                                <MapPinIcon className="w-7 h-7" /> GUARDAR MI UBICACIÓN
+                            </button>
+                        ) : (
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-2xl flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-emerald-100 dark:bg-emerald-500/20 p-2.5 rounded-xl"><MapPinIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
+                                    <div>
+                                        <p className="text-[9px] text-emerald-700 dark:text-emerald-400 font-black uppercase tracking-widest">Coordenadas</p>
+                                        <p className="text-xs text-slate-700 dark:text-slate-300 font-mono mt-0.5 font-bold">{formData.latitud.slice(0,8)}, {formData.longitud.slice(0,9)}</p>
+                                    </div>
+                                </div>
+                                <button type="button" onClick={capturarUbicacion} className="text-[9px] text-emerald-600 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30 px-3 py-2 rounded-lg font-black uppercase active:scale-90 transition-all">Cambiar</button>
+                            </div>
+                        )}
+                    </div>
+
                     {/* 🟢 CAJA NAP: Ahora depende 100% de caja_nap_id */}
                     <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                         <div>
@@ -429,6 +451,19 @@ export default function TechInstallForm() {
                                             <option key={nap.id} value={nap.id}>{nap.nombre}</option>
                                         ))}
                                     </select>
+                                </div>
+                            )}
+                            {!cliente.caja_nap_id && (
+                                <div className="mt-3">
+                                    <SugerenciaNap
+                                        latitud={formData.latitud}
+                                        longitud={formData.longitud}
+                                        zonaId={cliente.zona_id}
+                                        oltId={cliente.olt_id}
+                                        permitidas={cajasNap.map(n => n.id)}
+                                        elegidaId={formData.caja_nap_id}
+                                        onElegir={(id) => cargarPuertos(id, cajasNap)}
+                                    />
                                 </div>
                             )}
                         </div>
@@ -476,26 +511,6 @@ export default function TechInstallForm() {
                         )}
                     </div>
 
-                    {/* 🟢 GPS */}
-                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <label className={labelStyle}>Ubicación Instalación</label>
-                        {!formData.latitud ? (
-                            <button type="button" onClick={capturarUbicacion} className="w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border-2 border-dashed border-blue-200 dark:border-blue-800 py-4 rounded-2xl font-black text-xs tracking-widest uppercase flex flex-col items-center justify-center gap-2 transition-all active:scale-95">
-                                <MapPinIcon className="w-7 h-7" /> GUARDAR MI UBICACIÓN
-                            </button>
-                        ) : (
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-2xl flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-emerald-100 dark:bg-emerald-500/20 p-2.5 rounded-xl"><MapPinIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
-                                    <div>
-                                        <p className="text-[9px] text-emerald-700 dark:text-emerald-400 font-black uppercase tracking-widest">Coordenadas</p>
-                                        <p className="text-xs text-slate-700 dark:text-slate-300 font-mono mt-0.5 font-bold">{formData.latitud.slice(0,8)}, {formData.longitud.slice(0,9)}</p>
-                                    </div>
-                                </div>
-                                <button type="button" onClick={capturarUbicacion} className="text-[9px] text-emerald-600 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30 px-3 py-2 rounded-lg font-black uppercase active:scale-90 transition-all">Cambiar</button>
-                            </div>
-                        )}
-                    </div>
 
                 </div>
 

@@ -23,6 +23,7 @@ import {
 import client from '@/api/axios';
 import { FORMAS_COBRO, nombreFormaCobro, type FormaCobro } from '@/utils/formaCobro';
 import { apiErrorMessage } from '@/utils/apiError';
+import SugerenciaNap from '@/components/naps/SugerenciaNap';
 
 interface Props {
   isOpen: boolean;
@@ -1231,6 +1232,19 @@ export default function CreateClientModal({
                               </option>
                             ))}
                           </select>
+                        </div>
+                        <div className="mt-2">
+                          <SugerenciaNap
+                            latitud={formData.latitud}
+                            longitud={formData.longitud}
+                            zonaId={formData.zona_id}
+                            oltId={formData.olt_id}
+                            permitidas={naps.map((n) => n.id)}
+                            elegidaId={formData.caja_nap_id}
+                            onElegir={(id) =>
+                              setFormData((prev) => ({ ...prev, caja_nap_id: String(id), puerto_nap: '' }))
+                            }
+                          />
                         </div>
                       </div>
 
