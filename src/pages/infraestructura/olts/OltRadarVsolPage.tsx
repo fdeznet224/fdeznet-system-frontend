@@ -1,4 +1,5 @@
 import { TouchEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import client from "@/api/axios";
 import { toast } from "react-hot-toast";
@@ -287,7 +288,8 @@ function BottomSheetDetail({
     setTouchStartY(null);
   };
 
-  return (
+  // En el body: dentro de la página quedaría debajo del menú lateral (z-30).
+  return createPortal(
     <div className="olt-sheet-backdrop" role="presentation" onClick={onClose}>
       <section
         className="olt-bottom-sheet"
@@ -408,7 +410,7 @@ function BottomSheetDetail({
         </div>
       </section>
     </div>
-  );
+  , document.body);
 }
 
 

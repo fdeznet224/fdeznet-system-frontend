@@ -157,7 +157,7 @@ export default function CajasNap() {
                 GRID DE CAJAS DISPONIBLES (ADAPTATIVO)
                ========================================================= */}
             {naps.some((nap) => parseCoordinates(nap.coordenadas)) && (
-                <div className="h-[360px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="relative z-0 h-[360px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <MapContainer
                         center={parseCoordinates(naps.find((nap) => parseCoordinates(nap.coordenadas))?.coordenadas) || [16.75, -93.11]}
                         zoom={15}

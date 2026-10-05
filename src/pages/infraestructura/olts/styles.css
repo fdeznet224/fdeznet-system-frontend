@@ -1,5 +1,7 @@
 /* Estilos exclusivos del radar OLT. */
-.olt-page {
+/* El detalle de ONU se monta en el body (portal): también necesita las variables. */
+.olt-page,
+.olt-sheet-backdrop {
   --olt-card: #ffffff;
   --olt-soft: #f1f5f9;
   --olt-border: #e2e8f0;
@@ -8,13 +10,17 @@
   --olt-primary: #8b00ff;
   --olt-primary-2: #4f00ff;
   --olt-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+}
+
+.olt-page {
   padding: clamp(14px, 2vw, 24px);
   color: var(--olt-text);
   min-height: 100%;
 }
 
 .dark .olt-page,
-html.dark .olt-page {
+html.dark .olt-page,
+.dark .olt-sheet-backdrop {
   --olt-card: #0f172a;
   --olt-soft: #111827;
   --olt-border: #1f2a44;
