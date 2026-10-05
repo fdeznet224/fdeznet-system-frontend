@@ -26,9 +26,11 @@ interface TechData {
     plan_nombre: string;
     precio_plan: number;
     velocidad_bajada: number;
-    fecha_corte: string;
-    total_deuda: number;
-    facturas_pendientes: number;
+    fecha_corte: string | null;
+    // El estado de cuenta solo viene de los clientes asignados al técnico.
+    estado_cuenta_visible?: boolean;
+    total_deuda: number | null;
+    facturas_pendientes: number | null;
     suggested_user: string;
     suggested_pass: string;
     identificador_onu: string;
@@ -153,7 +155,9 @@ export default function ClientTechView() {
 
     if (!data) return null;
 
-    const tieneFacturasVencidas = data.facturas_pendientes > 0;
+    const cuentaVisible = data.estado_cuenta_visible !== false;
+    const deuda = Number(data.total_deuda ?? 0);
+    const tieneFacturasVencidas = (data.facturas_pendientes ?? 0) > 0;
     const estaSuspendido = data.estado === 'suspendido' || data.estado === 'cortado';
     const velocidadMb = data.velocidad_bajada / 1024;
 
@@ -213,13 +217,19 @@ export default function ClientTechView() {
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                         {/* TARJETA IZQUIERDA */}
-                        <div className={`p-4 rounded-3xl border flex flex-col justify-between h-40 transition-colors ${data.total_deuda > 0 ? 'bg-rose-50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/30' : 'bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/30'}`}>
+                        {!cuentaVisible ? (
+                        <div className="p-4 rounded-3xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-[#0f1219] flex flex-col justify-center h-40">
+                            <p className="text-[9px] font-black uppercase mb-1 tracking-widest text-slate-400">ESTADO DE CUENTA</p>
+                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Solo lo ve administración: este cliente no está en tus órdenes.</p>
+                        </div>
+                        ) : (
+                        <div className={`p-4 rounded-3xl border flex flex-col justify-between h-40 transition-colors ${deuda > 0 ? 'bg-rose-50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/30' : 'bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/30'}`}>
                             <div>
-                                <p className={`text-[9px] font-black uppercase mb-1 tracking-widest ${data.total_deuda > 0 ? 'text-rose-500 dark:text-rose-400/80' : 'text-emerald-600 dark:text-emerald-400/80'}`}>
-                                    {data.total_deuda > 0 ? 'SALDO DEUDOR' : 'AL DÍA'}
+                                <p className={`text-[9px] font-black uppercase mb-1 tracking-widest ${deuda > 0 ? 'text-rose-500 dark:text-rose-400/80' : 'text-emerald-600 dark:text-emerald-400/80'}`}>
+                                    {deuda > 0 ? 'SALDO DEUDOR' : 'AL DÍA'}
                                 </p>
-                                <p className={`text-3xl font-black ${data.total_deuda > 0 ? 'text-rose-600 dark:text-rose-500' : 'text-emerald-600 dark:text-emerald-500'}`}>
-                                    ${data.total_deuda}
+                                <p className={`text-3xl font-black ${deuda > 0 ? 'text-rose-600 dark:text-rose-500' : 'text-emerald-600 dark:text-emerald-500'}`}>
+                                    ${deuda}
                                 </p>
                                 {tieneFacturasVencidas && (
                                     <div className="mt-auto pt-4">
@@ -230,6 +240,8 @@ export default function ClientTechView() {
                                 )}
                             </div>
                         </div>
+
+                        )}
 
                         {/* TARJETA DERECHA */}
                         <div className="p-4 rounded-3xl bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-800 flex flex-col justify-between h-40 transition-colors">
@@ -325,10 +337,10 @@ export default function ClientTechView() {
                 </button>
             </div>
 
-            {/* BOTÓN FLOTANTE DE CHAT */}
-            <button onClick={() => setIsChatOpen(true)} className="fixed bottom-6 right-6 w-14 h-14 bg-emerald-600 hover:bg-emerald-500 rounded-full flex items-center justify-center shadow-xl shadow-emerald-600/30 active:scale-90 transition-all z-30 border border-emerald-400/50">
+            {/* BOTÓN FLOTANTE DE CHAT: solo con sus clientes */}
+            {cuentaVisible && <button onClick={() => setIsChatOpen(true)} className="fixed bottom-6 right-6 w-14 h-14 bg-emerald-600 hover:bg-emerald-500 rounded-full flex items-center justify-center shadow-xl shadow-emerald-600/30 active:scale-90 transition-all z-30 border border-emerald-400/50">
                 <ChatBubbleLeftRightIcon className="w-7 h-7 text-white" />
-            </button>
+            </button>}
 
             {/* MODAL DE CHAT ADAPTATIVO */}
             {isChatOpen && (

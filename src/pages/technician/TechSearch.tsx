@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import client from '../../api/axios';
 import { 
     ArrowLeftIcon, MagnifyingGlassIcon, 
-    MapPinIcon, SignalIcon, QrCodeIcon, UserIcon
+    MapPinIcon, SignalIcon, UserIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 
@@ -78,24 +78,26 @@ export default function TechSearch() {
 
             <div className="p-4 md:p-6 max-w-3xl mx-auto">
                 {/* Barra de Búsqueda Adaptativa */}
-                <form onSubmit={handleSearchSubmit} className="relative mb-6">
-                    <input
-                        type="text"
-                        placeholder="Nombre, SN o IP..."
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-2xl py-4 pl-12 pr-14 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 transition-all shadow-sm dark:shadow-lg text-base md:text-lg font-medium placeholder-slate-400 dark:placeholder-slate-500"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        autoFocus={!initialQuery}
-                    />
-                    <MagnifyingGlassIcon className="w-6 h-6 text-slate-400 dark:text-slate-500 absolute left-4 top-4.5"/>
-                    
-                    {/* Atajo al Escáner */}
-                    <button 
-                        type="button"
-                        onClick={() => navigate('/scanner')}
-                        className="absolute right-3 top-3 p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-700 transition-colors active:scale-95"
+                <form onSubmit={handleSearchSubmit} className="mb-6 flex gap-2">
+                    <div className="relative flex-1">
+                        <MagnifyingGlassIcon className="pointer-events-none absolute left-4 top-1/2 h-6 w-6 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                        <input
+                            type="search"
+                            enterKeyHint="search"
+                            aria-label="Buscar cliente"
+                            placeholder="Contrato, nombre, IP o serial"
+                            className="w-full rounded-2xl border border-slate-300 bg-white py-4 pl-12 pr-4 text-base font-medium text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            autoFocus={!initialQuery}
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={!searchTerm.trim() || loading}
+                        className="shrink-0 rounded-2xl bg-emerald-600 px-5 text-sm font-black text-white shadow-sm transition active:scale-95 disabled:opacity-50"
                     >
-                        <QrCodeIcon className="w-6 h-6"/>
+                        Buscar
                     </button>
                 </form>
 

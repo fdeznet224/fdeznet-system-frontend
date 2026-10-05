@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import {
-    QrCodeIcon, 
+
     MagnifyingGlassIcon,
     PowerIcon, 
     MapPinIcon, 
@@ -307,10 +307,7 @@ export default function TechDashboard() {
                         >
                             <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-300 transition-colors">
                                 <MagnifyingGlassIcon className="w-6 h-6" />
-                                <span className="text-sm font-black tracking-tight">Buscar o escanear QR...</span>
-                            </div>
-                            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-500/20 transition-colors">
-                                <QrCodeIcon className="w-6 h-6" />
+                                <span className="text-sm font-black tracking-tight">Buscar cliente por contrato, nombre o IP</span>
                             </div>
                         </div>
 

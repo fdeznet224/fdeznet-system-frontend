@@ -472,7 +472,7 @@ test('carga el panel técnico tipado', async ({ page }) => {
   await page.goto('/tech/dashboard')
 
   await expect(page.getByText('FdezNet Tech')).toBeVisible()
-  await expect(page.getByText('Buscar o escanear QR...')).toBeVisible()
+  await expect(page.getByText('Buscar cliente por contrato, nombre o IP')).toBeVisible()
 })
 
 test('el radar OLT no escanea hasta elegir la OLT', async ({ page }) => {
@@ -734,7 +734,7 @@ test('al reabrir la app sin internet el técnico entra directo a su panel', asyn
   await page.goto('/')
   await expect(page).toHaveURL(/\/tech\/dashboard/)
   await expect(page.getByText('FdezNet Tech')).toBeVisible()
-  await expect(page.getByText('Buscar o escanear QR...')).toBeVisible()
+  await expect(page.getByText('Buscar cliente por contrato, nombre o IP')).toBeVisible()
 })
 
 test('el técnico activa la solicitud y ve contrato, PPPoE y señal', async ({ page, context }) => {
@@ -840,6 +840,34 @@ test('carga el detalle técnico completo de un cliente', async ({ page }) => {
   await expect(page.getByText('Cliente Técnico E2E')).toBeVisible()
   await expect(page.getByText('NAP E2E')).toBeVisible()
   await expect(page.getByText('-22.50 dBm')).toBeVisible()
+})
+
+test('el técnico busca por contrato con el botón y ve la ficha de un cliente que no es suyo sin cobros', async ({ page }) => {
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  let buscado = ''
+  await page.route(/\/api\/clientes\/\?search=/, async (route) => {
+    buscado = new URL(route.request().url()).searchParams.get('search') || ''
+    await route.fulfill({ json: [{ id: 50, nombre: 'Cliente Ajeno', cedula: 'AJ01', direccion: 'Calle 9', estado: 'activo' }] })
+  })
+  await page.route('**/api/clientes/AJ01/portal', (route) => route.fulfill({ json: {
+    id: 50, nombre: 'Cliente Ajeno', cedula: 'AJ01', telefono: '5551112222', direccion: 'Calle 9', estado: 'activo',
+    ip_asignada: '10.0.0.9', is_online: true, nap_nombre: 'P1-SJ-1-A', puerto_nap: 2, router_nombre: 'Router E2E',
+    plan_nombre: 'Plan E2E', precio_plan: 300, velocidad_bajada: 10240, velocidad_subida: 5120,
+    estado_cuenta_visible: false, total_deuda: null, facturas_pendientes: null, fecha_corte: null,
+    suggested_user: 'Cliente_Ajeno', suggested_pass: 'x', identificador_onu: 'HWTC00000009', olt_nombre: 'OLT E2E',
+  } }))
+  await page.goto('/tech/buscar')
+
+  await expect(page.getByRole('button', { name: /QR/i })).toHaveCount(0)
+  await page.getByLabel('Buscar cliente').fill('AJ01')
+  await page.getByRole('button', { name: 'Buscar' }).click()
+  await expect.poll(() => buscado).toBe('AJ01')
+  await page.getByText('Cliente Ajeno').click()
+
+  await expect(page.getByText('P1-SJ-1-A')).toBeVisible()
+  await expect(page.getByText('Solo lo ve administración')).toBeVisible()
+  await expect(page.getByText('SALDO DEUDOR')).toHaveCount(0)
 })
 
 test('busca un cliente desde el encabezado global', async ({ page }) => {
