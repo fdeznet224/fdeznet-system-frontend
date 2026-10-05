@@ -262,9 +262,11 @@ export default function TechDashboard() {
                 <p className="text-slate-500 text-[10px] mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5" /> {(orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección').replace(/\s*·?\s*https?:\/\/\S+/g, '')}</p>
             </div>
             {renderContacto(orden)}
-            {orden.tipo === 'retiro' && orden.estado === 'trabajando' ? (
+            {orden.tipo === 'retiro' ? (
+                // Retiro: solo ir a recoger el equipo, sin "en camino" ni "iniciar".
                 <div className="ml-2 space-y-2">
                     <select
+                        aria-label="Estado del equipo recogido"
                         value={retireConditions[orden.id] || 'funcional'}
                         onChange={(event) => setRetireConditions({ ...retireConditions, [orden.id]: event.target.value })}
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-950"
@@ -274,13 +276,21 @@ export default function TechDashboard() {
                         <option value="incompleta">ONU incompleta</option>
                         <option value="perdida">Equipo no recuperado</option>
                     </select>
-                    <button type="button" onClick={() => void handleConfirmarRetiroOrden(orden)} className="h-11 w-full rounded-xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
-                        Confirmar retiro
+                    <button type="button" onClick={() => void handleConfirmarRetiroOrden(orden)} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
+                        Equipo recogido <CheckBadgeIcon className="h-5 w-5" />
                     </button>
                 </div>
-            ) : (
-                <>
-                {orden.tipo === 'instalacion' && (
+            ) : orden.tipo === 'instalacion' ? (
+                // Instalación: primero "en camino" (avisa al cliente) y luego activar.
+                orden.estado === 'asignada' ? (
+                    <button
+                        type="button"
+                        onClick={() => void handleAvanzarOrden(orden)}
+                        className="ml-2 w-[calc(100%-0.5rem)] h-11 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95"
+                    >
+                        Marcar en camino
+                    </button>
+                ) : (
                     <button
                         type="button"
                         onClick={() => navigate(`/tech/activar/${orden.id}`)}
@@ -288,15 +298,15 @@ export default function TechDashboard() {
                     >
                         Activar cliente
                     </button>
-                )}
-                {!(orden.tipo === 'instalacion' && orden.estado === 'trabajando') && <button
+                )
+            ) : (
+                <button
                     type="button"
                     onClick={() => void handleAvanzarOrden(orden)}
                     className="ml-2 w-[calc(100%-0.5rem)] h-11 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95"
                 >
                     {orden.estado === 'asignada' ? 'Marcar en camino' : orden.estado === 'en_camino' ? 'Iniciar trabajo' : 'Finalizar con conexión'}
-                </button>}
-                </>
+                </button>
             )}
         </div>
     );
@@ -412,15 +422,36 @@ export default function TechDashboard() {
                                         <p className="text-sm font-mono text-orange-600 dark:text-orange-400 font-black tracking-widest transition-colors">{item.onu_asignada?.identificador || 'S/N'}</p>
                                     </div>
                                 </div>
-                                <div className="flex gap-2 pl-2">
-                                    <button onClick={() => { setTargetCliente(item); setShowChatModal(true); }} className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-emerald-500/10 transition-colors active:scale-95"><ChatBubbleLeftRightIcon className="w-5 h-5" /></button>
+                                <div className="ml-2 grid grid-cols-2 gap-2">
                                     <button
-                                        onClick={() => { if (confirm(`¿Confirmas retiro de ${item.nombre}?`)) handleConfirmarRetiro(item); }}
-                                        className="flex-[3] h-12 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md"
+                                        type="button"
+                                        aria-label={`WhatsApp a ${item.nombre}`}
+                                        onClick={() => { setTargetCliente(item); setShowChatModal(true); }}
+                                        className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-[10px] font-black uppercase tracking-widest text-emerald-700 active:scale-95 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
                                     >
-                                        Confirmar Recojo <CheckBadgeIcon className="w-5 h-5" />
+                                        <ChatBubbleLeftRightIcon className="h-4 w-4" /> WhatsApp
                                     </button>
+                                    {rutaEnMaps({ direccion: item.direccion }) ? (
+                                        <a
+                                            href={rutaEnMaps({ direccion: item.direccion }) ?? undefined}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            aria-label={`Cómo llegar con ${item.nombre}`}
+                                            className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 text-[10px] font-black uppercase tracking-widest text-blue-700 active:scale-95 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
+                                        >
+                                            <MapPinIcon className="h-4 w-4" /> Cómo llegar
+                                        </a>
+                                    ) : (
+                                        <span className="flex h-11 items-center justify-center rounded-xl border border-dashed border-slate-200 text-[10px] font-bold text-slate-400 dark:border-slate-700">Sin ubicación</span>
+                                    )}
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={() => { if (confirm(`¿Confirmas que recogiste el equipo de ${item.nombre}?`)) void handleConfirmarRetiro(item); }}
+                                    className="ml-2 flex h-11 w-[calc(100%-0.5rem)] items-center justify-center gap-2 rounded-xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white shadow-md active:scale-95"
+                                >
+                                    Equipo recogido <CheckBadgeIcon className="h-5 w-5" />
+                                </button>
                             </div>
                         ))}
                     </div>

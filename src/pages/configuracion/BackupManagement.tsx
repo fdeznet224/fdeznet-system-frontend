@@ -17,6 +17,7 @@ interface BackupPolicy {
   activo: boolean;
   frecuencia_dias: number;
   retencion_dias: number;
+  max_respaldos: number;
   incluir_configuracion: boolean;
   incluir_archivos_estaticos: boolean;
   incluir_evidencias_ordenes: boolean;
@@ -183,9 +184,10 @@ export default function BackupManagement() {
           <div><h2 className="font-black text-slate-900 dark:text-white">Programación</h2><p className="text-xs text-slate-500">La base de datos siempre se incluye. La revisión diaria se realiza alrededor de las 3:20 a. m.</p></div>
           <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={policy.activo} onChange={(event) => setPolicy({ ...policy, activo: event.target.checked })} className="h-5 w-5 rounded" /> Respaldos automáticos</label>
         </div>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div className="mt-5 grid gap-4 sm:grid-cols-3">
           <label className="text-xs font-bold text-slate-500">Respaldar cada cuántos días<input type="number" min={1} max={30} value={policy.frecuencia_dias} onChange={(event) => setPolicy({ ...policy, frecuencia_dias: Number(event.target.value) })} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white" /></label>
           <label className="text-xs font-bold text-slate-500">Conservar respaldos durante (días)<input type="number" min={3} max={365} value={policy.retencion_dias} onChange={(event) => setPolicy({ ...policy, retencion_dias: Number(event.target.value) })} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white" /></label>
+          <label className="text-xs font-bold text-slate-500">Guardar solo los más recientes<input type="number" min={1} max={60} value={policy.max_respaldos ?? 5} onChange={(event) => setPolicy({ ...policy, max_respaldos: Number(event.target.value) })} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white" /></label>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">✓ Base de datos completa (obligatoria)</div>

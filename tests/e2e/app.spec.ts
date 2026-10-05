@@ -174,6 +174,7 @@ async function mockApi(page: Page) {
           activo: true,
           frecuencia_dias: 3,
           retencion_dias: 30,
+          max_respaldos: 5,
           incluir_configuracion: true,
           incluir_archivos_estaticos: true,
           incluir_evidencias_ordenes: true,
@@ -915,6 +916,32 @@ test('desde su agenda el técnico escribe al prospecto y abre la ruta de su ubic
   await page.getByRole('button', { name: 'WhatsApp a Ana Lopez' }).first().click()
   await expect(page.getByRole('dialog', { name: 'Chat con Ana Lopez' })).toBeVisible()
   await expect.poll(() => pedidas.length).toBeGreaterThan(0)
+})
+
+test('la instalación pasa de en camino a activar y el retiro solo pide el equipo recogido', async ({ page }) => {
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  await page.route(/\/api\/ordenes\/$/, (route) => route.fulfill({ json: [
+    { id: 41, tipo: 'instalacion', estado: 'asignada', version: 1, prospecto_nombre: 'Ana Lopez', prospecto_direccion: 'Calle Uno 123', fecha_programada: null },
+    { id: 42, tipo: 'instalacion', estado: 'en_camino', version: 2, prospecto_nombre: 'Beto Ruiz', prospecto_direccion: 'Calle Dos 456', fecha_programada: null },
+    { id: 43, tipo: 'retiro', estado: 'asignada', version: 1, cliente_id: 9, cliente: { id: 9, nombre: 'Carla Diaz', direccion: 'Calle Tres 789', telefono: '5550002222' }, fecha_programada: null },
+  ] }))
+  await page.goto('/tech/dashboard')
+  await page.getByRole('button', { name: 'Agenda', exact: true }).click()
+
+  const ana = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: 'Ana Lopez' }) }).last()
+  await expect(ana.getByRole('button', { name: 'Marcar en camino' })).toBeVisible()
+  await expect(ana.getByRole('button', { name: 'Activar cliente' })).toHaveCount(0)
+  const beto = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: 'Beto Ruiz' }) }).last()
+  await expect(beto.getByRole('button', { name: 'Activar cliente' })).toBeVisible()
+  await expect(beto.getByRole('button', { name: /Marcar en camino|Iniciar trabajo/ })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Retiros', exact: true }).click()
+  const carla = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: 'Carla Diaz' }) }).last()
+  await expect(carla.getByRole('button', { name: 'WhatsApp a Carla Diaz' })).toBeVisible()
+  await expect(carla.getByRole('link', { name: 'Cómo llegar con Carla Diaz' })).toBeVisible()
+  await expect(carla.getByRole('button', { name: /Equipo recogido/ })).toBeVisible()
+  await expect(carla.getByRole('button', { name: /Marcar en camino|Iniciar trabajo/ })).toHaveCount(0)
 })
 
 test('busca un cliente desde el encabezado global', async ({ page }) => {
