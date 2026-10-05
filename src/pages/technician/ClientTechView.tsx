@@ -158,7 +158,9 @@ export default function ClientTechView() {
 
     if (!data) return null;
 
+    // Estado de cuenta, chat y llamada: solo de sus clientes asignados.
     const cuentaVisible = data.estado_cuenta_visible !== false;
+    const esSuCliente = cuentaVisible;
     const rutaCliente = rutaEnMaps({ latitud: data.latitud, longitud: data.longitud, direccion: data.direccion });
     const deuda = Number(data.total_deuda ?? 0);
     const tieneFacturasVencidas = (data.facturas_pendientes ?? 0) > 0;
@@ -211,7 +213,7 @@ export default function ClientTechView() {
                         <p className="text-xs text-slate-500 mt-2 flex items-center gap-1 italic font-medium">
                             <MapPinIcon className="w-3.5 h-3.5" /> {data.direccion || 'Sin dirección registrada'}
                         </p>
-                        <div className="mt-4 grid w-full max-w-xs grid-cols-2 gap-2">
+                        <div className={`mt-4 grid w-full max-w-xs gap-2 ${esSuCliente ? 'grid-cols-2' : 'grid-cols-1'}`}>
                             {rutaCliente ? (
                                 <a href={rutaCliente} target="_blank" rel="noreferrer" className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-blue-600 text-[11px] font-black uppercase tracking-widest text-white shadow-sm active:scale-95">
                                     <MapPinIcon className="h-4 w-4" /> Cómo llegar
@@ -219,7 +221,7 @@ export default function ClientTechView() {
                             ) : (
                                 <span className="flex h-11 items-center justify-center rounded-xl border border-dashed border-slate-300 text-[11px] font-bold text-slate-400">Sin ubicación</span>
                             )}
-                            {data.telefono ? (
+                            {!esSuCliente ? null : data.telefono ? (
                                 <a href={`tel:${data.telefono}`} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-700 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                                     <PhoneIcon className="h-4 w-4" /> Llamar
                                 </a>
@@ -357,10 +359,10 @@ export default function ClientTechView() {
                 </button>
             </div>
 
-            {/* BOTÓN FLOTANTE DE CHAT: coordinar la visita con el cliente */}
-            <button aria-label="WhatsApp al cliente" onClick={() => setIsChatOpen(true)} className="fixed bottom-6 right-6 w-14 h-14 bg-emerald-600 hover:bg-emerald-500 rounded-full flex items-center justify-center shadow-xl shadow-emerald-600/30 active:scale-90 transition-all z-30 border border-emerald-400/50">
+            {/* BOTÓN FLOTANTE DE CHAT: solo con sus clientes asignados */}
+            {esSuCliente && <button aria-label="WhatsApp al cliente" onClick={() => setIsChatOpen(true)} className="fixed bottom-6 right-6 w-14 h-14 bg-emerald-600 hover:bg-emerald-500 rounded-full flex items-center justify-center shadow-xl shadow-emerald-600/30 active:scale-90 transition-all z-30 border border-emerald-400/50">
                 <ChatBubbleLeftRightIcon className="w-7 h-7 text-white" />
-            </button>
+            </button>}
 
             {/* MODAL DE CHAT ADAPTATIVO */}
             {isChatOpen && (

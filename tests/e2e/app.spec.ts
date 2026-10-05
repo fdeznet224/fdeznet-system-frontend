@@ -840,9 +840,12 @@ test('carga el detalle técnico completo de un cliente', async ({ page }) => {
   await expect(page.getByText('Cliente Técnico E2E')).toBeVisible()
   await expect(page.getByText('NAP E2E')).toBeVisible()
   await expect(page.getByText('-22.50 dBm')).toBeVisible()
+  // Cliente asignado: puede llamarle y escribirle.
+  await expect(page.getByRole('link', { name: /Llamar/ })).toHaveAttribute('href', 'tel:5550000000')
+  await expect(page.getByRole('button', { name: 'WhatsApp al cliente' })).toBeVisible()
 })
 
-test('el técnico busca por contrato con el botón y ve la ficha de un cliente que no es suyo sin cobros', async ({ page }) => {
+test('el técnico busca por contrato con el botón y ve la ficha técnica de un cliente que no es suyo', async ({ page }) => {
   await authenticateAs(page, 'tecnico')
   await mockApi(page)
   let buscado = ''
@@ -869,8 +872,9 @@ test('el técnico busca por contrato con el botón y ve la ficha de un cliente q
   await expect(page.getByText('Solo lo ve administración')).toBeVisible()
   await expect(page.getByText('SALDO DEUDOR')).toHaveCount(0)
   await expect(page.getByRole('link', { name: /Cómo llegar/ })).toHaveAttribute('href', /destination=16\.39586%2C-92\.69331/)
-  await expect(page.getByRole('link', { name: /Llamar/ })).toHaveAttribute('href', 'tel:5551112222')
-  await expect(page.getByRole('button', { name: 'WhatsApp al cliente' })).toBeVisible()
+  // Desde la búsqueda la ficha es solo técnica: sin chat ni llamada a un cliente que no es suyo.
+  await expect(page.getByRole('link', { name: /Llamar/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'WhatsApp al cliente' })).toHaveCount(0)
 })
 
 test('desde su agenda el técnico escribe al prospecto y abre la ruta de su ubicación', async ({ page }) => {
