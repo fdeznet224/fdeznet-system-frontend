@@ -738,7 +738,7 @@ test('al reabrir la app sin internet el técnico entra directo a su panel', asyn
   await expect(page.getByLabel('Buscar cliente')).toBeVisible()
 })
 
-test('el técnico activa la solicitud y ve contrato, PPPoE y señal', async ({ page, context }) => {
+test('el técnico activa la solicitud y ve contrato, PPPoE y cómo se le cobra', async ({ page, context }) => {
   await context.grantPermissions(['geolocation'])
   await context.setGeolocation({ latitude: 17.1, longitude: -93.2 })
   await authenticateAs(page, 'tecnico')
@@ -768,6 +768,21 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y señal', async ({ p
       password_pppoe: 'clave123', ip: '10.10.9.60', onu: 'ZTEG00000001',
       senal: { potencia: '-19.50 dBm', estado: 'online', recomendacion: '¡Señal EXCELENTE!' },
       cambios: ['plan Plan 300 → Plan 400'],
+      meses_gratis: 1,
+      cobro: {
+        activacion: '2026-10-05',
+        gratis_hasta: '2026-11-04',
+        mensualidad_desde: '2026-11-15',
+        mensualidad_hasta: '2026-12-14',
+        corte: '2026-11-25',
+        mensualidad: 400,
+        prorrateo: { total: 129.03, desde: '2026-11-05', hasta: '2026-11-14', dias: 10 },
+        primer_pago: { fecha: '2026-11-15', total: 529.03 },
+        explicacion: [
+          'Tiene 1 mes gratis: del 5 de octubre al 4 de noviembre no paga nada.',
+          'El 15 de noviembre paga $529.03 en un solo recibo: el prorrateo ($129.03) más su primera mensualidad ($400.00), que cubre del 15 de noviembre al 14 de diciembre.',
+        ],
+      },
     } })
   })
   await page.goto('/tech/activar/41')
@@ -787,9 +802,16 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y señal', async ({ p
 
   await expect(page.getByText('Servicio activo y orden cerrada')).toBeVisible()
   await expect(page.getByText('clave123')).toBeVisible()
-  await expect(page.getByText('-19.50 dBm')).toBeVisible()
-  await expect(page.getByText('plan Plan 300 → Plan 400')).toBeVisible()
-  expect(enviado).toMatchObject({ version: 2, zona_id: 2, plan_id: 12, plantilla_id: 2, contrato_apartado: 'A7F2', onu_id: 4, caja_nap_id: 8, puerto_nap: 3 })
+  await expect(page.getByText('Calendario de cobro')).toBeVisible()
+  await expect(page.getByText('Explicación para el cliente')).toBeVisible()
+  await expect(page.getByText('Tiene 1 mes gratis: del 5 de octubre al 4 de noviembre no paga nada.')).toBeVisible()
+  await expect(page.getByText('$529.03').first()).toBeVisible()
+  await expect(page.getByTitle('Día de pago')).toHaveText('15')
+  await expect(page.getByText('Corte si no paga').first()).toBeVisible()
+  // Al técnico solo le sirven los datos de conexión: la señal y los cambios ya no se muestran.
+  await expect(page.getByText('-19.50 dBm')).toHaveCount(0)
+  await expect(page.getByText('plan Plan 300 → Plan 400')).toHaveCount(0)
+  expect(enviado).toMatchObject({ version: 2, zona_id: 2, plan_id: 12, plantilla_id: 2, contrato_apartado: 'A7F2', onu_id: 4, caja_nap_id: 8, puerto_nap: 3, meses_gratis: 1 })
 })
 
 test('carga una instalación técnica preasignada', async ({ page }) => {

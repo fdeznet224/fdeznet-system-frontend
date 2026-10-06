@@ -8,7 +8,6 @@ import {
     ClipboardDocumentIcon,
     MapPinIcon,
     QrCodeIcon,
-    SignalIcon,
 } from '@heroicons/react/24/outline';
 
 import client from '../../api/axios';
@@ -17,6 +16,7 @@ import { cachedRequest, getCachedValue, setCachedValue } from '../../offline/db'
 import { apiErrorMessage } from '@/utils/apiError';
 import SugerenciaNap from '@/components/naps/SugerenciaNap';
 import EscanerCodigo from '@/components/escaner/EscanerCodigo';
+import CalendarioCobro, { type FechasCobro } from '@/components/cobro/CalendarioCobro';
 
 interface Opcion {
     id: number;
@@ -64,7 +64,19 @@ interface Resultado {
     senal?: { potencia?: string; estado?: string; recomendacion?: string } | null;
     cambios: string[];
     meses_gratis?: number;
+    cobro?: Cobro | null;
 }
+
+/** Lo que el técnico le explica al cliente sobre su cobro. */
+interface Cobro extends FechasCobro {
+    mensualidad: number;
+    prorrateo?: { total: number; desde: string; hasta: string; dias: number } | null;
+    primer_pago: { fecha: string; total: number };
+    explicacion: string[];
+}
+
+const pesos = (monto: number) => monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+const fechaCorta = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 
 interface Formulario {
     nombre: string;
@@ -420,8 +432,6 @@ export default function TechActivar() {
     if (resultado) {
         const filas: [string, string | null | undefined][] = [
             ['Contrato', resultado.contrato],
-            ['Plan', resultado.plan],
-            ['Alta', resultado.meses_gratis ? 'Instalación nueva · 1 mes gratis' : 'Cambio de compañía · paga desde hoy'],
             ...(resultado.modo === 'dhcp' ? [] : [
                 ['Usuario PPPoE', resultado.usuario_pppoe] as [string, string | null | undefined],
                 ['Contraseña PPPoE', resultado.password_pppoe] as [string, string | null | undefined],
@@ -455,21 +465,44 @@ export default function TechActivar() {
                             </div>
                         ))}
                     </div>
-                    <div className={tarjeta}>
-                        <p className={`${etiqueta} flex items-center gap-1`}><SignalIcon className="h-4 w-4" /> Señal de la ONU</p>
-                        {resultado.senal ? (
-                            <>
-                                <p className="font-mono text-2xl font-black">{resultado.senal.potencia}</p>
-                                <p className="text-sm text-slate-500">{resultado.senal.recomendacion}</p>
-                            </>
-                        ) : (
-                            <p className="text-sm text-slate-500">La OLT no respondió a tiempo. Revisa la señal después desde el cliente.</p>
-                        )}
-                    </div>
-                    {resultado.cambios.length > 0 && (
-                        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
-                            <p className="font-black">Cambios anotados para el administrador</p>
-                            <ul className="mt-1 list-disc pl-5">{resultado.cambios.map((c) => <li key={c}>{c}</li>)}</ul>
+                    {resultado.cobro && (
+                        <div className={tarjeta}>
+                            <p className={etiqueta}>Calendario de cobro</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {resultado.cobro.prorrateo && (
+                                    <div className="rounded-2xl bg-amber-50 p-3 dark:bg-amber-500/10">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">Prorrateo</p>
+                                        <p className="text-lg font-black">{pesos(resultado.cobro.prorrateo.total)}</p>
+                                        <p className="text-[11px] text-slate-500">{fechaCorta(resultado.cobro.prorrateo.desde)} – {fechaCorta(resultado.cobro.prorrateo.hasta)}</p>
+                                    </div>
+                                )}
+                                <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Mensualidad</p>
+                                    <p className="text-lg font-black">{pesos(resultado.cobro.mensualidad)}</p>
+                                </div>
+                                <div className="col-span-2 rounded-2xl bg-emerald-50 p-3 dark:bg-emerald-500/10">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Primer pago · {fechaCorta(resultado.cobro.primer_pago.fecha)}</p>
+                                    <p className="text-2xl font-black">{pesos(resultado.cobro.primer_pago.total)}</p>
+                                </div>
+                            </div>
+                            <CalendarioCobro fechas={resultado.cobro} />
+                        </div>
+                    )}
+                    {resultado.cobro && (
+                        <div className={tarjeta}>
+                            <p className={etiqueta}>Explicación para el cliente</p>
+                            <ul className="space-y-2 text-sm leading-snug text-slate-700 dark:text-slate-300">
+                                {resultado.cobro.explicacion.map((linea) => (
+                                    <li key={linea} className="flex gap-2"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />{linea}</li>
+                                ))}
+                            </ul>
+                            <button
+                                type="button"
+                                onClick={() => copiar(resultado.cobro!.explicacion.join('\n'))}
+                                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 text-xs font-black uppercase tracking-widest dark:border-slate-700"
+                            >
+                                <ClipboardDocumentIcon className="h-4 w-4" /> Copiar explicación
+                            </button>
                         </div>
                     )}
                     <button type="button" onClick={() => navigate('/tech/dashboard')} className="h-12 w-full rounded-xl bg-blue-600 text-xs font-black uppercase tracking-widest text-white">
