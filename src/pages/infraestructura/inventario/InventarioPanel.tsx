@@ -44,8 +44,65 @@ interface Props {
     onVerRetiros?: () => void;
 }
 
+interface Stock {
+    disponibles: number;
+    minimo: number;
+    bajo: boolean;
+}
+
+/** ONU en bodega contra el mínimo; el mínimo se edita aquí mismo (0 apaga el aviso). */
+function AvisoStock({ stock, onCambiar }: { stock: Stock; onCambiar: (stock: Stock) => void }) {
+    const [editando, setEditando] = useState(false);
+    const [minimo, setMinimo] = useState(String(stock.minimo));
+
+    const guardar = async () => {
+        try {
+            const { data } = await client.put<Stock>('/inventario/stock', { minimo: Number(minimo || 0) });
+            onCambiar(data);
+            setEditando(false);
+            toast.success('Mínimo de bodega guardado');
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error, 'No se pudo guardar el mínimo'));
+        }
+    };
+
+    return (
+        <div className={`flex flex-none flex-wrap items-center justify-between gap-2 rounded-2xl border px-4 py-3 text-xs ${stock.bajo
+            ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300'
+            : 'border-slate-200 bg-white text-slate-500 dark:border-slate-800 dark:bg-[#12141a] dark:text-slate-400'}`}>
+            <span className="flex items-center gap-2 font-bold">
+                {stock.bajo && <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />}
+                {stock.bajo
+                    ? `Quedan ${stock.disponibles} ONU en bodega (mínimo ${stock.minimo}). Ingresa equipo antes de la próxima instalación.`
+                    : `${stock.disponibles} ONU en bodega${stock.minimo ? ` · aviso con menos de ${stock.minimo}` : ' · aviso apagado'}`}
+            </span>
+            {editando ? (
+                <span className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 font-bold">Mínimo
+                        <input
+                            type="number"
+                            min="0"
+                            max="1000"
+                            aria-label="Mínimo de ONU en bodega"
+                            value={minimo}
+                            onChange={(e) => setMinimo(e.target.value)}
+                            className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                        />
+                    </label>
+                    <button type="button" onClick={() => void guardar()} className="rounded-lg bg-indigo-600 px-3 py-1.5 font-black text-white">Guardar</button>
+                </span>
+            ) : (
+                <button type="button" onClick={() => { setMinimo(String(stock.minimo)); setEditando(true); }} className="font-black text-indigo-600 dark:text-indigo-400">
+                    Cambiar mínimo
+                </button>
+            )}
+        </div>
+    );
+}
+
 export default function InventarioPanel({ onVerRetiros }: Props) {
     const [equipos, setEquipos] = useState<EquipoInventario[]>([]);
+    const [stock, setStock] = useState<Stock | null>(null);
     const [loading, setLoading] = useState(true);
     
     // Filtros
@@ -65,8 +122,12 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
     const fetchInventario = async () => {
         setLoading(true);
         try {
-            const res = await client.get<EquipoInventario[]>('/inventario/');
+            const [res, resStock] = await Promise.all([
+                client.get<EquipoInventario[]>('/inventario/'),
+                client.get<Stock>('/inventario/stock').catch(() => null),
+            ]);
             setEquipos(res.data);
+            if (resStock) setStock(resStock.data);
         } catch {
             toast.error("Error al cargar inventario");
         } finally {
@@ -193,6 +254,8 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                     </button>
                 </div>
             </div>
+
+            {stock && <AvisoStock stock={stock} onCambiar={setStock} />}
 
             {/* ================= BARRAS EXTENDIDAS MÓVIL ================= */}
             {mobileView === 'search' && (

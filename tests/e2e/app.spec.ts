@@ -119,6 +119,8 @@ async function mockApi(page: Page) {
       }
     } else if (url.pathname.endsWith('/configuracion/plantillas-facturacion')) {
       body = []
+    } else if (url.pathname.endsWith('/inventario/stock')) {
+      body = { disponibles: 1, minimo: 5, bajo: true }
     } else if (url.pathname.endsWith('/inventario/')) {
       body = [{
         id: 1,
@@ -881,6 +883,28 @@ test('carga el inventario con un equipo disponible', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Inventario / Bodega' })).toBeVisible()
   await expect(page.locator('span:visible').filter({ hasText: /^ONU-STOCK-E2E$/ }).first()).toBeVisible()
   await expect(page.locator('span:visible').filter({ hasText: /^BODEGA$/ }).first()).toBeVisible()
+  await expect(page.getByText('Quedan 1 ONU en bodega (mínimo 5).', { exact: false })).toBeVisible()
+})
+
+test('el admin cambia el mínimo de ONU en bodega', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  let enviado: unknown = null
+  await page.route('**/api/inventario/stock', async (route) => {
+    if (route.request().method() === 'PUT') {
+      enviado = route.request().postDataJSON()
+      await route.fulfill({ json: { disponibles: 1, minimo: 0, bajo: false } })
+    } else {
+      await route.fulfill({ json: { disponibles: 1, minimo: 5, bajo: true } })
+    }
+  })
+  await page.goto('/admin/inventario')
+
+  await page.getByRole('button', { name: 'Cambiar mínimo' }).click()
+  await page.getByLabel('Mínimo de ONU en bodega').fill('0')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect.poll(() => enviado).toEqual({ minimo: 0 })
+  await expect(page.getByText('1 ONU en bodega · aviso apagado')).toBeVisible()
 })
 
 test('abre una conversación desde el CRM', async ({ page }) => {

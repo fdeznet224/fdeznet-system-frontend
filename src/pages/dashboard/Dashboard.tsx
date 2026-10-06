@@ -16,6 +16,7 @@ import RegistrarPago from '@/pages/finanzas/components/RegistrarPago';
 import CreateClientModal from '@/pages/clientes/components/CreateClientModal';
 
 interface DashboardData {
+    inventario?: { disponibles: number; minimo: number; bajo: boolean };
     resumen_clientes: {
         total_clientes: number;
         total_registrados: number;
@@ -181,6 +182,23 @@ export default function Dashboard() {
                     </button>
                 </div>
             </div>
+
+            {data.inventario?.bajo && (
+                <Link
+                    to="/admin/inventario"
+                    className="flex flex-none items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 transition-colors hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300"
+                >
+                    <ExclamationTriangleIcon className="h-6 w-6 shrink-0" />
+                    <span className="min-w-0">
+                        <span className="block font-black">
+                            {data.inventario.disponibles === 0
+                                ? 'No quedan ONU en bodega'
+                                : `Quedan ${data.inventario.disponibles} ONU en bodega`}
+                        </span>
+                        <span className="block text-xs">El mínimo es {data.inventario.minimo}. Ingresa equipo antes de la próxima instalación.</span>
+                    </span>
+                </Link>
+            )}
 
             {/* ================= CARRUSEL MÓVIL / GRID PC (KPIs FINANCIEROS) ================= */}
             <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:pb-0 scrollbar-none flex-none shrink-0 snap-x">
