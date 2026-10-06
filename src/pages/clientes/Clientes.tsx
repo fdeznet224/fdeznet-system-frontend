@@ -86,7 +86,6 @@ export default function Clientes() {
     const [onlineStatus, setOnlineStatus] = useState<Map<string, OnlineStatus>>(new Map());
     const [potencias, setPotencias] = useState<Record<string, Potencia>>({});
     const [routers, setRouters] = useState<RouterSummary[]>([]);
-    const [noLeidos, setNoLeidos] = useState<Record<string, { count: number }>>({});
     const [loading, setLoading] = useState(true);
 
     const [mostrarBusquedaMovil, setMostrarBusquedaMovil] = useState(false);
@@ -136,11 +135,6 @@ export default function Clientes() {
                 const resPotencias = await client.get<Record<string, Potencia>>('/ftth/potencias');
                 setPotencias(resPotencias.data);
             } catch { console.warn("Potencias no disponibles"); }
-
-            try {
-                const resMsg = await client.get<Record<string, { count: number }>>('/whatsapp/no-leidos');
-                setNoLeidos(resMsg.data);
-            } catch { console.warn("Chat no disponible"); }
 
             setLoading(false);
         } catch {
@@ -412,7 +406,6 @@ export default function Clientes() {
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                 {clientesFiltrados.map((c) => {
                                     const statusData = onlineStatus.get(c.id.toString());
-                                    const unreadCount = noLeidos[c.id]?.count || 0;
                                     return (
                                         <tr key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className="group cursor-pointer bg-transparent align-top transition hover:bg-slate-50 dark:hover:bg-slate-800/30">
                                             <td className="px-5 py-3">
@@ -442,11 +435,6 @@ export default function Clientes() {
                                             <td className="px-5 py-3 text-center">
                                                 <button aria-label={`Herramientas de ${c.nombre}`} onClick={(e) => { e.stopPropagation(); setToolModal({ show: true, cliente: c }); }} className="relative rounded-xl border border-slate-200 bg-slate-100 p-1.5 text-slate-400 transition hover:text-slate-900 active:scale-90 dark:border-slate-700 dark:bg-slate-800 dark:hover:text-white">
                                                     <WrenchScrewdriverIcon className="h-4 w-4" />
-                                                    {unreadCount > 0 && (
-                                                        <span className="absolute -right-1 -top-1 flex h-4 w-4 animate-pulse items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white ring-2 ring-white dark:ring-slate-800">
-                                                            {unreadCount}
-                                                        </span>
-                                                    )}
                                                 </button>
                                             </td>
                                         </tr>
@@ -459,7 +447,6 @@ export default function Clientes() {
                         <div className="flex flex-col gap-3 p-1 pb-4 md:hidden">
                             {clientesFiltrados.map((c) => {
                                 const statusData = onlineStatus.get(c.id.toString());
-                                const unreadCount = noLeidos[c.id]?.count || 0;
                                 const mapHref = getNativeMapHref({
                                     latitude: c.latitud,
                                     longitude: c.longitud,
@@ -502,7 +489,6 @@ export default function Clientes() {
                                         <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-2">
                                             <button aria-label={`Herramientas de ${c.nombre}`} onClick={(e) => { e.stopPropagation(); setToolModal({ show: true, cliente: c }); }} className="relative flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-600 shadow-sm active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                                                 <WrenchScrewdriverIcon className="h-4 w-4 text-blue-500" /> Herramientas
-                                                {unreadCount > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1.5 py-0.5 text-[8px] text-white">{unreadCount}</span>}
                                             </button>
                                             {c.telefono && (
                                                 <a aria-label={`Llamar a ${c.nombre}`} href={`tel:${c.telefono}`} onClick={(e) => e.stopPropagation()} className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 active:scale-95 dark:text-emerald-400">
@@ -534,7 +520,6 @@ export default function Clientes() {
                 isOpen={toolModal.show}
                 onClose={() => setToolModal({ show: false, cliente: null })}
                 cliente={toolModal.cliente}
-                unreadCount={toolModal.cliente ? noLeidos[toolModal.cliente.id]?.count : 0}
                 onActionSuccess={fetchData}
             />
             <ClientDetailModal isOpen={detailModal.show} onClose={() => setDetailModal({ show: false, cliente: null })} cliente={detailModal.cliente} onEditSuccess={fetchData} />

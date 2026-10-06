@@ -5,7 +5,6 @@ import {
     type ComponentType,
 } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
 import client from '@/api/axios';
 import {
     HomeIcon, UsersIcon, SignalIcon, ArrowLeftOnRectangleIcon,
@@ -18,9 +17,7 @@ import {
     SunIcon, MoonIcon, ChatBubbleLeftRightIcon, SparklesIcon
 } from '@heroicons/react/24/outline';
 
-import ChatModal from '@/components/chat/ChatModal';
 import ClientDetailModal from '@/pages/clientes/components/ClientDetailModal';
-import { useWhatsApp } from '@/context/whatsapp/context';
 import { notifySessionChanged } from '@/offline/db';
 import type { AppRole } from '@/utils/roles';
 import { useBrand } from '@/context/brand/useBrand';
@@ -115,11 +112,6 @@ export default function Layout() {
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedCliente, setSelectedCliente] = useState<ClienteGlobal | null>(null);
 
-    // --- ESTADOS PARA EL CHAT GLOBAL ---
-    const [showChatModal, setShowChatModal] = useState(false);
-    const [targetCliente, setTargetCliente] = useState<ClienteGlobal | null>(null);
-
-    const { wsEvent } = useWhatsApp();
     const storedUser = localStorage.getItem('user');
     const user = getSessionUser(storedUser);
 
@@ -181,70 +173,6 @@ export default function Layout() {
         setSelectedCliente(cliente);
         setIsDetailModalOpen(true);
     };
-
-    // NOTIFICACIONES TOAST 
-    useEffect(() => {
-        if (user.rol !== 'admin' || !wsEvent) return;
-
-        if (wsEvent.type === 'NEW_MESSAGE' && wsEvent.data.direccion === 'entrada') {
-            const nuevoMensaje = wsEvent.data;
-
-            // 1. Creamos una función reutilizable para lanzar el Toast
-            const lanzarNotificacion = (nombreMostrar: string, dataCliente: ClienteGlobal | null) => {
-                const audio = new Audio('/notification.mp3');
-                audio.play().catch(() => { });
-
-                toast.custom((t) => (
-                    <div
-                        onClick={() => {
-                            toast.dismiss(t.id);
-                            // Solo intentamos abrir el modal si tenemos los datos del cliente
-                            if (dataCliente) {
-                                setTargetCliente(dataCliente);
-                                setShowChatModal(true);
-                            } else {
-                                console.log("Mensaje de número desconocido. Ve a la bandeja general.");
-                                // Aquí podrías opcionalmente redirigir a una bandeja general de prospectos si la tienes
-                            }
-                        }}
-                        className={`${t.visible ? 'animate-in fade-in' : 'animate-out fade-out'} max-w-md w-full bg-[#1a1f2e] border border-emerald-500/30 shadow-2xl rounded-2xl pointer-events-auto flex cursor-pointer hover:bg-[#242b3d] transition-all z-[9999]`}
-                    >
-                        <div className="flex-1 p-4 flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shrink-0">
-                                {nombreMostrar.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="overflow-hidden">
-                                <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">WhatsApp - Nuevo Mensaje</p>
-                                <p className="text-sm font-bold text-white truncate">{nombreMostrar}</p>
-                                <p className="text-xs text-slate-400 truncate mt-1">{nuevoMensaje.mensaje}</p>
-                            </div>
-                        </div>
-                    </div>
-                ), { position: 'top-right', id: `msg-${nuevoMensaje.id}`, duration: 5000 });
-            };
-
-            // 2. 🔥 LA VALIDACIÓN CRÍTICA 🔥
-            if (nuevoMensaje.cliente_id) {
-                // Sí es un cliente registrado: Hacemos la petición a FastAPI
-                client.get<ClienteBusquedaApi>(`/clientes/${nuevoMensaje.cliente_id}`)
-                    .then(resC => {
-                        const nombreCliente = resC.data.nombre || "Cliente";
-                        lanzarNotificacion(nombreCliente, normalizeCliente(resC.data));
-                    })
-                    .catch(err => {
-                        console.error("Error al buscar el nombre del cliente:", err);
-                        lanzarNotificacion("Cliente", null);
-                    });
-            } else {
-                // Es un prospecto o número desconocido: NO hacemos petición a FastAPI
-                // Usamos el teléfono que viene en wsEvent si existe, si no, "Desconocido"
-                const nombreProspecto = typeof nuevoMensaje.telefono === 'string'
-                    ? nuevoMensaje.telefono
-                    : "Nuevo Contacto";
-                lanzarNotificacion(nombreProspecto, null);
-            }
-        }
-    }, [wsEvent, user.rol]);
 
     const handleLogout = () => {
         void client.post('/auth/logout').finally(() => {
@@ -494,11 +422,6 @@ export default function Layout() {
                 />
             )}
 
-            <ChatModal
-                isOpen={showChatModal}
-                onClose={() => setShowChatModal(false)}
-                cliente={targetCliente}
-            />
         </div>
     );
 }

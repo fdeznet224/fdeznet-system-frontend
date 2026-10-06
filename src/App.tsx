@@ -33,7 +33,6 @@ const Redes = lazy(() => import('@/pages/infraestructura/redes/Redes'));
 const Configuracion = lazy(() => import('@/pages/configuracion/Configuracion'));
 const Orders = lazy(() => import('@/pages/admin/orders/Orders'));
 const MapaClientes = lazy(() => import('@/pages/monitoreo/MapaClientes'));
-const MensajesCRM = lazy(() => import('@/pages/admin/mensajes/MensajesCRM'));
 const WhatsAppOutbox = lazy(() => import('@/pages/admin/mensajes/WhatsAppOutbox'));
 const Inventario = lazy(() => import('@/pages/infraestructura/inventario/Inventario'));
 const CajasNap = lazy(() => import('@/pages/infraestructura/naps/CajasNap'));
@@ -231,7 +230,8 @@ function App() {
                 <Route path="/admin/configuracion/marca" element={protectedPage(<MarcaBlanca />, ['admin'])} />
                 <Route path="/admin/configuracion/licencias" element={protectedPage(<LicenciasVersiones />, ['admin'])} />
                 <Route path="/admin/configuracion/integraciones" element={protectedPage(<Integraciones />, ['admin'])} />
-                <Route path="/admin/mensajes" element={protectedPage(<MensajesCRM />, ['admin'])} />
+                {/* El chat lo atienden desde el celular; queda la bandeja de salida. */}
+                <Route path="/admin/mensajes" element={<Navigate to="/admin/whatsapp/salidas" replace />} />
                 <Route path="/admin/whatsapp/salidas" element={protectedPage(<WhatsAppOutbox />, ['admin', 'supervisor'])} />
                 {/* Ya no hay bandeja: lo que el agente no valida lo registra un asesor en Cobranza. */}
                 <Route path="/admin/whatsapp/comprobantes" element={<Navigate to="/admin/whatsapp/salidas" replace />} />

@@ -576,10 +576,8 @@ test('abre herramientas y alta desde el listado unificado', async ({ page }) => 
   const toolsDialog = page.getByRole('dialog', { name: 'Herramientas del cliente' })
   await expect(toolsDialog.getByText('10.0.0.2', { exact: true })).toBeVisible()
   await expect(toolsDialog.getByText('Activo', { exact: true })).toBeVisible()
-  await toolsDialog.getByRole('button', { name: /^Mensaje/ }).click()
-  const chatDialog = page.getByRole('dialog', { name: 'Chat con Cliente E2E' })
-  await expect(chatDialog.getByPlaceholder('Escribe un mensaje...')).toBeVisible()
-  await chatDialog.getByRole('button', { name: 'Cerrar chat' }).click()
+  // El admin ya no chatea desde aquí: contesta desde el celular.
+  await expect(toolsDialog.getByRole('button', { name: /^Mensaje/ })).toHaveCount(0)
   await toolsDialog.getByRole('button', { name: 'Cerrar herramientas' }).click()
   await page.getByRole('button', { name: 'Nuevo Cliente' }).click()
   await expect(page.getByRole('heading', { name: 'Alta de Cliente' })).toBeVisible()
@@ -905,16 +903,6 @@ test('el admin cambia el mínimo de ONU en bodega', async ({ page }) => {
   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await expect.poll(() => enviado).toEqual({ minimo: 0 })
   await expect(page.getByText('1 ONU en bodega · aviso apagado')).toBeVisible()
-})
-
-test('abre una conversación desde el CRM', async ({ page }) => {
-  await authenticateAs(page)
-  await mockApi(page)
-  await page.goto('/admin/mensajes')
-
-  await page.getByText('Cliente E2E', { exact: true }).first().click()
-  await expect(page.getByPlaceholder('Escribe un mensaje')).toBeVisible()
-  await expect(page.getByText('🟢 ACTIVO', { exact: true })).toBeVisible()
 })
 
 test('carga el detalle técnico completo de un cliente', async ({ page }) => {
@@ -1644,4 +1632,43 @@ test('la potencia en vivo lee cada minuto y se pausa a los 5 minutos', async ({ 
   await page.getByRole('button', { name: /Lectura en pausa/ }).click()
   await expect.poll(() => lecturas).toBe(enPausa + 1)
   await expect(page.getByRole('button', { name: /Lectura en pausa/ })).toHaveCount(0)
+})
+
+test('herramientas del cliente: estado de la ONU, potencia y reinicio', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/ftth/clientes/1/estado-onu', (route) => route.fulfill({ json: {
+    disponible: true, olt: 'Vicente Guerrero', serial: 'HWTC05450CB6', modelo: 'HG8145V5V3', online: true,
+    rx: -20.86, tx: 2.1, encendida: '4 h 46 min', ultima_caida: '2026/10/05 21:54:01',
+    causa_ultima_caida: 'Se quedó sin luz (Power Off)', puede_reiniciar: true,
+  } }))
+  await page.route('**/api/ftth/clientes/1/potencia-actual', (route) => route.fulfill({ json: {
+    disponible: true, onu_online: true, rx: -20.86, tx: 2.1, nivel: 'normal',
+  } }))
+  let reinicios = 0
+  await page.route('**/api/clientes/1/reiniciar-onu', async (route) => {
+    reinicios += 1
+    await route.fulfill({ json: { status: 'success', data: { olt: 'Vicente Guerrero' } } })
+  })
+  await page.goto('/admin/clientes')
+
+  await page.getByRole('button', { name: 'Herramientas de Cliente E2E' }).click()
+  const herramientas = page.getByRole('dialog', { name: 'Herramientas del cliente' })
+
+  await herramientas.getByRole('button', { name: /^ONU/ }).click()
+  await expect(herramientas.getByText('ONU en línea')).toBeVisible()
+  await expect(herramientas.getByText('4 h 46 min')).toBeVisible()
+  await expect(herramientas.getByText('Se quedó sin luz (Power Off)')).toBeVisible()
+  await herramientas.getByRole('button', { name: 'Volver', exact: true }).click()
+
+  await herramientas.getByRole('button', { name: /^Potencia/ }).click()
+  await expect(herramientas.getByText('-20.86 dBm')).toBeVisible()
+  await herramientas.getByRole('button', { name: 'Volver', exact: true }).click()
+
+  await herramientas.getByRole('button', { name: /^Reiniciar ONU/ }).click()
+  await expect(herramientas.getByText('¿Reiniciar la ONU?')).toBeVisible()
+  expect(reinicios).toBe(0)  // no reinicia sin confirmar
+  await herramientas.getByRole('button', { name: 'Reiniciar ONU', exact: true }).click()
+  await expect.poll(() => reinicios).toBe(1)
+  await expect(page.getByText('La ONU se está reiniciando', { exact: false })).toBeVisible()
 })

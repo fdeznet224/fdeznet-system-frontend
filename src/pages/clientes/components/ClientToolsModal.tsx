@@ -2,19 +2,21 @@ import {
     useState, useEffect, useCallback,
     type ComponentType, type ReactNode
 } from 'react';
+import { createPortal } from 'react-dom';
 import client from '@/api/axios';
 import type { ClientService } from '@/types/services';
 import { serviceDisplayName } from '@/types/services';
 import { toast } from 'react-hot-toast';
 import {
     XMarkIcon, WrenchScrewdriverIcon, ServerIcon,
-    PresentationChartLineIcon, ChatBubbleLeftRightIcon,
+    PresentationChartLineIcon, SignalIcon, CpuChipIcon,
     PauseCircleIcon, PlayCircleIcon, ArrowLeftIcon,
     TrashIcon, ArrowPathIcon, ArchiveBoxXMarkIcon,
     GlobeAmericasIcon, CheckCircleIcon, NoSymbolIcon,
     ClockIcon, ArrowDownTrayIcon, ArrowUpTrayIcon
 } from '@heroicons/react/24/outline';
-import ChatModal from '@/components/chat/ChatModal';
+import { EstadoOnu, ReiniciarOnu } from './HerramientasOnu';
+import PotenciaEnVivo from './PotenciaEnVivo';
 import { apiErrorMessage } from '@/utils/apiError';
 
 interface ClientReference {
@@ -93,11 +95,10 @@ interface Props {
     isOpen: boolean;
     onClose: () => void;
     cliente: ClientReference | null;
-    unreadCount?: number;
     onActionSuccess: () => void;
 }
 
-type ToolMode = 'menu' | 'estado_real' | 'consumo_vivo' | 'suspender_reactivar' | 'eliminar' | 'dar_de_baja';
+type ToolMode = 'menu' | 'estado_real' | 'consumo_vivo' | 'onu_estado' | 'potencia' | 'reiniciar_onu' | 'suspender_reactivar' | 'eliminar' | 'dar_de_baja';
 
 type ContentProps = Omit<Props, 'cliente'> & { cliente: ClientReference };
 
@@ -106,14 +107,13 @@ export default function ClientToolsModal(props: Props) {
     return <ClientToolsModalContent key={props.cliente.id} {...props} cliente={props.cliente} />;
 }
 
-function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unreadCount = 0, onActionSuccess }: ContentProps) {
+function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActionSuccess }: ContentProps) {
     const [mode, setMode] = useState<ToolMode>('menu');
     const [clienteActual, setClienteActual] = useState<ClientReference>(clienteProp);
     const [servicios, setServicios] = useState<ClientService[]>([]);
     const [servicioSeleccionadoId, setServicioSeleccionadoId] = useState<number | null>(null);
     const [dataEstado, setDataEstado] = useState<NetworkStatus | null>(null);
     const [dataConsumo, setDataConsumo] = useState<TrafficStatus | null>(null);
-    const [showChatModal, setShowChatModal] = useState(false);
     const [tecnicos, setTecnicos] = useState<TechnicianOption[]>([]);
     const [bajaForm, setBajaForm] = useState({
         motivo: '',
@@ -271,9 +271,10 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
         }
     };
 
-    return (
+    // En el body: dentro de la página quedaba debajo de la barra superior.
+    return createPortal(
         <>
-            <div role="dialog" aria-label="Herramientas del cliente" aria-modal="true" className={`fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm transition-opacity duration-300 dark:bg-black/90 sm:items-center sm:p-4 ${showChatModal ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+            <div role="dialog" aria-label="Herramientas del cliente" aria-modal="true" className={`fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm transition-opacity duration-300 dark:bg-black/90 sm:items-center sm:p-4`}>
                 
                 <div className="flex max-h-[88dvh] w-full max-w-md animate-in flex-col overflow-hidden rounded-t-[2rem] border border-slate-200 bg-white shadow-2xl slide-in-from-bottom-8 transition-colors dark:border-slate-800 dark:bg-slate-900 sm:max-h-[90vh] sm:rounded-2xl sm:zoom-in-95">
 
@@ -333,17 +334,9 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
                                 <MenuButton icon={ServerIcon} label="Estado" desc="Ping" variant="blue" onClick={() => { setDataEstado(null); setMode('estado_real'); }} />
                                 <MenuButton icon={PresentationChartLineIcon} label="Tráfico" desc="En vivo" variant="purple" onClick={() => { setDataConsumo(null); setMode('consumo_vivo'); }} />
 
-                                <MenuButton
-                                    icon={ChatBubbleLeftRightIcon}
-                                    label="Mensaje"
-                                    desc="WhatsApp Rápido"
-                                    variant="emerald"
-                                    badge={unreadCount} 
-                                    onClick={() => {
-                                        setShowChatModal(true);
-                                        onActionSuccess(); 
-                                    }}
-                                />
+                                <MenuButton icon={CpuChipIcon} label="ONU" desc="Estado en la OLT" variant="blue" onClick={() => setMode('onu_estado')} />
+                                <MenuButton icon={SignalIcon} label="Potencia" desc="En vivo" variant="emerald" onClick={() => setMode('potencia')} />
+                                <MenuButton icon={ArrowPathIcon} label="Reiniciar ONU" desc="Sin borrar su configuración" variant="purple" onClick={() => setMode('reiniciar_onu')} />
 
                                 <MenuButton
                                     icon={isSuspended ? PlayCircleIcon : PauseCircleIcon}
@@ -464,6 +457,27 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
                             </div>
                         )}
 
+                        {mode === 'onu_estado' && (
+                            <div className="space-y-4 animate-in slide-in-from-right-4">
+                                <BackButton onClick={() => setMode('menu')} />
+                                <EstadoOnu clienteId={clientId} />
+                            </div>
+                        )}
+
+                        {mode === 'potencia' && (
+                            <div className="space-y-4 animate-in slide-in-from-right-4">
+                                <BackButton onClick={() => setMode('menu')} />
+                                <PotenciaEnVivo clienteId={clientId} />
+                            </div>
+                        )}
+
+                        {mode === 'reiniciar_onu' && (
+                            <div className="animate-in slide-in-from-right-4">
+                                <BackButton onClick={() => setMode('menu')} />
+                                <ReiniciarOnu clienteId={clientId} onListo={() => { setMode('menu'); onActionSuccess(); }} />
+                            </div>
+                        )}
+
                         {mode === 'consumo_vivo' && (
                             <div className="space-y-6 animate-in slide-in-from-right-4">
                                 <BackButton onClick={() => setMode('menu')} />
@@ -505,16 +519,8 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, unread
                 </div>
             </div>
 
-            <ChatModal
-                isOpen={showChatModal}
-                onClose={() => setShowChatModal(false)}
-                cliente={{
-                    id: clienteActual.id,
-                    nombre: clienteActual.nombre || 'Cliente',
-                    telefono: clienteActual.telefono || '',
-                }}
-            />
-        </>
+        </>,
+        document.body,
     );
 }
 
