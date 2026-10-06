@@ -420,7 +420,7 @@ export default function TechActivar() {
         const filas: [string, string | null | undefined][] = [
             ['Contrato', resultado.contrato],
             ['Plan', resultado.plan],
-            ['Meses gratis', resultado.meses_gratis ? `${resultado.meses_gratis}` : 'Sin mes gratis, paga desde hoy'],
+            ['Alta', resultado.meses_gratis ? 'Instalación nueva · 1 mes gratis' : 'Cambio de compañía · paga desde hoy'],
             ...(resultado.modo === 'dhcp' ? [] : [
                 ['Usuario PPPoE', resultado.usuario_pppoe] as [string, string | null | undefined],
                 ['Contraseña PPPoE', resultado.password_pppoe] as [string, string | null | undefined],
@@ -525,9 +525,31 @@ export default function TechActivar() {
                                 <option key={p.id} value={p.id}>{p.nombre}{String(p.id) === String(infra?.plantilla_id) ? ' (de la zona)' : ''}</option>
                             ))}
                         </select></label>
-                    <label className="block"><span className={etiqueta}>Meses gratis</span>
-                        <input type="number" inputMode="numeric" min="0" max="12" value={form.meses_gratis ?? '1'} onChange={(e) => cambiar({ meses_gratis: e.target.value })} className={campo} />
-                        <span className="mt-1 block text-[11px] text-slate-500">1 = instalación nueva con mes gratis · 0 = cambio de compañía, paga desde hoy</span></label>
+                    <div>
+                        <span className={etiqueta}>¿Qué tipo de alta es?</span>
+                        <div className="grid grid-cols-2 gap-2">
+                            {([
+                                ['1', 'Instalación nueva', '1 mes gratis'],
+                                ['0', 'Cambio de compañía', 'Paga desde hoy'],
+                            ] as const).map(([valor, titulo, detalle]) => {
+                                const activo = String(mesesGratis > 0 ? '1' : '0') === valor;
+                                return (
+                                    <button
+                                        key={valor}
+                                        type="button"
+                                        aria-pressed={activo}
+                                        onClick={() => cambiar({ meses_gratis: valor })}
+                                        className={`rounded-xl border-2 px-3 py-2.5 text-left ${activo
+                                            ? 'border-emerald-500 bg-emerald-50 dark:border-emerald-500/60 dark:bg-emerald-500/10'
+                                            : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950'}`}
+                                    >
+                                        <span className="block text-xs font-black text-slate-800 dark:text-slate-100">{titulo}</span>
+                                        <span className={`block text-[11px] ${activo ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'text-slate-500'}`}>{detalle}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
 
                 <div className={tarjeta}>

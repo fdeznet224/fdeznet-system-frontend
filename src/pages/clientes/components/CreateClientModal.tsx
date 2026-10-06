@@ -222,7 +222,6 @@ export default function CreateClientModal({
 }: Props) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [activarAhora, setActivarAhora] = useState(false);
   const [pppoePasswordMode, setPppoePasswordMode] =
     useState<'fija' | 'aleatoria'>('aleatoria');
   const [pendingActivationClient, setPendingActivationClient] =
@@ -255,7 +254,6 @@ export default function CreateClientModal({
     if (!isOpen) return;
 
     setStep(1);
-    setActivarAhora(false);
     setPppoePasswordMode('aleatoria');
     setPendingActivationClient(null);
     setCreatedClient(null);
@@ -527,9 +525,7 @@ export default function CreateClientModal({
     const t = toast.loading(
       pendingActivationClient
         ? 'Reintentando activación en MikroTik...'
-        : activarAhora
-          ? 'Creando y configurando en MikroTik...'
-          : 'Creando orden...',
+        : 'Creando y configurando en MikroTik...',
     );
     let clienteRegistrado = pendingActivationClient;
 
@@ -570,10 +566,7 @@ export default function CreateClientModal({
         payload.ip_asignada = ipSeleccionadaParaActivar;
       }
 
-      if (
-        activarAhora &&
-        (!ipSeleccionadaParaActivar || ipSeleccionadaParaActivar === '0.0.0.0')
-      ) {
+      if (!ipSeleccionadaParaActivar || ipSeleccionadaParaActivar === '0.0.0.0') {
         toast.dismiss(t);
         toast.error('Selecciona una IP libre antes de activar el cliente.');
         setLoading(false);
@@ -586,53 +579,47 @@ export default function CreateClientModal({
           payload,
         );
         clienteRegistrado = res.data;
-        if (activarAhora) {
-          setPendingActivationClient(res.data);
-        }
+        setPendingActivationClient(res.data);
       }
       let datosCliente: Partial<CreatedClientRecord> = clienteRegistrado;
 
-      if (activarAhora) {
-        const resActivacion = await client.post<ActivationResponse>(
-          `/clientes/${clienteRegistrado.id}/completar-instalacion`,
-          {
-            cedula:
-              clienteRegistrado.cedula
-              || clienteRegistrado.id.toString(),
-            olt_id: payload.olt_id,
-            onu_id: payload.onu_id,
-            router_id: payload.router_id,
-            plan_id: payload.plan_id,
-            user_pppoe: clienteRegistrado.user_pppoe || payload.user_pppoe,
-            pass_pppoe: clienteRegistrado.pass_pppoe || payload.pass_pppoe,
-            mac_address: payload.mac_address,
-            ip_asignada: ipSeleccionadaParaActivar,
-            latitud: payload.latitud,
-            longitud: payload.longitud,
-            caja_nap_id: payload.caja_nap_id,
-            puerto_nap: payload.puerto_nap,
-            fecha_instalacion: formData.fecha_instalacion || todayLocal(),
-            fecha_activacion:
-              formData.fecha_activacion || formData.fecha_instalacion || todayLocal(),
-            tipo_facturacion: formData.tipo_facturacion,
-            ciclo_facturacion: formData.ciclo_facturacion || undefined,
-            meses_gratis: Number(formData.meses_gratis || 0),
-          },
-        );
+      // Las instalaciones nuevas las activa el técnico desde su solicitud;
+      // aquí el administrador da de alta y activa en un solo paso.
+      const resActivacion = await client.post<ActivationResponse>(
+        `/clientes/${clienteRegistrado.id}/completar-instalacion`,
+        {
+          cedula:
+            clienteRegistrado.cedula
+            || clienteRegistrado.id.toString(),
+          olt_id: payload.olt_id,
+          onu_id: payload.onu_id,
+          router_id: payload.router_id,
+          plan_id: payload.plan_id,
+          user_pppoe: clienteRegistrado.user_pppoe || payload.user_pppoe,
+          pass_pppoe: clienteRegistrado.pass_pppoe || payload.pass_pppoe,
+          mac_address: payload.mac_address,
+          ip_asignada: ipSeleccionadaParaActivar,
+          latitud: payload.latitud,
+          longitud: payload.longitud,
+          caja_nap_id: payload.caja_nap_id,
+          puerto_nap: payload.puerto_nap,
+          fecha_instalacion: formData.fecha_instalacion || todayLocal(),
+          fecha_activacion:
+            formData.fecha_activacion || formData.fecha_instalacion || todayLocal(),
+          tipo_facturacion: formData.tipo_facturacion,
+          ciclo_facturacion: formData.ciclo_facturacion || undefined,
+          meses_gratis: Number(formData.meses_gratis || 0),
+        },
+      );
 
-        datosCliente =
-          resActivacion.data?.cliente
-          || resActivacion.data
-          || clienteRegistrado;
-        setPendingActivationClient(null);
-        toast.success('¡Cliente ACTIVADO!', {
-          id: t,
-        });
-      } else {
-        toast.success('Orden Generada', {
-          id: t,
-        });
-      }
+      datosCliente =
+        resActivacion.data?.cliente
+        || resActivacion.data
+        || clienteRegistrado;
+      setPendingActivationClient(null);
+      toast.success('¡Cliente ACTIVADO!', {
+        id: t,
+      });
 
       setCreatedClient({
         nombre: datosCliente.nombre || payload.nombre,
@@ -645,13 +632,13 @@ export default function CreateClientModal({
         user_pppoe: datosCliente.user_pppoe || payload.user_pppoe || undefined,
         pass_pppoe: datosCliente.pass_pppoe || payload.pass_pppoe || undefined,
         mac_address: datosCliente.mac_address || payload.mac_address || undefined,
-        estado: activarAhora ? 'Activo' : 'Pendiente',
+        estado: 'Activo',
       });
       setStep(4);
     } catch (error: unknown) {
       toast.dismiss(t);
       const message = apiErrorMessage(error, 'Verifica campos obligatorios');
-      if (clienteRegistrado && activarAhora) {
+      if (clienteRegistrado) {
         setPendingActivationClient(clienteRegistrado);
         toast.error(
           `El cliente ID ${clienteRegistrado.id} quedó creado, pero no se activó: ${message}. Corrige el dato y pulsa “Reintentar activación”.`,
@@ -732,7 +719,7 @@ export default function CreateClientModal({
   const isDhcp = selectedRouter?.tipo_seguridad === 'dhcp';
   const canSubmit = formData.router_id
     && (isDhcp
-      ? (!activarAhora || Boolean(formData.mac_address))
+      ? Boolean(formData.mac_address)
       : formData.user_pppoe
         && (pppoePasswordMode === 'aleatoria' || formData.pass_pppoe));
 
@@ -1200,7 +1187,7 @@ export default function CreateClientModal({
                             value={formData.mac_address}
                             onChange={(e) => setFormData({ ...formData, mac_address: e.target.value })}
                             placeholder="AA:BB:CC:DD:EE:FF"
-                            required={activarAhora}
+                            required
                           />
                           <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">
                             No es el serial GPON: usa la MAC que aparece en el lease DHCP del MikroTik.
@@ -1293,50 +1280,6 @@ export default function CreateClientModal({
                       </div>
 
                       <div className="md:col-span-2">
-                        <p className={labelClass}>¿Cómo deseas registrar?</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <button
-                            type="button"
-                            aria-pressed={!activarAhora}
-                            disabled={Boolean(pendingActivationClient) || loading}
-                            onClick={() => setActivarAhora(false)}
-                            className={`min-h-32 cursor-pointer rounded-3xl p-5 border-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                              !activarAhora
-                                ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/30'
-                                : 'border-slate-200 dark:border-slate-700'
-                            }`}
-                          >
-                            <span className="block font-black text-slate-900 dark:text-white">
-                              Solo crear orden
-                            </span>
-                            <span className="block text-sm text-slate-500 mt-1">
-                              Deja el servicio pendiente para que un técnico
-                              complete la instalación después.
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            aria-pressed={activarAhora}
-                            disabled={loading}
-                            onClick={() => setActivarAhora(true)}
-                            className={`min-h-32 cursor-pointer rounded-3xl p-5 border-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                              activarAhora
-                                ? 'border-green-600 bg-green-50 dark:bg-green-950/30'
-                                : 'border-slate-200 dark:border-slate-700'
-                            }`}
-                          >
-                            <span>
-                              <span className="block font-black text-slate-900 dark:text-white">
-                                Crear y activar ahora
-                              </span>
-                              <span className="block text-sm text-slate-500 mt-1">
-                                Configura IP, PPPoE y MikroTik inmediatamente.
-                                Como administrador no necesitas asignar técnico.
-                              </span>
-                            </span>
-                          </button>
-                        </div>
                         {pendingActivationClient && (
                           <p className="mt-3 text-sm font-bold text-amber-700 dark:text-amber-300">
                             El cliente ID {pendingActivationClient.id} ya fue
@@ -1460,9 +1403,7 @@ export default function CreateClientModal({
                         ? 'Procesando...'
                         : pendingActivationClient
                           ? 'Reintentar activación'
-                          : activarAhora
-                            ? 'Crear y activar ahora'
-                            : 'Solo crear orden'}
+                          : 'Activar servicio'}
                       <CheckCircleIcon className="w-5 h-5" />
                     </button>
                   )}
