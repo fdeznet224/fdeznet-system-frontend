@@ -173,7 +173,7 @@ function SelectorOnu({ onus, valor, elegida, onCambiar }: {
                     titulo="Apunta al código de barras o QR de la ONU"
                     onLeido={alEscanear}
                     onCerrar={() => setEscaneando(false)}
-                    onError={() => { toast.error('No se pudo abrir la cámara'); setEscaneando(false); }}
+                    onError={(mensaje) => { toast.error(mensaje, { duration: 6000 }); setEscaneando(false); }}
                 />
             )}
         </div>

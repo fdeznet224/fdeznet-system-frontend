@@ -1425,3 +1425,22 @@ test('abre y guarda el formulario tipado de una OLT', async ({ page }) => {
 
   await expect(page.getByText('OLT guardada correctamente')).toBeVisible()
 })
+
+test.describe('escáner con cámara simulada', () => {
+  test.use({ permissions: ['camera'] })
+
+  test('el escáner de inventario abre la cámara sin error', async ({ page }) => {
+    await authenticateAs(page)
+    await mockApi(page)
+    await page.goto('/admin/inventario')
+    await expect(page.getByRole('heading', { name: 'Bodega e Inventario' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Ingresar equipo' }).click()
+    await page.getByText('Escanear Código (MAC/SN)').click()
+
+    const video = page.locator('video')
+    await expect(video).toHaveCount(1)
+    await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState), { timeout: 10_000 }).toBeGreaterThanOrEqual(2)
+    await expect(page.getByText(/No se pudo abrir la cámara|cámara está ocupada/)).toHaveCount(0)
+  })
+})

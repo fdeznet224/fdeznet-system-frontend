@@ -221,6 +221,7 @@ export default function InventarioPanel() {
 
                     {/* Botón Ingresar (Morado como en tu app) */}
                     <button
+                        aria-label="Ingresar equipo"
                         onClick={() => { setShowModal(true); setIsScanning(false); setModelo(''); setNuevoId(''); }}
                         className="p-3 sm:px-5 sm:py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl sm:rounded-[1rem] font-black shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
@@ -466,7 +467,7 @@ export default function InventarioPanel() {
                                     <div className="space-y-2">
                                         <CamaraCodigo
                                             onLeido={handleSuccessfulScan}
-                                            onError={() => { toast.error('No se pudo abrir la cámara'); setIsScanning(false); }}
+                                            onError={(mensaje) => { toast.error(mensaje, { duration: 6000 }); setIsScanning(false); }}
                                             formats={['code_128', 'code_39', 'qr_code', 'ean_13']}
                                         />
                                         <button type="button" onClick={() => setIsScanning(false)} className="w-full rounded-xl bg-rose-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-transform">
