@@ -16,7 +16,6 @@ interface FormState {
     recordatorio_whatsapp: boolean;
     aviso_factura: string;
     ciclo_facturacion: FormaCobro;
-    meses_gratis_instalacion: number | string;
 }
 
 interface Props {
@@ -53,8 +52,7 @@ const DEFAULT_FORM: FormState = {
     impuesto: 0,
     recordatorio_whatsapp: true,
     aviso_factura: 'whatsapp',
-    ciclo_facturacion: 'calendario',
-    meses_gratis_instalacion: 0
+    ciclo_facturacion: 'calendario'
 };
 
 const STEP_COLOR_CLASSES: Record<StepProps['color'], string> = {
@@ -83,8 +81,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                 impuesto: initialData.impuesto ?? DEFAULT_FORM.impuesto,
                 recordatorio_whatsapp: initialData.recordatorio_whatsapp ?? DEFAULT_FORM.recordatorio_whatsapp,
                 aviso_factura: initialData.aviso_factura || 'whatsapp',
-                ciclo_facturacion: initialData.ciclo_facturacion || DEFAULT_FORM.ciclo_facturacion,
-                meses_gratis_instalacion: initialData.meses_gratis_instalacion ?? DEFAULT_FORM.meses_gratis_instalacion
+                ciclo_facturacion: initialData.ciclo_facturacion || DEFAULT_FORM.ciclo_facturacion
             });
         } else {
             setFormData({ ...DEFAULT_FORM });
@@ -106,8 +103,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                 dia_pago: Number(formData.dia_pago || 0),
                 dias_tolerancia: Number(formData.dias_tolerancia || 0),
                 cargo_reconexion: Number(formData.cargo_reconexion || 0),
-                impuesto: Number(formData.impuesto || 0),
-                meses_gratis_instalacion: Number(formData.meses_gratis_instalacion || 0)
+                impuesto: Number(formData.impuesto || 0)
             };
             if (initialData?.id) {
                 await client.put(`/configuracion/plantillas-facturacion/${initialData.id}`, payload);
@@ -242,17 +238,6 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                                                 <input type="number" min="0" step="0.01" className="bg-transparent text-lg font-black text-slate-900 dark:text-white w-28 focus:outline-none mt-1" value={formData.cargo_reconexion} onChange={e => setFormData({...formData, cargo_reconexion: e.target.value})}/>
                                             </div>
                                             <span className="text-xs font-black text-amber-700 dark:text-amber-400">MXN</span>
-                                        </div>
-
-                                        <div className="bg-emerald-50 dark:bg-emerald-500/10 p-4 rounded-xl border border-emerald-200 dark:border-emerald-500/20 transition-colors">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <label className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase block">Meses gratis por instalación nueva</label>
-                                                    <input type="number" min="0" max="12" className="bg-transparent text-lg font-black text-slate-900 dark:text-white w-16 focus:outline-none mt-1" value={formData.meses_gratis_instalacion} onChange={e => handleNumberChange('meses_gratis_instalacion', e.target.value)}/>
-                                                </div>
-                                                <span className="text-xs font-black text-emerald-700 dark:text-emerald-400">MESES</span>
-                                            </div>
-                                            <p className="mt-1 text-[11px] text-emerald-800/80 dark:text-emerald-300/80">Un cambio de compañía (portabilidad) no los lleva: paga desde la activación.</p>
                                         </div>
 
                                         <label className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-[#1a1f2e] rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer transition-colors">
