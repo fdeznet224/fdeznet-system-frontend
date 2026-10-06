@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 
 import RegistrarPago from '@/pages/finanzas/components/RegistrarPago';
 import CreateClientModal from '@/pages/clientes/components/CreateClientModal';
+import EmbudoVentas from './EmbudoVentas';
 
 interface DashboardData {
     inventario?: { disponibles: number; minimo: number; bajo: boolean };
@@ -265,6 +266,8 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
+
+            <EmbudoVentas />
 
             {/* ================= TABLA/TARJETAS DE PAGOS RECIENTES ================= */}
             <div className="bg-white dark:bg-[#12141a] rounded-[1.5rem] border border-slate-200 dark:border-slate-800/80 shadow-sm overflow-hidden flex-1 flex flex-col transition-colors min-h-[300px]">
