@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { Scanner } from '@yudiel/react-qr-scanner';
+import { Scanner, setZXingModuleOverrides } from '@yudiel/react-qr-scanner';
 import type { IScannerProps } from '@yudiel/react-qr-scanner';
+import zxingWasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url';
+
+// El lector de códigos (zxing) por defecto se descarga de un CDN externo, y
+// la política de seguridad del sitio (connect-src 'self') lo bloquea: la
+// cámara veía el código pero nunca lo leía. Se sirve desde nuestro dominio.
+setZXingModuleOverrides({
+    locateFile: (ruta: string, prefijo: string) => (ruta.endsWith('.wasm') ? zxingWasmUrl : prefijo + ruta),
+});
 
 interface Props {
     titulo: string;
@@ -135,6 +143,8 @@ export function CamaraCodigo({ onLeido, onError, formats = FORMATOS, className =
                     constraints={constraints}
                     formats={formats}
                     scanDelay={300}
+                    // Su pitido es un audio data: que la política de seguridad bloquea.
+                    sound={false}
                     components={{ zoom: true, torch: true, finder: false }}
                     onScan={(res) => { const codigo = res?.[0]?.rawValue; if (codigo) onLeido(codigo); }}
                     onError={alFallar}

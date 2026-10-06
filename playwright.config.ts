@@ -1,4 +1,8 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig, devices } from '@playwright/test'
+
+// Lo que "ve" la cámara simulada: la etiqueta de una ONU con Code 128.
+const VIDEO_ONU = fileURLToPath(new URL('./tests/e2e/fixtures/onu-code128.y4m', import.meta.url))
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -13,7 +17,13 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     // Cámara simulada para probar el escáner de códigos.
-    launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] },
+    launchOptions: {
+      args: [
+        '--use-fake-device-for-media-stream',
+        '--use-fake-ui-for-media-stream',
+        `--use-file-for-fake-video-capture=${VIDEO_ONU}`,
+      ],
+    },
   },
   projects: [
     {
