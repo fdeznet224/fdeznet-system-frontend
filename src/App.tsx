@@ -36,6 +36,7 @@ const MapaClientes = lazy(() => import('@/pages/monitoreo/MapaClientes'));
 const MensajesCRM = lazy(() => import('@/pages/admin/mensajes/MensajesCRM'));
 const WhatsAppOutbox = lazy(() => import('@/pages/admin/mensajes/WhatsAppOutbox'));
 const Inventario = lazy(() => import('@/pages/infraestructura/inventario/Inventario'));
+const Averias = lazy(() => import('@/pages/admin/averias/Averias'));
 const CajasNap = lazy(() => import('@/pages/infraestructura/naps/CajasNap'));
 const Facturas = lazy(() => import('@/pages/finanzas/Facturas'));
 const Transacciones = lazy(() => import('@/pages/finanzas/Transacciones'));
@@ -220,6 +221,7 @@ function App() {
                 <Route path="/admin/radar" element={protectedPage(<OltRadarVsolPage />, ['admin'])} />
                 <Route path="/admin/radar-vsol" element={protectedPage(<OltRadarVsolPage />, ['admin'])} />
                 <Route path="/admin/inventario" element={protectedPage(<Inventario />, ['admin', 'supervisor'])} />
+                <Route path="/admin/averias" element={protectedPage(<Averias />, ['admin', 'supervisor'])} />
                 
                 {/* Finanzas */}
                 <Route path="/admin/facturas" element={protectedPage(<Facturas />, ['admin'])} />

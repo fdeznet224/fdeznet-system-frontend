@@ -1528,3 +1528,59 @@ test.describe('escáner con cámara simulada', () => {
     await expect(page.getByText(/No se pudo abrir la cámara|cámara está ocupada/)).toHaveCount(0)
   })
 })
+
+const CAJAS_AVERIA = [
+  { id: 8, nombre: 'P1-SA-1-A', zona_id: 2, zona_nombre: 'Paraíso', olt_id: 2, olt_nombre: 'OLT Paraíso', puerto_olt: 3 },
+  { id: 9, nombre: 'P1-SA-1-B', zona_id: 2, zona_nombre: 'Paraíso', olt_id: 2, olt_nombre: 'OLT Paraíso', puerto_olt: 3 },
+]
+
+async function mockAverias(page: Page) {
+  await page.route('**/api/infraestructura/naps', (route) => route.fulfill({ json: CAJAS_AVERIA }))
+  await page.route('**/api/zonas/', (route) => route.fulfill({ json: [{ id: 2, nombre: 'Paraíso' }] }))
+}
+
+test('el supervisor avisa de una avería a los clientes de un puerto de OLT', async ({ page }) => {
+  await authenticateAs(page, 'supervisor')
+  await mockApi(page)
+  await mockAverias(page)
+  let enviado: unknown = null
+  await page.route('**/api/infraestructura/avisos-averia/vista-previa', (route) => route.fulfill({ json: {
+    total: 2, clientes: ['Ana Lopez', 'Beto Ruiz'], mensaje_sugerido: 'Hola {nombre}, hay una falla en tu zona y ya la estamos atendiendo.',
+  } }))
+  await page.route('**/api/infraestructura/avisos-averia', async (route) => {
+    enviado = route.request().postDataJSON()
+    await route.fulfill({ json: { lote_id: 'x', total_mensajes: 2, intervalo_segundos: 60 } })
+  })
+  page.on('dialog', (dialogo) => void dialogo.accept())
+  await page.goto('/admin/averias')
+
+  await page.getByRole('button', { name: 'Puerto de OLT' }).click()
+  await page.getByLabel('Puerto de OLT con falla').selectOption('2:3')
+  await expect(page.getByText('Le llegará a 2 clientes')).toBeVisible()
+  await expect(page.getByText('Ana Lopez, Beto Ruiz')).toBeVisible()
+  await page.getByRole('button', { name: 'Mandar aviso por WhatsApp' }).click()
+  await expect.poll(() => enviado).toMatchObject({ olt_id: 2, puerto_olt: 3, mensaje: 'Hola {nombre}, hay una falla en tu zona y ya la estamos atendiendo.' })
+})
+
+test('el admin liga a su caja sugerida un cliente que no tenía NAP', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await mockAverias(page)
+  await page.route('**/api/infraestructura/naps/sin-asignar**', (route) => route.fulfill({ json: [
+    { servicio_id: 51, nombre: 'Ana Lopez', contrato: 'A7F2', alias: 'Principal', direccion: 'Calle 1 #20', zona_id: 2, zona_nombre: 'Paraíso', tiene_gps: true,
+      sugeridas: [{ id: 8, nombre: 'P1-SA-1-A', distancia_m: 43, puertos_libres: 6, posicion_estimada: false }] },
+    { servicio_id: 52, nombre: 'Beto Ruiz', contrato: 'B1C3', alias: 'Principal', direccion: 'Calle 2', zona_id: 2, zona_nombre: 'Paraíso', tiene_gps: false, sugeridas: [] },
+  ] }))
+  let asignado: unknown = null
+  await page.route('**/api/infraestructura/naps/asignar', async (route) => {
+    asignado = route.request().postDataJSON()
+    await route.fulfill({ json: { servicio_id: 51, caja_nap_id: 8, caja_nombre: 'P1-SA-1-A', puerto_nap: null } })
+  })
+  await page.goto('/admin/averias?tab=sin-nap')
+
+  await expect(page.getByText('2 sin caja · 1 sin GPS', { exact: false })).toBeVisible()
+  await expect(page.getByText('Sin GPS: elige su caja a mano', { exact: false })).toBeVisible()
+  await page.locator('article', { hasText: 'Ana Lopez' }).getByRole('button', { name: /Sugerida · P1-SA-1-A/ }).click()
+  await expect.poll(() => asignado).toEqual({ servicio_id: 51, caja_nap_id: 8 })
+  await expect(page.locator('article', { hasText: 'Ana Lopez' })).toHaveCount(0)
+})
