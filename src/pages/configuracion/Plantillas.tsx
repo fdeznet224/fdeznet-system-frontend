@@ -54,6 +54,7 @@ export default function Plantillas() {
         'corte_servicio': '🛠️ Suspensión Administrativa',
         'reconexion': '🚀 Reconexión de Servicio',
         'promesa_pago': '🤝 Promesa de Pago Registrada',
+        'recordatorio_promesa': '⏰ Hoy Vence la Promesa de Pago',
         'datos_pago': '🏦 Datos para Depósito o Transferencia'
     };
 

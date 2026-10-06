@@ -38,6 +38,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
         { id: 'corte_servicio', label: '🛠️ Suspensión Administrativa' },
         { id: 'reconexion', label: '🚀 Reconexión de Servicio' },
         { id: 'promesa_pago', label: '🤝 Promesa de Pago' },
+        { id: 'recordatorio_promesa', label: '⏰ Hoy Vence la Promesa' },
         { id: 'datos_pago', label: '🏦 Datos de Pago del Bot' },
     ];
 

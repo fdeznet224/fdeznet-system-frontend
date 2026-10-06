@@ -13,9 +13,10 @@ import {
     BanknotesIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, 
     XMarkIcon, ArrowPathIcon, ShieldExclamationIcon, ClockIcon, 
     ChartPieIcon, HomeIcon, CreditCardIcon, CalendarDaysIcon, 
-    CheckCircleIcon, IdentificationIcon
+    CheckCircleIcon, IdentificationIcon, MapIcon, MapPinIcon
 } from '@heroicons/react/24/outline';
 import { apiErrorMessage } from '@/utils/apiError';
+import { rutaEnMaps } from '@/utils/mapas';
 
 type PaymentMethod = 'efectivo' | 'transferencia';
 
@@ -39,6 +40,22 @@ interface BillingConcept {
     numero_cuota?: number | null;
     total_cuotas?: number | null;
 }
+
+/** Cliente con pagos vencidos para la ruta de cobranza. */
+interface Moroso {
+    cliente_id: number;
+    nombre: string;
+    contrato: string | null;
+    direccion: string | null;
+    estado: string;
+    total: number;
+    dias_atraso: number;
+    latitud: number | null;
+    longitud: number | null;
+    distancia_m?: number | null;
+}
+
+const distanciaTexto = (m?: number | null) => (m == null ? 'Sin GPS' : m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
 
 interface BillingInvoice {
     id: number;
@@ -149,7 +166,9 @@ export default function PanelCobrador() {
     const { online } = useSync();
     const user = JSON.parse(localStorage.getItem('user') || '{}') as CollectorUser;
     
-    const [activeTab, setActiveTab] = useState<'cobrar' | 'promesas' | 'historial' | 'cierre'>('cobrar');
+    const [activeTab, setActiveTab] = useState<'cobrar' | 'ruta' | 'promesas' | 'historial' | 'cierre'>('cobrar');
+    const [ruta, setRuta] = useState<Moroso[] | null>(null);
+    const [cargandoRuta, setCargandoRuta] = useState(false);
     const [facturas, setFacturas] = useState<BillingInvoice[]>([]);
     const [historial, setHistorial] = useState<PaymentHistoryItem[]>([]);
     const [promesas, setPromesas] = useState<BillingInvoice[]>([]);
@@ -339,6 +358,41 @@ export default function PanelCobrador() {
     };
 
 
+    // Ruta de cobranza: con la ubicación del cobrador, del más cercano al más lejano.
+    const cargarRuta = () => {
+        const pedir = async (lat?: number, lng?: number) => {
+            try {
+                const consulta = lat != null && lng != null ? `?latitud=${lat}&longitud=${lng}` : '';
+                const { data } = await client.get<Moroso[]>(`/finanzas/ruta-cobranza${consulta}`);
+                setRuta(data);
+                if (lat == null) toast('Sin tu ubicación: ordenados por más días de atraso');
+            } catch (error) {
+                toast.error(apiErrorMessage(error, 'No se pudo armar la ruta'));
+            } finally {
+                setCargandoRuta(false);
+            }
+        };
+        setCargandoRuta(true);
+        if (!navigator.geolocation) {
+            void pedir();
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => void pedir(pos.coords.latitude, pos.coords.longitude),
+            () => void pedir(),
+            { enableHighAccuracy: true, timeout: 10000 },
+        );
+    };
+
+    const cobrarDeRuta = (moroso: Moroso) => {
+        const suyas = facturas.filter((f) => f.cliente.id === moroso.cliente_id);
+        if (suyas.length === 0) {
+            toast.error('Actualiza la lista para cobrarle');
+            return;
+        }
+        void openClientCharge(suyas);
+    };
+
     const clientesFiltrados = useMemo(() => {
         const term = filtro.trim().toLowerCase();
         if (!term) return [];
@@ -468,6 +522,53 @@ export default function PanelCobrador() {
                     </div>
                 )}
 
+                {activeTab === 'ruta' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <h2 className="text-lg font-black text-slate-900 dark:text-white">Ruta de cobranza</h2>
+                                <p className="text-xs text-slate-500">Clientes con pagos vencidos, del más cercano a ti.</p>
+                            </div>
+                            <button type="button" disabled={cargandoRuta} onClick={cargarRuta} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-black text-white disabled:opacity-50">
+                                <MapPinIcon className="h-4 w-4" /> {cargandoRuta ? 'Buscando…' : ruta ? 'Actualizar' : 'Usar mi ubicación'}
+                            </button>
+                        </div>
+                        {ruta && ruta.length === 0 && (
+                            <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm font-bold text-slate-500 dark:border-slate-700">Nadie tiene pagos vencidos. 🎉</div>
+                        )}
+                        {(ruta || []).map((m) => {
+                            const enlace = rutaEnMaps({ latitud: m.latitud, longitud: m.longitud, direccion: m.direccion });
+                            return (
+                                <div key={m.cliente_id} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#1a1f2e]">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <h3 className="truncate font-black text-slate-900 dark:text-white">{m.nombre}</h3>
+                                            <p className="text-[11px] text-slate-500">Contrato {m.contrato || 'S/N'} · {m.dias_atraso} días de atraso{m.estado === 'suspendido' ? ' · suspendido' : ''}</p>
+                                            <p className="mt-1 line-clamp-2 text-[11px] text-slate-500">{m.direccion || 'Sin dirección'}</p>
+                                        </div>
+                                        <div className="shrink-0 text-right">
+                                            <span className="block text-lg font-black text-emerald-600 dark:text-emerald-400">${m.total.toLocaleString('es-MX')}</span>
+                                            <span className="text-[10px] font-bold text-slate-500">{distanciaTexto(m.distancia_m)}</span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 grid grid-cols-2 gap-2">
+                                        {enlace ? (
+                                            <a href={enlace} target="_blank" rel="noreferrer" className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 text-[10px] font-black uppercase tracking-widest text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
+                                                <MapPinIcon className="h-4 w-4" /> Cómo llegar
+                                            </a>
+                                        ) : (
+                                            <span className="flex h-11 items-center justify-center rounded-xl border border-dashed border-slate-200 text-[10px] font-bold text-slate-400 dark:border-slate-700">Sin ubicación</span>
+                                        )}
+                                        <button type="button" onClick={() => cobrarDeRuta(m)} className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white">
+                                            <CreditCardIcon className="h-4 w-4" /> Cobrar
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+
                 {/* === PESTAÑA: PROMESAS === */}
                 {activeTab === 'promesas' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4">
@@ -559,6 +660,7 @@ export default function PanelCobrador() {
             {/* NAV INFERIOR ADAPTATIVO */}
             <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-slate-200 bg-white/92 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-15px_35px_-28px_rgba(15,23,42,.55)] backdrop-blur-xl transition-colors dark:border-slate-800 dark:bg-[#161b28]/92">
                 <NavButton active={activeTab === 'cobrar'} icon={HomeIcon} label="Cobrar" onClick={() => setActiveTab('cobrar')} />
+                <NavButton active={activeTab === 'ruta'} icon={MapIcon} label="Ruta" onClick={() => setActiveTab('ruta')} />
                 <NavButton active={activeTab === 'promesas'} icon={ShieldExclamationIcon} label="Promesas" onClick={() => setActiveTab('promesas')} badge={promesas.length} />
                 <NavButton active={activeTab === 'historial'} icon={ClockIcon} label="Historial" onClick={() => setActiveTab('historial')} />
                 <NavButton active={activeTab === 'cierre'} icon={ChartPieIcon} label="Cierre" onClick={() => setActiveTab('cierre')} />
@@ -716,7 +818,7 @@ export default function PanelCobrador() {
 }
 
 const NavButton = ({ active, icon: Icon, label, onClick, badge = 0 }: NavButtonProps) => (
-    <button onClick={onClick} className={`relative flex min-h-12 w-20 flex-col items-center justify-center gap-1 rounded-2xl p-2 transition active:scale-95 ${active ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
+    <button onClick={onClick} className={`relative flex min-h-12 min-w-0 max-w-20 flex-1 flex-col items-center justify-center gap-1 rounded-2xl p-2 transition active:scale-95 ${active ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
         <Icon className={`w-6 h-6`}/>
         <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
         {badge > 0 && <span className="absolute top-1 right-2 bg-rose-600 text-white text-[8px] px-1 rounded-full">{badge}</span>}

@@ -1606,3 +1606,28 @@ test('el admin ve la señal débil y la vuelve a leer', async ({ page }) => {
   await expect(page.getByText('114 lecturas · 1 empeoraron')).toBeVisible()
   expect(leidas).toBe(1)
 })
+
+test('el cobrador arma su ruta con los morosos más cercanos', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation'])
+  await context.setGeolocation({ latitude: 16.75, longitude: -93.1 })
+  await authenticateAs(page, 'cajero')
+  await mockApi(page)
+  let consulta = ''
+  await page.route('**/api/finanzas/ruta-cobranza**', (route) => {
+    consulta = new URL(route.request().url()).search
+    return route.fulfill({ json: [
+      { cliente_id: 5, nombre: 'Ana Lopez', contrato: 'A7F2', direccion: 'Calle 1 #20', estado: 'suspendido', total: 700, dias_atraso: 52, latitud: 16.751, longitud: -93.1, distancia_m: 111 },
+      { cliente_id: 6, nombre: 'Beto Ruiz', contrato: 'B1C3', direccion: null, estado: 'activo', total: 350, dias_atraso: 5, latitud: null, longitud: null, distancia_m: null },
+    ] })
+  })
+  await page.goto('/admin/cobranza')
+
+  await page.getByRole('button', { name: 'Ruta' }).click()
+  await page.getByRole('button', { name: 'Usar mi ubicación' }).click()
+  await expect(page.getByText('Ana Lopez')).toBeVisible()
+  expect(consulta).toBe('?latitud=16.75&longitud=-93.1')
+  await expect(page.getByText('111 m')).toBeVisible()
+  await expect(page.getByText('52 días de atraso · suspendido', { exact: false })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Cómo llegar' })).toHaveAttribute('href', /destination=16\.751%2C-93\.1/)
+  await expect(page.getByText('Sin ubicación')).toBeVisible()
+})
