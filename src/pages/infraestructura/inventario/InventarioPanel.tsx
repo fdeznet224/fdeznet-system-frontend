@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, Fragment } from 'react';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { Dialog, Transition } from '@headlessui/react';
-import { Scanner } from '@yudiel/react-qr-scanner'; 
+import { CamaraCodigo } from '@/components/escaner/EscanerCodigo';
 import {
     ArchiveBoxIcon, UserPlusIcon, QrCodeIcon,
     TrashIcon, ArrowPathIcon, CheckBadgeIcon,
@@ -463,19 +463,13 @@ export default function InventarioPanel() {
 
                             <div className="p-5 space-y-5 overflow-y-auto max-h-[80vh] custom-scrollbar">
                                 {isScanning ? (
-                                    <div className="bg-black rounded-3xl overflow-hidden border border-slate-300 dark:border-slate-700 relative w-full aspect-square scanner-container shadow-inner">
-                                        <style>{`
-                                            .scanner-container svg, 
-                                            .scanner-container div[style*="box-shadow"],
-                                            .scanner-container div[style*="border"] { display: none !important; }
-                                        `}</style>
-                                        <div className="absolute top-1/2 left-6 right-6 h-[3px] bg-red-500 shadow-[0_0_20px_#ef4444] z-[60] -translate-y-1/2 pointer-events-none rounded-full animate-pulse"></div>
-                                        <Scanner
-                                            onScan={(res) => { if (res) handleSuccessfulScan(Array.isArray(res) ? res[0].rawValue : res); }}
-                                            formats={['qr_code', 'code_128', 'code_39', 'ean_13']}
-                                            components={{ tracker: () => null }}
+                                    <div className="space-y-2">
+                                        <CamaraCodigo
+                                            onLeido={handleSuccessfulScan}
+                                            onError={() => { toast.error('No se pudo abrir la cámara'); setIsScanning(false); }}
+                                            formats={['code_128', 'code_39', 'qr_code', 'ean_13']}
                                         />
-                                        <button onClick={() => setIsScanning(false)} className="absolute top-4 right-4 bg-rose-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg z-[100] active:scale-95 transition-transform">
+                                        <button type="button" onClick={() => setIsScanning(false)} className="w-full rounded-xl bg-rose-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-transform">
                                             Cancelar
                                         </button>
                                     </div>

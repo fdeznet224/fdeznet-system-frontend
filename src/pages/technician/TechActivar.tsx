@@ -9,15 +9,14 @@ import {
     MapPinIcon,
     QrCodeIcon,
     SignalIcon,
-    XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { Scanner } from '@yudiel/react-qr-scanner';
 
 import client from '../../api/axios';
 import { useSync } from '@/context/sync/context';
 import { cachedRequest, getCachedValue, setCachedValue } from '../../offline/db';
 import { apiErrorMessage } from '@/utils/apiError';
 import SugerenciaNap from '@/components/naps/SugerenciaNap';
+import EscanerCodigo from '@/components/escaner/EscanerCodigo';
 
 interface Opcion {
     id: number;
@@ -81,14 +80,13 @@ interface Formulario {
     latitud: string;
     longitud: string;
     mac_address: string;
-    potencia: string;
     meses_gratis: string;
 }
 
 const VACIO: Formulario = {
     nombre: '', telefono: '', direccion: '', zona_id: '', plan_id: '', plantilla_id: '',
     contrato_apartado: '', onu: '', caja_nap_id: '', puerto_nap: '', latitud: '', longitud: '',
-    mac_address: '', potencia: '', meses_gratis: '1',
+    mac_address: '', meses_gratis: '1',
 };
 
 const NUEVO = '__nuevo';
@@ -103,7 +101,13 @@ const tarjeta = 'space-y-4 rounded-3xl border border-slate-200 bg-white p-4 shad
 
 type OnuDisponible = Catalogo['onus'][number];
 
-/** Buscar la ONU en el inventario disponible, elegirla de la lista o escanear su código. */
+/** Mínimo de un serial GPON o una MAC para registrar una ONU que no está en inventario. */
+const SERIE_MINIMA = 8;
+
+/**
+ * Buscar la ONU en el inventario disponible, elegirla de la lista o escanear
+ * su código. Si no está en el inventario, se registra al activar.
+ */
 function SelectorOnu({ onus, valor, elegida, onCambiar }: {
     onus: OnuDisponible[];
     valor: string;
@@ -120,9 +124,9 @@ function SelectorOnu({ onus, valor, elegida, onCambiar }: {
         const leido = normalizarSerie(codigo);
         const onu = onus.find((o) => normalizarSerie(o.identificador) === leido)
             || onus.find((o) => leido.includes(normalizarSerie(o.identificador)));
-        onCambiar(onu ? onu.identificador : codigo.trim());
+        onCambiar(onu ? onu.identificador : codigo.trim().toUpperCase());
         if (onu) toast.success(`ONU ${onu.identificador}`);
-        else toast.error('Ese código no está en el inventario disponible');
+        else toast('ONU nueva: se registrará en el inventario al activar', { icon: '📦' });
     };
 
     return (
@@ -144,8 +148,12 @@ function SelectorOnu({ onus, valor, elegida, onCambiar }: {
             </div>
             {elegida ? (
                 <p className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald-600"><CheckCircleIcon className="h-4 w-4" /> {elegida.identificador}{elegida.modelo ? ` · ${elegida.modelo}` : ''}</p>
+            ) : busqueda.length >= SERIE_MINIMA && coincidencias.length === 0 ? (
+                <p className="mt-2 text-xs font-bold text-blue-600 dark:text-blue-400">
+                    No está en el inventario: se registrará como ONU nueva ({busqueda}) al activar. Revisa que el serial o MAC esté completo.
+                </p>
             ) : valor && coincidencias.length === 0 ? (
-                <p className="mt-1 text-xs font-bold text-rose-600">Ninguna ONU disponible coincide. Revisa el serial o regístrala en Inventario.</p>
+                <p className="mt-1 text-xs font-bold text-amber-600">Sigue escribiendo el serial o MAC completo.</p>
             ) : null}
             {abierta && !elegida && coincidencias.length > 0 && (
                 <ul role="listbox" aria-label="ONUs disponibles" className="mt-2 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
@@ -161,21 +169,12 @@ function SelectorOnu({ onus, valor, elegida, onCambiar }: {
                 </ul>
             )}
             {escaneando && (
-                <div role="dialog" aria-label="Escanear ONU" className="fixed inset-0 z-50 flex flex-col bg-black">
-                    <div className="flex items-center justify-between p-4 pt-[calc(1rem+env(safe-area-inset-top))] text-white">
-                        <p className="text-sm font-black">Apunta al código de barras o QR de la ONU</p>
-                        <button type="button" aria-label="Cerrar escáner" onClick={() => setEscaneando(false)} className="rounded-full bg-white/10 p-2"><XMarkIcon className="h-6 w-6" /></button>
-                    </div>
-                    <div className="flex flex-1 items-center justify-center p-4">
-                        <div className="aspect-square w-full max-w-sm overflow-hidden rounded-3xl">
-                            <Scanner
-                                onScan={(res) => { const codigo = res?.[0]?.rawValue; if (codigo) alEscanear(codigo); }}
-                                onError={() => { toast.error('No se pudo abrir la cámara'); setEscaneando(false); }}
-                                formats={['code_128', 'code_39', 'qr_code', 'ean_13', 'data_matrix']}
-                            />
-                        </div>
-                    </div>
-                </div>
+                <EscanerCodigo
+                    titulo="Apunta al código de barras o QR de la ONU"
+                    onLeido={alEscanear}
+                    onCerrar={() => setEscaneando(false)}
+                    onError={() => { toast.error('No se pudo abrir la cámara'); setEscaneando(false); }}
+                />
             )}
         </div>
     );
@@ -349,7 +348,9 @@ export default function TechActivar() {
             return;
         }
         if (!form.zona_id || !form.plan_id) return toast.error('Elige la zona y el plan');
-        if (infra?.olt && !onuElegida) return toast.error('Escribe o elige el serial/MAC de la ONU instalada');
+        if (infra?.olt && !onuElegida && normalizarSerie(form.onu).length < SERIE_MINIMA) {
+            return toast.error('Escribe, escanea o elige el serial/MAC de la ONU instalada');
+        }
         if (form.caja_nap_id && !form.puerto_nap) return toast.error('Indica el puerto de la caja NAP');
         if (!form.latitud || !form.longitud) return toast.error('Falta capturar la ubicación GPS');
         if (esDhcp && !form.mac_address.trim()) return toast.error('Falta la MAC que ve el MikroTik');
@@ -369,12 +370,12 @@ export default function TechActivar() {
                 plantilla_id: form.plantilla_id ? Number(form.plantilla_id) : null,
                 contrato_apartado: form.contrato_apartado.trim().toUpperCase() || null,
                 onu_id: onuElegida?.id ?? null,
+                onu_identificador: !onuElegida && form.onu.trim() ? form.onu.trim() : null,
                 caja_nap_id: form.caja_nap_id ? Number(form.caja_nap_id) : null,
                 puerto_nap: form.puerto_nap ? Number(form.puerto_nap) : null,
                 latitud: Number(form.latitud),
                 longitud: Number(form.longitud),
                 mac_address: esDhcp ? form.mac_address.trim() : null,
-                potencia_optica_dbm: form.potencia ? Number(form.potencia) : null,
                 meses_gratis: mesesGratis,
             });
             toast.success('¡Cliente activado!', { id: aviso });
@@ -617,10 +618,6 @@ export default function TechActivar() {
                         elegidaId={form.caja_nap_id}
                         onElegir={(id) => cambiar({ caja_nap_id: String(id), puerto_nap: '' })}
                     />
-                    {infra?.olt && (
-                        <label className="block"><span className={etiqueta}>Potencia medida (dBm, opcional)</span>
-                            <input inputMode="decimal" value={form.potencia} onChange={(e) => cambiar({ potencia: e.target.value })} placeholder="-19.5" className={campo} /></label>
-                    )}
                 </div>
 
                 <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
