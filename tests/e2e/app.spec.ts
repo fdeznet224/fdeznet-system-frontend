@@ -1609,3 +1609,39 @@ test('el detalle del cliente lee su potencia óptica en vivo', async ({ page }) 
   await page.getByRole('button', { name: 'Volver a leer la potencia' }).click()
   await expect.poll(() => lecturas).toBeGreaterThanOrEqual(2)
 })
+
+test('la potencia en vivo lee cada minuto y se pausa a los 5 minutos', async ({ page }) => {
+  await page.clock.install()
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/clientes/1', (route) => route.fulfill({ json: {
+    id: 1, nombre: 'Cliente E2E', telefono: '5550000000', direccion: 'Dirección E2E', ip_asignada: '10.0.0.2',
+    estado: 'activo', olt: { id: 7, nombre: 'Vicente Guerrero' }, onu_asignada: { id: 4, identificador: 'HWTC05450CB6' },
+  } }))
+  let lecturas = 0
+  await page.route('**/api/ftth/clientes/1/potencia-actual', (route) => {
+    lecturas += 1
+    return route.fulfill({ json: { disponible: true, onu_online: true, rx: -20.92, tx: 2.27, nivel: 'normal' } })
+  })
+  await page.goto('/admin/clientes')
+  if ((page.viewportSize()?.width ?? 1024) < 640) await page.locator('article').first().click()
+  else await page.locator('tbody tr').first().click()
+  await page.getByRole('button', { name: 'Red', exact: true }).click()
+  await expect(page.getByText('-20.92 dBm')).toBeVisible()
+  const primera = lecturas
+
+  await page.clock.runFor(30_000)
+  expect(lecturas).toBe(primera)          // no cada 30 s
+  await page.clock.runFor(31_000)
+  await expect.poll(() => lecturas).toBe(primera + 1)  // cada minuto
+
+  await page.clock.runFor(5 * 60_000)
+  await expect(page.getByRole('button', { name: /Lectura en pausa/ })).toBeVisible()
+  const enPausa = lecturas
+  await page.clock.runFor(3 * 60_000)
+  expect(lecturas).toBe(enPausa)          // en pausa ya no consulta la OLT
+
+  await page.getByRole('button', { name: /Lectura en pausa/ }).click()
+  await expect.poll(() => lecturas).toBe(enPausa + 1)
+  await expect(page.getByRole('button', { name: /Lectura en pausa/ })).toHaveCount(0)
+})

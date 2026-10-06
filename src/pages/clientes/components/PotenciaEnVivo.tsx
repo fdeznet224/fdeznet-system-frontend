@@ -12,17 +12,22 @@ interface Lectura {
     error?: string | null;
 }
 
-const CADA_SEGUNDOS = 30;
+// Para no saturar la OLT: cada lectura descarga todas sus ONU.
+const CADA_SEGUNDOS = 60;
+const DURANTE_MINUTOS = 5;
 
 /**
  * Potencia óptica del cliente leída de la OLT en este momento. Se vuelve a
- * leer cada 30 segundos mientras está a la vista (sirve cuando el técnico
- * está moviendo la fibra).
+ * leer cada minuto mientras la ventana está a la vista y se detiene a los 5
+ * minutos; el botón la reanuda (sirve cuando el técnico mueve la fibra).
  */
 export default function PotenciaEnVivo({ clienteId }: { clienteId: number }) {
     const [lectura, setLectura] = useState<Lectura | null>(null);
     const [leyendo, setLeyendo] = useState(false);
     const [hora, setHora] = useState<string | null>(null);
+    // Hasta cuándo se sigue leyendo sola; el botón lo extiende otros 5 minutos.
+    const [activoHasta, setActivoHasta] = useState(() => Date.now() + DURANTE_MINUTOS * 60_000);
+    const [pausado, setPausado] = useState(false);
 
     const leer = useCallback(async () => {
         setLeyendo(true);
@@ -39,9 +44,28 @@ export default function PotenciaEnVivo({ clienteId }: { clienteId: number }) {
 
     useEffect(() => {
         const primera = window.setTimeout(() => void leer(), 0);
-        const intervalo = window.setInterval(() => void leer(), CADA_SEGUNDOS * 1000);
-        return () => { window.clearTimeout(primera); window.clearInterval(intervalo); };
+        return () => window.clearTimeout(primera);
     }, [leer]);
+
+    useEffect(() => {
+        if (pausado) return;
+        const intervalo = window.setInterval(() => {
+            if (Date.now() > activoHasta) {
+                setPausado(true);
+                return;
+            }
+            // Ventana en segundo plano: no se consulta la OLT.
+            if (document.hidden) return;
+            void leer();
+        }, CADA_SEGUNDOS * 1000);
+        return () => window.clearInterval(intervalo);
+    }, [leer, pausado, activoHasta]);
+
+    const reanudar = () => {
+        setActivoHasta(Date.now() + DURANTE_MINUTOS * 60_000);
+        setPausado(false);
+        void leer();
+    };
 
     const color = lectura?.rx == null
         ? 'text-slate-500'
@@ -61,7 +85,7 @@ export default function PotenciaEnVivo({ clienteId }: { clienteId: number }) {
                 <button
                     type="button"
                     aria-label="Volver a leer la potencia"
-                    onClick={() => void leer()}
+                    onClick={reanudar}
                     disabled={leyendo}
                     className="rounded-lg p-1 text-slate-400 hover:text-slate-700 disabled:opacity-50 dark:hover:text-slate-200"
                 >
@@ -76,6 +100,11 @@ export default function PotenciaEnVivo({ clienteId }: { clienteId: number }) {
                 {lectura?.tx != null ? ` · TX ${lectura.tx.toFixed(2)} dBm` : ''}
                 {hora ? ` · ${hora}` : ''}
             </p>
+            {pausado && (
+                <button type="button" onClick={reanudar} className="mt-2 text-xs font-black text-blue-600 dark:text-blue-400">
+                    Lectura en pausa · tocar para seguir leyendo
+                </button>
+            )}
         </div>
     );
 }
