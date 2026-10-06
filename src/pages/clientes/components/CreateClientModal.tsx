@@ -52,6 +52,7 @@ interface ZonaCatalog extends NamedCatalog {
 
 interface TemplateCatalog extends NamedCatalog {
   ciclo_facturacion?: FormaCobro;
+  meses_gratis_instalacion?: number;
 }
 
 interface PlanCatalog extends NamedCatalog {
@@ -372,6 +373,13 @@ export default function CreateClientModal({
     };
   }, [formData.fecha_activacion, formData.fecha_instalacion, formData.meses_gratis]);
 
+  // Una instalación nueva lleva los meses gratis de su plantilla; para un
+  // cambio de compañía se pone 0 a mano.
+  const mesesGratisDe = (plantillaId: number) => {
+    const plantilla = plantillas.find((p) => p.id === plantillaId);
+    return plantilla ? { meses_gratis: String(plantilla.meses_gratis_instalacion ?? 0) } : {};
+  };
+
   // Al elegir la zona se preseleccionan su OLT, su MikroTik (con red, IP libre
   // y planes) y su plantilla de cobro. Todo sigue siendo editable.
   const elegirZona = (zonaId: string) => {
@@ -381,6 +389,7 @@ export default function CreateClientModal({
       zona_id: zonaId,
       ...(zona?.olt_id ? { olt_id: String(zona.olt_id), onu_id: '' } : {}),
       ...(zona?.plantilla_id ? { plantilla_id: String(zona.plantilla_id) } : {}),
+      ...(zona?.plantilla_id ? mesesGratisDe(zona.plantilla_id) : {}),
     }));
     if (zona?.plantilla_id) {
       setSelectedPlantilla(plantillas.find((p) => p.id === zona.plantilla_id) || null);
@@ -396,6 +405,7 @@ export default function CreateClientModal({
     setFormData({
       ...formData,
       plantilla_id: e.target.value,
+      ...mesesGratisDe(id),
     });
     setSelectedPlantilla(plantillas.find((p) => p.id === id) || null);
   };
@@ -1051,7 +1061,7 @@ export default function CreateClientModal({
                           }
                         />
                         <p className="mt-1 text-xs text-slate-500">
-                          0 cobra desde la activación; 1 concede un mes gratis.
+                          Viene de la plantilla para instalación nueva. Cambio de compañía (portabilidad): 0, cobra desde la activación.
                         </p>
                       </div>
 

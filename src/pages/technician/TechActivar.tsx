@@ -48,7 +48,7 @@ interface Catalogo {
         naps: (Opcion & { capacidad: number })[];
         plantilla_id?: number | null;
     } | null;
-    plantillas: (Opcion & { dia_pago?: number })[];
+    plantillas: (Opcion & { dia_pago?: number; meses_gratis_instalacion?: number })[];
     onus: { id: number; identificador: string; modelo?: string | null }[];
     usuario_pppoe: string;
 }
@@ -64,7 +64,13 @@ interface Resultado {
     onu?: string | null;
     senal?: { potencia?: string; estado?: string; recomendacion?: string } | null;
     cambios: string[];
+    tipo_alta?: TipoAlta;
+    meses_gratis?: number;
 }
+
+// nueva = lleva los meses gratis de la plantilla; portabilidad = viene de otra
+// compañía y solo paga su mensualidad.
+type TipoAlta = 'nueva' | 'portabilidad';
 
 interface Formulario {
     nombre: string;
@@ -81,12 +87,13 @@ interface Formulario {
     longitud: string;
     mac_address: string;
     potencia: string;
+    tipo_alta: TipoAlta;
 }
 
 const VACIO: Formulario = {
     nombre: '', telefono: '', direccion: '', zona_id: '', plan_id: '', plantilla_id: '',
     contrato_apartado: '', onu: '', caja_nap_id: '', puerto_nap: '', latitud: '', longitud: '',
-    mac_address: '', potencia: '',
+    mac_address: '', potencia: '', tipo_alta: 'nueva',
 };
 
 const NUEVO = '__nuevo';
@@ -307,6 +314,9 @@ export default function TechActivar() {
         cambiar({ contrato_apartado: valor === NUEVO || valor === OTRO ? '' : valor });
     };
     const cambiar = (cambios: Partial<Formulario>) => setForm((f) => ({ ...f, ...cambios }));
+    // Un borrador guardado antes de existir la opción cuenta como instalación nueva.
+    const portabilidad = form.tipo_alta === 'portabilidad';
+    const mesesGratis = catalogo?.plantillas.find((p) => String(p.id) === form.plantilla_id)?.meses_gratis_instalacion ?? 0;
 
     const elegirZona = async (zonaId: string) => {
         cambiar({ zona_id: zonaId, plan_id: '', caja_nap_id: '', puerto_nap: '' });
@@ -371,6 +381,7 @@ export default function TechActivar() {
                 longitud: Number(form.longitud),
                 mac_address: esDhcp ? form.mac_address.trim() : null,
                 potencia_optica_dbm: form.potencia ? Number(form.potencia) : null,
+                tipo_alta: portabilidad ? 'portabilidad' : 'nueva',
             });
             toast.success('¡Cliente activado!', { id: aviso });
             await setCachedValue(claveBorrador, null);
@@ -415,6 +426,9 @@ export default function TechActivar() {
         const filas: [string, string | null | undefined][] = [
             ['Contrato', resultado.contrato],
             ['Plan', resultado.plan],
+            ['Cobro', resultado.tipo_alta === 'portabilidad'
+                ? 'Cambio de compañía, paga desde hoy'
+                : resultado.meses_gratis ? `${resultado.meses_gratis} mes${resultado.meses_gratis === 1 ? '' : 'es'} gratis` : 'Sin meses gratis'],
             ...(resultado.modo === 'dhcp' ? [] : [
                 ['Usuario PPPoE', resultado.usuario_pppoe] as [string, string | null | undefined],
                 ['Contraseña PPPoE', resultado.password_pppoe] as [string, string | null | undefined],
@@ -519,6 +533,30 @@ export default function TechActivar() {
                                 <option key={p.id} value={p.id}>{p.nombre}{String(p.id) === String(infra?.plantilla_id) ? ' (de la zona)' : ''}</option>
                             ))}
                         </select></label>
+                    <div>
+                        <span className={etiqueta}>Tipo de alta</span>
+                        <div className="grid grid-cols-2 gap-2">
+                            {([
+                                ['nueva', 'Instalación nueva', mesesGratis > 0 ? `${mesesGratis} mes${mesesGratis === 1 ? '' : 'es'} gratis` : 'sin meses gratis'],
+                                ['portabilidad', 'Cambio de compañía', 'paga desde hoy'],
+                            ] as [TipoAlta, string, string][]).map(([valor, titulo, detalle]) => {
+                                const activo = (valor === 'portabilidad') === portabilidad;
+                                return (
+                                    <button
+                                        key={valor}
+                                        type="button"
+                                        onClick={() => cambiar({ tipo_alta: valor })}
+                                        className={`rounded-xl border px-3 py-2 text-left ${activo
+                                            ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500/50 dark:bg-emerald-500/10'
+                                            : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950'}`}
+                                    >
+                                        <span className="block text-xs font-black text-slate-800 dark:text-slate-100">{titulo}</span>
+                                        <span className={`block text-[11px] ${activo ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'text-slate-500'}`}>{detalle}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
 
                 <div className={tarjeta}>
