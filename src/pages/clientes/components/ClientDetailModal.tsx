@@ -21,6 +21,7 @@ import ClientServicesPanel from './ClientServicesPanel';
 import { nombreFormaCobro } from '@/utils/formaCobro';
 import './client-detail-sheet.css';
 import { apiErrorMessage } from '@/utils/apiError';
+import PotenciaEnVivo from './PotenciaEnVivo';
 
 interface Props {
     isOpen: boolean;
@@ -899,6 +900,9 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                 <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{cliente?.caja_nap?.nombre || 'N/A'} {cliente?.puerto_nap ? `(Pto. ${cliente.puerto_nap})` : ''}</p>
                                             </div>
                                         </div>
+                                        {cliente?.id && cliente?.olt && cliente?.onu_asignada && (
+                                            <PotenciaEnVivo clienteId={cliente.id} />
+                                        )}
                                         <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl">
                                             <p className="text-[10px] font-bold text-slate-400 mb-1">Concentrador</p>
                                             <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{cliente?.router?.nombre || 'N/A'}</p>

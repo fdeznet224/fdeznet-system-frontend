@@ -1529,84 +1529,6 @@ test.describe('escáner con cámara simulada', () => {
   })
 })
 
-const CAJAS_AVERIA = [
-  { id: 8, nombre: 'P1-SA-1-A', zona_id: 2, zona_nombre: 'Paraíso', olt_id: 2, olt_nombre: 'OLT Paraíso', puerto_olt: 3 },
-  { id: 9, nombre: 'P1-SA-1-B', zona_id: 2, zona_nombre: 'Paraíso', olt_id: 2, olt_nombre: 'OLT Paraíso', puerto_olt: 3 },
-]
-
-async function mockAverias(page: Page) {
-  await page.route('**/api/infraestructura/naps', (route) => route.fulfill({ json: CAJAS_AVERIA }))
-  await page.route('**/api/zonas/', (route) => route.fulfill({ json: [{ id: 2, nombre: 'Paraíso' }] }))
-}
-
-test('el supervisor avisa de una avería a los clientes de un puerto de OLT', async ({ page }) => {
-  await authenticateAs(page, 'supervisor')
-  await mockApi(page)
-  await mockAverias(page)
-  let enviado: unknown = null
-  await page.route('**/api/infraestructura/avisos-averia/vista-previa', (route) => route.fulfill({ json: {
-    total: 2, clientes: ['Ana Lopez', 'Beto Ruiz'], mensaje_sugerido: 'Hola {nombre}, hay una falla en tu zona y ya la estamos atendiendo.',
-  } }))
-  await page.route('**/api/infraestructura/avisos-averia', async (route) => {
-    enviado = route.request().postDataJSON()
-    await route.fulfill({ json: { lote_id: 'x', total_mensajes: 2, intervalo_segundos: 60 } })
-  })
-  page.on('dialog', (dialogo) => void dialogo.accept())
-  await page.goto('/admin/averias')
-
-  await page.getByRole('button', { name: 'Puerto de OLT' }).click()
-  await page.getByLabel('Puerto de OLT con falla').selectOption('2:3')
-  await expect(page.getByText('Le llegará a 2 clientes')).toBeVisible()
-  await expect(page.getByText('Ana Lopez, Beto Ruiz')).toBeVisible()
-  await page.getByRole('button', { name: 'Mandar aviso por WhatsApp' }).click()
-  await expect.poll(() => enviado).toMatchObject({ olt_id: 2, puerto_olt: 3, mensaje: 'Hola {nombre}, hay una falla en tu zona y ya la estamos atendiendo.' })
-})
-
-test('el admin liga a su caja sugerida un cliente que no tenía NAP', async ({ page }) => {
-  await authenticateAs(page)
-  await mockApi(page)
-  await mockAverias(page)
-  await page.route('**/api/infraestructura/naps/sin-asignar**', (route) => route.fulfill({ json: [
-    { servicio_id: 51, nombre: 'Ana Lopez', contrato: 'A7F2', alias: 'Principal', direccion: 'Calle 1 #20', zona_id: 2, zona_nombre: 'Paraíso', tiene_gps: true,
-      sugeridas: [{ id: 8, nombre: 'P1-SA-1-A', distancia_m: 43, puertos_libres: 6, posicion_estimada: false }] },
-    { servicio_id: 52, nombre: 'Beto Ruiz', contrato: 'B1C3', alias: 'Principal', direccion: 'Calle 2', zona_id: 2, zona_nombre: 'Paraíso', tiene_gps: false, sugeridas: [] },
-  ] }))
-  let asignado: unknown = null
-  await page.route('**/api/infraestructura/naps/asignar', async (route) => {
-    asignado = route.request().postDataJSON()
-    await route.fulfill({ json: { servicio_id: 51, caja_nap_id: 8, caja_nombre: 'P1-SA-1-A', puerto_nap: null } })
-  })
-  await page.goto('/admin/averias?tab=sin-nap')
-
-  await expect(page.getByText('2 sin caja · 1 sin GPS', { exact: false })).toBeVisible()
-  await expect(page.getByText('Sin GPS: elige su caja a mano', { exact: false })).toBeVisible()
-  await page.locator('article', { hasText: 'Ana Lopez' }).getByRole('button', { name: /Sugerida · P1-SA-1-A/ }).click()
-  await expect.poll(() => asignado).toEqual({ servicio_id: 51, caja_nap_id: 8 })
-  await expect(page.locator('article', { hasText: 'Ana Lopez' })).toHaveCount(0)
-})
-
-test('el admin ve la señal débil y la vuelve a leer', async ({ page }) => {
-  await authenticateAs(page)
-  await mockApi(page)
-  await mockAverias(page)
-  let leidas = 0
-  await page.route('**/api/ftth/senal-debil', (route) => route.fulfill({ json: [
-    { servicio_id: 52, nombre: 'Jeremias Canaveral', contrato: '58AB', caja_nap: 'VG-3', rx: -30.97, critica: true, fecha: '2026-10-06T02:00:00' },
-    { servicio_id: 55, nombre: 'Brugli Canaveral', contrato: '61CD', caja_nap: null, rx: -25.4, critica: false, fecha: '2026-10-06T02:00:00' },
-  ] }))
-  await page.route('**/api/ftth/senal/leer', async (route) => {
-    leidas += 1
-    await route.fulfill({ json: { leidas: 114, sin_senal: 5, empeoraron: 1, olts_con_error: [] } })
-  })
-  await page.goto('/admin/averias?tab=senal')
-
-  await expect(page.getByText('-30.97 dBm')).toBeVisible()
-  await expect(page.getByText('Contrato 58AB · VG-3')).toBeVisible()
-  await page.getByRole('button', { name: 'Leer ahora' }).click()
-  await expect(page.getByText('114 lecturas · 1 empeoraron')).toBeVisible()
-  expect(leidas).toBe(1)
-})
-
 test('el cobrador arma su ruta con los morosos más cercanos', async ({ page, context }) => {
   await context.grantPermissions(['geolocation'])
   await context.setGeolocation({ latitude: 16.75, longitude: -93.1 })
@@ -1644,4 +1566,46 @@ test('el inicio muestra el embudo de ventas por mes', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Ventas: de WhatsApp a instalado' })).toBeVisible()
   await expect(page.getByText('(4 del agente)')).toBeVisible()
   await expect(page.getByRole('row', { name: /Oct/ })).toContainText('9')
+})
+
+test('los contadores de clientes filtran por conexión y potencia', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/ftth/potencias', (route) => route.fulfill({ json: {
+    1: { rx: -28.4, nivel: 'alta', fecha: '2026-10-06T10:05:00' },
+  } }))
+  await page.goto('/admin/clientes')
+
+  const alta = page.getByRole('button', { name: /Potencia alta/ })
+  await expect(alta).toContainText('1')
+  await expect(page.getByRole('button', { name: /^0\s*Potencia normal/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^1\s*Online/ })).toBeVisible()
+  await alta.click()
+  await expect(alta).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('span:visible', { hasText: '-28.40 dBm' }).first()).toBeVisible()
+  await page.getByRole('button', { name: /Potencia normal/ }).click()
+  await expect(page.locator('span:visible', { hasText: '-28.40 dBm' })).toHaveCount(0)
+})
+
+test('el detalle del cliente lee su potencia óptica en vivo', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/clientes/1', (route) => route.fulfill({ json: {
+    id: 1, nombre: 'Cliente E2E', telefono: '5550000000', direccion: 'Dirección E2E', ip_asignada: '10.0.0.2',
+    estado: 'activo', olt: { id: 7, nombre: 'Vicente Guerrero' }, onu_asignada: { id: 4, identificador: 'HWTC05450CB6' },
+  } }))
+  let lecturas = 0
+  await page.route('**/api/ftth/clientes/1/potencia-actual', (route) => {
+    lecturas += 1
+    return route.fulfill({ json: { disponible: true, onu_online: true, rx: -20.92, tx: 2.27, nivel: 'normal' } })
+  })
+  await page.goto('/admin/clientes')
+
+  if ((page.viewportSize()?.width ?? 1024) < 640) await page.locator('article').first().click()
+  else await page.locator('tbody tr').first().click()
+  await page.getByRole('button', { name: 'Red', exact: true }).click()
+  await expect(page.getByText('-20.92 dBm')).toBeVisible()
+  await expect(page.getByText('Potencia normal · TX 2.27 dBm', { exact: false })).toBeVisible()
+  await page.getByRole('button', { name: 'Volver a leer la potencia' }).click()
+  await expect.poll(() => lecturas).toBeGreaterThanOrEqual(2)
 })

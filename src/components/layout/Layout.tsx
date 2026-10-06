@@ -15,7 +15,7 @@ import {
     ChevronRightIcon, ComputerDesktopIcon, CubeIcon,
     CpuChipIcon, ClipboardDocumentListIcon, MapIcon,
     ShieldCheckIcon, MagnifyingGlassIcon, ArchiveBoxIcon, BriefcaseIcon,
-    SunIcon, MoonIcon, ChatBubbleLeftRightIcon, SparklesIcon, SignalSlashIcon
+    SunIcon, MoonIcon, ChatBubbleLeftRightIcon, SparklesIcon
 } from '@heroicons/react/24/outline';
 
 import ChatModal from '@/components/chat/ChatModal';
@@ -528,7 +528,6 @@ const allMenus: MenuItem[] = [
             { name: 'Órdenes / Instalaciones', path: '/admin/ordenes', icon: ClipboardDocumentListIcon, roles: ['admin', 'supervisor'] },
             { name: 'Bandeja WhatsApp', path: '/admin/whatsapp/salidas', icon: ChatBubbleLeftRightIcon, roles: ['admin', 'supervisor'] },
             { name: 'Inventario / Bodega', path: '/admin/inventario', icon: ArchiveBoxIcon, roles: ['admin', 'supervisor'] },
-            { name: 'Averías y cajas NAP', path: '/admin/averias', icon: SignalSlashIcon, roles: ['admin', 'supervisor'] },
         ]
     },
     {
@@ -578,7 +577,6 @@ function getPageTitle(pathname: string, fallback: string): string {
         ['/admin/radar', 'Radar OLT'],
         ['/admin/naps', 'Cajas NAP'],
         ['/admin/inventario', 'Inventario'],
-        ['/admin/averias', 'Averías'],
         ['/admin/facturas', 'Facturas'],
         ['/admin/transacciones', 'Transacciones'],
         ['/admin/configuracion', 'Configuración'],

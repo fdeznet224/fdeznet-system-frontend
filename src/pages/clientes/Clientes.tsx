@@ -54,18 +54,37 @@ interface DashboardStatusResponse {
     detalle_clientes?: Record<string, DashboardClientStatus>;
 }
 
-type ClientFilter = 'todos' | 'online' | 'offline' | 'suspendidos' | 'activos' | 'morosos';
+type ClientFilter = 'todos' | 'online' | 'offline' | 'potencia_alta' | 'potencia_normal' | 'suspendidos' | 'activos' | 'morosos';
+
+/** Última potencia óptica leída de la OLT (se lee cada hora). */
+interface Potencia { rx: number; nivel: 'alta' | 'normal'; fecha: string | null }
+
+/** "Potencia alta": la señal ya pasó de -27 dBm y la conexión empieza a fallar. */
+function PotenciaCliente({ potencia }: { potencia?: Potencia }) {
+    if (!potencia) return null;
+    return (
+        <span
+            title={potencia.nivel === 'alta' ? 'Potencia alta: peor que -27 dBm' : 'Potencia normal'}
+            className={`mt-1 inline-block rounded-md px-1.5 py-0.5 font-mono text-[10px] font-black ${potencia.nivel === 'alta'
+                ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'}`}
+        >
+            {potencia.rx.toFixed(2)} dBm
+        </span>
+    );
+}
 
 interface ClientModalState {
     show: boolean;
     cliente: ClienteUnificado | null;
 }
 
-const mobileStatusFilters: ClientFilter[] = ['todos', 'online', 'offline', 'suspendidos', 'morosos'];
+const mobileStatusFilters: ClientFilter[] = ['todos', 'online', 'offline', 'potencia_alta', 'potencia_normal', 'suspendidos', 'morosos'];
 
 export default function Clientes() {
     const [clientes, setClientes] = useState<ClienteUnificado[]>([]);
     const [onlineStatus, setOnlineStatus] = useState<Map<string, OnlineStatus>>(new Map());
+    const [potencias, setPotencias] = useState<Record<string, Potencia>>({});
     const [routers, setRouters] = useState<RouterSummary[]>([]);
     const [noLeidos, setNoLeidos] = useState<Record<string, { count: number }>>({});
     const [loading, setLoading] = useState(true);
@@ -112,6 +131,11 @@ export default function Clientes() {
                     setOnlineStatus(mapaEstados);
                 }
             } catch (err) { console.warn("Dashboard online no disponible", err); }
+
+            try {
+                const resPotencias = await client.get<Record<string, Potencia>>('/ftth/potencias');
+                setPotencias(resPotencias.data);
+            } catch { console.warn("Potencias no disponibles"); }
 
             try {
                 const resMsg = await client.get<Record<string, { count: number }>>('/whatsapp/no-leidos');
@@ -161,18 +185,33 @@ export default function Clientes() {
             if (filtroEstado === 'morosos') return c.finanzas.estado_financiero === 'moroso';
             if (filtroEstado === 'online') return onlineStatus.get(c.id.toString())?.online === true;
             if (filtroEstado === 'offline') return onlineStatus.get(c.id.toString())?.online === false; // 🔥 Atrapa los errores de conexión
+            if (filtroEstado === 'potencia_alta') return potencias[c.id.toString()]?.nivel === 'alta';
+            if (filtroEstado === 'potencia_normal') return potencias[c.id.toString()]?.nivel === 'normal';
 
             return true;
         });
-    }, [clientes, busqueda, filtroRouter, filtroZona, filtroEstado, onlineStatus, routers]);
+    }, [clientes, busqueda, filtroRouter, filtroZona, filtroEstado, onlineStatus, potencias, routers]);
 
     // Extraemos las zonas únicas dinámicamente de tus clientes
     const zonasUnicas = Array.from(new Set(clientes.map(c => c.zona).filter((zona): zona is string => Boolean(zona))));
     const resumen = useMemo(() => ({
         total: clientes.length,
-        online: clientes.filter(c => onlineStatus.get(c.id.toString())?.online).length,
+        online: clientes.filter(c => onlineStatus.get(c.id.toString())?.online === true).length,
+        offline: clientes.filter(c => onlineStatus.get(c.id.toString())?.online === false).length,
+        potenciaAlta: clientes.filter(c => potencias[c.id.toString()]?.nivel === 'alta').length,
+        potenciaNormal: clientes.filter(c => potencias[c.id.toString()]?.nivel === 'normal').length,
+        suspendidos: clientes.filter(c => c.servicio.estado_servicio !== 'activo').length,
         morosos: clientes.filter(c => c.finanzas.total_deuda > 0).length,
-    }), [clientes, onlineStatus]);
+    }), [clientes, onlineStatus, potencias]);
+
+    // Contadores de arriba: tocar uno filtra la lista; tocarlo otra vez la muestra completa.
+    const contadores: { filtro: ClientFilter; valor: number; texto: string; color: string; activo: string }[] = [
+        { filtro: 'online', valor: resumen.online, texto: 'Online', color: 'text-emerald-600 dark:text-emerald-400', activo: 'border-emerald-500 bg-emerald-500/10' },
+        { filtro: 'offline', valor: resumen.offline, texto: 'Offline', color: 'text-slate-700 dark:text-slate-200', activo: 'border-slate-500 bg-slate-500/10' },
+        { filtro: 'potencia_alta', valor: resumen.potenciaAlta, texto: 'Potencia alta', color: 'text-rose-600 dark:text-rose-400', activo: 'border-rose-500 bg-rose-500/10' },
+        { filtro: 'potencia_normal', valor: resumen.potenciaNormal, texto: 'Potencia normal', color: 'text-sky-600 dark:text-sky-400', activo: 'border-sky-500 bg-sky-500/10' },
+        { filtro: 'suspendidos', valor: resumen.suspendidos, texto: 'Suspendidos', color: 'text-amber-600 dark:text-amber-400', activo: 'border-amber-500 bg-amber-500/10' },
+    ];
 
     return (
         <div className="flex min-h-0 flex-col gap-4 font-sans text-slate-700 dark:text-slate-200 lg:h-[calc(100vh-9rem)] lg:gap-6">
@@ -219,19 +258,20 @@ export default function Clientes() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 sm:hidden">
-                    <button type="button" onClick={() => setFiltroEstado('todos')} className={`rounded-2xl border p-3 text-left ${filtroEstado === 'todos' ? 'border-blue-500 bg-blue-500/10' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'}`}>
-                        <span className="block text-lg font-black text-slate-900 dark:text-white">{resumen.total}</span>
-                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Total</span>
-                    </button>
-                    <button type="button" onClick={() => setFiltroEstado('online')} className={`rounded-2xl border p-3 text-left ${filtroEstado === 'online' ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'}`}>
-                        <span className="block text-lg font-black text-emerald-600 dark:text-emerald-400">{resumen.online}</span>
-                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">En línea</span>
-                    </button>
-                    <button type="button" onClick={() => setFiltroEstado('morosos')} className={`rounded-2xl border p-3 text-left ${filtroEstado === 'morosos' ? 'border-rose-500 bg-rose-500/10' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'}`}>
-                        <span className="block text-lg font-black text-rose-600 dark:text-rose-400">{resumen.morosos}</span>
-                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Con deuda</span>
-                    </button>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    {contadores.map((c) => (
+                        <button
+                            key={c.filtro}
+                            type="button"
+                            aria-pressed={filtroEstado === c.filtro}
+                            title={c.filtro === 'potencia_alta' ? 'Señal peor que -27 dBm en la última lectura' : undefined}
+                            onClick={() => setFiltroEstado(filtroEstado === c.filtro ? 'todos' : c.filtro)}
+                            className={`rounded-2xl border p-3 text-left transition-colors ${filtroEstado === c.filtro ? c.activo : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'}`}
+                        >
+                            <span className={`block text-lg font-black md:text-2xl ${c.color}`}>{c.valor}</span>
+                            <span className="block text-[9px] font-black uppercase leading-tight tracking-wider text-slate-400 md:text-[10px]">{c.texto}</span>
+                        </button>
+                    ))}
                 </div>
 
                 {/* 🖥️ FILTROS ESCRITORIO */}
@@ -261,6 +301,8 @@ export default function Clientes() {
                             <option value="todos">Todos los Estados</option>
                             <option value="online">🟢 Online</option>
                             <option value="offline">🔴 Offline</option>
+                            <option value="potencia_alta">📉 Potencia alta</option>
+                            <option value="potencia_normal">📶 Potencia normal</option>
                             <option value="suspendidos">⛔ Suspendidos</option>
                             <option value="morosos">💰 Con Deuda</option>
                         </select>
@@ -308,6 +350,8 @@ export default function Clientes() {
                                             {est === 'todos' && `Todos (${clientes.length})`}
                                             {est === 'online' && 'En línea'}
                                             {est === 'offline' && 'Sin conexión'}
+                                            {est === 'potencia_alta' && 'Potencia alta'}
+                                            {est === 'potencia_normal' && 'Potencia normal'}
                                             {est === 'suspendidos' && 'Suspendidos'}
                                             {est === 'morosos' && 'Con deuda'}
                                         </button>
@@ -387,6 +431,7 @@ export default function Clientes() {
                                             </td>
                                             <td className="px-5 py-3">
                                                 <ConexionCliente status={statusData} />
+                                                <PotenciaCliente potencia={potencias[c.id.toString()]} />
                                             </td>
                                             <td className="px-5 py-3 text-center">
                                                 <EstadoServicio estado={c.servicio.estado_servicio} />
@@ -446,6 +491,7 @@ export default function Clientes() {
                                             <div className="min-w-0">
                                                 <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Conexión</span>
                                                 <div className="mt-0.5"><ConexionCliente status={statusData} /></div>
+                                                <PotenciaCliente potencia={potencias[c.id.toString()]} />
                                             </div>
                                             <div className="min-w-0 text-right">
                                                 <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Finanzas</span>
