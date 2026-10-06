@@ -527,7 +527,6 @@ const allMenus: MenuItem[] = [
         submenu: [
             { name: 'Órdenes / Instalaciones', path: '/admin/ordenes', icon: ClipboardDocumentListIcon, roles: ['admin', 'supervisor'] },
             { name: 'Bandeja WhatsApp', path: '/admin/whatsapp/salidas', icon: ChatBubbleLeftRightIcon, roles: ['admin', 'supervisor'] },
-            { name: 'Comprobantes por revisar', path: '/admin/whatsapp/comprobantes', icon: BanknotesIcon, roles: ['admin', 'supervisor'] },
             { name: 'Inventario / Bodega', path: '/admin/inventario', icon: ArchiveBoxIcon, roles: ['admin', 'supervisor'] },
         ]
     },
@@ -580,7 +579,6 @@ function getPageTitle(pathname: string, fallback: string): string {
         ['/admin/inventario', 'Inventario'],
         ['/admin/facturas', 'Facturas'],
         ['/admin/transacciones', 'Transacciones'],
-        ['/admin/whatsapp/comprobantes', 'Comprobantes por revisar'],
         ['/admin/configuracion', 'Configuración'],
     ];
     return routes.find(([route]) => pathname.startsWith(route))?.[1] || fallback;

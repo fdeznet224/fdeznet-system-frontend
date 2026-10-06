@@ -35,7 +35,6 @@ const Orders = lazy(() => import('@/pages/admin/orders/Orders'));
 const MapaClientes = lazy(() => import('@/pages/monitoreo/MapaClientes'));
 const MensajesCRM = lazy(() => import('@/pages/admin/mensajes/MensajesCRM'));
 const WhatsAppOutbox = lazy(() => import('@/pages/admin/mensajes/WhatsAppOutbox'));
-const PaymentReviewInbox = lazy(() => import('@/pages/admin/mensajes/PaymentReviewInbox'));
 const Inventario = lazy(() => import('@/pages/infraestructura/inventario/Inventario'));
 const CajasNap = lazy(() => import('@/pages/infraestructura/naps/CajasNap'));
 const Facturas = lazy(() => import('@/pages/finanzas/Facturas'));
@@ -234,7 +233,8 @@ function App() {
                 <Route path="/admin/configuracion/integraciones" element={protectedPage(<Integraciones />, ['admin'])} />
                 <Route path="/admin/mensajes" element={protectedPage(<MensajesCRM />, ['admin'])} />
                 <Route path="/admin/whatsapp/salidas" element={protectedPage(<WhatsAppOutbox />, ['admin', 'supervisor'])} />
-                <Route path="/admin/whatsapp/comprobantes" element={protectedPage(<PaymentReviewInbox />, ['admin', 'supervisor'])} />
+                {/* Ya no hay bandeja: lo que el agente no valida lo registra un asesor en Cobranza. */}
+                <Route path="/admin/whatsapp/comprobantes" element={<Navigate to="/admin/whatsapp/salidas" replace />} />
                 <Route path="/admin/whatsapp/agente" element={<Navigate to="/admin/configuracion/bot-whatsapp" replace />} />
                 
                 {/* Sub-rutas de Configuración */}

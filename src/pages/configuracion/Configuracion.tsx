@@ -30,7 +30,7 @@ export default function Configuracion() {
         },
         {
             titulo: "Integraciones y claves",
-            descripcion: "Correo bancario, inteligencia artificial, teléfonos de alerta y estado de las conexiones.",
+            descripcion: "Pagos por captura, inteligencia artificial, teléfonos de alerta y estado de las conexiones.",
             icon: PuzzlePieceIcon,
             color: "text-indigo-500",
             bg: "bg-indigo-500/10",

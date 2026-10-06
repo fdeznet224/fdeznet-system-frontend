@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
-import CorreoBancarioConfig from './components/CorreoBancarioConfig';
+import PagosCapturaConfig from './components/PagosCapturaConfig';
 
 interface ConexionIA {
   url: string;
@@ -250,7 +250,7 @@ export default function Integraciones() {
         </div>
       </div>
 
-      <section className={tarjeta}><CorreoBancarioConfig /></section>
+      <section className={tarjeta}><PagosCapturaConfig /></section>
       <section className={tarjeta}><SeccionIA /></section>
       <section className={tarjeta}><SeccionAlertas /></section>
 
