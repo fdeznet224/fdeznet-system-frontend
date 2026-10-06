@@ -115,10 +115,10 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
     };
 
     const handleEliminar = async (id: number) => {
-        if (!confirm("¿Eliminar permanente de la base de datos?")) return;
+        if (!confirm("¿Dar de baja este equipo? Sale del inventario y se conserva su historial. Si vuelve a llegar, regístralo de nuevo.")) return;
         try {
             await client.delete(`/inventario/${id}`);
-            toast.success("Equipo eliminado con éxito"); 
+            toast.success("Equipo dado de baja"); 
             fetchInventario();
         } catch (error: unknown) {
             toast.error(getErrorMessage(error, "Error al eliminar"));
@@ -315,7 +315,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
                                             {(eq.estado === 'DISPONIBLE' || eq.estado === 'CON_FALLA') && (
-                                                <button onClick={() => handleEliminar(eq.id)} title="Eliminar equipo" className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/20 rounded-xl border border-slate-200 dark:border-slate-700 transition-all active:scale-95"><TrashIcon className="w-4 h-4" /></button>
+                                                <button onClick={() => handleEliminar(eq.id)} title="Dar de baja" className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/20 rounded-xl border border-slate-200 dark:border-slate-700 transition-all active:scale-95"><TrashIcon className="w-4 h-4" /></button>
                                             )}
                                         </div>
                                     </td>
