@@ -1584,3 +1584,25 @@ test('el admin liga a su caja sugerida un cliente que no tenía NAP', async ({ p
   await expect.poll(() => asignado).toEqual({ servicio_id: 51, caja_nap_id: 8 })
   await expect(page.locator('article', { hasText: 'Ana Lopez' })).toHaveCount(0)
 })
+
+test('el admin ve la señal débil y la vuelve a leer', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await mockAverias(page)
+  let leidas = 0
+  await page.route('**/api/ftth/senal-debil', (route) => route.fulfill({ json: [
+    { servicio_id: 52, nombre: 'Jeremias Canaveral', contrato: '58AB', caja_nap: 'VG-3', rx: -30.97, critica: true, fecha: '2026-10-06T02:00:00' },
+    { servicio_id: 55, nombre: 'Brugli Canaveral', contrato: '61CD', caja_nap: null, rx: -25.4, critica: false, fecha: '2026-10-06T02:00:00' },
+  ] }))
+  await page.route('**/api/ftth/senal/leer', async (route) => {
+    leidas += 1
+    await route.fulfill({ json: { leidas: 114, sin_senal: 5, empeoraron: 1, olts_con_error: [] } })
+  })
+  await page.goto('/admin/averias?tab=senal')
+
+  await expect(page.getByText('-30.97 dBm')).toBeVisible()
+  await expect(page.getByText('Contrato 58AB · VG-3')).toBeVisible()
+  await page.getByRole('button', { name: 'Leer ahora' }).click()
+  await expect(page.getByText('114 lecturas · 1 empeoraron')).toBeVisible()
+  expect(leidas).toBe(1)
+})

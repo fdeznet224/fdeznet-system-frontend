@@ -7,10 +7,13 @@ import {
     MapPinIcon,
     MegaphoneIcon,
     CubeIcon,
+    SignalIcon,
+    ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
 import { apiErrorMessage } from '@/utils/apiError';
+import { readSessionRole } from '@/utils/roles';
 
 interface Zona { id: number; nombre: string }
 interface Caja {
@@ -35,7 +38,7 @@ interface SinNap {
     sugeridas: Sugerida[];
 }
 
-type Pestana = 'aviso' | 'sin-nap';
+type Pestana = 'aviso' | 'sin-nap' | 'senal';
 type Alcance = 'nap' | 'olt' | 'zona';
 
 const campo = 'w-full min-h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white';
@@ -142,7 +145,7 @@ function AvisoAveria({ cajas, zonas }: { cajas: Caja[]; zonas: Zona[] }) {
                     )}
                 </div>
                 {alcance !== 'zona' && (
-                    <p className="mt-2 text-[11px] text-slate-500">Solo llega a los clientes que tienen su caja NAP asignada. Complétalas en la pestaña «Clientes sin caja».</p>
+                    <p className="mt-2 text-[11px] text-slate-500">Solo llega a los clientes que tienen su caja NAP asignada. Complétalas en la pestaña «Sin caja».</p>
                 )}
             </div>
 
@@ -290,10 +293,93 @@ function ClientesSinNap({ cajas, zonas }: { cajas: Caja[]; zonas: Zona[] }) {
     );
 }
 
+interface SenalDebil {
+    servicio_id: number;
+    nombre: string | null;
+    contrato: string | null;
+    caja_nap: string | null;
+    rx: number;
+    critica: boolean;
+    fecha: string | null;
+}
+
+/** Clientes con la señal óptica baja según la última lectura (cada noche a las 2:00). */
+function SenalDebilLista() {
+    const [lista, setLista] = useState<SenalDebil[] | null>(null);
+    const [leyendo, setLeyendo] = useState(false);
+    const esAdmin = readSessionRole() === 'admin';
+
+    const cargar = useCallback(async () => {
+        try {
+            const { data } = await client.get<SenalDebil[]>('/ftth/senal-debil');
+            setLista(data);
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'No se pudo cargar la señal'));
+            setLista([]);
+        }
+    }, []);
+
+    useEffect(() => {
+        const inicial = window.setTimeout(() => void cargar(), 0);
+        return () => window.clearTimeout(inicial);
+    }, [cargar]);
+
+    const leerAhora = async () => {
+        setLeyendo(true);
+        const aviso = toast.loading('Leyendo todas las OLT…');
+        try {
+            const { data } = await client.post<{ leidas: number; empeoraron: number; olts_con_error: string[] }>('/ftth/senal/leer');
+            toast.success(
+                `${data.leidas} lecturas · ${data.empeoraron} empeoraron${data.olts_con_error.length ? ` · sin respuesta: ${data.olts_con_error.join(', ')}` : ''}`,
+                { id: aviso, duration: 6000 },
+            );
+            await cargar();
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'No se pudo leer la señal'), { id: aviso });
+        } finally {
+            setLeyendo(false);
+        }
+    };
+
+    return (
+        <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs font-semibold text-slate-500">
+                    Se lee cada noche a las 2:00 y se avisa por WhatsApp de las que empeoran. Debajo de -27 dBm la conexión empieza a fallar.
+                </p>
+                {esAdmin && (
+                    <button type="button" disabled={leyendo} onClick={() => void leerAhora()} className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                        <ArrowPathIcon className={`h-4 w-4 ${leyendo ? 'animate-spin' : ''}`} /> Leer ahora
+                    </button>
+                )}
+            </div>
+            {!lista && <p className="text-sm text-slate-500">Cargando…</p>}
+            {lista && lista.length === 0 && (
+                <p className="rounded-[1.5rem] border border-dashed border-slate-300 py-12 text-center text-sm font-bold text-slate-500 dark:border-slate-700">Ningún cliente con señal baja en la última lectura.</p>
+            )}
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {(lista || []).map((item) => (
+                    <div key={item.servicio_id} className={`flex min-w-0 items-center justify-between gap-3 ${tarjeta}`}>
+                        <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-slate-900 dark:text-white">{item.nombre}</p>
+                            <p className="truncate text-xs text-slate-500">Contrato {item.contrato}{item.caja_nap ? ` · ${item.caja_nap}` : ''}</p>
+                        </div>
+                        <span className={`shrink-0 rounded-xl px-3 py-1.5 font-mono text-sm font-black ${item.critica
+                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+                            {item.rx.toFixed(2)} dBm
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 /** Averías y cajas NAP: avisar a los afectados y completar las cajas de los clientes. */
 export default function Averias() {
     const [params, setParams] = useSearchParams();
-    const pestana: Pestana = params.get('tab') === 'sin-nap' ? 'sin-nap' : 'aviso';
+    const pestana: Pestana = params.get('tab') === 'sin-nap' ? 'sin-nap' : params.get('tab') === 'senal' ? 'senal' : 'aviso';
     const [cajas, setCajas] = useState<Caja[]>([]);
     const [zonas, setZonas] = useState<Zona[]>([]);
 
@@ -307,15 +393,16 @@ export default function Averias() {
     }, []);
 
     const pestanas: [Pestana, string, typeof MegaphoneIcon][] = [
-        ['aviso', 'Avisar avería', MegaphoneIcon],
-        ['sin-nap', 'Clientes sin caja', CubeIcon],
+        ['aviso', 'Avería', MegaphoneIcon],
+        ['sin-nap', 'Sin caja', CubeIcon],
+        ['senal', 'Señal débil', SignalIcon],
     ];
 
     return (
         <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-xl font-black tracking-tight text-slate-800 dark:text-white md:text-2xl">Averías y cajas NAP</h1>
-                <div role="tablist" aria-label="Secciones" className="grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-[#12141a] sm:w-96">
+                <div role="tablist" aria-label="Secciones" className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-[#12141a] sm:w-[28rem]">
                     {pestanas.map(([valor, texto, Icono]) => (
                         <button
                             key={valor}
@@ -323,14 +410,16 @@ export default function Averias() {
                             role="tab"
                             aria-selected={pestana === valor}
                             onClick={() => setParams(valor === 'aviso' ? {} : { tab: valor }, { replace: true })}
-                            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-wide ${pestana === valor ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                            className={`flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-black uppercase tracking-wide sm:text-xs ${pestana === valor ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
                         >
                             <Icono className="h-4 w-4" /> {texto}
                         </button>
                     ))}
                 </div>
             </div>
-            {pestana === 'aviso' ? <AvisoAveria cajas={cajas} zonas={zonas} /> : <ClientesSinNap cajas={cajas} zonas={zonas} />}
+            {pestana === 'aviso' && <AvisoAveria cajas={cajas} zonas={zonas} />}
+            {pestana === 'sin-nap' && <ClientesSinNap cajas={cajas} zonas={zonas} />}
+            {pestana === 'senal' && <SenalDebilLista />}
         </div>
     );
 }
