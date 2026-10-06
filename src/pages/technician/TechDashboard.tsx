@@ -78,24 +78,19 @@ export default function TechDashboard() {
     
     const [instalaciones, setInstalaciones] = useState<TechnicianClient[]>([]);
     const [ordenes, setOrdenes] = useState<TechnicianOrder[]>([]);
-    const [retiros, setRetiros] = useState<TechnicianClient[]>([]);
-    const [user, setUser] = useState<TechnicianUser | null>(null);
+    const [user] = useState<TechnicianUser | null>(() => {
+        try {
+            const guardado = localStorage.getItem('user');
+            return guardado ? JSON.parse(guardado) as TechnicianUser : null;
+        } catch {
+            return null;
+        }
+    });
 
     const [showChatModal, setShowChatModal] = useState(false);
     const [targetCliente, setTargetCliente] = useState<TechnicianClient | null>(null);
     const [chatOrden, setChatOrden] = useState<TechnicianOrder | null>(null);
     const [retireConditions, setRetireConditions] = useState<Record<number, string>>({});
-
-    useEffect(() => {
-        const userJson = localStorage.getItem('user');
-        if (userJson) {
-            const u = JSON.parse(userJson) as TechnicianUser;
-            setUser(u);
-            fetchAllData(u.id);
-        } else {
-            navigate('/login');
-        }
-    }, [navigate]);
 
     const fetchAllData = async (tecnicoId: number) => {
         try {
@@ -116,14 +111,6 @@ export default function TechDashboard() {
                 c.estado === 'pendiente_instalacion' && !conOrden.has(c.id)
             );
             setInstalaciones(pendientes);
-            const formalRetirementClients = new Set(
-                activeOrders.filter((orden) => orden.tipo === 'retiro').map((orden) => orden.cliente_id),
-            );
-            const porRecoger = clientesResult.data.filter((c) =>
-                c.onu_asignada?.estado === 'POR_RECOGER'
-                && !formalRetirementClients.has(c.id)
-            );
-            setRetiros(porRecoger);
             setOrdenes(activeOrders);
             if (clientesResult.fromCache || ordenesResult.fromCache) {
                 toast('Mostrando la última agenda guardada');
@@ -133,23 +120,14 @@ export default function TechDashboard() {
         }
     };
 
-    const handleConfirmarRetiro = async (cliente: TechnicianClient) => {
-        if (!online) {
-            toast.error('El retiro de inventario requiere conexión');
+    useEffect(() => {
+        if (!user) {
+            navigate('/login');
             return;
         }
-        const t = toast.loading(`Liberando equipo de ${cliente.nombre}...`);
-        try {
-            if (!cliente.onu_asignada?.id) throw new Error('El cliente no tiene una ONU vinculada');
-            await client.post(`/clientes/inventario/${cliente.onu_asignada.id}/confirmar-retiro-onu`);
-            toast.dismiss(t);
-            toast.success("¡Equipo en Stock! Puerto y IP liberados.");
-            if (user) void fetchAllData(user.id);
-        } catch (error: unknown) {
-            toast.dismiss(t);
-            toast.error(apiErrorMessage(error, "Error al retirar"));
-        }
-    };
+        const initialLoad = window.setTimeout(() => void fetchAllData(user.id), 0);
+        return () => window.clearTimeout(initialLoad);
+    }, [navigate, user]);
 
     const handleConfirmarRetiroOrden = async (orden: TechnicianOrder) => {
         if (!online) return toast.error('El ingreso a inventario requiere conexión');
@@ -373,7 +351,7 @@ export default function TechDashboard() {
                                 <div className="relative z-10 flex items-center justify-between">
                                     <div>
                                         <span className="text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-widest transition-colors">Equipos</span>
-                                        <h2 className="text-5xl font-black text-slate-800 dark:text-white mt-1 transition-colors">{ordenesRetiro.length + retiros.length}</h2>
+                                        <h2 className="text-5xl font-black text-slate-800 dark:text-white mt-1 transition-colors">{ordenesRetiro.length}</h2>
                                         <p className="text-slate-500 dark:text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-wider transition-colors">Bajas por recoger</p>
                                     </div>
                                     <ArchiveBoxArrowDownIcon className="w-14 h-14 text-orange-600 dark:text-orange-500 opacity-20 dark:opacity-30 group-hover:scale-110 transition-transform" />
@@ -409,51 +387,8 @@ export default function TechDashboard() {
                 {activeTab === 'retiros' && (
                     <div className="animate-in fade-in slide-in-from-left-4 duration-300 space-y-4">
                         <h3 className="text-[10px] font-black text-orange-600 dark:text-orange-500 uppercase tracking-widest px-1 transition-colors">Retiro de Equipos</h3>
-                        {ordenesRetiro.length === 0 && retiros.length === 0 && <p className="text-center text-slate-500 dark:text-slate-600 text-sm py-10 font-bold">Sin retiros pendientes</p>}
+                        {ordenesRetiro.length === 0 && <p className="text-center text-slate-500 dark:text-slate-600 text-sm py-10 font-bold">Sin retiros pendientes</p>}
                         {ordenesRetiro.map(renderOrden)}
-                        {retiros.map((item) => (
-                            <div key={item.id} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800/50 rounded-2xl p-4 shadow-sm dark:shadow-lg space-y-4 relative transition-colors">
-                                <div className="absolute left-0 top-4 bottom-4 w-1 bg-orange-500 rounded-r-full"></div>
-                                <div className="pl-2">
-                                    <h4 className="font-black text-slate-800 dark:text-white transition-colors">{item.nombre}</h4>
-                                    <p className="text-slate-500 dark:text-slate-500 text-[10px] mt-1 flex items-center gap-1 font-medium"><MapPinIcon className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{item.direccion}</span></p>
-                                    <div className="mt-3 bg-slate-50 dark:bg-black/30 p-3 rounded-xl border border-slate-200 dark:border-orange-500/10 transition-colors">
-                                        <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">SN a retirar:</p>
-                                        <p className="text-sm font-mono text-orange-600 dark:text-orange-400 font-black tracking-widest transition-colors">{item.onu_asignada?.identificador || 'S/N'}</p>
-                                    </div>
-                                </div>
-                                <div className="ml-2 grid grid-cols-2 gap-2">
-                                    <button
-                                        type="button"
-                                        aria-label={`WhatsApp a ${item.nombre}`}
-                                        onClick={() => { setTargetCliente(item); setShowChatModal(true); }}
-                                        className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-[10px] font-black uppercase tracking-widest text-emerald-700 active:scale-95 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
-                                    >
-                                        <ChatBubbleLeftRightIcon className="h-4 w-4" /> WhatsApp
-                                    </button>
-                                    {rutaEnMaps({ direccion: item.direccion }) ? (
-                                        <a
-                                            href={rutaEnMaps({ direccion: item.direccion }) ?? undefined}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            aria-label={`Cómo llegar con ${item.nombre}`}
-                                            className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 text-[10px] font-black uppercase tracking-widest text-blue-700 active:scale-95 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
-                                        >
-                                            <MapPinIcon className="h-4 w-4" /> Cómo llegar
-                                        </a>
-                                    ) : (
-                                        <span className="flex h-11 items-center justify-center rounded-xl border border-dashed border-slate-200 text-[10px] font-bold text-slate-400 dark:border-slate-700">Sin ubicación</span>
-                                    )}
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => { if (confirm(`¿Confirmas que recogiste el equipo de ${item.nombre}?`)) void handleConfirmarRetiro(item); }}
-                                    className="ml-2 flex h-11 w-[calc(100%-0.5rem)] items-center justify-center gap-2 rounded-xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white shadow-md active:scale-95"
-                                >
-                                    Equipo recogido <CheckBadgeIcon className="h-5 w-5" />
-                                </button>
-                            </div>
-                        ))}
                     </div>
                 )}
             </div>
