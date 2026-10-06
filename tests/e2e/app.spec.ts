@@ -454,14 +454,17 @@ test('carga una ruta administrativa diferida con API simulada', async ({ page })
   await mockApi(page)
   await page.goto('/admin/bajas')
 
-  await expect(page.getByRole('heading', { name: 'Bajas y recuperación' })).toBeVisible()
+  // Bajas ahora vive en la pestaña Retiros del inventario.
+  await expect(page).toHaveURL(/\/admin\/inventario\?tab=retiros$/)
+  await expect(page.getByRole('heading', { name: 'Inventario / Bodega' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Retiros' })).toHaveAttribute('aria-selected', 'true')
 })
 
 test('ofrece recuperación cuando falla un módulo diferido', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)
-  await page.route('**/assets/ServiceTerminations-*.js', (route) => route.abort())
-  await page.goto('/admin/bajas')
+  await page.route('**/assets/Inventario-*.js', (route) => route.abort())
+  await page.goto('/admin/inventario')
 
   await expect(page.getByRole('heading', { name: 'No pudimos cargar esta pantalla' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Limpiar versión y recargar' })).toBeVisible()
@@ -660,7 +663,7 @@ test('si la red falla un momento al volver a la app, la lista se carga sin error
   expect(fallos).toBe(1)
 })
 
-test('el supervisor entra a clientes y no ve inventario', async ({ page }) => {
+test('el supervisor entra a clientes y en inventario solo ve los retiros', async ({ page }) => {
   await authenticateAs(page, 'supervisor')
   await mockApi(page)
   await page.goto('/admin/clientes')
@@ -673,8 +676,43 @@ test('el supervisor entra a clientes y no ve inventario', async ({ page }) => {
   }
   await page.getByRole('button', { name: 'Operaciones' }).click()
   await expect(page.getByText('Órdenes / Instalaciones')).toBeVisible()
-  await expect(page.getByText('Bajas / Recuperación')).toBeVisible()
-  await expect(page.getByText('Inventario / Bodega')).toHaveCount(0)
+  await expect(page.getByText('Bajas / Recuperación')).toHaveCount(0)
+  await page.getByRole('link', { name: 'Inventario / Bodega' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Inventario / Bodega' })).toBeVisible()
+  await expect(page.getByText('No hay retiros en este estado.')).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Equipos' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Ingresar equipo' })).toHaveCount(0)
+})
+
+test('el admin recibe en bodega una ONU de una baja indicando cómo llegó', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/bajas/tecnicos/disponibles', (route) =>
+    route.fulfill({ json: [{ id: 7, nombre_completo: 'Técnico Uno', usuario: 'tec1', rol: 'tecnico', activo: true }] }))
+  await page.route('**/api/bajas/', (route) => route.fulfill({ json: [{
+    id: 12, cliente_id: 5, servicio_id: 9, estado: 'pendiente_retiro', motivo: 'Se cambia de casa',
+    cliente: { nombre: 'Rosa Pérez', direccion: 'Calle 2 #10', estado: 'baja' },
+    onu: { id: 30, identificador: 'HWTC05450CB6', modelo: 'HG8145', estado: 'POR_RECOGER' },
+    tecnico: null, mikrotik_estado: 'ok', solicitada_en: '2026-10-05T10:00:00',
+  }] }))
+  let recibido: unknown = null
+  await page.route('**/api/bajas/12/confirmar-retiro', async (route) => {
+    recibido = route.request().postDataJSON()
+    await route.fulfill({ json: { id: 12 } })
+  })
+  await page.goto('/admin/inventario')
+  await page.getByRole('tab', { name: 'Retiros' }).click()
+
+  await expect(page.getByText('Rosa Pérez')).toBeVisible()
+  await expect(page.getByText('HWTC05450CB6')).toBeVisible()
+  // Sin indicar el estado del equipo no se recibe.
+  await page.getByRole('button', { name: 'Recibir' }).click()
+  await expect(page.getByText('Indica cómo llegó el equipo')).toBeVisible()
+  expect(recibido).toBeNull()
+  await page.getByLabel('Cómo llegó el equipo de la baja 12').selectOption('danada')
+  await page.getByRole('button', { name: 'Recibir' }).click()
+  await expect.poll(() => recibido).toMatchObject({ condicion: 'danada' })
 })
 
 test('un error de validación al guardar un cliente se muestra sin romper la pantalla', async ({ page }, testInfo) => {
@@ -840,7 +878,7 @@ test('carga el inventario con un equipo disponible', async ({ page }) => {
   await mockApi(page)
   await page.goto('/admin/inventario')
 
-  await expect(page.getByRole('heading', { name: 'Bodega e Inventario' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Inventario / Bodega' })).toBeVisible()
   await expect(page.locator('span:visible').filter({ hasText: /^ONU-STOCK-E2E$/ }).first()).toBeVisible()
   await expect(page.locator('span:visible').filter({ hasText: /^BODEGA$/ }).first()).toBeVisible()
 })
@@ -1455,7 +1493,7 @@ test.describe('escáner con cámara simulada', () => {
     await authenticateAs(page)
     await mockApi(page)
     await page.goto('/admin/inventario')
-    await expect(page.getByRole('heading', { name: 'Bodega e Inventario' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Inventario / Bodega' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Ingresar equipo' }).click()
     await page.getByText('Escanear Código (MAC/SN)').click()

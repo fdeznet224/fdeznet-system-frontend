@@ -32,14 +32,11 @@ const Routers = lazy(() => import('@/pages/infraestructura/routers/Routers'));
 const Redes = lazy(() => import('@/pages/infraestructura/redes/Redes'));
 const Configuracion = lazy(() => import('@/pages/configuracion/Configuracion'));
 const Orders = lazy(() => import('@/pages/admin/orders/Orders'));
-const ServiceTerminations = lazy(
-  () => import('@/pages/admin/bajas/ServiceTerminations'),
-);
 const MapaClientes = lazy(() => import('@/pages/monitoreo/MapaClientes'));
 const MensajesCRM = lazy(() => import('@/pages/admin/mensajes/MensajesCRM'));
 const WhatsAppOutbox = lazy(() => import('@/pages/admin/mensajes/WhatsAppOutbox'));
 const PaymentReviewInbox = lazy(() => import('@/pages/admin/mensajes/PaymentReviewInbox'));
-const InventarioPanel = lazy(() => import('@/pages/infraestructura/inventario/InventarioPanel'));
+const Inventario = lazy(() => import('@/pages/infraestructura/inventario/Inventario'));
 const CajasNap = lazy(() => import('@/pages/infraestructura/naps/CajasNap'));
 const Facturas = lazy(() => import('@/pages/finanzas/Facturas'));
 const Transacciones = lazy(() => import('@/pages/finanzas/Transacciones'));
@@ -209,7 +206,8 @@ function App() {
             >
                 <Route path="/admin/dashboard" element={protectedPage(<Dashboard />, ['admin'])} />
                 <Route path="/admin/ordenes" element={protectedPage(<Orders />, ['admin', 'supervisor'])} />
-                <Route path="/admin/bajas" element={protectedPage(<ServiceTerminations />, ['admin', 'supervisor'])} />
+                {/* Bajas ahora es la pestaña Retiros del inventario. */}
+                <Route path="/admin/bajas" element={<Navigate to="/admin/inventario?tab=retiros" replace />} />
                 <Route path="/admin/mapa" element={protectedPage(<MapaClientes />, ['admin'])} />
                 
                 {/* Gestión Comercial */}
@@ -222,7 +220,7 @@ function App() {
                 <Route path="/admin/redes" element={protectedPage(<Redes />, ['admin'])} />
                 <Route path="/admin/radar" element={protectedPage(<OltRadarVsolPage />, ['admin'])} />
                 <Route path="/admin/radar-vsol" element={protectedPage(<OltRadarVsolPage />, ['admin'])} />
-                <Route path="/admin/inventario" element={protectedPage(<InventarioPanel />, ['admin'])} />
+                <Route path="/admin/inventario" element={protectedPage(<Inventario />, ['admin', 'supervisor'])} />
                 
                 {/* Finanzas */}
                 <Route path="/admin/facturas" element={protectedPage(<Facturas />, ['admin'])} />

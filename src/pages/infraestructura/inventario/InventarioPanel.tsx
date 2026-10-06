@@ -24,13 +24,6 @@ interface EquipoInventario {
     cliente_zona?: string | null;
 }
 
-interface Tecnico {
-    id: number;
-    rol: string;
-    nombre_completo?: string | null;
-    usuario: string;
-}
-
 interface KpiCardProps {
     title: string;
     value: number;
@@ -46,9 +39,13 @@ function getErrorMessage(error: unknown, fallback: string) {
     return apiErrorMessage(error, fallback);
 }
 
-export default function InventarioPanel() {
+interface Props {
+    /** Los equipos por recoger se gestionan en la pestaña Retiros. */
+    onVerRetiros?: () => void;
+}
+
+export default function InventarioPanel({ onVerRetiros }: Props) {
     const [equipos, setEquipos] = useState<EquipoInventario[]>([]);
-    const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
     const [loading, setLoading] = useState(true);
     
     // Filtros
@@ -77,43 +74,9 @@ export default function InventarioPanel() {
         }
     };
 
-    const fetchTecnicos = async () => {
-        try {
-            const res = await client.get<Tecnico[]>('/usuarios/');
-            setTecnicos(res.data.filter((u) => u.rol === 'tecnico'));
-        } catch {
-            console.error("Error cargando técnicos");
-        }
-    };
-
     useEffect(() => {
         fetchInventario();
-        fetchTecnicos();
     }, []);
-
-    const handleAsignarTecnico = async (inventarioId: number, tecnicoId: string) => {
-        if (!tecnicoId) return;
-        const load = toast.loading("Asignando técnico para retiro...");
-        try {
-            await client.post(`/clientes/inventario/${inventarioId}/asignar-retiro/${tecnicoId}`);
-            toast.success("Técnico asignado correctamente", { id: load });
-            fetchInventario();
-        } catch {
-            toast.error("Error al asignar técnico", { id: load });
-        }
-    };
-
-    const handleConfirmarRecoleccion = async (eq: EquipoInventario) => {
-        if (!confirm(`¿Confirmas que has recuperado el equipo ${eq.identificador}?`)) return;
-        const load = toast.loading("Ingresando a stock...");
-        try {
-            await client.post(`/clientes/inventario/${eq.id}/confirmar-retiro-onu`);
-            toast.success("Equipo de vuelta en bodega", { id: load });
-            fetchInventario();
-        } catch {
-            toast.error("Error al procesar", { id: load });
-        }
-    };
 
     const handleSuccessfulScan = (codigoEscaneado: string) => {
         const val = codigoEscaneado.toUpperCase();
@@ -194,13 +157,13 @@ export default function InventarioPanel() {
     }, [equiposBaseFiltro, filtroEstado]);
 
     return (
-        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 font-sans text-slate-700 dark:text-slate-200 h-[calc(100dvh-80px)] md:h-[calc(100vh-100px)] overflow-hidden transition-colors duration-300">
+        <div className="flex h-full flex-col gap-4 font-sans text-slate-700 dark:text-slate-200 overflow-hidden transition-colors duration-300">
 
-            {/* ================= HEADER (Idéntico a tu captura) ================= */}
-            <div className="flex justify-between items-center bg-white dark:bg-[#12141a] p-4 md:p-5 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors flex-none shrink-0">
-                <div>
-                    <h1 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">Bodega e Inventario</h1>
-                </div>
+            {/* ================= ACCIONES ================= */}
+            <div className="flex justify-between items-center gap-3 flex-none shrink-0">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    {stats.total} {stats.total === 1 ? 'equipo' : 'equipos'} con estos filtros
+                </p>
                 
                 <div className="flex gap-2 items-center">
                     {/* Botón Lupa (Solo Móvil) */}
@@ -287,7 +250,7 @@ export default function InventarioPanel() {
                 <KpiCard title="Total Filtrado" value={stats.total} icon={ArchiveBoxIcon} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-500/10" border="border-indigo-500/20" onClick={() => setFiltroEstado('todos')} active={filtroEstado === 'todos'} />
                 <KpiCard title="En Bodega" value={stats.disponibles} icon={CheckBadgeIcon} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" onClick={() => setFiltroEstado('DISPONIBLE')} active={filtroEstado === 'DISPONIBLE'} />
                 <KpiCard title="Instalados" value={stats.instalados} icon={WrenchScrewdriverIcon} color="text-purple-600 dark:text-purple-400" bg="bg-purple-500/10" border="border-purple-500/20" onClick={() => setFiltroEstado('INSTALADO')} active={filtroEstado === 'INSTALADO'} />
-                <KpiCard title="Por Recoger" value={stats.porRecoger} icon={ArrowDownTrayIcon} color="text-rose-600 dark:text-rose-400" bg="bg-rose-500/10" border="border-rose-500/20" onClick={() => setFiltroEstado('POR_RECOGER')} active={filtroEstado === 'POR_RECOGER'} />
+                <KpiCard title="Por Recoger" value={stats.porRecoger} icon={ArrowDownTrayIcon} color="text-rose-600 dark:text-rose-400" bg="bg-rose-500/10" border="border-rose-500/20" onClick={() => (onVerRetiros ? onVerRetiros() : setFiltroEstado('POR_RECOGER'))} active={filtroEstado === 'POR_RECOGER'} />
                 <KpiCard title="Averiados" value={stats.conFalla} icon={ExclamationTriangleIcon} color="text-red-600 dark:text-red-400" bg="bg-red-500/10" border="border-red-500/20" onClick={() => setFiltroEstado('CON_FALLA')} active={filtroEstado === 'CON_FALLA'} />
             </div>
 
@@ -338,19 +301,9 @@ export default function InventarioPanel() {
                                     </td>
                                     <td className="px-6 py-4">
                                         {eq.estado === 'POR_RECOGER' ? (
-                                            <div className="space-y-1.5 max-w-[200px]">
-                                                <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1"><TruckIcon className="w-3 h-3" /> Asignar Técnico</p>
-                                                <div className="bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-slate-700/50 rounded-xl px-2 py-1.5 flex items-center shadow-inner">
-                                                    <select
-                                                        value={eq.tecnico_id || ""}
-                                                        onChange={(e) => handleAsignarTecnico(eq.id, e.target.value)}
-                                                        className="w-full bg-transparent text-xs text-slate-800 dark:text-white font-bold outline-none cursor-pointer appearance-none"
-                                                    >
-                                                        <option value="" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">-- Sin asignar --</option>
-                                                        {tecnicos.map(t => <option key={t.id} value={t.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{t.nombre_completo || t.usuario}</option>)}
-                                                    </select>
-                                                </div>
-                                            </div>
+                                            <button onClick={onVerRetiros} className="flex items-center gap-1.5 rounded-lg bg-rose-50 px-2 py-1 text-[10px] font-black text-rose-600 dark:bg-rose-500/10 dark:text-rose-400">
+                                                <TruckIcon className="w-3.5 h-3.5" /> Ver retiro
+                                            </button>
                                         ) : eq.estado === 'INSTALADO' ? (
                                             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-lg font-bold">Operando</span>
                                         ) : eq.estado === 'CON_FALLA' ? (
@@ -363,9 +316,6 @@ export default function InventarioPanel() {
                                         <div className="flex justify-end gap-2">
                                             {(eq.estado === 'DISPONIBLE' || eq.estado === 'CON_FALLA') && (
                                                 <button onClick={() => handleEliminar(eq.id)} title="Eliminar equipo" className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/20 rounded-xl border border-slate-200 dark:border-slate-700 transition-all active:scale-95"><TrashIcon className="w-4 h-4" /></button>
-                                            )}
-                                            {eq.estado === 'POR_RECOGER' && (
-                                                <button onClick={() => handleConfirmarRecoleccion(eq)} className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black hover:bg-emerald-500 transition-all uppercase shadow-md active:scale-95"><CheckBadgeIcon className="w-4 h-4" /> Recibido</button>
                                             )}
                                         </div>
                                     </td>
@@ -407,23 +357,9 @@ export default function InventarioPanel() {
                                 )}
 
                                 {eq.estado === 'POR_RECOGER' ? (
-                                    <div className="flex flex-col gap-2.5 border-t border-slate-100 dark:border-slate-800/60 pt-3 mt-1">
-                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 shadow-inner">
-                                            <TruckIcon className="w-4 h-4 text-slate-400 shrink-0" />
-                                            <select
-                                                value={eq.tecnico_id || ""}
-                                                onChange={(e) => handleAsignarTecnico(eq.id, e.target.value)} 
-                                                className="w-full bg-transparent text-slate-800 dark:text-slate-300 font-bold outline-none text-xs cursor-pointer appearance-none"
-                                            >
-                                                <option value="" className="bg-white dark:bg-slate-950 text-slate-800 dark:text-white">Asignar técnico...</option>
-                                                {tecnicos.map(t => <option key={t.id} value={t.id} className="bg-white dark:bg-slate-950 text-slate-800 dark:text-white">{t.nombre_completo || t.usuario}</option>)}
-                                            </select>
-                                        </div>
-
-                                        <button onClick={() => handleConfirmarRecoleccion(eq)} className="w-full flex items-center justify-center gap-1.5 py-3.5 bg-emerald-600 text-white font-black rounded-xl text-[11px] uppercase tracking-widest shadow-md active:scale-95 transition-all">
-                                            <CheckBadgeIcon className="w-5 h-5" /> <span>CONFIRMAR RETORNO</span>
-                                        </button>
-                                    </div>
+                                    <button onClick={onVerRetiros} className="w-full flex items-center justify-center gap-1.5 py-3 mt-1 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 font-black rounded-xl text-[11px] uppercase tracking-widest active:scale-95 transition-all">
+                                        <TruckIcon className="w-4 h-4" /> Gestionar en Retiros
+                                    </button>
                                 ) : (
                                     <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800/50 pt-3 mt-1">
                                         <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic">

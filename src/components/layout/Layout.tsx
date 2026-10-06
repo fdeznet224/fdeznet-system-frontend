@@ -526,10 +526,9 @@ const allMenus: MenuItem[] = [
         name: 'Operaciones', icon: BriefcaseIcon, roles: ['admin', 'supervisor'],
         submenu: [
             { name: 'Órdenes / Instalaciones', path: '/admin/ordenes', icon: ClipboardDocumentListIcon, roles: ['admin', 'supervisor'] },
-            { name: 'Bajas / Recuperación', path: '/admin/bajas', icon: ArchiveBoxIcon, roles: ['admin', 'supervisor'] },
             { name: 'Bandeja WhatsApp', path: '/admin/whatsapp/salidas', icon: ChatBubbleLeftRightIcon, roles: ['admin', 'supervisor'] },
             { name: 'Comprobantes por revisar', path: '/admin/whatsapp/comprobantes', icon: BanknotesIcon, roles: ['admin', 'supervisor'] },
-            { name: 'Inventario / Bodega', path: '/admin/inventario', icon: ArchiveBoxIcon, roles: ['admin'] },
+            { name: 'Inventario / Bodega', path: '/admin/inventario', icon: ArchiveBoxIcon, roles: ['admin', 'supervisor'] },
         ]
     },
     {
@@ -576,7 +575,6 @@ function getPageTitle(pathname: string, fallback: string): string {
         ['/admin/dashboard', 'Inicio'],
         ['/admin/clientes', 'Clientes'],
         ['/admin/ordenes', 'Órdenes'],
-        ['/admin/bajas', 'Bajas'],
         ['/admin/radar', 'Radar OLT'],
         ['/admin/naps', 'Cajas NAP'],
         ['/admin/inventario', 'Inventario'],
