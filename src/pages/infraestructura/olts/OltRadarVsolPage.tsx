@@ -25,6 +25,7 @@ import {
   type OltOnuDetalle,
   type OltSavePayload,
 } from "./types";
+import VincularOnus from "./VincularOnus";
 import "./styles.css";
 
 type StatusFilter = "todos" | "online" | "offline" | "critica" | "regular" | "registradas" | "no_registradas";
@@ -1139,6 +1140,10 @@ export default function OltRadarVsolPage() {
               <option value="regular">Señal regular</option>
             </select>
           </div>
+
+          {status === "no_registradas" && selectedOlt && monitoreo?.origen === "vsol_api" && (
+            <VincularOnus oltId={Number(selectedOlt.id)} onus={monitoreo.onus_api || []} onVinculadas={load} />
+          )}
 
           <div className="olt-results-scroll">
             <table className="olt-table olt-table--desktop">

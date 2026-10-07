@@ -1760,3 +1760,45 @@ test('el enlace del aviso de señal muestra esos clientes y deja mandar técnico
   await expect(page.getByText('Clientes del aviso de señal', { exact: false })).toHaveCount(0)
   await expect(page.locator('button:visible', { hasText: 'Reportar falla' })).toHaveCount(0)  // potencia normal: sin acceso
 })
+
+test('en el radar se vinculan las ONU sin cliente con el cliente que sugiere su descripción', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/olts/2/monitoreo-api', (route) => route.fulfill({ json: { status: 'success', data: {
+    origen: 'vsol_api', clientes_activos: [], clientes_caidos: [],
+    onus_api: [
+      { onu_id: 'GPON0/1:3', serial: 'HWTC0000AAAA', identificador: 'HWTC0000AAAA', estado_fisico: 'online', rx_power: '-19.96', modelo: 'HG8145V5', description: 'VICTOR CONSTANTINO' },
+      { onu_id: 'GPON0/1:4', serial: 'HWTC0000BBBB', identificador: 'HWTC0000BBBB', estado_fisico: 'online', rx_power: '-21.10', modelo: 'HG8145V5', description: 'MARIA' },
+    ],
+  } } }))
+  await page.route('**/api/olts/2/vinculacion', (route) => route.fulfill({ json: {
+    sueltas: ['HWTC0000AAAA', 'HWTC0000BBBB'],
+    sugerencias: { HWTC0000AAAA: { cliente_id: 11, nombre: 'Víctor Constantino Martínez', cedula: '7659', puntaje: 0.9, segura: true } },
+    clientes_sin_onu: [
+      { id: 11, nombre: 'Víctor Constantino Martínez', cedula: '7659', zona: 'Villa de Guadalupe' },
+      { id: 12, nombre: 'María López', cedula: '7710', zona: 'Villa de Guadalupe' },
+    ],
+  } }))
+  const enviados: unknown[] = []
+  await page.route('**/api/olts/2/vincular-onus', async (route) => {
+    const cuerpo = route.request().postDataJSON() as { vinculos: { identificador: string }[] }
+    enviados.push(cuerpo)
+    await route.fulfill({ json: { vinculadas: cuerpo.vinculos.length, resultados: cuerpo.vinculos.map((v) => ({ ...v, ok: true })) } })
+  })
+  await page.goto('/admin/radar')
+  await page.getByRole('button', { name: 'Escanear OLT Paraíso' }).click()
+  await page.locator('button:visible', { hasText: 'No registradas' }).first().click()
+
+  const panel = page.getByRole('region', { name: 'Vincular ONU a clientes' })
+  await expect(panel.getByLabel('Cliente de la ONU HWTC0000AAAA')).toHaveValue('11')
+  await expect(panel.getByText('Sugerido: coincide con el nombre en la ONU')).toBeVisible()
+  await expect(panel.getByLabel('Cliente de la ONU HWTC0000BBBB')).toHaveValue('')   // "MARIA" no alcanza
+
+  await panel.getByRole('button', { name: 'Vincular las 1 sugeridas seguras' }).click()
+  await expect.poll(() => enviados).toEqual([{ vinculos: [{ identificador: 'HWTC0000AAAA', cliente_id: 11 }] }])
+
+  await panel.getByLabel('Cliente de la ONU HWTC0000BBBB').selectOption('12')
+  await panel.locator('div', { hasText: 'HWTC0000BBBB' }).getByRole('button', { name: 'Vincular', exact: true }).last().click()
+  await expect.poll(() => enviados.length).toBe(2)
+  expect(enviados[1]).toEqual({ vinculos: [{ identificador: 'HWTC0000BBBB', cliente_id: 12 }] })
+})
