@@ -996,7 +996,7 @@ test('la instalación pasa de en camino a activar y el retiro solo pide el equip
   await page.route(/\/api\/ordenes\/$/, (route) => route.fulfill({ json: [
     { id: 41, tipo: 'instalacion', estado: 'asignada', version: 1, prospecto_nombre: 'Ana Lopez', prospecto_direccion: 'Calle Uno 123', fecha_programada: null },
     { id: 42, tipo: 'instalacion', estado: 'en_camino', version: 2, prospecto_nombre: 'Beto Ruiz', prospecto_direccion: 'Calle Dos 456', fecha_programada: null },
-    { id: 43, tipo: 'retiro', estado: 'asignada', version: 1, cliente_id: 9, cliente: { id: 9, nombre: 'Carla Diaz', direccion: 'Calle Tres 789', telefono: '5550002222' }, fecha_programada: null },
+    { id: 43, tipo: 'retiro', estado: 'asignada', version: 1, cliente_id: 9, cliente: { id: 9, nombre: 'Carla Diaz', direccion: 'Calle Tres 789', telefono: '5550002222', latitud: 16.7531, longitud: -93.1156 }, fecha_programada: null },
   ] }))
   await page.goto('/tech/dashboard')
   await page.getByRole('button', { name: 'Agenda', exact: true }).click()
@@ -1011,7 +1011,8 @@ test('la instalación pasa de en camino a activar y el retiro solo pide el equip
   await page.getByRole('button', { name: 'Retiros', exact: true }).click()
   const carla = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: 'Carla Diaz' }) }).last()
   await expect(carla.getByRole('button', { name: 'WhatsApp a Carla Diaz' })).toBeVisible()
-  await expect(carla.getByRole('link', { name: 'Cómo llegar con Carla Diaz' })).toBeVisible()
+  // La ruta va por coordenadas, no por la dirección escrita.
+  await expect(carla.getByRole('link', { name: 'Cómo llegar con Carla Diaz' })).toHaveAttribute('href', /destination=16\.7531%2C-93\.1156/)
   await expect(carla.getByRole('button', { name: /Equipo recogido/ })).toBeVisible()
   await expect(carla.getByRole('button', { name: /Marcar en camino|Iniciar trabajo/ })).toHaveCount(0)
 })
@@ -1671,4 +1672,91 @@ test('herramientas del cliente: estado de la ONU, potencia y reinicio', async ({
   await herramientas.getByRole('button', { name: 'Reiniciar ONU', exact: true }).click()
   await expect.poll(() => reinicios).toBe(1)
   await expect(page.getByText('La ONU se está reiniciando', { exact: false })).toBeVisible()
+})
+
+test('con potencia alta se levanta el reporte de falla desde la lista con la revisión remota', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/ftth/potencias', (route) => route.fulfill({ json: {
+    1: { rx: -31.2, nivel: 'alta', fecha: '2026-10-07T10:00:00' },
+  } }))
+  await page.route('**/api/soporte/abiertas', (route) => route.fulfill({ json: {} }))
+  await page.route('**/api/soporte/clientes/1/contexto', (route) => route.fulfill({ json: { abierta: null, potencia_habitual: -21.5 } }))
+  await page.route('**/api/ftth/clientes/1/estado-onu', (route) => route.fulfill({ json: {
+    disponible: true, olt: 'Vicente Guerrero', serial: 'HWTC05450CB6', online: true, rx: -31.2,
+  } }))
+  await page.route('**/api/bajas/tecnicos/disponibles', (route) =>
+    route.fulfill({ json: [{ id: 7, nombre_completo: 'Técnico Uno', usuario: 'tec1' }] }))
+  let enviado: Record<string, unknown> | null = null
+  await page.route('**/api/soporte/incidencias', async (route) => {
+    enviado = route.request().postDataJSON()
+    await route.fulfill({ status: 201, json: { id: 77 } })
+  })
+  await page.goto('/admin/clientes')
+
+  await page.locator('button:visible', { hasText: 'Reportar falla' }).first().click()
+  const herramientas = page.getByRole('dialog', { name: 'Herramientas del cliente' })
+  await expect(herramientas.getByLabel('Revisión remota')).toHaveValue(/ONU en línea · potencia -31\.20 dBm \(normal -21\.50\)/)
+  await expect(herramientas.getByLabel('Falla')).toHaveValue('potencia_baja')
+  await expect(herramientas.getByLabel('Prioridad')).toHaveValue('alta')
+  await expect(herramientas.getByLabel('Cómo se supo')).toHaveValue('monitoreo')
+
+  await herramientas.getByLabel('Técnico', { exact: true }).selectOption('7')
+  await herramientas.getByLabel('Qué debe hacer el técnico').fill('Revisar la fibra desde la caja')
+  await herramientas.getByRole('button', { name: 'Crear y avisar al técnico' }).click()
+
+  await expect.poll(() => enviado).not.toBeNull()
+  expect(enviado).toMatchObject({ cliente_id: 1, categoria: 'potencia_baja', prioridad: 'alta', tecnico_id: 7, canal_reporte: 'monitoreo' })
+  expect(String(enviado!.descripcion)).toMatch(/^Revisar la fibra desde la caja\n\nRevisión remota/)
+  await expect(page.getByText('Reporte #77 creado', { exact: false })).toBeVisible()
+})
+
+test('el técnico ve la falla, verifica la señal y termina la reparación', async ({ page }) => {
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  await page.route(/\/api\/ordenes\/$/, (route) => route.fulfill({ json: [
+    { id: 55, tipo: 'reparacion', estado: 'trabajando', version: 2, cliente_id: 9, categoria_soporte: 'cable_roto', prioridad: 'urgente',
+      descripcion: 'Revisar la fibra\n\nRevisión remota: ONU caída', cliente: { id: 9, nombre: 'Victor Martinez', direccion: 'Rancheria', telefono: '5550003333', latitud: 16.75, longitud: -93.11 }, fecha_programada: null },
+  ] }))
+  await page.route('**/api/soporte/incidencias/55/diagnosticar', (route) => route.fulfill({ json: {
+    resultado: 'ok', sugerencia: null, olt: { disponible: true, onu_online: true, potencia_rx_dbm: '-21.04' },
+  } }))
+  await page.route('**/api/soporte/incidencias/55', (route) => route.fulfill({ json: { id: 55, version: 3 } }))
+  let cierre: Record<string, unknown> | null = null
+  await page.route('**/api/soporte/incidencias/55/resolver', async (route) => {
+    cierre = route.request().postDataJSON()
+    await route.fulfill({ json: { id: 55, estado: 'terminada' } })
+  })
+  await page.goto('/tech/dashboard')
+  await page.getByRole('button', { name: 'Agenda', exact: true }).click()
+
+  const victor = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: 'Victor Martinez' }) }).last()
+  await expect(victor.getByText('🔧 Fibra o cable roto')).toBeVisible()
+  await expect(victor.getByText('Revisión remota: ONU caída', { exact: false })).toBeVisible()
+  await expect(victor.getByRole('button', { name: /Terminar reparación/ })).toBeDisabled()  // primero verificar señal
+
+  await victor.getByRole('button', { name: 'Verificar señal' }).click()
+  await expect(victor.getByText('ONU en línea · -21.04 dBm')).toBeVisible()
+  await victor.getByLabel('Qué encontraste y qué hiciste').fill('Fibra doblada en el poste, se cambió el tramo')
+  await victor.getByRole('button', { name: /Terminar reparación/ }).click()
+
+  await expect.poll(() => cierre).toEqual({ solucion: 'Fibra doblada en el poste, se cambió el tramo', version: 3 })
+  await expect(page.getByRole('heading', { name: 'Victor Martinez' })).toHaveCount(0)
+})
+
+test('el enlace del aviso de señal muestra esos clientes y deja mandar técnico aunque solo hayan caído 3 dB', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/ftth/potencias', (route) => route.fulfill({ json: {
+    1: { rx: -22.0, nivel: 'normal', fecha: '2026-10-07T10:00:00' },
+  } }))
+  await page.route('**/api/soporte/abiertas', (route) => route.fulfill({ json: {} }))
+  await page.goto('/admin/clientes?revisar=1')
+
+  await expect(page.getByText('Clientes del aviso de señal (1)', { exact: false })).toBeVisible()
+  await expect(page.locator('button:visible', { hasText: 'Reportar falla' }).first()).toBeVisible()
+
+  await page.getByRole('button', { name: 'Ver todos' }).click()
+  await expect(page.getByText('Clientes del aviso de señal', { exact: false })).toHaveCount(0)
+  await expect(page.locator('button:visible', { hasText: 'Reportar falla' })).toHaveCount(0)  // potencia normal: sin acceso
 })

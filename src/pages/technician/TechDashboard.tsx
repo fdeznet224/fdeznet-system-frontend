@@ -22,6 +22,8 @@ import { useBrand } from '@/context/brand/useBrand';
 import { cachedRequest, notifySessionChanged } from '../../offline/db';
 import { submitOperation } from '../../offline/sync';
 import { apiErrorMessage } from '@/utils/apiError';
+import { CATEGORIAS_FALLA } from '@/utils/categoriasFalla';
+import FinalizarReparacion from './FinalizarReparacion';
 
 interface TechnicianUser {
     id: number;
@@ -52,6 +54,9 @@ interface TechnicianOrder {
     prospecto_direccion?: string;
     cliente?: Pick<TechnicianClient, 'id' | 'nombre' | 'direccion'> & { telefono?: string | null; latitud?: number | null; longitud?: number | null };
     prospecto_telefono?: string | null;
+    prioridad?: string;
+    categoria_soporte?: string | null;
+    descripcion?: string | null;
     servicio?: {
         id: number;
         alias: string;
@@ -238,6 +243,16 @@ export default function TechDashboard() {
                     </p>
                 )}
                 <p className="text-slate-500 text-[10px] mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5" /> {(orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección').replace(/\s*·?\s*https?:\/\/\S+/g, '')}</p>
+                {orden.categoria_soporte && (
+                    // Reparación: qué falla y qué le pidieron hacer (incluye la revisión remota).
+                    <div className="mt-2 rounded-xl border border-orange-200 bg-orange-50 p-3 dark:border-orange-500/20 dark:bg-orange-500/10">
+                        <p className="text-[11px] font-black text-orange-800 dark:text-orange-300">
+                            🔧 {CATEGORIAS_FALLA[orden.categoria_soporte] || orden.categoria_soporte}
+                            {(orden.prioridad === 'alta' || orden.prioridad === 'urgente') && <span className="ml-2 rounded bg-rose-600 px-1.5 py-0.5 text-[9px] uppercase text-white">{orden.prioridad}</span>}
+                        </p>
+                        {orden.descripcion && <p className="mt-1 whitespace-pre-line text-xs text-slate-700 dark:text-slate-300">{orden.descripcion}</p>}
+                    </div>
+                )}
             </div>
             {renderContacto(orden)}
             {orden.tipo === 'retiro' ? (
@@ -277,6 +292,12 @@ export default function TechDashboard() {
                         Activar cliente
                     </button>
                 )
+            ) : orden.categoria_soporte && orden.estado === 'trabajando' ? (
+                <FinalizarReparacion
+                    ordenId={orden.id}
+                    online={online}
+                    onTerminada={() => setOrdenes((current) => current.filter((item) => item.id !== orden.id))}
+                />
             ) : (
                 <button
                     type="button"

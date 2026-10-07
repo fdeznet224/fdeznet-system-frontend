@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 import {
     MagnifyingGlassIcon, WrenchScrewdriverIcon, ArrowPathIcon, FunnelIcon, UserPlusIcon,
     PhoneIcon, MapPinIcon, ChevronRightIcon
 } from '@heroicons/react/24/outline';
 
-import ClientToolsModal from './components/ClientToolsModal';
+import ClientToolsModal, { type ToolMode } from './components/ClientToolsModal';
+import { CATEGORIAS_FALLA } from '@/utils/categoriasFalla';
 import CreateClientModal from './components/CreateClientModal';
 import ClientDetailModal from './components/ClientDetailModal';
 import { getNativeMapHref } from '@/utils/nativeActions';
@@ -74,9 +76,37 @@ function PotenciaCliente({ potencia }: { potencia?: Potencia }) {
     );
 }
 
+/** Reporte de falla abierto del cliente (orden de reparación sin terminar). */
+interface ReporteAbierto { id: number; estado: string; categoria: string; tecnico: string | null }
+
+/** Con reporte abierto se ve su número; con potencia alta (o venido del aviso) y sin reporte, el acceso para levantarlo. */
+function ReporteCliente({ reporte, potencia, sugerir, onReportar }: { reporte?: ReporteAbierto; potencia?: Potencia; sugerir?: boolean; onReportar: () => void }) {
+    if (reporte) {
+        return (
+            <span
+                title={`${CATEGORIAS_FALLA[reporte.categoria] || reporte.categoria} · ${reporte.estado.replace('_', ' ')}${reporte.tecnico ? ` · ${reporte.tecnico}` : ' · sin técnico'}`}
+                className="mt-1 ml-1 inline-block rounded-md bg-orange-50 px-1.5 py-0.5 text-[10px] font-black text-orange-700 dark:bg-orange-500/10 dark:text-orange-300"
+            >
+                🔧 Reporte #{reporte.id}
+            </span>
+        );
+    }
+    if (potencia?.nivel !== 'alta' && !sugerir) return null;
+    return (
+        <button
+            type="button"
+            onClick={(event) => { event.stopPropagation(); onReportar(); }}
+            className="mt-1 ml-1 inline-block rounded-md border border-orange-200 px-1.5 py-0.5 text-[10px] font-black text-orange-700 hover:bg-orange-50 dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-500/10"
+        >
+            Reportar falla
+        </button>
+    );
+}
+
 interface ClientModalState {
     show: boolean;
     cliente: ClienteUnificado | null;
+    modo?: ToolMode;
 }
 
 const mobileStatusFilters: ClientFilter[] = ['todos', 'online', 'offline', 'potencia_alta', 'potencia_normal', 'suspendidos', 'morosos'];
@@ -85,6 +115,8 @@ export default function Clientes() {
     const [clientes, setClientes] = useState<ClienteUnificado[]>([]);
     const [onlineStatus, setOnlineStatus] = useState<Map<string, OnlineStatus>>(new Map());
     const [potencias, setPotencias] = useState<Record<string, Potencia>>({});
+    // null: este usuario no maneja reportes de falla (solo admin y supervisor).
+    const [reportes, setReportes] = useState<Record<string, ReporteAbierto> | null>(null);
     const [routers, setRouters] = useState<RouterSummary[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -96,6 +128,12 @@ export default function Clientes() {
     const [filtroZona, setFiltroZona] = useState(''); // 🔥 NUEVO ESTADO PARA ZONAS
     // 🔥 Agregado 'offline' a las opciones permitidas
     const [filtroEstado, setFiltroEstado] = useState<ClientFilter>('todos');
+    // ?revisar=5,12: los clientes del aviso diario de señal (enlace del WhatsApp).
+    const [searchParams, setSearchParams] = useSearchParams();
+    const idsRevisar = useMemo(() => {
+        const valor = searchParams.get('revisar');
+        return valor ? new Set(valor.split(',').map((id) => id.trim()).filter(Boolean)) : null;
+    }, [searchParams]);
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [toolModal, setToolModal] = useState<ClientModalState>({ show: false, cliente: null });
@@ -136,6 +174,11 @@ export default function Clientes() {
                 setPotencias(resPotencias.data);
             } catch { console.warn("Potencias no disponibles"); }
 
+            try {
+                const resReportes = await client.get<Record<string, ReporteAbierto>>('/soporte/abiertas');
+                setReportes(resReportes.data);
+            } catch { console.warn("Reportes de falla no disponibles"); }
+
             setLoading(false);
         } catch {
             toast.error("Error al cargar datos");
@@ -154,6 +197,7 @@ export default function Clientes() {
 
     const clientesFiltrados = useMemo(() => {
         return clientes.filter(c => {
+            if (idsRevisar && !idsRevisar.has(c.id.toString())) return false;
             const term = busqueda.toLowerCase();
             const matchTexto =
                 c.nombre.toLowerCase().includes(term) ||
@@ -184,7 +228,7 @@ export default function Clientes() {
 
             return true;
         });
-    }, [clientes, busqueda, filtroRouter, filtroZona, filtroEstado, onlineStatus, potencias, routers]);
+    }, [clientes, idsRevisar, busqueda, filtroRouter, filtroZona, filtroEstado, onlineStatus, potencias, routers]);
 
     // Extraemos las zonas únicas dinámicamente de tus clientes
     const zonasUnicas = Array.from(new Set(clientes.map(c => c.zona).filter((zona): zona is string => Boolean(zona))));
@@ -251,6 +295,17 @@ export default function Clientes() {
                         </button>
                     </div>
                 </div>
+
+                {idsRevisar && (
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm dark:border-orange-500/30 dark:bg-orange-500/10">
+                        <p className="font-bold text-orange-800 dark:text-orange-300">
+                            📉 Clientes del aviso de señal ({idsRevisar.size}). Elige a quién mandar técnico con «Reportar falla».
+                        </p>
+                        <button type="button" onClick={() => setSearchParams({})} className="shrink-0 rounded-xl border border-orange-300 px-3 py-1.5 text-xs font-black text-orange-800 dark:border-orange-500/40 dark:text-orange-300">
+                            Ver todos
+                        </button>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                     {contadores.map((c) => (
@@ -425,6 +480,7 @@ export default function Clientes() {
                                             <td className="px-5 py-3">
                                                 <ConexionCliente status={statusData} />
                                                 <PotenciaCliente potencia={potencias[c.id.toString()]} />
+                                                {reportes && <ReporteCliente reporte={reportes[c.id.toString()]} potencia={potencias[c.id.toString()]} sugerir={Boolean(idsRevisar)} onReportar={() => setToolModal({ show: true, cliente: c, modo: 'reportar_falla' })} />}
                                             </td>
                                             <td className="px-5 py-3 text-center">
                                                 <EstadoServicio estado={c.servicio.estado_servicio} />
@@ -479,6 +535,7 @@ export default function Clientes() {
                                                 <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Conexión</span>
                                                 <div className="mt-0.5"><ConexionCliente status={statusData} /></div>
                                                 <PotenciaCliente potencia={potencias[c.id.toString()]} />
+                                                {reportes && <ReporteCliente reporte={reportes[c.id.toString()]} potencia={potencias[c.id.toString()]} sugerir={Boolean(idsRevisar)} onReportar={() => setToolModal({ show: true, cliente: c, modo: 'reportar_falla' })} />}
                                             </div>
                                             <div className="min-w-0 text-right">
                                                 <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Finanzas</span>
@@ -520,6 +577,7 @@ export default function Clientes() {
                 isOpen={toolModal.show}
                 onClose={() => setToolModal({ show: false, cliente: null })}
                 cliente={toolModal.cliente}
+                modoInicial={toolModal.modo}
                 onActionSuccess={fetchData}
             />
             <ClientDetailModal isOpen={detailModal.show} onClose={() => setDetailModal({ show: false, cliente: null })} cliente={detailModal.cliente} onEditSuccess={fetchData} />

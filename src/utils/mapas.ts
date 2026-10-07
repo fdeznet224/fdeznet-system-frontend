@@ -8,8 +8,9 @@ interface Destino {
 
 /**
  * Enlace de Google Maps con la ruta desde donde está el técnico hasta el
- * domicilio: por GPS, por la ubicación que mandó el cliente (va en la
- * dirección como enlace) o, si no hay, por la dirección escrita.
+ * domicilio, solo por coordenadas: las del GPS o las de la ubicación que mandó
+ * el cliente (va en la dirección como enlace). La dirección escrita no se usa:
+ * Maps la ubica mal en colonias y rancherías.
  */
 export function rutaEnMaps({ latitud, longitud, direccion }: Destino): string | null {
     const lat = Number(latitud);
@@ -20,10 +21,6 @@ export function rutaEnMaps({ latitud, longitud, direccion }: Destino): string | 
     } else {
         const coordenadas = (direccion || '').match(RE_COORDENADAS);
         if (coordenadas) destino = `${coordenadas[1]},${coordenadas[2]}`;
-        else {
-            const texto = (direccion || '').replace(/https?:\/\/\S+/g, '').replace(/\s*·\s*$/, '').trim();
-            if (texto.length >= 5) destino = texto;
-        }
     }
     if (!destino) return null;
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destino)}&travelmode=driving`;

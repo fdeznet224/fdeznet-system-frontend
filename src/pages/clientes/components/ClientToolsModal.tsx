@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { EstadoOnu, ReiniciarOnu } from './HerramientasOnu';
 import PotenciaEnVivo from './PotenciaEnVivo';
+import ReportarFalla from './ReportarFalla';
 import { apiErrorMessage } from '@/utils/apiError';
 
 interface ClientReference {
@@ -96,9 +97,11 @@ interface Props {
     onClose: () => void;
     cliente: ClientReference | null;
     onActionSuccess: () => void;
+    /** Abrir directo en una herramienta (p. ej. "Reportar falla" desde la lista). */
+    modoInicial?: ToolMode;
 }
 
-type ToolMode = 'menu' | 'estado_real' | 'consumo_vivo' | 'onu_estado' | 'potencia' | 'reiniciar_onu' | 'suspender_reactivar' | 'eliminar' | 'dar_de_baja';
+export type ToolMode = 'menu' | 'estado_real' | 'consumo_vivo' | 'onu_estado' | 'potencia' | 'reiniciar_onu' | 'reportar_falla' | 'suspender_reactivar' | 'eliminar' | 'dar_de_baja';
 
 type ContentProps = Omit<Props, 'cliente'> & { cliente: ClientReference };
 
@@ -107,8 +110,8 @@ export default function ClientToolsModal(props: Props) {
     return <ClientToolsModalContent key={props.cliente.id} {...props} cliente={props.cliente} />;
 }
 
-function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActionSuccess }: ContentProps) {
-    const [mode, setMode] = useState<ToolMode>('menu');
+function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActionSuccess, modoInicial = 'menu' }: ContentProps) {
+    const [mode, setMode] = useState<ToolMode>(modoInicial);
     const [clienteActual, setClienteActual] = useState<ClientReference>(clienteProp);
     const [servicios, setServicios] = useState<ClientService[]>([]);
     const [servicioSeleccionadoId, setServicioSeleccionadoId] = useState<number | null>(null);
@@ -337,6 +340,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                                 <MenuButton icon={CpuChipIcon} label="ONU" desc="Estado en la OLT" variant="blue" onClick={() => setMode('onu_estado')} />
                                 <MenuButton icon={SignalIcon} label="Potencia" desc="En vivo" variant="emerald" onClick={() => setMode('potencia')} />
                                 <MenuButton icon={ArrowPathIcon} label="Reiniciar ONU" desc="Sin borrar su configuración" variant="purple" onClick={() => setMode('reiniciar_onu')} />
+                                {canManageTermination && <MenuButton icon={WrenchScrewdriverIcon} label="Reportar falla" desc="Mandar a un técnico" variant="orange" onClick={() => setMode('reportar_falla')} />}
 
                                 <MenuButton
                                     icon={isSuspended ? PlayCircleIcon : PauseCircleIcon}
@@ -475,6 +479,13 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                             <div className="animate-in slide-in-from-right-4">
                                 <BackButton onClick={() => setMode('menu')} />
                                 <ReiniciarOnu clienteId={clientId} onListo={() => { setMode('menu'); onActionSuccess(); }} />
+                            </div>
+                        )}
+
+                        {mode === 'reportar_falla' && (
+                            <div className="animate-in slide-in-from-right-4">
+                                <BackButton onClick={() => setMode('menu')} />
+                                <ReportarFalla clienteId={clientId} servicioId={servicioSeleccionado?.id ?? null} onListo={() => { onActionSuccess(); onClose(); }} />
                             </div>
                         )}
 
