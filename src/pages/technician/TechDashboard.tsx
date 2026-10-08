@@ -67,6 +67,14 @@ interface TechnicianOrder {
     } | null;
 }
 
+// Reparación: reporte de falla o cambio de domicilio (no instalación ni retiro).
+const esReparacion = (orden: TechnicianOrder) => (
+    Boolean(orden.categoria_soporte) || orden.tipo === 'reparacion' || orden.tipo === 'cambio_domicilio'
+);
+const URGENCIA: Record<string, number> = { urgente: 0, alta: 1 };
+
+const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
+
 interface NavButtonProps {
     icon: ComponentType<{ className?: string }>;
     label: string;
@@ -184,11 +192,16 @@ export default function TechDashboard() {
         }
     };
 
-    // Primero las que tienen visita, por hora; luego las que no tienen fecha.
+    // Primero las urgentes; luego las que tienen visita, por hora; al final las que no tienen fecha.
     const ordenesAgenda = ordenes
         .filter((orden) => orden.tipo !== 'retiro')
-        .sort((a, b) => (a.fecha_programada || '9999').localeCompare(b.fecha_programada || '9999'));
+        .sort((a, b) => (
+            (URGENCIA[a.prioridad || ''] ?? 2) - (URGENCIA[b.prioridad || ''] ?? 2)
+            || (a.fecha_programada || '9999').localeCompare(b.fecha_programada || '9999')
+        ));
     const ordenesRetiro = ordenes.filter((orden) => orden.tipo === 'retiro');
+    const totalReparaciones = ordenesAgenda.filter(esReparacion).length;
+    const totalInstalaciones = ordenesAgenda.length - totalReparaciones + instalaciones.length;
 
     // Coordinar la visita: escribirle por WhatsApp y abrir la ruta en Google Maps.
     const renderContacto = (orden: TechnicianOrder) => {
@@ -225,16 +238,24 @@ export default function TechDashboard() {
         );
     };
 
-    const renderOrden = (orden: TechnicianOrder) => (
-        <div key={`orden-${orden.id}`} className="bg-white dark:bg-[#1a1f2e] border border-blue-200 dark:border-blue-900/50 rounded-2xl p-4 shadow-sm space-y-3 relative">
-            <div className="absolute left-0 top-4 bottom-4 w-1 bg-blue-500 rounded-r-full"></div>
+    const renderOrden = (orden: TechnicianOrder) => {
+        const reparacion = esReparacion(orden);
+        const etiqueta = orden.tipo === 'retiro'
+            ? { texto: 'Retiro', clase: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300', borde: 'border-orange-200 dark:border-orange-900/50', barra: 'bg-orange-500' }
+            : reparacion
+                ? { texto: orden.tipo === 'cambio_domicilio' ? '🔧 Cambio de domicilio' : '🔧 Reparación', clase: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300', borde: 'border-rose-200 dark:border-rose-900/50', barra: 'bg-rose-500' }
+                : { texto: 'Instalación', clase: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300', borde: 'border-blue-200 dark:border-blue-900/50', barra: 'bg-blue-500' };
+        return (
+        <div key={`orden-${orden.id}`} className={`bg-white dark:bg-[#1a1f2e] border ${etiqueta.borde} rounded-2xl p-4 shadow-sm space-y-3 relative`}>
+            <div className={`absolute left-0 top-4 bottom-4 w-1 ${etiqueta.barra} rounded-r-full`}></div>
             <div className="pl-2">
                 <div className="flex items-center justify-between gap-2">
-                    <h4 className="font-black text-slate-800 dark:text-white">{orden.cliente?.nombre || orden.prospecto_nombre || `Orden #${orden.id}`}</h4>
-                    <span className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-400">{orden.estado.replace('_', ' ')}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${etiqueta.clase}`}>{etiqueta.texto}</span>
+                    <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400">{orden.estado.replace('_', ' ')}</span>
                 </div>
+                <h4 className="mt-1.5 font-black text-slate-800 dark:text-white">{orden.cliente?.nombre || orden.prospecto_nombre || `Orden #${orden.id}`}</h4>
                 <p className="text-slate-500 text-[10px] mt-1">
-                    #{orden.id} · {orden.tipo.replace('_', ' ')}
+                    #{orden.id}
                     {orden.servicio ? ` · ${orden.servicio.alias} (#${orden.servicio.id})` : ''}
                 </p>
                 {orden.fecha_programada && (
@@ -245,8 +266,8 @@ export default function TechDashboard() {
                 <p className="text-slate-500 text-[10px] mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5" /> {(orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección').replace(/\s*·?\s*https?:\/\/\S+/g, '')}</p>
                 {orden.categoria_soporte && (
                     // Reparación: qué falla y qué le pidieron hacer (incluye la revisión remota).
-                    <div className="mt-2 rounded-xl border border-orange-200 bg-orange-50 p-3 dark:border-orange-500/20 dark:bg-orange-500/10">
-                        <p className="text-[11px] font-black text-orange-800 dark:text-orange-300">
+                    <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 p-3 dark:border-rose-500/20 dark:bg-rose-500/10">
+                        <p className="text-[11px] font-black text-rose-800 dark:text-rose-300">
                             🔧 {CATEGORIAS_FALLA[orden.categoria_soporte] || orden.categoria_soporte}
                             {(orden.prioridad === 'alta' || orden.prioridad === 'urgente') && <span className="ml-2 rounded bg-rose-600 px-1.5 py-0.5 text-[9px] uppercase text-white">{orden.prioridad}</span>}
                         </p>
@@ -308,7 +329,8 @@ export default function TechDashboard() {
                 </button>
             )}
         </div>
-    );
+        );
+    };
 
     return (
         /* ✅ ADAPTADO: Fondo principal transiciona al tema elegido */
@@ -359,9 +381,13 @@ export default function TechDashboard() {
                                     <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <div className="relative z-10 flex items-center justify-between">
                                     <div>
-                                        <span className="text-purple-600 dark:text-purple-400 text-[10px] font-black uppercase tracking-widest transition-colors">Nuevas</span>
+                                        <span className="text-purple-600 dark:text-purple-400 text-[10px] font-black uppercase tracking-widest transition-colors">Mi agenda</span>
                                         <h2 className="text-5xl font-black text-slate-800 dark:text-white mt-1 transition-colors">{ordenesAgenda.length + instalaciones.length}</h2>
-                                        <p className="text-slate-500 dark:text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-wider transition-colors">Órdenes e instalaciones</p>
+                                        <p className="mt-1 flex flex-wrap gap-x-2 text-[10px] font-bold uppercase tracking-wider">
+                                            <span className="text-blue-600 dark:text-blue-400">{plural(totalInstalaciones, 'instalación', 'instalaciones')}</span>
+                                            <span className="text-slate-400">·</span>
+                                            <span className="text-rose-600 dark:text-rose-400">{plural(totalReparaciones, 'reparación', 'reparaciones')}</span>
+                                        </p>
                                     </div>
                                     <ClipboardDocumentListIcon className="w-14 h-14 text-purple-600 dark:text-purple-500 opacity-20 dark:opacity-30 group-hover:scale-110 transition-transform" />
                                 </div>
@@ -385,7 +411,7 @@ export default function TechDashboard() {
                 {/* PESTAÑA: AGENDA */}
                 {activeTab === 'agenda' && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-4">
-                        <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 transition-colors">Agenda de Instalaciones</h3>
+                        <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 transition-colors">Mi agenda</h3>
                         {ordenesAgenda.length === 0 && instalaciones.length === 0 && <p className="text-center text-slate-500 dark:text-slate-600 text-sm py-10 font-bold">Sin órdenes asignadas</p>}
                         {ordenesAgenda.map(renderOrden)}
                         {instalaciones.map((item) => (

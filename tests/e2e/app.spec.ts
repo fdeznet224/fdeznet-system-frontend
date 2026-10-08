@@ -1805,6 +1805,32 @@ test('con potencia alta se levanta el reporte de falla desde la lista con la rev
   await expect(page.getByText('Reporte #77 creado', { exact: false })).toBeVisible()
 })
 
+test('la agenda del técnico separa instalaciones y reparaciones y pone primero las urgentes', async ({ page }) => {
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  await page.route(/\/api\/clientes\/$/, (route) => route.fulfill({ json: [] }))
+  await page.route(/\/api\/ordenes\/$/, (route) => route.fulfill({ json: [
+    { id: 60, tipo: 'instalacion', estado: 'asignada', version: 1, prioridad: 'normal', prospecto_nombre: 'Instalación Temprana',
+      fecha_programada: '2026-10-08T08:00:00' },
+    { id: 61, tipo: 'instalacion', estado: 'asignada', version: 1, prioridad: 'normal', prospecto_nombre: 'Instalación Tarde',
+      fecha_programada: '2026-10-08T12:00:00' },
+    { id: 62, tipo: 'reparacion', estado: 'asignada', version: 1, prioridad: 'urgente', categoria_soporte: 'cable_roto',
+      cliente_id: 9, cliente: { id: 9, nombre: 'Fibra Rota' }, fecha_programada: null },
+    { id: 63, tipo: 'retiro', estado: 'asignada', version: 1, cliente: { id: 10, nombre: 'Retiro Aparte' } },
+  ] }))
+  await page.goto('/tech/dashboard')
+
+  await expect(page.getByText('Mi agenda').first()).toBeVisible()
+  await expect(page.getByText('2 instalaciones', { exact: true })).toBeVisible()
+  await expect(page.getByText('1 reparación', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Agenda', exact: true }).click()
+  // La reparación urgente va primero aunque no tenga hora; luego por hora de visita.
+  await expect(page.getByRole('heading', { level: 4 })).toHaveText(['Fibra Rota', 'Instalación Temprana', 'Instalación Tarde'])
+  const fibra = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: 'Fibra Rota' }) }).last()
+  await expect(fibra.getByText('🔧 Reparación')).toBeVisible()
+})
+
 test('el técnico ve la falla, verifica la señal y termina la reparación', async ({ page }) => {
   await authenticateAs(page, 'tecnico')
   await mockApi(page)
