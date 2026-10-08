@@ -63,6 +63,7 @@ const statusLabels: Record<string, string> = {
   recuperada: 'Recuperado',
   cerrada_no_recuperada: 'No recuperado',
   cancelada: 'Baja revertida',
+  reactivada: 'Reactivado',
 }
 
 const statusColors: Record<string, string> = {
@@ -70,6 +71,7 @@ const statusColors: Record<string, string> = {
   recuperada: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
   cerrada_no_recuperada: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
   cancelada: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300',
+  reactivada: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300',
 }
 
 // Cómo llegó el equipo: decide si vuelve a bodega, a averiados o se da por perdido.
@@ -80,11 +82,15 @@ const CONDICIONES: { valor: Condicion; texto: string }[] = [
   { valor: 'perdida', texto: 'No se recuperó' },
 ]
 
+// Bajas en las que la ONU ya no está en casa del cliente: regresa con otra.
+const ESTADOS_REACTIVABLES = new Set(['recuperada', 'cerrada_no_recuperada', 'sin_equipo'])
+
 const FILTROS: [string, string][] = [
   ['abiertas', 'Por recoger'],
   ['recuperada', 'Recuperados'],
   ['cerrada_no_recuperada', 'No recuperados'],
   ['cancelada', 'Revertidas'],
+  ['reactivada', 'Reactivados'],
   ['todas', 'Todas'],
 ]
 
@@ -97,6 +103,7 @@ export default function RetirosPanel() {
   const [technicians, setTechnicians] = useState<Technician[]>([])
   const [assignments, setAssignments] = useState<Record<number, string>>({})
   const [condiciones, setCondiciones] = useState<Record<number, Condicion | ''>>({})
+  const [onusNuevas, setOnusNuevas] = useState<Record<number, string>>({})
   const [filter, setFilter] = useState('abiertas')
   const [loading, setLoading] = useState(true)
 
@@ -189,6 +196,29 @@ export default function RetirosPanel() {
       void fetchData()
     } catch (error: unknown) {
       toast.error(apiErrorMessage(error, 'No se pudo revertir la baja'))
+    }
+  }
+
+  // Su ONU si volvió a bodega en buen estado; si no, la que se escriba.
+  const onuParaReactivar = (termination: Termination) => (
+    onusNuevas[termination.id] ?? (termination.onu?.estado === 'DISPONIBLE' ? termination.onu.identificador : '')
+  )
+
+  // Regresa con su mismo contrato; la ONU es la suya (si volvió a bodega) u otra.
+  const reactivarConOnu = async (termination: Termination) => {
+    const identificador = onuParaReactivar(termination).trim()
+    if (!identificador) return toast.error('Escribe el SN o la MAC de la ONU que se le instala')
+    if (!confirm(`¿Reactivar a ${termination.cliente?.nombre || 'este cliente'} con la ONU ${identificador.toUpperCase()}?\n\nConserva su contrato, plan, PPPoE e IP. El cobro vuelve a empezar desde hoy.`)) return
+    try {
+      const response = await client.post(`/bajas/${termination.id}/reactivar`, { identificador_onu: identificador })
+      if (response.data.mikrotik_estado === 'error') {
+        toast.error('Cliente reactivado, pero MikroTik requiere revisión', { duration: 8000 })
+      } else {
+        toast.success('Cliente reactivado')
+      }
+      void fetchData()
+    } catch (error: unknown) {
+      toast.error(apiErrorMessage(error, 'No se pudo reactivar'), { duration: 8000 })
     }
   }
 
@@ -309,6 +339,23 @@ export default function RetirosPanel() {
                   )}
                   <button type="button" onClick={() => void reactivate(termination)} className="min-h-10 rounded-xl border border-emerald-500 px-3 text-xs font-black text-emerald-600">
                     Revertir baja
+                  </button>
+                </div>
+              </div>
+            )}
+            {ESTADOS_REACTIVABLES.has(termination.estado) && termination.cliente?.estado === 'cancelado' && (
+              <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+                <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400">Si regresa: ONU que se le instala</span>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    aria-label={`ONU para reactivar la baja ${termination.id}`}
+                    value={onuParaReactivar(termination)}
+                    onChange={(event) => setOnusNuevas({ ...onusNuevas, [termination.id]: event.target.value })}
+                    placeholder="SN (HWTC…) o MAC"
+                    className="min-h-12 w-full min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-sm font-bold uppercase dark:border-slate-700 dark:bg-slate-950"
+                  />
+                  <button type="button" onClick={() => void reactivarConOnu(termination)} className="flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-emerald-500 px-4 text-xs font-black text-emerald-600">
+                    Reactivar cliente
                   </button>
                 </div>
               </div>

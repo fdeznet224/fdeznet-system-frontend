@@ -740,6 +740,47 @@ test('el admin recibe en bodega una ONU de una baja indicando cómo llegó', asy
   await expect.poll(() => recibido).toMatchObject({ condicion: 'danada' })
 })
 
+test('un cliente con la ONU ya recogida se reactiva con su contrato y otra ONU', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/bajas/tecnicos/disponibles', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/bajas/', (route) => route.fulfill({ json: [
+    {
+      id: 11, cliente_id: 244, servicio_id: 199, estado: 'recuperada', motivo: 'De viaje',
+      cliente: { nombre: 'Keila Sánchez Bonifaz', direccion: 'Vicente Guerrero', estado: 'cancelado' },
+      // Su ONU ya se le instaló a otro cliente: no se sugiere.
+      onu: { id: 122, identificador: 'ZTEG25525651', estado: 'INSTALADO' },
+      tecnico: null, mikrotik_estado: 'deshabilitado', solicitada_en: '2026-10-07T22:45:00',
+    },
+    {
+      id: 12, cliente_id: 5, servicio_id: 9, estado: 'recuperada', motivo: 'Se cambia de casa',
+      cliente: { nombre: 'Rosa Pérez', direccion: 'Calle 2 #10', estado: 'cancelado' },
+      onu: { id: 30, identificador: 'HWTC05450CB6', estado: 'DISPONIBLE' },
+      tecnico: null, mikrotik_estado: 'deshabilitado', solicitada_en: '2026-10-05T10:00:00',
+    },
+  ] }))
+  const enviados: { baja: string; cuerpo: unknown }[] = []
+  await page.route('**/api/bajas/*/reactivar', async (route) => {
+    enviados.push({ baja: route.request().url().split('/bajas/')[1], cuerpo: route.request().postDataJSON() })
+    await route.fulfill({ json: { id: 11, estado: 'reactivada', mikrotik_estado: 'reactivado' } })
+  })
+  page.on('dialog', (dialog) => void dialog.accept())
+  await page.goto('/admin/inventario')
+  await page.getByRole('tab', { name: 'Retiros' }).click()
+  await page.getByRole('button', { name: /^Recuperados/ }).click()
+
+  // Rosa: su ONU volvió a bodega y se sugiere sola.
+  await expect(page.getByLabel('ONU para reactivar la baja 12')).toHaveValue('HWTC05450CB6')
+  // Keila: hay que escribir la ONU que se le instala.
+  await expect(page.getByLabel('ONU para reactivar la baja 11')).toHaveValue('')
+  await page.locator('article', { hasText: 'Keila' }).getByRole('button', { name: 'Reactivar cliente' }).click()
+  await expect(page.getByText('Escribe el SN o la MAC de la ONU que se le instala')).toBeVisible()
+  await page.getByLabel('ONU para reactivar la baja 11').fill('hwtc0000aaaa')
+  await page.locator('article', { hasText: 'Keila' }).getByRole('button', { name: 'Reactivar cliente' }).click()
+  await expect.poll(() => enviados).toEqual([{ baja: '11/reactivar', cuerpo: { identificador_onu: 'hwtc0000aaaa' } }])
+  await expect(page.getByText('Cliente reactivado')).toBeVisible()
+})
+
 test('un error de validación al guardar un cliente se muestra sin romper la pantalla', async ({ page }, testInfo) => {
   // El manejo del error es el mismo; la lista móvil abre la ficha con otro gesto.
   test.skip(testInfo.project.name === 'mobile-chrome', 'la ficha se abre distinto en móvil')
