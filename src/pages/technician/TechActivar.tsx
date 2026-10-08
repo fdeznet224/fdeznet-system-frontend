@@ -17,6 +17,7 @@ import { apiErrorMessage } from '@/utils/apiError';
 import SugerenciaNap from '@/components/naps/SugerenciaNap';
 import EscanerCodigo from '@/components/escaner/EscanerCodigo';
 import CalendarioCobro, { type FechasCobro } from '@/components/cobro/CalendarioCobro';
+import { BOTON_EXITO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO, ETIQUETA_CAMPO, TARJETA } from './estilo';
 
 interface Opcion {
     id: number;
@@ -107,9 +108,9 @@ const OTRO = '__otro';
 /** "AA:BB:CC..." y "aabbcc..." son la misma ONU. */
 const normalizarSerie = (valor: string) => valor.toUpperCase().replace(/[^0-9A-Z]/g, '');
 
-const etiqueta = 'mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400';
-const campo = 'w-full min-h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white';
-const tarjeta = 'space-y-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900';
+const etiqueta = ETIQUETA_CAMPO;
+const campo = `${CAMPO} min-h-11`;
+const tarjeta = `${TARJETA} space-y-4 p-4`;
 
 type OnuDisponible = Catalogo['onus'][number];
 
@@ -154,7 +155,7 @@ function SelectorOnu({ onus, valor, elegida, onCambiar }: {
                     className={`${campo} font-mono uppercase`}
                 />
                 <button type="button" aria-label="Escanear código de la ONU" onClick={() => setEscaneando(true)}
-                    className="flex min-h-12 shrink-0 items-center gap-1 rounded-xl bg-slate-900 px-3 text-xs font-black text-white dark:bg-blue-600">
+                    className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-slate-900 px-3 text-xs font-bold text-white transition active:scale-95 dark:bg-white dark:text-slate-900">
                     <QrCodeIcon className="h-5 w-5" /> Escanear
                 </button>
             </div>
@@ -173,7 +174,7 @@ function SelectorOnu({ onus, valor, elegida, onCambiar }: {
                         <li key={o.id}>
                             <button type="button" role="option" aria-selected={false} onClick={() => { onCambiar(o.identificador); setAbierta(false); }}
                                 className="flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-3 text-left last:border-0 hover:bg-blue-50 dark:border-slate-800 dark:hover:bg-slate-800">
-                                <span className="font-mono text-sm font-black">{o.identificador}</span>
+                                <span className="font-mono text-sm font-semibold">{o.identificador}</span>
                                 <span className="text-[11px] text-slate-500">{o.modelo || ''}</span>
                             </button>
                         </li>
@@ -226,7 +227,7 @@ function NuevaSolicitud() {
                 <input inputMode="tel" value={datos.telefono} onChange={(e) => setDatos({ ...datos, telefono: e.target.value })} className={campo} /></label>
             <label className="block"><span className={etiqueta}>Dirección</span>
                 <input required minLength={5} value={datos.direccion} onChange={(e) => setDatos({ ...datos, direccion: e.target.value })} className={campo} /></label>
-            <button disabled={guardando} className="h-12 w-full rounded-xl bg-blue-600 text-xs font-black uppercase tracking-widest text-white disabled:opacity-60">
+            <button disabled={guardando} className={`${BOTON_PRIMARIO} h-12`}>
                 {guardando ? 'Guardando...' : 'Continuar'}
             </button>
         </form>
@@ -409,20 +410,20 @@ export default function TechActivar() {
     };
 
     const encabezado = (titulo: string, subtitulo?: string | null) => (
-        <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/90">
-            <button type="button" aria-label="Volver" onClick={() => navigate('/tech/dashboard')} className="-ml-2 rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-800">
-                <ArrowLeftIcon className="h-6 w-6 text-slate-600 dark:text-slate-300" />
+        <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">
+            <button type="button" aria-label="Volver" onClick={() => navigate('/tech/dashboard')} className="-ml-1 rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 active:scale-90 dark:text-slate-400 dark:hover:bg-slate-800">
+                <ArrowLeftIcon className="h-5 w-5" />
             </button>
-            <div className="overflow-hidden">
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{titulo}</p>
-                {subtitulo && <p className="truncate text-base font-black text-slate-800 dark:text-white">{subtitulo}</p>}
+            <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-500">{titulo}</p>
+                {subtitulo && <p className="truncate text-base font-bold text-slate-900 dark:text-white">{subtitulo}</p>}
             </div>
         </div>
     );
 
     if (esNueva) {
         return (
-            <div className="min-h-screen bg-slate-50 pb-16 text-slate-900 dark:bg-slate-950 dark:text-white">
+            <div className="min-h-screen bg-slate-50 pb-16 text-slate-900 dark:bg-[#0f1219] dark:text-white">
                 {encabezado('Nueva instalación')}
                 <div className="mx-auto max-w-lg p-4"><NuevaSolicitud /></div>
             </div>
@@ -440,13 +441,13 @@ export default function TechActivar() {
             ['ONU', resultado.onu],
         ];
         return (
-            <div className="min-h-screen bg-slate-50 pb-16 text-slate-900 dark:bg-slate-950 dark:text-white">
+            <div className="min-h-screen bg-slate-50 pb-16 text-slate-900 dark:bg-[#0f1219] dark:text-white">
                 {encabezado('Cliente activado', resultado.nombre)}
                 <div className="mx-auto max-w-lg space-y-4 p-4">
-                    <div className="flex items-center gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                    <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
                         <CheckCircleIcon className="h-10 w-10 shrink-0 text-emerald-600" />
                         <div>
-                            <p className="font-black text-emerald-700 dark:text-emerald-400">Servicio activo y orden cerrada</p>
+                            <p className="font-bold text-emerald-700 dark:text-emerald-400">Servicio activo y orden cerrada</p>
                             <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80">Configura el router del cliente con estos datos.</p>
                         </div>
                     </div>
@@ -455,10 +456,10 @@ export default function TechActivar() {
                             <div key={nombre} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0 dark:border-slate-800">
                                 <div className="min-w-0">
                                     <p className={etiqueta}>{nombre}</p>
-                                    <p className="break-all font-mono text-lg font-black">{valor || '—'}</p>
+                                    <p className="break-all font-mono text-base font-bold">{valor || '—'}</p>
                                 </div>
                                 {valor && (
-                                    <button type="button" aria-label={`Copiar ${nombre}`} onClick={() => copiar(valor)} className="rounded-xl bg-slate-100 p-3 dark:bg-slate-800">
+                                    <button type="button" aria-label={`Copiar ${nombre}`} onClick={() => copiar(valor)} className={`${BOTON_SECUNDARIO} w-10 px-0`}>
                                         <ClipboardDocumentIcon className="h-5 w-5" />
                                     </button>
                                 )}
@@ -499,13 +500,13 @@ export default function TechActivar() {
                             <button
                                 type="button"
                                 onClick={() => copiar(resultado.cobro!.explicacion.join('\n'))}
-                                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 text-xs font-black uppercase tracking-widest dark:border-slate-700"
+                                className={`${BOTON_SECUNDARIO} h-11 w-full`}
                             >
                                 <ClipboardDocumentIcon className="h-4 w-4" /> Copiar explicación
                             </button>
                         </div>
                     )}
-                    <button type="button" onClick={() => navigate('/tech/dashboard')} className="h-12 w-full rounded-xl bg-blue-600 text-xs font-black uppercase tracking-widest text-white">
+                    <button type="button" onClick={() => navigate('/tech/dashboard')} className={`${BOTON_PRIMARIO} h-12`}>
                         Volver a mi agenda
                     </button>
                 </div>
@@ -514,16 +515,16 @@ export default function TechActivar() {
     }
 
     if (!catalogo) {
-        return <div className="flex min-h-screen items-center justify-center bg-slate-50 font-bold text-slate-500 dark:bg-slate-950">Cargando solicitud...</div>;
+        return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500 dark:bg-[#0f1219]">Cargando solicitud...</div>;
     }
 
     const capacidad = nap?.capacidad || 16;
     return (
-        <div className="min-h-screen bg-slate-50 pb-28 text-slate-900 dark:bg-slate-950 dark:text-white">
+        <div className="min-h-screen bg-slate-50 pb-28 text-slate-900 dark:bg-[#0f1219] dark:text-white">
             {encabezado('Activar instalación', form.nombre || `Solicitud #${catalogo.solicitud.id}`)}
             <form onSubmit={activar} className="mx-auto max-w-lg space-y-4 p-4">
                 {catalogo.solicitud.cliente_id && (
-                    <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                    <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
                         Un intento anterior ya registró al cliente (contrato {catalogo.solicitud.contrato}). Corrige lo necesario y vuelve a activar.
                     </p>
                 )}
@@ -543,7 +544,7 @@ export default function TechActivar() {
                             {catalogo.zonas.map((z) => <option key={z.id} value={z.id}>{z.nombre}</option>)}
                         </select></label>
                     {infra && (
-                        <p className="text-xs font-bold text-slate-500">
+                        <p className="text-xs text-slate-500">
                             MikroTik: {infra.router?.nombre || 'sin configurar'} · OLT: {infra.olt?.nombre || 'sin OLT'} · Red: {infra.red?.cidr || 'sin red'}
                         </p>
                     )}
@@ -573,12 +574,12 @@ export default function TechActivar() {
                                         type="button"
                                         aria-pressed={activo}
                                         onClick={() => cambiar({ meses_gratis: valor })}
-                                        className={`rounded-xl border-2 px-3 py-2.5 text-left ${activo
-                                            ? 'border-emerald-500 bg-emerald-50 dark:border-emerald-500/60 dark:bg-emerald-500/10'
-                                            : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950'}`}
+                                        className={`rounded-xl border px-3 py-2.5 text-left transition ${activo
+                                            ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:bg-blue-500/10'
+                                            : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950'}`}
                                     >
-                                        <span className="block text-xs font-black text-slate-800 dark:text-slate-100">{titulo}</span>
-                                        <span className={`block text-[11px] ${activo ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'text-slate-500'}`}>{detalle}</span>
+                                        <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{titulo}</span>
+                                        <span className={`block text-[11px] ${activo ? 'font-semibold text-blue-700 dark:text-blue-300' : 'text-slate-500'}`}>{detalle}</span>
                                     </button>
                                 );
                             })}
@@ -626,7 +627,7 @@ export default function TechActivar() {
                         <label className="block"><span className={etiqueta}>MAC WAN/CPE que ve el MikroTik</span>
                             <input value={form.mac_address} onChange={(e) => cambiar({ mac_address: e.target.value })} placeholder="AA:BB:CC:DD:EE:FF" className={`${campo} font-mono uppercase`} /></label>
                     )}
-                    <button type="button" onClick={capturarGps} className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl border text-xs font-black uppercase tracking-widest ${form.latitud ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400' : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300'}`}>
+                    <button type="button" onClick={capturarGps} className={`${BOTON_SECUNDARIO} h-11 w-full ${form.latitud ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300' : ''}`}>
                         <MapPinIcon className="h-5 w-5" /> {form.latitud ? 'Ubicación capturada' : 'Capturar ubicación GPS'}
                     </button>
                     <div className="grid grid-cols-2 gap-3">
@@ -653,8 +654,8 @@ export default function TechActivar() {
                     />
                 </div>
 
-                <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
-                    <button disabled={activando} className="mx-auto block h-12 w-full max-w-lg rounded-xl bg-emerald-600 text-xs font-black uppercase tracking-widest text-white disabled:opacity-60">
+                <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">
+                    <button disabled={activando} className={`${BOTON_EXITO} mx-auto h-12 max-w-lg`}>
                         {activando ? 'Activando...' : online ? 'Activar cliente' : 'Guardar (sin internet)'}
                     </button>
                 </div>

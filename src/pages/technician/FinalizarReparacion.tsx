@@ -4,6 +4,7 @@ import { CheckBadgeIcon, SignalIcon } from '@heroicons/react/24/outline';
 
 import client from '../../api/axios';
 import { apiErrorMessage } from '@/utils/apiError';
+import { BOTON_EXITO, BOTON_SECUNDARIO, CAMPO } from './estilo';
 
 interface Diagnostico {
     resultado?: string;
@@ -56,23 +57,23 @@ export default function FinalizarReparacion({ ordenId, online, onTerminada }: {
     };
 
     if (!online) {
-        return <p className="ml-2 rounded-xl bg-amber-50 p-3 text-xs font-bold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">Para terminar la reparación necesitas conexión: se verifica la señal en la OLT.</p>;
+        return <p className="rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">Para terminar la reparación necesitas conexión: se verifica la señal en la OLT.</p>;
     }
 
     const rx = diagnostico?.olt.potencia_rx_dbm;
     const rxNumero = rx != null && rx !== '' ? Number(rx) : null;
     return (
-        <div className="ml-2 space-y-2">
+        <div className="space-y-2">
             <button
                 type="button"
                 disabled={ocupado !== null}
                 onClick={() => void verificar()}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 text-[10px] font-black uppercase tracking-widest text-blue-700 active:scale-95 disabled:opacity-50 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
+                className={`${BOTON_SECUNDARIO} h-11 w-full`}
             >
-                <SignalIcon className="h-4 w-4" /> {ocupado === 'verificando' ? 'Consultando la OLT…' : diagnostico ? 'Volver a verificar señal' : 'Verificar señal'}
+                <SignalIcon className="h-4 w-4 text-blue-600" /> {ocupado === 'verificando' ? 'Consultando la OLT…' : diagnostico ? 'Volver a verificar señal' : 'Verificar señal'}
             </button>
             {diagnostico && (
-                <div className={`rounded-xl p-3 text-xs font-bold ${rxNumero != null && rxNumero >= -27 && diagnostico.olt.onu_online !== false
+                <div className={`rounded-xl p-3 text-xs font-semibold ${rxNumero != null && rxNumero >= -27 && diagnostico.olt.onu_online !== false
                     ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300'
                     : 'bg-rose-50 text-rose-800 dark:bg-rose-500/10 dark:text-rose-300'}`}
                 >
@@ -87,17 +88,17 @@ export default function FinalizarReparacion({ ordenId, online, onTerminada }: {
                 value={solucion}
                 onChange={(event) => setSolucion(event.target.value)}
                 placeholder="Qué encontraste y qué hiciste *"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-950"
+                className={CAMPO}
             />
             <button
                 type="button"
                 disabled={ocupado !== null || !diagnostico}
                 onClick={() => void terminar()}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+                className={BOTON_EXITO}
             >
-                {ocupado === 'terminando' ? 'Guardando…' : 'Terminar reparación'} <CheckBadgeIcon className="h-5 w-5" />
+                <CheckBadgeIcon className="h-5 w-5" /> {ocupado === 'terminando' ? 'Guardando…' : 'Terminar reparación'}
             </button>
-            {!diagnostico && <p className="text-center text-[10px] text-slate-400">Verifica la señal antes de terminar.</p>}
+            {!diagnostico && <p className="text-center text-[11px] text-slate-400">Verifica la señal antes de terminar.</p>}
         </div>
     );
 }

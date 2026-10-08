@@ -26,6 +26,7 @@ import { submitOperation } from '../../offline/sync';
 import { apiErrorMessage } from '@/utils/apiError';
 import { CATEGORIAS_FALLA } from '@/utils/categoriasFalla';
 import FinalizarReparacion from './FinalizarReparacion';
+import { BOTON_EXITO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO, TARJETA, TITULO_SECCION } from './estilo';
 
 interface TechnicianUser {
     id: number;
@@ -81,6 +82,7 @@ interface NavButtonProps {
     icon: ComponentType<{ className?: string }>;
     label: string;
     active: boolean;
+    badge?: number;
     onClick: () => void;
 }
 
@@ -217,104 +219,90 @@ export default function TechDashboard() {
         });
         const nombre = orden.cliente?.nombre || orden.prospecto_nombre || `Orden #${orden.id}`;
         return (
-            <div className="ml-2 grid grid-cols-2 gap-2">
-                <button
-                    type="button"
-                    aria-label={`WhatsApp a ${nombre}`}
-                    onClick={() => setChatOrden(orden)}
-                    className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-[10px] font-black uppercase tracking-widest text-emerald-700 active:scale-95 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
-                >
-                    <ChatBubbleLeftRightIcon className="h-4 w-4" /> WhatsApp
+            <div className="grid grid-cols-2 gap-2">
+                <button type="button" aria-label={`WhatsApp a ${nombre}`} onClick={() => setChatOrden(orden)} className={BOTON_SECUNDARIO}>
+                    <ChatBubbleLeftRightIcon className="h-4 w-4 text-emerald-600" /> WhatsApp
                 </button>
                 {ruta ? (
-                    <a
-                        href={ruta}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`Cómo llegar con ${nombre}`}
-                        className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 text-[10px] font-black uppercase tracking-widest text-blue-700 active:scale-95 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
-                    >
-                        <MapPinIcon className="h-4 w-4" /> Cómo llegar
+                    <a href={ruta} target="_blank" rel="noreferrer" aria-label={`Cómo llegar con ${nombre}`} className={BOTON_SECUNDARIO}>
+                        <MapPinIcon className="h-4 w-4 text-blue-600" /> Cómo llegar
                     </a>
                 ) : (
-                    <span className="flex h-11 items-center justify-center rounded-xl border border-dashed border-slate-200 text-[10px] font-bold text-slate-400 dark:border-slate-700">Sin ubicación</span>
+                    <span className="flex h-10 items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-400 dark:border-slate-700">Sin ubicación</span>
                 )}
             </div>
         );
     };
 
+    const ESTADO_TEXTO: Record<string, string> = { asignada: 'Asignada', en_camino: 'En camino', trabajando: 'Trabajando', pendiente: 'Pendiente' };
+
     const renderOrden = (orden: TechnicianOrder) => {
         const reparacion = esReparacion(orden);
-        const etiqueta = orden.tipo === 'retiro'
-            ? { texto: 'Retiro', clase: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300', borde: 'border-orange-200 dark:border-orange-900/50', barra: 'bg-orange-500' }
+        const tipo = orden.tipo === 'retiro'
+            ? { texto: 'Retiro', punto: 'bg-orange-500', color: 'text-orange-600 dark:text-orange-400' }
             : reparacion
-                ? { texto: orden.tipo === 'cambio_domicilio' ? '🔧 Cambio de domicilio' : '🔧 Reparación', clase: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300', borde: 'border-rose-200 dark:border-rose-900/50', barra: 'bg-rose-500' }
-                : { texto: 'Instalación', clase: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300', borde: 'border-blue-200 dark:border-blue-900/50', barra: 'bg-blue-500' };
+                ? { texto: orden.tipo === 'cambio_domicilio' ? '🔧 Cambio de domicilio' : '🔧 Reparación', punto: 'bg-rose-500', color: 'text-rose-600 dark:text-rose-400' }
+                : { texto: 'Instalación', punto: 'bg-blue-500', color: 'text-blue-600 dark:text-blue-400' };
+        const direccion = (orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección').replace(/\s*·?\s*https?:\/\/\S+/g, '');
+        const urgente = orden.prioridad === 'alta' || orden.prioridad === 'urgente';
         return (
-        <div key={`orden-${orden.id}`} className={`bg-white dark:bg-[#1a1f2e] border ${etiqueta.borde} rounded-2xl p-4 shadow-sm space-y-3 relative`}>
-            <div className={`absolute left-0 top-4 bottom-4 w-1 ${etiqueta.barra} rounded-r-full`}></div>
-            <div className="pl-2">
+        <article key={`orden-${orden.id}`} className={`${TARJETA} space-y-3 p-4`}>
+            <div>
                 <div className="flex items-center justify-between gap-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${etiqueta.clase}`}>{etiqueta.texto}</span>
-                    <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400">{orden.estado.replace('_', ' ')}</span>
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${tipo.color}`}>
+                        <span className={`h-2 w-2 rounded-full ${tipo.punto}`} />{tipo.texto}
+                        {urgente && <span className="rounded-md bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">{orden.prioridad}</span>}
+                    </span>
+                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{ESTADO_TEXTO[orden.estado] || orden.estado.replace('_', ' ')}</span>
                 </div>
-                <h4 className="mt-1.5 font-black text-slate-800 dark:text-white">{orden.cliente?.nombre || orden.prospecto_nombre || `Orden #${orden.id}`}</h4>
-                <p className="text-slate-500 text-[10px] mt-1">
-                    #{orden.id}
-                    {orden.servicio ? ` · ${orden.servicio.alias} (#${orden.servicio.id})` : ''}
+                <h4 className="mt-2 text-base font-bold text-slate-900 dark:text-white">{orden.cliente?.nombre || orden.prospecto_nombre || `Orden #${orden.id}`}</h4>
+                <p className="mt-0.5 flex items-start gap-1 text-xs text-slate-500 dark:text-slate-400">
+                    <MapPinIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" /> <span className="line-clamp-2">{direccion}</span>
                 </p>
-                {orden.fecha_programada && (
-                    <p className="mt-2 inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-black text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-                        Visita: {new Date(orden.fecha_programada).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} · {orden.fecha_programada.slice(11, 16)}
-                    </p>
-                )}
-                <p className="text-slate-500 text-[10px] mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5" /> {(orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección').replace(/\s*·?\s*https?:\/\/\S+/g, '')}</p>
+                <p className="mt-1 text-[11px] text-slate-400">
+                    #{orden.id}
+                    {orden.servicio ? ` · ${orden.servicio.alias}` : ''}
+                    {orden.fecha_programada && (
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                            {' · '}Visita {new Date(orden.fecha_programada).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} {orden.fecha_programada.slice(11, 16)}
+                        </span>
+                    )}
+                </p>
                 {orden.categoria_soporte && (
                     // Reparación: qué falla y qué le pidieron hacer (incluye la revisión remota).
-                    <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 p-3 dark:border-rose-500/20 dark:bg-rose-500/10">
-                        <p className="text-[11px] font-black text-rose-800 dark:text-rose-300">
-                            🔧 {CATEGORIAS_FALLA[orden.categoria_soporte] || orden.categoria_soporte}
-                            {(orden.prioridad === 'alta' || orden.prioridad === 'urgente') && <span className="ml-2 rounded bg-rose-600 px-1.5 py-0.5 text-[9px] uppercase text-white">{orden.prioridad}</span>}
-                        </p>
-                        {orden.descripcion && <p className="mt-1 whitespace-pre-line text-xs text-slate-700 dark:text-slate-300">{orden.descripcion}</p>}
+                    <div className="mt-3 rounded-xl bg-rose-50 p-3 dark:bg-rose-500/10">
+                        <p className="text-xs font-bold text-rose-700 dark:text-rose-300">🔧 {CATEGORIAS_FALLA[orden.categoria_soporte] || orden.categoria_soporte}</p>
+                        {orden.descripcion && <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-slate-700 dark:text-slate-300">{orden.descripcion}</p>}
                     </div>
                 )}
             </div>
             {renderContacto(orden)}
             {orden.tipo === 'retiro' ? (
                 // Retiro: solo ir a recoger el equipo, sin "en camino" ni "iniciar".
-                <div className="ml-2 space-y-2">
+                <div className="space-y-2">
                     <select
                         aria-label="Estado del equipo recogido"
                         value={retireConditions[orden.id] || 'funcional'}
                         onChange={(event) => setRetireConditions({ ...retireConditions, [orden.id]: event.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-950"
+                        className={CAMPO}
                     >
                         <option value="funcional">ONU funcional</option>
                         <option value="danada">ONU dañada</option>
                         <option value="incompleta">ONU incompleta</option>
                         <option value="perdida">Equipo no recuperado</option>
                     </select>
-                    <button type="button" onClick={() => void handleConfirmarRetiroOrden(orden)} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
-                        Equipo recogido <CheckBadgeIcon className="h-5 w-5" />
+                    <button type="button" onClick={() => void handleConfirmarRetiroOrden(orden)} className={BOTON_EXITO}>
+                        <CheckBadgeIcon className="h-5 w-5" /> Equipo recogido
                     </button>
                 </div>
             ) : orden.tipo === 'instalacion' ? (
                 // Instalación: primero "en camino" (avisa al cliente) y luego activar.
                 orden.estado === 'asignada' ? (
-                    <button
-                        type="button"
-                        onClick={() => void handleAvanzarOrden(orden)}
-                        className="ml-2 w-[calc(100%-0.5rem)] h-11 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95"
-                    >
+                    <button type="button" onClick={() => void handleAvanzarOrden(orden)} className={BOTON_PRIMARIO}>
                         Marcar en camino
                     </button>
                 ) : (
-                    <button
-                        type="button"
-                        onClick={() => navigate(`/tech/activar/${orden.id}`)}
-                        className="ml-2 w-[calc(100%-0.5rem)] h-11 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95"
-                    >
+                    <button type="button" onClick={() => navigate(`/tech/activar/${orden.id}`)} className={BOTON_EXITO}>
                         Activar cliente
                     </button>
                 )
@@ -325,15 +313,11 @@ export default function TechDashboard() {
                     onTerminada={() => setOrdenes((current) => current.filter((item) => item.id !== orden.id))}
                 />
             ) : (
-                <button
-                    type="button"
-                    onClick={() => void handleAvanzarOrden(orden)}
-                    className="ml-2 w-[calc(100%-0.5rem)] h-11 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95"
-                >
+                <button type="button" onClick={() => void handleAvanzarOrden(orden)} className={BOTON_PRIMARIO}>
                     {orden.estado === 'asignada' ? 'Marcar en camino' : orden.estado === 'en_camino' ? 'Iniciar trabajo' : 'Finalizar con conexión'}
                 </button>
             )}
-        </div>
+        </article>
         );
     };
 
@@ -442,42 +426,69 @@ export default function TechDashboard() {
 
                 {/* PESTAÑA: AGENDA */}
                 {activeTab === 'agenda' && (
-                    <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-4">
-                        <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 transition-colors">Mi agenda</h3>
-                        {ordenesAgenda.length === 0 && instalaciones.length === 0 && <p className="text-center text-slate-500 dark:text-slate-600 text-sm py-10 font-bold">Sin órdenes asignadas</p>}
-                        {ordenesAgenda.map(renderOrden)}
-                        {instalaciones.map((item) => (
-                            <div key={item.id} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800/50 rounded-2xl p-4 shadow-sm dark:shadow-lg space-y-4 relative transition-colors">
-                                <div className="absolute left-0 top-4 bottom-4 w-1 bg-purple-500 rounded-r-full"></div>
-                                <div className="pl-2">
-                                    <h4 className="font-black text-slate-800 dark:text-white transition-colors">{item.nombre}</h4>
-                                    <p className="text-slate-500 dark:text-slate-500 text-[10px] mt-1 flex items-center gap-1 font-medium"><MapPinIcon className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{item.direccion}</span></p>
-                                </div>
-                                <div className="flex gap-2 pl-2">
-                                    <button onClick={() => { setTargetCliente(item); setShowChatModal(true); }} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-emerald-500/10 transition-colors active:scale-95"><ChatBubbleLeftRightIcon className="w-5 h-5" /></button>
-                                    <button onClick={() => navigate(`/tech/instalar/${item.id}`)} className="flex-[3] h-11 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-md">Instalar Servicio</button>
-                                </div>
+                    <div className="animate-in fade-in duration-300 space-y-3">
+                        <div className="flex items-baseline justify-between px-1">
+                            <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Mi agenda</h2>
+                            <span className="text-xs font-semibold text-slate-400">
+                                {plural(totalInstalaciones, 'instalación', 'instalaciones')} · {plural(totalReparaciones, 'reparación', 'reparaciones')}
+                            </span>
+                        </div>
+                        {ordenesAgenda.length === 0 && instalaciones.length === 0 && (
+                            <div className={`${TARJETA} flex flex-col items-center gap-2 py-12 text-center`}>
+                                <ClipboardDocumentListIcon className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+                                <p className="text-sm font-semibold text-slate-500">Sin órdenes asignadas</p>
                             </div>
+                        )}
+                        {ordenesAgenda.map(renderOrden)}
+                        {instalaciones.length > 0 && <p className={`${TITULO_SECCION} pt-2`}>Clientes por instalar</p>}
+                        {instalaciones.map((item) => (
+                            <article key={item.id} className={`${TARJETA} space-y-3 p-4`}>
+                                <div>
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">
+                                        <span className="h-2 w-2 rounded-full bg-blue-500" />Instalación
+                                    </span>
+                                    <h4 className="mt-2 text-base font-bold text-slate-900 dark:text-white">{item.nombre}</h4>
+                                    <p className="mt-0.5 flex items-start gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                        <MapPinIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" /> <span className="line-clamp-2">{item.direccion || 'Sin dirección'}</span>
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-[auto_1fr] gap-2">
+                                    <button type="button" aria-label={`WhatsApp a ${item.nombre}`} onClick={() => { setTargetCliente(item); setShowChatModal(true); }} className={`${BOTON_SECUNDARIO} h-11 w-12`}>
+                                        <ChatBubbleLeftRightIcon className="h-5 w-5 text-emerald-600" />
+                                    </button>
+                                    <button type="button" onClick={() => navigate(`/tech/instalar/${item.id}`)} className={BOTON_PRIMARIO}>Instalar servicio</button>
+                                </div>
+                            </article>
                         ))}
                     </div>
                 )}
 
                 {/* PESTAÑA: RETIROS */}
                 {activeTab === 'retiros' && (
-                    <div className="animate-in fade-in slide-in-from-left-4 duration-300 space-y-4">
-                        <h3 className="text-[10px] font-black text-orange-600 dark:text-orange-500 uppercase tracking-widest px-1 transition-colors">Retiro de Equipos</h3>
-                        {ordenesRetiro.length === 0 && <p className="text-center text-slate-500 dark:text-slate-600 text-sm py-10 font-bold">Sin retiros pendientes</p>}
+                    <div className="animate-in fade-in duration-300 space-y-3">
+                        <div className="flex items-baseline justify-between px-1">
+                            <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Retiros</h2>
+                            <span className="text-xs font-semibold text-slate-400">{plural(ordenesRetiro.length, 'equipo por recoger', 'equipos por recoger')}</span>
+                        </div>
+                        {ordenesRetiro.length === 0 && (
+                            <div className={`${TARJETA} flex flex-col items-center gap-2 py-12 text-center`}>
+                                <ArchiveBoxArrowDownIcon className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+                                <p className="text-sm font-semibold text-slate-500">Sin retiros pendientes</p>
+                            </div>
+                        )}
                         {ordenesRetiro.map(renderOrden)}
                     </div>
                 )}
             </div>
 
-            {/* NAV INFERIOR ADAPTATIVO */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-slate-200 bg-white/92 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-15px_35px_-28px_rgba(15,23,42,.55)] backdrop-blur-xl transition-colors dark:border-slate-800/80 dark:bg-[#161b28]/92">
-                <NavButton icon={HomeIcon} label="Inicio" active={activeTab === 'inicio'} onClick={() => setActiveTab('inicio')} />
-                <NavButton icon={ClipboardDocumentListIcon} label="Agenda" active={activeTab === 'agenda'} onClick={() => setActiveTab('agenda')} />
-                <NavButton icon={ArchiveBoxArrowDownIcon} label="Retiros" active={activeTab === 'retiros'} onClick={() => setActiveTab('retiros')} />
-            </div>
+            {/* BARRA INFERIOR */}
+            <nav aria-label="Secciones" className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">
+                <div className="mx-auto grid max-w-3xl grid-cols-3">
+                    <NavButton icon={HomeIcon} label="Inicio" active={activeTab === 'inicio'} onClick={() => setActiveTab('inicio')} />
+                    <NavButton icon={ClipboardDocumentListIcon} label="Agenda" badge={ordenesAgenda.length + instalaciones.length} active={activeTab === 'agenda'} onClick={() => setActiveTab('agenda')} />
+                    <NavButton icon={ArchiveBoxArrowDownIcon} label="Retiros" badge={ordenesRetiro.length} active={activeTab === 'retiros'} onClick={() => setActiveTab('retiros')} />
+                </div>
+            </nav>
 
             <ChatModal isOpen={showChatModal} onClose={() => setShowChatModal(false)} cliente={targetCliente} />
             <ChatModal
@@ -494,9 +505,21 @@ export default function TechDashboard() {
     );
 }
 
-const NavButton = ({ icon: Icon, label, active, onClick }: NavButtonProps) => (
-    <button onClick={onClick} className={`flex min-h-12 min-w-20 flex-col items-center justify-center rounded-2xl p-2 transition-all active:scale-95 ${active ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400'}`}>
-        <Icon className="w-6 h-6" />
-        <span className="text-[8px] font-black uppercase tracking-widest mt-1">{label}</span>
+const NavButton = ({ icon: Icon, label, active, badge = 0, onClick }: NavButtonProps) => (
+    <button
+        type="button"
+        aria-label={label}
+        aria-current={active ? 'page' : undefined}
+        onClick={onClick}
+        className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 transition active:scale-95 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
+    >
+        {active && <span className="absolute top-0 h-0.5 w-10 rounded-b-full bg-blue-600 dark:bg-blue-400" />}
+        <span className="relative">
+            <Icon className="h-6 w-6" />
+            {badge > 0 && (
+                <span className="absolute -right-2.5 -top-1.5 min-w-[1.1rem] rounded-full bg-rose-600 px-1 text-center text-[10px] font-bold leading-[1.1rem] text-white">{badge > 99 ? '99+' : badge}</span>
+            )}
+        </span>
+        <span className="text-[11px] font-semibold">{label}</span>
     </button>
 );

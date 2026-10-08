@@ -7,12 +7,13 @@ import { cachedRequest, getCachedValue, setCachedValue } from '../../offline/db'
 import { 
     ArrowLeftIcon, QrCodeIcon, WifiIcon, 
     ServerIcon, LockClosedIcon, CheckCircleIcon,
-    CubeIcon, ClipboardDocumentIcon, InformationCircleIcon,
-    MapPinIcon, XCircleIcon, IdentificationIcon,
+    CubeIcon, ClipboardDocumentIcon,
+    MapPinIcon, IdentificationIcon,
     CpuChipIcon
 } from '@heroicons/react/24/outline';
 import { apiErrorMessage } from '@/utils/apiError';
 import SugerenciaNap from '@/components/naps/SugerenciaNap';
+import { BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO, ETIQUETA_CAMPO, TARJETA, TITULO_SECCION } from './estilo';
 
 interface ClientInstallation {
     id: number;
@@ -270,255 +271,190 @@ export default function TechInstallForm() {
         }
     };
 
-    if (!cliente) return <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest">Cargando orden...</div>;
+    if (!cliente) return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500 dark:bg-[#0f1219]">Cargando orden...</div>;
 
-    const labelStyle = "text-[11px] uppercase font-black text-slate-400 dark:text-slate-500 mb-2 block tracking-widest pl-1";
-    const infoBoxStyle = "w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col justify-center items-start shadow-sm";
-    const readOnlyBoxStyle = "w-full bg-slate-100 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center text-slate-500 dark:text-slate-400 opacity-90 cursor-not-allowed";
+    const selectClase = `${CAMPO} min-h-11 appearance-none pl-10`;
+    const bloqueado = 'flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-300';
+    const copiar = (texto?: string | null) => {
+        void navigator.clipboard.writeText(texto || '');
+        toast.success('Copiado');
+    };
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pb-32 font-sans transition-colors duration-300">
-            
-            {/* Navbar Móvil */}
-            <div className="px-4 py-3 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md sticky top-0 z-20 shadow-sm">
-                <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all">
-                    <ArrowLeftIcon className="w-6 h-6 text-slate-600 dark:text-slate-300"/>
+        <div className="min-h-screen bg-slate-50 pb-32 font-sans text-slate-900 transition-colors dark:bg-[#0f1219] dark:text-white">
+
+            <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">
+                <button type="button" aria-label="Volver" onClick={() => navigate(-1)} className="-ml-1 rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 active:scale-90 dark:text-slate-400 dark:hover:bg-slate-800">
+                    <ArrowLeftIcon className="h-5 w-5" />
                 </button>
-                <div className="overflow-hidden">
-                    <h2 className="font-black text-blue-600 dark:text-blue-500 text-[10px] uppercase tracking-widest leading-tight">Instalación</h2>
-                    <p className="text-base font-black text-slate-800 dark:text-white truncate">{cliente.nombre}</p>
+                <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-slate-500">Instalación</p>
+                    <p className="truncate text-base font-bold text-slate-900 dark:text-white">{cliente.nombre}</p>
                 </div>
             </div>
 
-            <form onSubmit={handleFinalizar} className="p-4 space-y-5 max-w-lg mx-auto">
-                
-                {/* 1. DATOS ESTABLECIDOS */}
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                    <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 tracking-widest">
-                        <InformationCircleIcon className="w-4 h-4"/> Detalles del Cliente
-                    </h3>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className={infoBoxStyle}>
-                            <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1"><IdentificationIcon className="w-3 h-3"/> Número de contrato</span>
-                            <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400 mt-1">{cliente.cedula}</span>
-                        </div>
-                        <div className={infoBoxStyle}>
-                            <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1"><WifiIcon className="w-3 h-3"/> Plan</span>
-                            <span className="text-xs font-black text-slate-700 dark:text-slate-300 mt-1 leading-tight">{cliente.plan_nombre}</span>
-                        </div>
-                    </div>
-                </div>
+            <form onSubmit={handleFinalizar} className="mx-auto max-w-lg space-y-3 p-4">
 
-                {/* 2. DATOS DE ACCESO */}
-                <div className="bg-gradient-to-br from-blue-50 dark:from-blue-600/10 to-indigo-50 dark:to-purple-600/10 p-4 rounded-3xl border border-blue-200 dark:border-blue-500/20 shadow-sm">
-                    <h3 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase mb-3 flex items-center gap-2 tracking-widest">
-                        <LockClosedIcon className="w-4 h-4"/> Datos Mikrotik
-                    </h3>
+                {/* CLIENTE */}
+                <section className={`${TARJETA} grid grid-cols-2 gap-3 p-4`}>
+                    <div>
+                        <p className="flex items-center gap-1 text-xs text-slate-500"><IdentificationIcon className="h-3.5 w-3.5" /> Contrato</p>
+                        <p className="mt-0.5 font-mono text-sm font-bold">{cliente.cedula}</p>
+                    </div>
+                    <div>
+                        <p className="flex items-center gap-1 text-xs text-slate-500"><WifiIcon className="h-3.5 w-3.5" /> Plan</p>
+                        <p className="mt-0.5 text-sm font-bold leading-tight">{cliente.plan_nombre}</p>
+                    </div>
+                </section>
+
+                {/* ACCESO EN EL MIKROTIK */}
+                <p className={`${TITULO_SECCION} flex items-center gap-1.5 pt-2`}><LockClosedIcon className="h-3.5 w-3.5" /> Datos MikroTik</p>
+                <section className={`${TARJETA} p-4`}>
                     {cliente.tipo_seguridad === 'dhcp' ? (
                         <div>
-                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">MAC WAN/CPE vista por MikroTik</label>
+                            <label className={ETIQUETA_CAMPO}>MAC WAN/CPE vista por MikroTik</label>
                             <input
                                 value={formData.mac_address}
                                 onChange={e => setFormData({...formData, mac_address: e.target.value})}
                                 placeholder="AA:BB:CC:DD:EE:FF"
-                                className="w-full rounded-2xl border border-blue-200 bg-white p-3 font-mono text-sm font-bold uppercase outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                className={`${CAMPO} font-mono uppercase`}
                                 required
                             />
-                            <p className="mt-2 text-[11px] font-medium text-blue-700 dark:text-blue-300">Usa la MAC del lease DHCP, no el serial GPON de la ONU.</p>
+                            <p className="mt-2 text-[11px] text-slate-500">Usa la MAC del lease DHCP, no el serial GPON de la ONU.</p>
                         </div>
-                    ) : <div className="space-y-3">
-                        <div className="bg-white dark:bg-slate-900/80 p-3 rounded-2xl flex justify-between items-center border border-white/50 dark:border-slate-800 shadow-sm">
-                            <div>
-                                <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Usuario</span>
-                                <code className="text-blue-600 dark:text-blue-400 font-bold font-mono text-sm">{cliente.suggested_user}</code>
-                            </div>
-                            <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_user || ''); toast.success("Copiado")}} className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-500 active:scale-90 transition-all"><ClipboardDocumentIcon className="w-5 h-5"/></button>
+                    ) : (
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {([['Usuario', cliente.suggested_user], ['Contraseña', cliente.suggested_pass]] as const).map(([nombre, valor]) => (
+                                <div key={nombre} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                                    <div className="min-w-0">
+                                        <p className="text-xs text-slate-500">{nombre}</p>
+                                        <code className="block truncate font-mono text-sm font-bold text-slate-900 dark:text-white">{valor}</code>
+                                    </div>
+                                    <button type="button" aria-label={`Copiar ${nombre.toLowerCase()}`} onClick={() => copiar(valor)} className={`${BOTON_SECUNDARIO} w-10 px-0`}>
+                                        <ClipboardDocumentIcon className="h-5 w-5" />
+                                    </button>
+                                </div>
+                            ))}
                         </div>
-                        <div className="bg-white dark:bg-slate-900/80 p-3 rounded-2xl flex justify-between items-center border border-white/50 dark:border-slate-800 shadow-sm">
-                            <div>
-                                <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Contraseña</span>
-                                <code className="text-emerald-600 dark:text-emerald-400 font-bold font-mono text-sm">{cliente.suggested_pass}</code>
-                            </div>
-                            <button type="button" onClick={() => {navigator.clipboard.writeText(cliente.suggested_pass || ''); toast.success("Copiado")}} className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl text-emerald-500 active:scale-90 transition-all"><ClipboardDocumentIcon className="w-5 h-5"/></button>
-                        </div>
-                    </div>}
-                </div>
+                    )}
+                </section>
 
-                {/* 3. REGISTRO TÉCNICO (Hardware) */}
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-                    <h3 className="text-[10px] font-black text-emerald-600 dark:text-emerald-500 uppercase flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 tracking-widest">
-                        <ServerIcon className="w-4 h-4"/> Hardware Físico
-                    </h3>
-
-                    {/* 🟢 OLT: Ahora depende 100% de olt_id */}
+                {/* EQUIPO Y UBICACIÓN */}
+                <p className={`${TITULO_SECCION} flex items-center gap-1.5 pt-2`}><ServerIcon className="h-3.5 w-3.5" /> Equipo y ubicación</p>
+                <section className={`${TARJETA} space-y-4 p-4`}>
                     <div>
-                        <label className={labelStyle}>OLT Principal</label>
+                        <label className={ETIQUETA_CAMPO}>OLT</label>
                         {cliente.olt_id ? (
-                            <div className={readOnlyBoxStyle}>
-                                <span className="text-sm font-black text-slate-600 dark:text-slate-300">
-                                    {cliente.olt_nombre}
-                                </span>
-                                <LockClosedIcon className="w-5 h-5 text-slate-400/50"/>
-                            </div>
+                            <div className={bloqueado}><span>{cliente.olt_nombre}</span><LockClosedIcon className="h-4 w-4 text-slate-400" /></div>
                         ) : (
                             <div className="relative">
-                                <CpuChipIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none"/>
-                                <select 
-                                    required
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-2xl p-4 pl-10 text-sm font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none transition-all shadow-inner"
-                                    value={formData.olt_id}
-                                    onChange={e => setFormData({...formData, olt_id: e.target.value})}
-                                >
-                                    <option value="" disabled>-- Elige OLT (Ej. VSOL 4 PON) --</option>
-                                    {olts.map(olt => (
-                                        <option key={olt.id} value={olt.id}>{olt.nombre}</option>
-                                    ))}
+                                <CpuChipIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                <select required className={selectClase} value={formData.olt_id} onChange={e => setFormData({...formData, olt_id: e.target.value})}>
+                                    <option value="" disabled>Elige la OLT</option>
+                                    {olts.map(olt => <option key={olt.id} value={olt.id}>{olt.nombre}</option>)}
                                 </select>
                             </div>
                         )}
                     </div>
 
-                    {/* 🟢 ONU: Ahora depende 100% de onu_id */}
                     <div>
-                        <label className={labelStyle}>ONU / Equipo Cliente</label>
+                        <label className={ETIQUETA_CAMPO}>ONU del cliente</label>
                         {cliente.onu_id ? (
-                            <div className={readOnlyBoxStyle}>
-                                <span className="text-sm font-black font-mono text-slate-600 dark:text-slate-300">
-                                    S/N: {cliente.identificador_onu}
-                                </span>
-                                <LockClosedIcon className="w-5 h-5 text-slate-400/50"/>
-                            </div>
+                            <div className={bloqueado}><span className="font-mono">S/N: {cliente.identificador_onu}</span><LockClosedIcon className="h-4 w-4 text-slate-400" /></div>
                         ) : (
                             <div className="relative">
-                                <QrCodeIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none"/>
-                                <select 
-                                    required
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-2xl p-4 pl-10 text-sm font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none transition-all shadow-inner"
-                                    value={formData.onu_id}
-                                    onChange={e => setFormData({...formData, onu_id: e.target.value})}
-                                >
-                                    <option value="" disabled>-- Toca para elegir equipo --</option>
-                                    {onusDisponibles.map(onu => (
-                                        <option key={onu.id} value={onu.id}>S/N: {onu.identificador}</option>
-                                    ))}
+                                <QrCodeIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                <select required className={selectClase} value={formData.onu_id} onChange={e => setFormData({...formData, onu_id: e.target.value})}>
+                                    <option value="" disabled>Elige el equipo</option>
+                                    {onusDisponibles.map(onu => <option key={onu.id} value={onu.id}>S/N: {onu.identificador}</option>)}
                                 </select>
                             </div>
                         )}
                     </div>
-                    
-                    {/* 🟢 GPS */}
-                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <label className={labelStyle}>Ubicación Instalación</label>
+
+                    <div>
+                        <label className={ETIQUETA_CAMPO}>Ubicación de la instalación</label>
                         {!formData.latitud ? (
-                            <button type="button" onClick={capturarUbicacion} className="w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border-2 border-dashed border-blue-200 dark:border-blue-800 py-4 rounded-2xl font-black text-xs tracking-widest uppercase flex flex-col items-center justify-center gap-2 transition-all active:scale-95">
-                                <MapPinIcon className="w-7 h-7" /> GUARDAR MI UBICACIÓN
+                            <button type="button" onClick={capturarUbicacion} className={`${BOTON_SECUNDARIO} h-11 w-full`}>
+                                <MapPinIcon className="h-5 w-5 text-blue-600" /> Guardar mi ubicación
                             </button>
                         ) : (
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-2xl flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-emerald-100 dark:bg-emerald-500/20 p-2.5 rounded-xl"><MapPinIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
-                                    <div>
-                                        <p className="text-[9px] text-emerald-700 dark:text-emerald-400 font-black uppercase tracking-widest">Coordenadas</p>
-                                        <p className="text-xs text-slate-700 dark:text-slate-300 font-mono mt-0.5 font-bold">{formData.latitud.slice(0,8)}, {formData.longitud.slice(0,9)}</p>
-                                    </div>
-                                </div>
-                                <button type="button" onClick={capturarUbicacion} className="text-[9px] text-emerald-600 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30 px-3 py-2 rounded-lg font-black uppercase active:scale-90 transition-all">Cambiar</button>
+                            <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+                                <p className="flex items-center gap-2 font-mono text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                                    <MapPinIcon className="h-4 w-4" /> {formData.latitud.slice(0,8)}, {formData.longitud.slice(0,9)}
+                                </p>
+                                <button type="button" onClick={capturarUbicacion} className="text-xs font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300">Cambiar</button>
                             </div>
                         )}
                     </div>
 
-                    {/* 🟢 CAJA NAP: Ahora depende 100% de caja_nap_id */}
-                    <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div>
+                        <label className={ETIQUETA_CAMPO}>Caja NAP (opcional)</label>
+                        {cliente.caja_nap_id ? (
+                            <div className={bloqueado}><span>{cliente.nap_nombre}</span><LockClosedIcon className="h-4 w-4 text-slate-400" /></div>
+                        ) : (
+                            <div className="relative">
+                                <CubeIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                <select className={selectClase} value={formData.caja_nap_id} onChange={e => cargarPuertos(e.target.value, cajasNap)}>
+                                    <option value="">Sin caja NAP asignada</option>
+                                    {cajasNap.map(nap => <option key={nap.id} value={nap.id}>{nap.nombre}</option>)}
+                                </select>
+                            </div>
+                        )}
+                        {!cliente.caja_nap_id && (
+                            <div className="mt-3">
+                                <SugerenciaNap
+                                    latitud={formData.latitud}
+                                    longitud={formData.longitud}
+                                    zonaId={cliente.zona_id}
+                                    oltId={cliente.olt_id}
+                                    permitidas={cajasNap.map(n => n.id)}
+                                    elegidaId={formData.caja_nap_id}
+                                    onElegir={(id) => cargarPuertos(id, cajasNap)}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {(formData.caja_nap_id || cliente.caja_nap_id) && (
                         <div>
-                            <label className={labelStyle}>Caja NAP Conectada (Opcional)</label>
-                            {cliente.caja_nap_id ? (
-                                <div className={readOnlyBoxStyle}>
-                                    <span className="text-sm font-black text-slate-600 dark:text-slate-300">
-                                        {cliente.nap_nombre}
-                                    </span>
-                                    <LockClosedIcon className="w-5 h-5 text-slate-400/50"/>
-                                </div>
+                            <label className={ETIQUETA_CAMPO}>Puerto usado</label>
+                            {cliente.puerto_nap ? (
+                                <div className={bloqueado}><span>Puerto #{cliente.puerto_nap}</span><LockClosedIcon className="h-4 w-4 text-slate-400" /></div>
+                            ) : loadingPorts ? (
+                                <p className="py-3 text-center text-xs text-slate-400">Cargando puertos...</p>
                             ) : (
-                                <div className="relative">
-                                    <CubeIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none"/>
-                                    <select 
-                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-2xl p-4 pl-10 text-sm font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none appearance-none transition-all shadow-inner"
-                                        value={formData.caja_nap_id}
-                                        onChange={e => cargarPuertos(e.target.value, cajasNap)}
-                                    >
-                                        <option value="">-- Sin NAP asignada (Zona en registro) --</option>
-                                        {cajasNap.map(nap => (
-                                            <option key={nap.id} value={nap.id}>{nap.nombre}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-                            {!cliente.caja_nap_id && (
-                                <div className="mt-3">
-                                    <SugerenciaNap
-                                        latitud={formData.latitud}
-                                        longitud={formData.longitud}
-                                        zonaId={cliente.zona_id}
-                                        oltId={cliente.olt_id}
-                                        permitidas={cajasNap.map(n => n.id)}
-                                        elegidaId={formData.caja_nap_id}
-                                        onElegir={(id) => cargarPuertos(id, cajasNap)}
-                                    />
+                                <div className="grid grid-cols-4 gap-2">
+                                    {Array.from({ length: capacidadActual }, (_, i) => i + 1).map(puerto => {
+                                        const isOcupado = puertosOcupados.includes(puerto);
+                                        const isSeleccionado = Number(formData.puerto_nap) === puerto;
+                                        return (
+                                            <button
+                                                key={puerto}
+                                                type="button"
+                                                disabled={isOcupado}
+                                                aria-pressed={isSeleccionado}
+                                                onClick={() => setFormData({...formData, puerto_nap: puerto.toString()})}
+                                                className={`relative flex h-11 items-center justify-center rounded-xl border text-sm font-bold transition ${isSeleccionado
+                                                    ? 'border-blue-600 bg-blue-600 text-white'
+                                                    : isOcupado
+                                                        ? 'border-slate-200 bg-slate-100 text-slate-300 line-through dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600'
+                                                        : 'border-slate-200 bg-white text-slate-700 active:bg-slate-100 dark:border-slate-700 dark:bg-transparent dark:text-slate-300'}`}
+                                            >
+                                                {puerto}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
+                    )}
+                </section>
 
-                        {/* CUADRÍCULA DE PUERTOS */}
-                        {(formData.caja_nap_id || cliente.caja_nap_id) && (
-                            <div>
-                                <label className={labelStyle}>Puerto Usado</label>
-                                {cliente.puerto_nap ? (
-                                    <div className={readOnlyBoxStyle}>
-                                        <span className="text-sm font-black text-slate-600 dark:text-slate-300">
-                                            Puerto #{cliente.puerto_nap}
-                                        </span>
-                                        <LockClosedIcon className="w-5 h-5 text-slate-400/50"/>
-                                    </div>
-                                ) : loadingPorts ? (
-                                    <div className="text-center p-3 text-slate-400 text-[10px] font-bold uppercase tracking-widest animate-pulse">Sincronizando...</div>
-                                ) : (
-                                    <div className="grid grid-cols-4 gap-2 mt-2">
-                                        {Array.from({ length: capacidadActual }, (_, i) => i + 1).map(puerto => {
-                                            const isOcupado = puertosOcupados.includes(puerto);
-                                            const isSeleccionado = Number(formData.puerto_nap) === puerto;
-                                            
-                                            return (
-                                                <button
-                                                    key={puerto}
-                                                    type="button"
-                                                    disabled={isOcupado}
-                                                    onClick={() => setFormData({...formData, puerto_nap: puerto.toString()})}
-                                                    className={`
-                                                        relative h-12 rounded-xl flex items-center justify-center font-black text-sm transition-all
-                                                        ${isSeleccionado ? 'bg-emerald-500 text-white shadow-md scale-105 z-10' : ''}
-                                                        ${isOcupado ? 'bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-700 opacity-50' : ''}
-                                                        ${!isSeleccionado && !isOcupado ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 active:bg-slate-100 border border-slate-200 dark:border-slate-700 shadow-sm' : ''}
-                                                    `}
-                                                >
-                                                    {isOcupado && <XCircleIcon className="absolute w-full h-full p-2 text-rose-500/20" />}
-                                                    {puerto}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-
-                </div>
-
-                {/* BOTÓN FINALIZAR */}
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-50 via-slate-50/90 dark:from-slate-950 dark:via-slate-950/90 to-transparent z-30 pb-6">
-                    <button type="submit" disabled={loading} className="w-full max-w-lg mx-auto bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-sm tracking-widest uppercase shadow-xl shadow-blue-600/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                        {loading ? 'ACTIVANDO...' : online ? 'FINALIZAR INSTALACIÓN' : 'GUARDAR BORRADOR'}
-                        {!loading && <CheckCircleIcon className="w-6 h-6"/>}
+                <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">
+                    <button type="submit" disabled={loading} className={`${BOTON_PRIMARIO} mx-auto h-12 max-w-lg`}>
+                        {!loading && <CheckCircleIcon className="h-5 w-5" />}
+                        {loading ? 'Activando...' : online ? 'Finalizar instalación' : 'Guardar borrador'}
                     </button>
                 </div>
             </form>

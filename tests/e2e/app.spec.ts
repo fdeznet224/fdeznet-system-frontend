@@ -1026,15 +1026,15 @@ test('la instalación pasa de en camino a activar y el retiro solo pide el equip
   await page.goto('/tech/dashboard')
   await page.getByRole('button', { name: 'Agenda', exact: true }).click()
 
-  const ana = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: 'Ana Lopez' }) }).last()
+  const ana = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Ana Lopez' }) })
   await expect(ana.getByRole('button', { name: 'Marcar en camino' })).toBeVisible()
   await expect(ana.getByRole('button', { name: 'Activar cliente' })).toHaveCount(0)
-  const beto = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: 'Beto Ruiz' }) }).last()
+  const beto = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Beto Ruiz' }) })
   await expect(beto.getByRole('button', { name: 'Activar cliente' })).toBeVisible()
   await expect(beto.getByRole('button', { name: /Marcar en camino|Iniciar trabajo/ })).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Retiros', exact: true }).click()
-  const carla = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: 'Carla Diaz' }) }).last()
+  const carla = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Carla Diaz' }) })
   await expect(carla.getByRole('button', { name: 'WhatsApp a Carla Diaz' })).toBeVisible()
   // La ruta va por coordenadas, no por la dirección escrita.
   await expect(carla.getByRole('link', { name: 'Cómo llegar con Carla Diaz' })).toHaveAttribute('href', /destination=16\.7531%2C-93\.1156/)
@@ -1532,9 +1532,9 @@ test('busca un abonado desde la herramienta técnica', async ({ page }) => {
   await mockApi(page)
   await page.goto('/tech/buscar?q=Cliente')
 
-  await expect(page.getByRole('heading', { name: 'Buscar Abonado' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Buscar cliente' })).toBeVisible()
   await expect(page.getByText('Cliente E2E', { exact: true })).toBeVisible()
-  await expect(page.getByText('Contrato: E2E-1')).toBeVisible()
+  await expect(page.getByText('E2E-1', { exact: true })).toBeVisible()
 })
 
 test('abre la herramienta móvil de escaneo QR', async ({ page }) => {
@@ -1827,7 +1827,7 @@ test('la agenda del técnico separa instalaciones y reparaciones y pone primero 
   await page.getByRole('button', { name: 'Agenda', exact: true }).click()
   // La reparación urgente va primero aunque no tenga hora; luego por hora de visita.
   await expect(page.getByRole('heading', { level: 4 })).toHaveText(['Fibra Rota', 'Instalación Temprana', 'Instalación Tarde'])
-  const fibra = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: 'Fibra Rota' }) }).last()
+  const fibra = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Fibra Rota' }) })
   await expect(fibra.getByText('🔧 Reparación')).toBeVisible()
 })
 
@@ -1850,7 +1850,7 @@ test('el técnico ve la falla, verifica la señal y termina la reparación', asy
   await page.goto('/tech/dashboard')
   await page.getByRole('button', { name: 'Agenda', exact: true }).click()
 
-  const victor = page.locator('div.rounded-2xl').filter({ has: page.getByRole('heading', { name: 'Victor Martinez' }) }).last()
+  const victor = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Victor Martinez' }) })
   await expect(victor.getByText('🔧 Fibra o cable roto')).toBeVisible()
   await expect(victor.getByText('Revisión remota: ONU caída', { exact: false })).toBeVisible()
   await expect(victor.getByRole('button', { name: /Terminar reparación/ })).toBeDisabled()  // primero verificar señal

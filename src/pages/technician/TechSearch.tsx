@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import client from '../../api/axios';
-import { 
-    ArrowLeftIcon, MagnifyingGlassIcon, 
-    MapPinIcon, SignalIcon, UserIcon
+import {
+    ArrowLeftIcon, ChevronRightIcon, MagnifyingGlassIcon, MapPinIcon, UserIcon,
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
+import { BOTON_PRIMARIO, CAMPO, TARJETA } from './estilo';
 
 interface ClientSearchResult {
     id: number;
@@ -62,98 +62,68 @@ export default function TechSearch() {
     };
 
     return (
-        /* ✅ ADAPTADO: Fondo principal transiciona suavemente */
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans transition-colors duration-300">
-            
-            {/* Navbar Adaptativo */}
-            <div className="p-4 flex items-center gap-4 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 transition-colors duration-300 shadow-sm dark:shadow-none">
-                <button 
-                    onClick={() => navigate('/tech/dashboard')} 
-                    className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full active:scale-90 transition-all"
-                >
-                    <ArrowLeftIcon className="w-5 h-5"/>
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 transition-colors dark:bg-[#0f1219] dark:text-white">
+            <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">
+                <button type="button" aria-label="Volver" onClick={() => navigate('/tech/dashboard')} className="-ml-1 rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 active:scale-90 dark:text-slate-400 dark:hover:bg-slate-800">
+                    <ArrowLeftIcon className="h-5 w-5" />
                 </button>
-                <h2 className="font-black text-lg tracking-tight">Buscar Abonado</h2>
+                <h1 className="text-base font-bold">Buscar cliente</h1>
             </div>
 
-            <div className="p-4 md:p-6 max-w-3xl mx-auto">
-                {/* Barra de Búsqueda Adaptativa */}
-                <form onSubmit={handleSearchSubmit} className="mb-6 flex gap-2">
+            <div className="mx-auto max-w-3xl p-4">
+                <form onSubmit={handleSearchSubmit} className="mb-4 flex gap-2">
                     <div className="relative flex-1">
-                        <MagnifyingGlassIcon className="pointer-events-none absolute left-4 top-1/2 h-6 w-6 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                        <MagnifyingGlassIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                         <input
                             type="search"
                             enterKeyHint="search"
                             aria-label="Buscar cliente"
                             placeholder="Contrato, nombre, IP o serial"
-                            className="w-full rounded-2xl border border-slate-300 bg-white py-4 pl-12 pr-4 text-base font-medium text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                            className={`${CAMPO} py-3 pl-11`}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             autoFocus={!initialQuery}
                         />
                     </div>
-                    <button
-                        type="submit"
-                        disabled={!searchTerm.trim() || loading}
-                        className="shrink-0 rounded-2xl bg-emerald-600 px-5 text-sm font-black text-white shadow-sm transition active:scale-95 disabled:opacity-50"
-                    >
+                    <button type="submit" disabled={!searchTerm.trim() || loading} className={`${BOTON_PRIMARIO} h-auto w-auto shrink-0`}>
                         Buscar
                     </button>
                 </form>
 
-                {/* Lista de Resultados */}
-                <div className="space-y-3 pb-10">
+                <div className="space-y-2 pb-10">
                     {loading ? (
-                        <div className="text-center py-12 text-slate-400 dark:text-slate-500 animate-pulse flex flex-col items-center">
-                            <MagnifyingGlassIcon className="w-8 h-8 mb-3 animate-bounce text-emerald-500"/>
-                            <span className="font-bold text-sm uppercase tracking-widest">Buscando en base de datos...</span>
-                        </div>
+                        <p className="py-12 text-center text-sm text-slate-400">Buscando...</p>
                     ) : results.length > 0 ? (
                         results.map((c) => (
-                            /* ✅ ADAPTADO: Tarjeta de resultados clara vs oscura */
-                            <div 
+                            <button
+                                type="button"
                                 key={c.id}
                                 onClick={() => navigate(`/tech/cliente/${encodeURIComponent(c.cedula ?? String(c.id))}`)}
-                                className="bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-md active:scale-[0.98] transition-all cursor-pointer flex justify-between items-center group hover:border-blue-500/40 dark:hover:border-blue-500/40"
+                                className={`${TARJETA} flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition active:scale-[0.99]`}
                             >
-                                <div className="overflow-hidden pr-3">
-                                    <h3 className="font-black text-slate-800 dark:text-white text-base md:text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                                        {c.nombre}
-                                    </h3>
-                                    <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium truncate">
-                                        <MapPinIcon className="w-3.5 h-3.5 shrink-0"/> 
-                                        <span className="truncate">{c.direccion || 'Sin dirección'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-2.5">
-                                        <span className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300">
-                                            Contrato: {c.cedula || 'Sin asignar'}
-                                        </span>
-                                        <span className={`text-[9px] font-black tracking-widest px-2 py-0.5 rounded uppercase border ${
-                                            c.estado === 'activo' 
-                                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' 
-                                                : 'bg-rose-50 dark:bg-red-500/10 text-rose-600 dark:text-red-400 border-rose-200 dark:border-red-500/20'
-                                        }`}>
-                                            {c.estado}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-full text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-800 shrink-0 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-500 transition-colors">
-                                    <SignalIcon className="w-5 h-5"/>
-                                </div>
-                            </div>
+                                <span className="min-w-0">
+                                    <span className="block truncate text-sm font-bold text-slate-900 dark:text-white">{c.nombre}</span>
+                                    <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-slate-500">
+                                        <MapPinIcon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{c.direccion || 'Sin dirección'}</span>
+                                    </span>
+                                    <span className="mt-1.5 flex items-center gap-1.5">
+                                        <span className="rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white dark:bg-slate-700">{c.cedula || 'S/N'}</span>
+                                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${c.estado === 'activo'
+                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                            : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'}`}>{c.estado}</span>
+                                    </span>
+                                </span>
+                                <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate-300" />
+                            </button>
                         ))
                     ) : hasSearched ? (
-                        <div className="text-center py-16 opacity-80">
-                            <div className="bg-slate-100 dark:bg-slate-900 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-200 dark:border-slate-800">
-                                <UserIcon className="w-10 h-10 text-slate-400 dark:text-slate-600"/>
-                            </div>
-                            <p className="text-slate-800 dark:text-white font-black text-lg mb-1">Sin resultados</p>
-                            <p className="text-slate-500 dark:text-slate-400 text-sm">No encontramos coincidencias para "<span className="font-bold text-slate-700 dark:text-slate-300">{searchTerm}</span>"</p>
+                        <div className={`${TARJETA} px-6 py-12 text-center`}>
+                            <UserIcon className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+                            <p className="mt-2 text-sm font-bold text-slate-700 dark:text-slate-200">Sin resultados</p>
+                            <p className="mt-0.5 text-xs text-slate-500">No encontramos coincidencias para "{searchTerm}"</p>
                         </div>
                     ) : (
-                        <div className="text-center py-24 opacity-50">
-                            <p className="text-sm font-medium text-slate-400 dark:text-slate-500">Los resultados de tu búsqueda aparecerán aquí</p>
-                        </div>
+                        <p className="py-16 text-center text-sm text-slate-400">Los resultados de tu búsqueda aparecerán aquí</p>
                     )}
                 </div>
             </div>
