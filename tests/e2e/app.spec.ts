@@ -531,6 +531,31 @@ test('el radar muestra la causa de la caída, el diagnóstico y reinicia la ONU'
   await expect(page.getByText('La ONU se está reiniciando')).toBeVisible()
 })
 
+test('el admin elimina de la OLT una ONU apagada sin cliente', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/olts/2/monitoreo-api', (route) => route.fulfill({ json: { status: 'success', data: {
+    origen: 'vsol_api', clientes_activos: [], clientes_caidos: [],
+    onus_api: [
+      { onu_id: 'GPON0/1:15', pon_id: '1', serial: 'HWTC388120AE', identificador: 'HWTC388120AE', estado_fisico: 'offline', rx_power: 'N/A' },
+    ],
+  } } }))
+  const borrados: unknown[] = []
+  await page.route('**/api/olts/2/onus/1/15/eliminar', async (route) => {
+    borrados.push(route.request().postDataJSON())
+    await route.fulfill({ json: { status: 'success', data: { eliminada: true } } })
+  })
+  await page.goto('/admin/radar')
+  await page.getByRole('button', { name: 'Escanear OLT Paraíso' }).click()
+  await page.locator('button:visible', { hasText: 'Ver datos' }).first().click()
+
+  await expect(page.getByRole('button', { name: '⟳ Reiniciar ONU' })).toBeDisabled()
+  page.once('dialog', (dialog) => void dialog.accept())
+  await page.getByRole('button', { name: 'Eliminar de la OLT' }).click()
+  await expect.poll(() => borrados).toEqual([{ serial: 'HWTC388120AE' }])
+  await expect(page.getByText('ONU HWTC388120AE eliminada de la OLT')).toBeVisible()
+})
+
 test('carga el panel principal con sus contratos tipados', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)

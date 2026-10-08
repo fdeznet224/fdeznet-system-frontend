@@ -230,11 +230,13 @@ function BottomSheetDetail({
   oltId,
   oltName,
   onClose,
+  onEliminada,
 }: {
   row: RadarRow;
   oltId: number;
   oltName?: string;
   onClose: () => void;
+  onEliminada: () => void;
 }) {
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const ubicacion = useMemo(() => ubicacionOnu(row.onu), [row.onu]);
@@ -243,6 +245,16 @@ function BottomSheetDetail({
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [errorDetalle, setErrorDetalle] = useState<string | null>(null);
   const [reiniciando, setReiniciando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const esAdmin = useMemo(() => {
+    try {
+      return (JSON.parse(localStorage.getItem("user") || "{}") as { rol?: string }).rol === "admin";
+    } catch {
+      return false;
+    }
+  }, []);
+  // Solo una ONU apagada que nadie tiene en el sistema: así la OLT cuadra con los clientes.
+  const sePuedeEliminar = esAdmin && !row.owner && !online && Boolean(ubicacion && row.serial);
 
   useEffect(() => {
     if (!ubicacion) return;
@@ -273,6 +285,25 @@ function BottomSheetDetail({
       toast.error(getErrorMessage(error, "No se pudo reiniciar la ONU"));
     } finally {
       setReiniciando(false);
+    }
+  };
+
+  const eliminar = async () => {
+    if (!ubicacion || !row.serial) return;
+    const ok = window.confirm(
+      `¿Eliminar de la OLT la ONU ${row.serial} (${row.onu.onu_id || "sin puerto"})?\n\n` +
+      "Está apagada y no es de ningún cliente del sistema. Si vuelve a conectarse, la OLT la autoriza de nuevo sola."
+    );
+    if (!ok) return;
+    setEliminando(true);
+    try {
+      await client.post(`/olts/${oltId}/onus/${ubicacion.pon}/${ubicacion.onuid}/eliminar`, { serial: row.serial });
+      toast.success(`ONU ${row.serial} eliminada de la OLT`);
+      onEliminada();
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "No se pudo eliminar la ONU"), { duration: 8000 });
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -367,6 +398,16 @@ function BottomSheetDetail({
             >
               {reiniciando ? "Reiniciando..." : "⟳ Reiniciar ONU"}
             </button>
+            {sePuedeEliminar && (
+              <button
+                className="olt-btn olt-btn--light"
+                type="button"
+                onClick={() => void eliminar()}
+                disabled={eliminando}
+              >
+                {eliminando ? "Eliminando..." : "Eliminar de la OLT"}
+              </button>
+            )}
           </div>
 
           <h4 className="olt-section-title">Topología</h4>
@@ -1281,6 +1322,10 @@ export default function OltRadarVsolPage() {
           oltId={Number(oltId)}
           oltName={selectedOlt?.nombre}
           onClose={() => setSelected(null)}
+          onEliminada={() => {
+            setSelected(null);
+            load();
+          }}
         />
       )}
     </div>
