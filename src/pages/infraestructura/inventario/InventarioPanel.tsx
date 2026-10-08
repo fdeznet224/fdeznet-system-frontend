@@ -17,7 +17,7 @@ interface EquipoInventario {
     id: number;
     identificador: string;
     tecnologia: string;
-    modelo: string;
+    modelo?: string | null;
     estado: string;
     tecnico_id?: number | null;
     cliente_nombre?: string | null;
@@ -345,7 +345,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                                             </div>
                                             <div>
                                                 <span className="font-mono font-black text-slate-900 dark:text-white block text-sm tracking-wide">{eq.identificador}</span>
-                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black">{eq.tecnologia} — {eq.modelo}</span>
+                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black">{eq.tecnologia} — {eq.modelo || 'sin modelo'}</span>
                                             </div>
                                         </div>
                                     </td>
@@ -401,7 +401,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                                         <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0"><QrCodeIcon className="w-5 h-5 text-slate-500" /></div>
                                         <div className="overflow-hidden">
                                             <span className="font-mono font-black text-slate-900 dark:text-white text-base block leading-tight tracking-wide">{eq.identificador}</span>
-                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black block mt-0.5 truncate">{eq.tecnologia} — {eq.modelo}</span>
+                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black block mt-0.5 truncate">{eq.tecnologia} — {eq.modelo || 'sin modelo'}</span>
                                         </div>
                                     </div>
                                     <EstadoBadge estado={eq.estado} />

@@ -13,6 +13,7 @@ import CreateOrdenModal from './components/CreateOrdenModal';
 import ChatModal from '@/components/chat/ChatModal';
 import EditarSolicitudModal from './components/EditarSolicitudModal';
 import { apiErrorMessage } from '@/utils/apiError';
+import { CATEGORIAS_FALLA } from '@/utils/categoriasFalla';
 
 interface ServiceOrder {
     id: number;
@@ -29,6 +30,11 @@ interface ServiceOrder {
     esProspecto: boolean;
     version?: number;
     servicio?: { id: number; alias: string; direccion?: string | null; estado: string } | null;
+    // Reparaciones (reportes de falla)
+    tipo?: string;
+    falla?: string | null;
+    descripcion?: string | null;
+    prioridad?: string | null;
 }
 
 interface OrdenApi {
@@ -46,6 +52,10 @@ interface OrdenApi {
     prospecto_telefono?: string | null;
     prospecto_direccion?: string | null;
     tecnico?: { id?: number; nombre?: string | null; usuario: string } | null;
+    tipo?: string;
+    categoria_soporte?: string | null;
+    descripcion?: string | null;
+    prioridad?: string | null;
 }
 
 interface Tecnico {
@@ -67,12 +77,15 @@ interface UnreadSummary {
 }
 
 type Filtro = 'todas' | 'sin_tecnico' | 'asignadas' | 'en_curso' | 'hoy';
+type Vista = 'instalaciones' | 'reparaciones';
+
+const PRIORIDAD_ALTA = new Set(['alta', 'urgente']);
 
 const ESTADOS: Record<string, { texto: string; clase: string }> = {
     pendiente: { texto: 'Pendiente', clase: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20' },
     asignada: { texto: 'Asignada', clase: 'bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/20' },
     en_camino: { texto: 'En camino', clase: 'bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:ring-indigo-500/20' },
-    trabajando: { texto: 'Instalando', clase: 'bg-violet-50 text-violet-700 ring-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/20' },
+    trabajando: { texto: 'Trabajando', clase: 'bg-violet-50 text-violet-700 ring-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/20' },
 };
 
 /** "2026-10-05T09:30:00" -> "Hoy 09:30" / "Lun 5 oct · 09:30". */
@@ -144,6 +157,13 @@ export default function Orders() {
     const [filtro, setFiltro] = useState<Filtro>('todas');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
+    // Reportes de falla en su propia pestaña: ?vista=reparaciones.
+    const vista: Vista = searchParams.get('vista') === 'reparaciones' ? 'reparaciones' : 'instalaciones';
+    const esReparacion = vista === 'reparaciones';
+    const cambiarVista = (nueva: Vista) => {
+        setFiltro('todas');
+        setSearchParams(nueva === 'reparaciones' ? { vista: 'reparaciones' } : {});
+    };
     const sugerencia = {
         caja_nap_id: Number(searchParams.get('caja_nap_id')) || undefined,
         puerto_nap: Number(searchParams.get('puerto_nap')) || undefined,
@@ -165,8 +185,14 @@ export default function Orders() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
+            const pedirOrdenes = esReparacion
+                ? Promise.all([
+                    client.get<OrdenApi[]>('/ordenes/?tipo=reparacion'),
+                    client.get<OrdenApi[]>('/ordenes/?tipo=cambio_domicilio'),
+                ]).then(([a, b]) => ({ data: [...a.data, ...b.data] }))
+                : client.get<OrdenApi[]>('/ordenes/?tipo=instalacion');
             const [resOrdenes, resUnread, resTecnicos, resZonas, resPlanes] = await Promise.all([
-                client.get<OrdenApi[]>('/ordenes/?tipo=instalacion'),
+                pedirOrdenes,
                 client.get<Record<string, UnreadSummary>>('/ordenes/chat/no-leidos'),
                 client.get<Tecnico[]>('/bajas/tecnicos/disponibles').catch(() => ({ data: [] as Tecnico[] })),
                 client.get<Catalogo[]>('/zonas/').catch(() => ({ data: [] as Catalogo[] })),
@@ -192,6 +218,10 @@ export default function Orders() {
                     esProspecto: !orden.cliente,
                     version: orden.version,
                     servicio: orden.servicio,
+                    tipo: orden.tipo,
+                    falla: orden.categoria_soporte,
+                    descripcion: orden.descripcion,
+                    prioridad: orden.prioridad,
                 })));
             setUnreadCounts(resUnread.data);
         } catch (error) {
@@ -200,7 +230,7 @@ export default function Orders() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [esReparacion]);
 
     const refrescarNoLeidos = useCallback(async () => {
         try {
@@ -221,7 +251,7 @@ export default function Orders() {
     }, [fetchData, refrescarNoLeidos]);
 
     const handleDelete = async (orden: ServiceOrder) => {
-        if (!confirm(`¿Cancelar la instalación de ${orden.nombre}?`)) return;
+        if (!confirm(`¿Cancelar la ${orden.tipo === 'instalacion' || !orden.tipo ? 'instalación' : 'reparación'} de ${orden.nombre}?`)) return;
         const load = toast.loading('Cancelando orden...');
         try {
             await client.post(`/ordenes/${orden.id}/estado`, {
@@ -296,8 +326,12 @@ export default function Orders() {
             <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Órdenes de servicio</p>
-                    <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white md:text-3xl">Instalaciones</h1>
-                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 md:text-sm">Solicitudes por instalar. Asigna técnico y fecha; el técnico activa al cliente desde su app.</p>
+                    <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white md:text-3xl">{esReparacion ? 'Reparaciones' : 'Instalaciones'}</h1>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 md:text-sm">
+                        {esReparacion
+                            ? 'Reportes de falla abiertos. Asigna o cambia el técnico; le llega por WhatsApp qué debe hacer.'
+                            : 'Solicitudes por instalar. Asigna técnico y fecha; el técnico activa al cliente desde su app.'}
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -308,7 +342,7 @@ export default function Orders() {
                     >
                         <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
                     </button>
-                    <button
+                    {!esReparacion && <button
                         type="button"
                         onClick={() => setIsCreateModalOpen(true)}
                         aria-label="Nueva Orden"
@@ -316,8 +350,25 @@ export default function Orders() {
                     >
                         <PlusIcon className="h-5 w-5" />
                         <span>Nueva solicitud</span>
-                    </button>
+                    </button>}
                 </div>
+            </div>
+
+            <div role="tablist" aria-label="Tipo de orden" className="flex gap-1 rounded-2xl bg-slate-200/70 p-1 dark:bg-slate-800/70 sm:w-fit">
+                {([['instalaciones', 'Instalaciones'], ['reparaciones', 'Reparaciones']] as [Vista, string][]).map(([valor, texto]) => (
+                    <button
+                        key={valor}
+                        type="button"
+                        role="tab"
+                        aria-selected={vista === valor}
+                        onClick={() => cambiarVista(valor)}
+                        className={`flex-1 rounded-xl px-5 py-2 text-xs font-black transition sm:flex-none ${vista === valor
+                            ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-white'
+                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}
+                    >
+                        {texto}
+                    </button>
+                ))}
             </div>
 
             {/* RESUMEN / FILTROS */}
@@ -355,10 +406,12 @@ export default function Orders() {
                 <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900">
                     <ClipboardDocumentListIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" />
                     <p className="mt-3 font-black text-slate-700 dark:text-slate-200">
-                        {ordenes.length === 0 ? 'No hay instalaciones pendientes' : 'Ninguna orden coincide'}
+                        {ordenes.length === 0 ? (esReparacion ? 'No hay reparaciones abiertas' : 'No hay instalaciones pendientes') : 'Ninguna orden coincide'}
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
-                        {ordenes.length === 0 ? 'Las solicitudes del agente de WhatsApp y las que registres aparecerán aquí.' : 'Prueba con otro filtro o búsqueda.'}
+                        {ordenes.length === 0
+                            ? (esReparacion ? 'Los reportes de falla que levantes desde Clientes aparecerán aquí.' : 'Las solicitudes del agente de WhatsApp y las que registres aparecerán aquí.')
+                            : 'Prueba con otro filtro o búsqueda.'}
                     </p>
                 </div>
             ) : (
@@ -398,9 +451,18 @@ export default function Orders() {
                                         <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                                         <span className="line-clamp-2">{direccion || 'Sin dirección'}</span>
                                     </p>
+                                    {orden.tipo && orden.tipo !== 'instalacion' && (
+                                        <div className="rounded-xl bg-rose-50 p-2.5 text-xs text-rose-800 dark:bg-rose-500/10 dark:text-rose-200">
+                                            <p className="font-black">
+                                                🔧 {orden.tipo === 'cambio_domicilio' ? 'Cambio de domicilio' : (CATEGORIAS_FALLA[orden.falla || ''] || 'Reparación')}
+                                                {PRIORIDAD_ALTA.has(orden.prioridad || '') && <span className="ml-1.5 rounded bg-rose-600 px-1.5 py-0.5 text-[10px] uppercase text-white">{orden.prioridad}</span>}
+                                            </p>
+                                            {orden.descripcion && <p className="mt-1 line-clamp-3 font-medium">{orden.descripcion}</p>}
+                                        </div>
+                                    )}
                                     <div className="flex flex-wrap gap-1.5">
-                                        <Dato icono={MapIcon} alerta={!zona}>{zona?.nombre || 'Sin zona'}</Dato>
-                                        <Dato icono={WifiIcon}>{plan ? `${plan.nombre}${plan.precio ? ` · $${plan.precio}` : ''}` : 'Plan por definir'}</Dato>
+                                        {!esReparacion && <Dato icono={MapIcon} alerta={!zona}>{zona?.nombre || 'Sin zona'}</Dato>}
+                                        {!esReparacion && <Dato icono={WifiIcon}>{plan ? `${plan.nombre}${plan.precio ? ` · $${plan.precio}` : ''}` : 'Plan por definir'}</Dato>}
                                         {orden.telefono && <Dato icono={PhoneIcon}>{orden.telefono}</Dato>}
                                         {enlace && (
                                             <a href={enlace} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300">
@@ -411,7 +473,7 @@ export default function Orders() {
                                     </div>
                                 </div>
 
-                                <div className="mt-4 grid grid-cols-1 gap-2 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950/60 sm:grid-cols-2">
+                                <div className={`mt-4 grid grid-cols-1 gap-2 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950/60 ${esReparacion ? '' : 'sm:grid-cols-2'}`}>
                                     <label className="block">
                                         <span className="mb-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400"><UserCircleIcon className="h-3.5 w-3.5" /> Técnico</span>
                                         <select
@@ -425,7 +487,7 @@ export default function Orders() {
                                             {tecnicos.map((t) => <option key={t.id} value={t.id}>{t.nombre_completo || t.usuario}</option>)}
                                         </select>
                                     </label>
-                                    <div>
+                                    {!esReparacion && <div>
                                         <span className="mb-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400"><CalendarDaysIcon className="h-3.5 w-3.5" /> Visita</span>
                                         <button
                                             type="button"
@@ -437,11 +499,11 @@ export default function Orders() {
                                         >
                                             {orden.fecha_programada ? textoVisita(orden.fecha_programada) : 'Agendar visita'}
                                         </button>
-                                    </div>
+                                    </div>}
                                 </div>
 
-                                <div className="mt-3 flex items-center gap-2">
-                                    <button
+                                <div className="mt-3 flex items-center justify-end gap-2">
+                                    {!esReparacion && <button
                                         type="button"
                                         onClick={() => { setTargetCliente(orden); setShowChatModal(true); }}
                                         className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-black transition active:scale-[0.98] ${noLeidos > 0
@@ -450,14 +512,14 @@ export default function Orders() {
                                     >
                                         <ChatBubbleLeftRightIcon className="h-4 w-4" />
                                         {noLeidos > 0 ? `${noLeidos} sin leer` : 'WhatsApp'}
-                                    </button>
-                                    <button
+                                    </button>}
+                                    {!esReparacion && <button
                                         type="button"
                                         onClick={() => setEditando(orden)}
                                         className="h-10 rounded-xl border border-slate-200 px-4 text-xs font-black text-slate-700 transition hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:text-slate-200"
                                     >
                                         Editar
-                                    </button>
+                                    </button>}
                                     <button
                                         type="button"
                                         onClick={() => void handleDelete(orden)}

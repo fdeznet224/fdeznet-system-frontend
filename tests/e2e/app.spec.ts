@@ -1252,6 +1252,42 @@ test('el admin asigna técnico y fecha a una orden de instalación', async ({ pa
   })
 })
 
+test('los reportes de falla salen en Órdenes › Reparaciones y se les cambia el técnico', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  const cambios: unknown[] = []
+  await page.route('**/api/bajas/tecnicos/disponibles', (route) => route.fulfill({ json: [
+    { id: 7, nombre_completo: 'Técnico Uno', usuario: 'tec1' },
+    { id: 8, nombre_completo: 'Técnico Dos', usuario: 'tec2' },
+  ] }))
+  await page.route('**/api/ordenes/?tipo=instalacion', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/ordenes/?tipo=cambio_domicilio', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/ordenes/?tipo=reparacion', (route) => route.fulfill({ json: [
+    { id: 52, version: 3, tipo: 'reparacion', estado: 'asignada', prioridad: 'urgente', categoria_soporte: 'cable_roto',
+      descripcion: 'Subió la potencia a -31 dBm, revisar la fibra desde la caja',
+      cliente: { nombre: 'Victor Constantino', telefono: '5550000000', direccion: 'Villa de Guadalupe' },
+      tecnico: { id: 7, nombre: 'Técnico Uno', usuario: 'tec1' } },
+    { id: 53, version: 1, tipo: 'reparacion', estado: 'terminada', categoria_soporte: 'lentitud',
+      cliente: { nombre: 'Ya Resuelta' }, tecnico: null },
+  ] }))
+  await page.route('**/api/ordenes/52', async (route) => {
+    cambios.push(route.request().postDataJSON())
+    await route.fulfill({ json: { id: 52 } })
+  })
+  await page.goto('/admin/ordenes')
+  await page.getByRole('tab', { name: 'Reparaciones' }).click()
+
+  await expect(page).toHaveURL(/vista=reparaciones/)
+  await expect(page.getByRole('heading', { name: 'Reparaciones' })).toBeVisible()
+  await expect(page.getByText('🔧 Fibra o cable roto')).toBeVisible()
+  await expect(page.getByText('Subió la potencia a -31 dBm', { exact: false })).toBeVisible()
+  await expect(page.getByText('Ya Resuelta')).toHaveCount(0)   // las terminadas no salen
+  await expect(page.getByRole('button', { name: 'Agendar visita de Victor Constantino' })).toHaveCount(0)
+
+  await page.locator('select[aria-label="Técnico de Victor Constantino"]:visible').selectOption('8')
+  await expect.poll(() => cambios).toEqual([{ tecnico_id: 8 }])
+})
+
 test('carga las transacciones y sus filtros financieros', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)

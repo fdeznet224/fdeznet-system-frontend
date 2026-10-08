@@ -132,7 +132,7 @@ export default function ReportarFalla({ clienteId, servicioId, onListo }: {
                 fecha_programada: form.fecha_programada || null,
                 descripcion,
             });
-            toast.success(`Reporte #${data.id} creado${form.tecnico_id ? ' · se le avisó al técnico por WhatsApp' : ''}`, { duration: 6000 });
+            toast.success(`Reporte #${data.id} creado${form.tecnico_id ? ' · se le avisó al técnico por WhatsApp' : ''}. Lo ves en Órdenes › Reparaciones.`, { duration: 6000 });
             onListo();
         } catch (error) {
             toast.error(apiErrorMessage(error, 'No se pudo crear el reporte'), { duration: 8000 });
