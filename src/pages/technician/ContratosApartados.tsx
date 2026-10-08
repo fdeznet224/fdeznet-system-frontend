@@ -77,16 +77,17 @@ export default function ContratosApartados() {
     const [siguiente, ...resto] = apartados;
 
     return (
-        <section aria-label="Contratos apartados" className="rounded-3xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-500/30 dark:bg-[#1a1f2e]">
-            <div className="flex items-start justify-between gap-3">
-                <div>
-                    <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                        <DocumentTextIcon className="h-4 w-4" /> Siguiente contrato
-                    </span>
+        <section aria-label="Contratos apartados" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-[#161b28]">
+            <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                    <DocumentTextIcon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Siguiente contrato</p>
                     {siguiente ? (
-                        <p className="mt-1 font-mono text-5xl font-black tracking-widest text-slate-900 dark:text-white">{siguiente.codigo}</p>
+                        <p className="font-mono text-2xl font-black leading-tight tracking-[0.2em] text-slate-900 dark:text-white">{siguiente.codigo}</p>
                     ) : (
-                        <p className="mt-2 text-sm font-bold text-slate-500">Conéctate a internet para recibir tus contratos.</p>
+                        <p className="text-xs font-semibold text-slate-500">Conéctate a internet para recibir tus contratos.</p>
                     )}
                 </div>
                 {siguiente && (
@@ -94,25 +95,23 @@ export default function ContratosApartados() {
                         type="button"
                         onClick={() => void descartar(siguiente.codigo)}
                         disabled={descartando || sinInternet}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-[11px] font-black text-slate-500 active:scale-95 disabled:opacity-40 dark:border-slate-700"
+                        className="shrink-0 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-400 hover:text-rose-600 active:scale-95 disabled:opacity-40"
                     >
                         Descartar
                     </button>
                 )}
             </div>
             {siguiente && (
-                <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Escríbelo en el conector de la caja NAP. Al dar de alta al cliente, se usa este número.
-                </p>
-            )}
-            {resto.length > 0 && (
-                <p className="mt-3 text-[11px] font-bold text-slate-400">
-                    Después: <span className="font-mono tracking-wider">{resto.map((a) => a.codigo).join(' · ')}</span>
+                <p className="mt-2 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                    Escríbelo en el conector de la caja NAP; se usa al dar de alta al cliente.
+                    {resto.length > 0 && (
+                        <> Después: <span className="font-mono font-bold tracking-wider text-slate-600 dark:text-slate-300">{resto.map((a) => a.codigo).join(' · ')}</span></>
+                    )}
                 </p>
             )}
             {sinInternet && (
-                <p className="mt-3 flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                    <WifiIcon className="h-4 w-4" /> Sin internet: estos son los que tienes guardados en tu celular.
+                <p className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                    <WifiIcon className="h-3.5 w-3.5 shrink-0" /> Sin internet: estos son los que tienes guardados en tu celular.
                 </p>
             )}
         </section>

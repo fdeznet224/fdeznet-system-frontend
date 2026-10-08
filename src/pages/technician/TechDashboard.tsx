@@ -10,7 +10,9 @@ import {
     HomeIcon,
     ClipboardDocumentListIcon,
     ArchiveBoxArrowDownIcon, 
-    CheckBadgeIcon
+    CheckBadgeIcon,
+    ChevronRightIcon,
+    PlusIcon,
 } from '@heroicons/react/24/outline';
 
 import ChatModal from '@/components/chat/ChatModal';
@@ -202,6 +204,9 @@ export default function TechDashboard() {
     const ordenesRetiro = ordenes.filter((orden) => orden.tipo === 'retiro');
     const totalReparaciones = ordenesAgenda.filter(esReparacion).length;
     const totalInstalaciones = ordenesAgenda.length - totalReparaciones + instalaciones.length;
+    const proxima = ordenesAgenda[0];
+    const hoy = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+    const hoyTexto = hoy.charAt(0).toUpperCase() + hoy.slice(1);
 
     // Coordinar la visita: escribirle por WhatsApp y abrir la ruta en Google Maps.
     const renderContacto = (orden: TechnicianOrder) => {
@@ -339,7 +344,7 @@ export default function TechDashboard() {
             {/* HEADER ADAPTATIVO */}
             <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-sm backdrop-blur-xl transition-colors dark:border-slate-800/60 dark:bg-[#1a1f2e]/90 dark:shadow-lg sm:px-6">
                 <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center font-bold text-base text-white shadow-lg border border-purple-500/20 shrink-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-sm font-black uppercase text-white dark:bg-white dark:text-slate-900">
                         {user?.usuario?.charAt(0) || 'T'}
                     </div>
                     <div>
@@ -359,52 +364,79 @@ export default function TechDashboard() {
             {/* CONTENIDO PRINCIPAL */}
             <div className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 sm:px-6">
 
-                {/* PESTAÑA: INICIO (KPIs + Acceso a Búsqueda) */}
+                {/* PESTAÑA: INICIO */}
                 {activeTab === 'inicio' && (
-                    <div className="animate-in fade-in duration-500 flex flex-col gap-4">
+                    <div className="animate-in fade-in duration-300 flex flex-col gap-3">
+                        <div className="px-1">
+                            <p className="text-xs font-medium text-slate-400">{hoyTexto}</p>
+                            <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Hola, {user?.usuario}</h2>
+                        </div>
 
-                        {/* BÚSQUEDA: lo primero de la pantalla */}
                         <BuscadorClientes />
-
                         <ContratosApartados />
+
+                        {/* Resumen del día */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('agenda')}
+                                className="flex flex-col items-start rounded-2xl border border-slate-200 bg-white p-4 text-left transition active:scale-[0.98] dark:border-slate-800 dark:bg-[#161b28]"
+                            >
+                                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    <ClipboardDocumentListIcon className="h-4 w-4" /> Mi agenda
+                                </span>
+                                <span className="mt-1 block text-3xl font-black text-slate-900 dark:text-white">{ordenesAgenda.length + instalaciones.length}</span>
+                                <span className="mt-1 block text-[11px] font-semibold leading-tight">
+                                    <span className="text-blue-600 dark:text-blue-400">{plural(totalInstalaciones, 'instalación', 'instalaciones')}</span>
+                                    <br />
+                                    <span className="text-rose-600 dark:text-rose-400">{plural(totalReparaciones, 'reparación', 'reparaciones')}</span>
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('retiros')}
+                                className="flex flex-col items-start rounded-2xl border border-slate-200 bg-white p-4 text-left transition active:scale-[0.98] dark:border-slate-800 dark:bg-[#161b28]"
+                            >
+                                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    <ArchiveBoxArrowDownIcon className="h-4 w-4" /> Retiros
+                                </span>
+                                <span className="mt-1 block text-3xl font-black text-slate-900 dark:text-white">{ordenesRetiro.length}</span>
+                                <span className="mt-1 block text-[11px] font-semibold leading-tight text-orange-600 dark:text-orange-400">Bajas por recoger</span>
+                            </button>
+                        </div>
+
+                        {/* Lo siguiente que le toca: la urgente o la próxima visita */}
+                        {proxima && (
+                            <button
+                                type="button"
+                                aria-label={`Lo siguiente: ${proxima.cliente?.nombre || proxima.prospecto_nombre || `Orden #${proxima.id}`}`}
+                                onClick={() => setActiveTab('agenda')}
+                                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left transition active:scale-[0.98] dark:border-slate-800 dark:bg-[#161b28]"
+                            >
+                                <span className={`h-10 w-1 shrink-0 rounded-full ${esReparacion(proxima) ? 'bg-rose-500' : 'bg-blue-500'}`} />
+                                <span className="min-w-0 flex-1">
+                                    <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                        Lo siguiente · {esReparacion(proxima) ? 'Reparación' : 'Instalación'}
+                                        {URGENCIA[proxima.prioridad || ''] !== undefined && <span className="ml-1 text-rose-600">· {proxima.prioridad}</span>}
+                                    </span>
+                                    <span className="block truncate text-sm font-black text-slate-900 dark:text-white">{proxima.cliente?.nombre || proxima.prospecto_nombre || `Orden #${proxima.id}`}</span>
+                                    <span className="block truncate text-[11px] text-slate-500">
+                                        {proxima.fecha_programada
+                                            ? `${new Date(proxima.fecha_programada).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} · ${proxima.fecha_programada.slice(11, 16)}`
+                                            : (proxima.servicio?.direccion || proxima.cliente?.direccion || proxima.prospecto_direccion || 'Sin fecha de visita').replace(/\s*·?\s*https?:\/\/\S+/g, '')}
+                                    </span>
+                                </span>
+                                <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate-300" />
+                            </button>
+                        )}
+
                         <button
                             type="button"
                             onClick={() => navigate('/tech/activar/nueva')}
-                            className="h-12 w-full rounded-2xl border border-dashed border-blue-300 bg-blue-50 text-[11px] font-black uppercase tracking-widest text-blue-700 active:scale-95 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
+                            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 text-xs font-black uppercase tracking-wider text-white transition active:scale-[0.98] dark:bg-white dark:text-slate-900"
                         >
-                            + Nueva instalación
+                            <PlusIcon className="h-5 w-5" /> Nueva instalación
                         </button>
-                        
-                        {/* TARJETAS DE KPIs ADAPTATIVAS */}
-                        <div className="grid grid-cols-1 gap-4">
-                            <div onClick={() => setActiveTab('agenda')} className="bg-white dark:bg-gradient-to-br dark:from-[#1a1f2e] dark:to-[#0f1219] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md dark:shadow-xl relative overflow-hidden active:scale-95 transition-all cursor-pointer group hover:border-purple-500/30 dark:hover:border-purple-500/30">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                <div className="relative z-10 flex items-center justify-between">
-                                    <div>
-                                        <span className="text-purple-600 dark:text-purple-400 text-[10px] font-black uppercase tracking-widest transition-colors">Mi agenda</span>
-                                        <h2 className="text-5xl font-black text-slate-800 dark:text-white mt-1 transition-colors">{ordenesAgenda.length + instalaciones.length}</h2>
-                                        <p className="mt-1 flex flex-wrap gap-x-2 text-[10px] font-bold uppercase tracking-wider">
-                                            <span className="text-blue-600 dark:text-blue-400">{plural(totalInstalaciones, 'instalación', 'instalaciones')}</span>
-                                            <span className="text-slate-400">·</span>
-                                            <span className="text-rose-600 dark:text-rose-400">{plural(totalReparaciones, 'reparación', 'reparaciones')}</span>
-                                        </p>
-                                    </div>
-                                    <ClipboardDocumentListIcon className="w-14 h-14 text-purple-600 dark:text-purple-500 opacity-20 dark:opacity-30 group-hover:scale-110 transition-transform" />
-                                </div>
-                            </div>
-
-                            <div onClick={() => setActiveTab('retiros')} className="bg-white dark:bg-gradient-to-br dark:from-[#1a1f2e] dark:to-[#0f1219] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md dark:shadow-xl relative overflow-hidden active:scale-95 transition-all cursor-pointer group hover:border-orange-500/30 dark:hover:border-orange-500/30">
-                                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                <div className="relative z-10 flex items-center justify-between">
-                                    <div>
-                                        <span className="text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-widest transition-colors">Equipos</span>
-                                        <h2 className="text-5xl font-black text-slate-800 dark:text-white mt-1 transition-colors">{ordenesRetiro.length}</h2>
-                                        <p className="text-slate-500 dark:text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-wider transition-colors">Bajas por recoger</p>
-                                    </div>
-                                    <ArchiveBoxArrowDownIcon className="w-14 h-14 text-orange-600 dark:text-orange-500 opacity-20 dark:opacity-30 group-hover:scale-110 transition-transform" />
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 )}
 
@@ -463,7 +495,7 @@ export default function TechDashboard() {
 }
 
 const NavButton = ({ icon: Icon, label, active, onClick }: NavButtonProps) => (
-    <button onClick={onClick} className={`flex min-h-12 min-w-20 flex-col items-center justify-center rounded-2xl p-2 transition-all active:scale-95 ${active ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400'}`}>
+    <button onClick={onClick} className={`flex min-h-12 min-w-20 flex-col items-center justify-center rounded-2xl p-2 transition-all active:scale-95 ${active ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400'}`}>
         <Icon className="w-6 h-6" />
         <span className="text-[8px] font-black uppercase tracking-widest mt-1">{label}</span>
     </button>
