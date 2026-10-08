@@ -195,6 +195,8 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [isSwapOpen, setIsSwapOpen] = useState(false);
     const [swapData, setSwapData] = useState({ nuevo_inventario_id: '', estado_vieja_onu: 'CON_FALLA' });
     const [equiposDisponibles, setEquiposDisponibles] = useState<EquipmentItem[]>([]);
+    const [onuParaActivar, setOnuParaActivar] = useState('');
+    const [activando, setActivando] = useState(false);
 
     const [formData, setFormData] = useState({
         nombre: '', cedula: '', telefono: '', direccion: '',
@@ -424,6 +426,33 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             cargarDatosCompletos(cliente.id);
             if (onEditSuccess) onEditSuccess();
         } catch { toast.error("Error en cambio", { id: load }); }
+    };
+
+    // Cliente cancelado que regresa: mismo contrato, plan, PPPoE e IP; MikroTik
+    // vuelve a crear su acceso. Si su ONU ya se recogió (o se eligió otra), va la elegida.
+    const handleActivar = async () => {
+        if (!cliente) return;
+        const sinOnu = !cliente.onu_asignada;
+        if (sinOnu && !onuParaActivar) {
+            toast.error('Elige la ONU que se le instala');
+            return;
+        }
+        const onu = equiposDisponibles.find(eq => String(eq.id) === onuParaActivar)?.identificador || cliente.onu_asignada?.identificador;
+        if (!window.confirm(`¿Activar a ${cliente.nombre} con la ONU ${onu}?\n\nConserva su contrato, plan, PPPoE e IP. El MikroTik vuelve a crear su acceso.`)) return;
+        setActivando(true);
+        try {
+            const { data } = await client.post<{ mikrotik_estado?: string }>(`/clientes/${cliente.id}/reactivar`, onuParaActivar ? { onu_id: Number(onuParaActivar) } : {});
+            if (data.mikrotik_estado === 'error') toast.error('Cliente activado, pero el MikroTik requiere revisión', { duration: 8000 });
+            else toast.success('Cliente activado');
+            setOnuParaActivar('');
+            setIsEditing(false);
+            cargarDatosCompletos(cliente.id);
+            if (onEditSuccess) onEditSuccess();
+        } catch (error: unknown) {
+            toast.error(apiErrorMessage(error, 'No se pudo activar'), { duration: 8000 });
+        } finally {
+            setActivando(false);
+        }
     };
 
     const renderPuertoOptions = () => {
@@ -745,6 +774,36 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                     <input type="number" placeholder="Monto a abonar..." className="flex-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500" value={montoSaldo} onChange={e => setMontoSaldo(e.target.value)} />
                                     <button onClick={handleAgregarSaldo} className="bg-emerald-500 text-white px-5 py-3 rounded-xl text-xs font-black shadow-md">Abonar</button>
                                 </div>
+                            )}
+
+                            {isEditing && cliente?.estado === 'cancelado' && (
+                                <section aria-label="Activar cliente cancelado" className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-900/10">
+                                    <p className="text-sm font-black text-emerald-800 dark:text-emerald-300">Cliente cancelado</p>
+                                    <p className="mt-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                                        Al activarlo conserva su contrato, plan, PPPoE e IP, y el MikroTik vuelve a crear su acceso.
+                                    </p>
+                                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                        <select
+                                            aria-label="ONU para activar"
+                                            value={onuParaActivar}
+                                            onChange={(event) => setOnuParaActivar(event.target.value)}
+                                            className={flatInputClass}
+                                        >
+                                            <option value="">{cliente.onu_asignada ? `Su ONU actual (${cliente.onu_asignada.identificador})` : 'Elegir ONU que se le instala...'}</option>
+                                            {equiposDisponibles
+                                                .filter(eq => !tecOltActual || eq.tecnologia?.toUpperCase() === tecOltActual)
+                                                .map(eq => <option key={eq.id} value={eq.id}>{eq.identificador}</option>)}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            disabled={activando}
+                                            onClick={() => void handleActivar()}
+                                            className="shrink-0 rounded-2xl bg-emerald-600 px-5 py-3 text-xs font-black uppercase text-white disabled:opacity-50"
+                                        >
+                                            {activando ? 'Activando...' : 'Activar'}
+                                        </button>
+                                    </div>
+                                </section>
                             )}
 
                             {(isEditing || activeTab === 'instalacion') && (
