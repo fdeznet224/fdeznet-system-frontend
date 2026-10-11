@@ -590,7 +590,7 @@ test('abre herramientas y alta desde el listado unificado', async ({ page }) => 
     await expect(page.getByRole('dialog', { name: 'Filtros de clientes' })).toBeVisible()
     await page.getByRole('button', { name: 'Listo' }).click()
     await expect(page.getByRole('link', { name: 'Llamar a Cliente E2E' })).toHaveAttribute('href', 'tel:5550000000')
-    await expect(page.getByRole('link', { name: 'Abrir ubicación de Cliente E2E' })).toHaveAttribute('href', /^geo:19\.4326,-99\.1332/)
+    await expect(page.getByRole('link', { name: 'Abrir ubicación de Cliente E2E' })).toHaveAttribute('href', 'https://www.google.com/maps/dir/?api=1&destination=19.4326%2C-99.1332&travelmode=driving')
     await page.locator('article').first().click()
     await expect(page.locator('.client-detail-panel')).toBeVisible()
     await expect(page.getByText('Copiar IP')).toHaveCount(0)

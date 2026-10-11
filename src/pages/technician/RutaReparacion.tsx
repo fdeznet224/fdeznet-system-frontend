@@ -86,15 +86,13 @@ export default function RutaReparacion({ online, onAgendada }: { online: boolean
 
     return (
         <div className="space-y-3">
-            <div className="flex items-start justify-between gap-3 px-1">
-                <div>
-                    <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Ruta</h2>
-                    <p className="text-xs text-slate-500">Clientes con la potencia alta, del más cercano a ti.</p>
-                </div>
-                <button type="button" disabled={cargando || !online} onClick={cargar} className={`${BOTON_PRIMARIO} w-auto shrink-0 px-3 text-xs`}>
-                    <MapPinIcon className="h-4 w-4" /> {cargando ? 'Buscando…' : ruta ? 'Actualizar' : 'Usar mi ubicación'}
-                </button>
+            <div className="px-1">
+                <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Ruta</h2>
+                <p className="text-xs text-slate-500">Clientes con la potencia alta, del más cercano a ti.</p>
             </div>
+            <button type="button" disabled={cargando || !online} onClick={cargar} className={BOTON_PRIMARIO}>
+                <MapPinIcon className="h-4 w-4" /> {cargando ? 'Buscando…' : ruta ? 'Actualizar ruta' : 'Usar mi ubicación'}
+            </button>
             {!online && <p className="px-1 text-xs font-semibold text-amber-600">Conéctate a internet para armar la ruta.</p>}
             {ruta && ruta.length === 0 && (
                 <div className={`${TARJETA} flex flex-col items-center gap-2 py-12 text-center`}>

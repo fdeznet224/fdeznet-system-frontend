@@ -553,7 +553,7 @@ export default function Clientes() {
                                                 </a>
                                             )}
                                             {mapHref ? (
-                                                <a aria-label={`Abrir ubicación de ${c.nombre}`} href={mapHref} onClick={(e) => e.stopPropagation()} className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 active:scale-95 dark:text-blue-400">
+                                                <a aria-label={`Abrir ubicación de ${c.nombre}`} href={mapHref} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 active:scale-95 dark:text-blue-400">
                                                     <MapPinIcon className="h-5 w-5" />
                                                 </a>
                                             ) : (

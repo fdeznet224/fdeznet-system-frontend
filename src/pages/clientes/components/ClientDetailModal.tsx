@@ -474,7 +474,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             address: cliente.direccion,
             label: cliente.nombre,
         })) {
-            toast.error("El cliente no tiene ubicación registrada");
+            toast.error("El cliente no tiene ubicación GPS: captúrala en Editar o desde la app del técnico");
         }
     };
 
