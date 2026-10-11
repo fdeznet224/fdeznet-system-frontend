@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { 
     Cog6ToothIcon, BellAlertIcon, ScissorsIcon, 
     CheckCircleIcon, ArrowLeftIcon, ClockIcon, 
-    CalendarDaysIcon, ShieldCheckIcon, ChatBubbleLeftRightIcon
+    CalendarDaysIcon, ShieldCheckIcon, ChatBubbleLeftRightIcon, SignalIcon
 } from '@heroicons/react/24/outline';
 
 interface ConfigSistema {
@@ -21,6 +21,7 @@ interface ConfigSistema {
     hora_ejecucion_corte: string;
     hora_generacion_facturas: string; // 👈 NUEVO
     hora_recordatorios: string;       // 👈 NUEVO
+    hora_aviso_senal: string;
     recordatorio_1_dias: number;
     recordatorio_2_dias: number;
     recordatorio_3_dias: number;
@@ -44,6 +45,7 @@ export default function Sistema() {
         hora_ejecucion_corte: "03:00",
         hora_generacion_facturas: "06:00", // 👈 VALOR POR DEFECTO
         hora_recordatorios: "09:00",       // 👈 VALOR POR DEFECTO
+        hora_aviso_senal: "08:00",
         recordatorio_1_dias: 5,
         recordatorio_2_dias: 1,
         recordatorio_3_dias: 0,
@@ -187,6 +189,29 @@ export default function Sistema() {
                                 <input type="time" className="w-full bg-slate-100 dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white font-black outline-none focus:border-purple-500 transition text-center tracking-widest"
                                     value={config.hora_generacion_facturas || ''} onChange={e => handleChange('hora_generacion_facturas', e.target.value)} />
                             </div>
+                        </div>
+                    </div>
+
+                    {/* TARJETA MONITOREO DE FIBRA */}
+                    <div className="bg-white dark:bg-[#0f1219] rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-xl relative overflow-hidden transition-colors">
+                        <h2 className="text-lg font-black mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+                            <SignalIcon className="w-5 h-5 text-blue-600 dark:text-blue-500"/>
+                            Monitoreo de Fibra
+                        </h2>
+                        <div className="p-4 bg-slate-50 dark:bg-[#151b2b] rounded-xl border border-slate-200 dark:border-slate-800">
+                            <label htmlFor="hora_aviso_senal" className="font-black block text-slate-900 dark:text-white text-sm mb-1 flex items-center gap-2">
+                                <ClockIcon className="w-4 h-4 text-slate-500"/> Hora del aviso de potencias altas
+                            </label>
+                            <p className="text-xs text-slate-500 mb-3">La potencia de todas las ONU se lee cada hora. Una vez al día se manda a los teléfonos de alerta la lista de clientes cuya señal empeoró.</p>
+                            <select id="hora_aviso_senal" className="w-full bg-slate-100 dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 transition"
+                                value={config.hora_aviso_senal ?? '08:00'} onChange={e => handleChange('hora_aviso_senal', e.target.value)}>
+                                <option value="">No enviar el aviso</option>
+                                {Array.from({ length: 24 }, (_, h) => (
+                                    <option key={h} value={`${String(h).padStart(2, '0')}:00`}>
+                                        {new Date(2026, 0, 1, h).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' })}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                 </div>

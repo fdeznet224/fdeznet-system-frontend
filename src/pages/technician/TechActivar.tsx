@@ -7,7 +7,6 @@ import {
     CheckCircleIcon,
     ClipboardDocumentIcon,
     MapPinIcon,
-    QrCodeIcon,
 } from '@heroicons/react/24/outline';
 
 import client from '../../api/axios';
@@ -15,7 +14,8 @@ import { useSync } from '@/context/sync/context';
 import { cachedRequest, getCachedValue, setCachedValue } from '../../offline/db';
 import { apiErrorMessage } from '@/utils/apiError';
 import SugerenciaNap from '@/components/naps/SugerenciaNap';
-import EscanerCodigo from '@/components/escaner/EscanerCodigo';
+import SelectorOnu from './SelectorOnu';
+import { SERIE_MINIMA, normalizarSerie } from './onu';
 import CalendarioCobro, { type FechasCobro } from '@/components/cobro/CalendarioCobro';
 import { BOTON_EXITO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO, ETIQUETA_CAMPO, TARJETA } from './estilo';
 
@@ -105,93 +105,10 @@ const VACIO: Formulario = {
 const NUEVO = '__nuevo';
 const OTRO = '__otro';
 
-/** "AA:BB:CC..." y "aabbcc..." son la misma ONU. */
-const normalizarSerie = (valor: string) => valor.toUpperCase().replace(/[^0-9A-Z]/g, '');
 
 const etiqueta = ETIQUETA_CAMPO;
 const campo = `${CAMPO} min-h-11`;
 const tarjeta = `${TARJETA} space-y-4 p-4`;
-
-type OnuDisponible = Catalogo['onus'][number];
-
-/** Mínimo de un serial GPON o una MAC para registrar una ONU que no está en inventario. */
-const SERIE_MINIMA = 8;
-
-/**
- * Buscar la ONU en el inventario disponible, elegirla de la lista o escanear
- * su código. Si no está en el inventario, se registra al activar.
- */
-function SelectorOnu({ onus, valor, elegida, onCambiar }: {
-    onus: OnuDisponible[];
-    valor: string;
-    elegida?: OnuDisponible;
-    onCambiar: (valor: string) => void;
-}) {
-    const [escaneando, setEscaneando] = useState(false);
-    const [abierta, setAbierta] = useState(false);
-    const busqueda = normalizarSerie(valor);
-    const coincidencias = onus.filter((o) => !busqueda || normalizarSerie(o.identificador).includes(busqueda)).slice(0, 30);
-
-    const alEscanear = (codigo: string) => {
-        setEscaneando(false);
-        const leido = normalizarSerie(codigo);
-        const onu = onus.find((o) => normalizarSerie(o.identificador) === leido)
-            || onus.find((o) => leido.includes(normalizarSerie(o.identificador)));
-        onCambiar(onu ? onu.identificador : codigo.trim().toUpperCase());
-        if (onu) toast.success(`ONU ${onu.identificador}`);
-        else toast('ONU nueva: se registrará en el inventario al activar', { icon: '📦' });
-    };
-
-    return (
-        <div>
-            <span className={etiqueta}>ONU instalada ({onus.length} disponibles)</span>
-            <div className="flex gap-2">
-                <input
-                    aria-label="ONU instalada"
-                    value={valor}
-                    onFocus={() => setAbierta(true)}
-                    onChange={(e) => { onCambiar(e.target.value); setAbierta(true); }}
-                    placeholder="Busca por serial o MAC"
-                    className={`${campo} font-mono uppercase`}
-                />
-                <button type="button" aria-label="Escanear código de la ONU" onClick={() => setEscaneando(true)}
-                    className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-slate-900 px-3 text-xs font-bold text-white transition active:scale-95 dark:bg-white dark:text-slate-900">
-                    <QrCodeIcon className="h-5 w-5" /> Escanear
-                </button>
-            </div>
-            {elegida ? (
-                <p className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald-600"><CheckCircleIcon className="h-4 w-4" /> {elegida.identificador}{elegida.modelo ? ` · ${elegida.modelo}` : ''}</p>
-            ) : busqueda.length >= SERIE_MINIMA && coincidencias.length === 0 ? (
-                <p className="mt-2 text-xs font-bold text-blue-600 dark:text-blue-400">
-                    No está en el inventario: se registrará como ONU nueva ({busqueda}) al activar. Revisa que el serial o MAC esté completo.
-                </p>
-            ) : valor && coincidencias.length === 0 ? (
-                <p className="mt-1 text-xs font-bold text-amber-600">Sigue escribiendo el serial o MAC completo.</p>
-            ) : null}
-            {abierta && !elegida && coincidencias.length > 0 && (
-                <ul role="listbox" aria-label="ONUs disponibles" className="mt-2 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
-                    {coincidencias.map((o) => (
-                        <li key={o.id}>
-                            <button type="button" role="option" aria-selected={false} onClick={() => { onCambiar(o.identificador); setAbierta(false); }}
-                                className="flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-3 text-left last:border-0 hover:bg-blue-50 dark:border-slate-800 dark:hover:bg-slate-800">
-                                <span className="font-mono text-sm font-semibold">{o.identificador}</span>
-                                <span className="text-[11px] text-slate-500">{o.modelo || ''}</span>
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            )}
-            {escaneando && (
-                <EscanerCodigo
-                    titulo="Apunta al código de barras o QR de la ONU"
-                    onLeido={alEscanear}
-                    onCerrar={() => setEscaneando(false)}
-                    onError={(mensaje) => { toast.error(mensaje, { duration: 6000 }); setEscaneando(false); }}
-                />
-            )}
-        </div>
-    );
-}
 
 /** Nueva solicitud levantada por el técnico en el domicilio; luego se activa. */
 function NuevaSolicitud() {

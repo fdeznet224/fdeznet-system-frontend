@@ -618,6 +618,31 @@ test('carga y conserva los horarios del sistema', async ({ page }) => {
   await expect(page.locator('input[type="time"]').nth(2)).toHaveValue('09:15')
 })
 
+test('el aviso de potencias altas sale a la hora elegida y no en la madrugada', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  let guardado: Record<string, unknown> | null = null
+  await page.route('**/api/configuracion/sistema', async (route) => {
+    if (route.request().method() === 'PUT') {
+      guardado = route.request().postDataJSON()
+      await route.fulfill({ json: { status: 'ok', mensaje: 'Configuración guardada' } })
+      return
+    }
+    await route.fallback()
+  })
+  await page.goto('/admin/configuracion/sistema')
+
+  const hora = page.getByLabel('Hora del aviso de potencias altas')
+  await expect(hora).toHaveValue('08:00')
+  await hora.selectOption('07:00')
+  await page.getByRole('button', { name: /Guardar/ }).click()
+  await expect.poll(() => guardado?.hora_aviso_senal).toBe('07:00')
+
+  await hora.selectOption({ label: 'No enviar el aviso' })
+  await page.getByRole('button', { name: /Guardar/ }).click()
+  await expect.poll(() => guardado?.hora_aviso_senal).toBe('')
+})
+
 test('administra programación e historial de respaldos', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)
@@ -1579,29 +1604,50 @@ test.describe('escáner con cámara simulada', () => {
   })
 })
 
-test('el cobrador arma su ruta con los morosos más cercanos', async ({ page, context }) => {
-  await context.grantPermissions(['geolocation'])
-  await context.setGeolocation({ latitude: 16.75, longitude: -93.1 })
+test('el cobrador ya no tiene ruta: cobra en local', async ({ page }) => {
   await authenticateAs(page, 'cajero')
   await mockApi(page)
+  await page.goto('/admin/cobranza')
+  await expect(page.getByRole('button', { name: 'Promesas' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Ruta' })).toHaveCount(0)
+})
+
+test('el técnico ve en su ruta los clientes cercanos con potencia alta y se lleva la revisión a su agenda', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation'])
+  await context.setGeolocation({ latitude: 16.75, longitude: -93.1 })
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
   let consulta = ''
-  await page.route('**/api/finanzas/ruta-cobranza**', (route) => {
+  await page.route('**/api/soporte/ruta-reparacion**', (route) => {
     consulta = new URL(route.request().url()).search
     return route.fulfill({ json: [
-      { cliente_id: 5, nombre: 'Ana Lopez', contrato: 'A7F2', direccion: 'Calle 1 #20', estado: 'suspendido', total: 700, dias_atraso: 52, latitud: 16.751, longitud: -93.1, distancia_m: 111 },
-      { cliente_id: 6, nombre: 'Beto Ruiz', contrato: 'B1C3', direccion: null, estado: 'activo', total: 350, dias_atraso: 5, latitud: null, longitud: null, distancia_m: null },
+      { cliente_id: 5, nombre: 'Ana Lopez', contrato: 'A7F2', direccion: 'Calle 1 #20', rx: -28.4, nivel: 'alta', fecha_lectura: null,
+        nap: 'P1-V-CN-2-A', puerto_nap: 3, latitud: 16.751, longitud: -93.1, distancia_m: 111, reporte: null },
+      { cliente_id: 6, nombre: 'Beto Ruiz', contrato: 'B1C3', direccion: null, rx: -25.6, nivel: 'limite', fecha_lectura: null,
+        nap: null, puerto_nap: null, latitud: null, longitud: null, distancia_m: null, reporte: { id: 80, estado: 'asignada', tecnico: 'Carlos' } },
     ] })
   })
-  await page.goto('/admin/cobranza')
-
-  await page.getByRole('button', { name: 'Ruta' }).click()
+  let reporte: Record<string, unknown> | null = null
+  await page.route('**/api/soporte/incidencias', async (route) => {
+    reporte = route.request().postDataJSON()
+    await route.fulfill({ status: 201, json: { id: 81 } })
+  })
+  await page.goto('/tech/dashboard')
+  await page.getByRole('button', { name: 'Ruta', exact: true }).click()
   await page.getByRole('button', { name: 'Usar mi ubicación' }).click()
-  await expect(page.getByText('Ana Lopez')).toBeVisible()
+
+  const ana = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Ana Lopez' }) })
+  await expect(ana.getByText('-28.40')).toBeVisible()
   expect(consulta).toBe('?latitud=16.75&longitud=-93.1')
-  await expect(page.getByText('111 m')).toBeVisible()
-  await expect(page.getByText('52 días de atraso · suspendido', { exact: false })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Cómo llegar' })).toHaveAttribute('href', /destination=16\.751%2C-93\.1/)
-  await expect(page.getByText('Sin ubicación')).toBeVisible()
+  await expect(ana.getByText('alta · 111 m')).toBeVisible()
+  await expect(ana.getByText('Contrato A7F2 · P1-V-CN-2-A P3')).toBeVisible()
+  await expect(ana.getByRole('link', { name: 'Cómo llegar' })).toHaveAttribute('href', /destination=16\.751%2C-93\.1/)
+  const beto = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Beto Ruiz' }) })
+  await expect(beto.getByText('Reporte #80 abierto · Carlos')).toBeVisible()
+
+  await ana.getByRole('button', { name: 'Ir a revisar' }).click()
+  await expect.poll(() => reporte).toMatchObject({ cliente_id: 5, categoria: 'potencia_baja', canal_reporte: 'monitoreo' })
+  await expect(ana.getByText('Reporte #81 abierto · Tú')).toBeVisible()
 })
 
 test('el inicio muestra el embudo de ventas por mes', async ({ page }) => {
@@ -1862,6 +1908,196 @@ test('el técnico ve la falla, verifica la señal y termina la reparación', asy
 
   await expect.poll(() => cierre).toEqual({ solucion: 'Fibra doblada en el poste, se cambió el tramo', version: 3 })
   await expect(page.getByRole('heading', { name: 'Victor Martinez' })).toHaveCount(0)
+})
+
+const REVISION_VACIA = {
+  categoria: 'sin_internet', potencia_antes: null, potencia_ultima: null, plan: { nombre: '50 Megas', bajada_kbps: 51200, subida_kbps: 10240 },
+  nap: null, vecinos: [], onu: null, acceso_onu: [], extensores: [],
+}
+
+async function reparacionEnCurso(page: Page, categoria: string, estado: string, revision: Record<string, unknown>, diagnostico: Record<string, unknown>, rutas?: () => Promise<void>) {
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  await rutas?.()
+  await page.route(/\/api\/ordenes\/$/, (route) => route.fulfill({ json: [
+    { id: 57, tipo: 'reparacion', estado, version: 2, cliente_id: 9, categoria_soporte: categoria, prioridad: 'alta',
+      descripcion: 'Reporte', cliente: { id: 9, contrato: 'VM01', nombre: 'Victor Martinez', direccion: 'Rancheria', telefono: '4811234567' }, fecha_programada: null },
+  ] }))
+  await page.route('**/api/clientes/VM01/portal', (route) => route.fulfill({ json: {
+    id: 9, cedula: 'VM01', estado: 'activo', telefono: '4811234567', latitud: 16.7, longitud: -93.1, total_deuda: 0,
+    suggested_user: 'victor.martinez', suggested_pass: 'Fz12345', identificador_onu: 'HWTC11111111', potencia_optica: '-30.10 dBm',
+  } }))
+  await page.route('**/api/network/diagnostico/conexion/9', (route) => route.fulfill({ json: { online: true, datos: { uptime: '5m' } } }))
+  await page.route('**/api/network/diagnostico/trafico/9', (route) => route.fulfill({ json: { velocidad_bajada: 0, velocidad_subida: 0 } }))
+  await page.route('**/api/ordenes/57/revision', (route) => route.fulfill({ json: { ...REVISION_VACIA, categoria, ...revision } }))
+  await page.route('**/api/soporte/incidencias/57/diagnosticar', (route) => route.fulfill({ json: {
+    resultado: 'ok', sugerencia: null,
+    mikrotik: { disponible: true, pppoe_online: true, uptime: '5m', trafico_bajada_bps: 0, trafico_subida_bps: 0, perdida_paquetes_porcentaje: 0 },
+    olt: { disponible: true, onu_online: true, potencia_rx_dbm: '-21.00' },
+    ...diagnostico,
+  } }))
+  await page.goto('/tech/dashboard')
+  await page.getByRole('button', { name: 'Agenda', exact: true }).click()
+  return page.locator('article').filter({ has: page.getByRole('heading', { name: 'Victor Martinez' }) })
+}
+
+test('potencia alta: compara antes y ahora, dice si sigue alta y muestra los vecinos de la caja', async ({ page }) => {
+  const orden = await reparacionEnCurso(page, 'potencia_baja', 'en_camino', {
+    potencia_antes: { rx: -30.1, fecha: '2026-10-09T08:00:00' },
+    nap: { nombre: 'P1-V-CN-2-A', puerto: 3, coordenadas: '22.1,-100.5', ubicacion: 'Poste 4' },
+    vecinos: [
+      { nombre: 'Ana Diaz', puerto: 1, potencia: { rx: -29.5 } },
+      { nombre: 'Eva Ruiz', puerto: 2, potencia: { rx: -28.8 } },
+      { nombre: 'Celia Gomez', puerto: 4, potencia: { rx: -21.0 } },
+    ],
+  }, { olt: { disponible: true, onu_online: true, potencia_rx_dbm: '-28.00' } })
+  const revision = orden.getByRole('region', { name: 'Revisión de la falla' })
+  await expect(revision.getByText('-30.10')).toBeVisible()
+  await expect(revision.getByText('2 de 3 vecinos de la caja también tienen la potencia alta', { exact: false })).toBeVisible()
+  await expect(revision.getByRole('link', { name: /Ir a la caja/ })).toBeVisible()
+
+  await revision.getByRole('button', { name: 'Revisar ahora' }).click()
+  await expect(revision.getByText('Mejoró 2.1 dB')).toBeVisible()
+  await expect(revision.getByText('Sigue alta (-28.00 dBm)', { exact: false })).toBeVisible()
+})
+
+test('fibra rota: identifica con láser la caja y el puerto, etiqueta el conector y corrige un puerto mal registrado', async ({ page }) => {
+  const envios: Record<string, unknown>[] = []
+  const orden = await reparacionEnCurso(page, 'cable_roto', 'en_camino', {
+    nap: { id: 4, nombre: 'P1-V-CN-2-A', puerto: 1, capacidad: 8, coordenadas: null, ubicacion: null },
+    identificacion: { identificado_en: null, etiquetado: false, contrato: 'VM01' },
+    avance: { identificados: 12, total: 250 },
+  }, {}, async () => {
+    await page.route('**/api/infraestructura/naps/cercanas**', (route) => route.fulfill({ json: [
+      { id: 4, nombre: 'P1-V-CN-2-A', capacidad: 8, distancia_m: 40, puertos_libres: 0, posicion_estimada: false },
+      { id: 5, nombre: 'P1-V-CN-3-B', capacidad: 8, distancia_m: 120, puertos_libres: 2, posicion_estimada: false },
+    ] }))
+    await page.route('**/api/infraestructura/naps/4/detalles', (route) => route.fulfill({ json: [
+      { id: 9, nombre: 'Victor Martinez', cedula: 'VM01', puerto_nap: 1 },
+      { id: 300, nombre: 'Ana Diaz', cedula: 'AD01', puerto_nap: 3 },
+    ] }))
+  })
+  await page.route('**/api/ordenes/57/identificar-nap', async (route) => {
+    const datos = route.request().postDataJSON()
+    envios.push(datos)
+    if (!datos.quitar_a_otro) {
+      await route.fulfill({ status: 409, json: { detail: 'El puerto 3 de P1-V-CN-2-A está registrado a Ana Diaz (contrato AD01). Si el láser marca este puerto, confirma para quitárselo.' } })
+      return
+    }
+    await route.fulfill({ json: { caja: 'P1-V-CN-2-A', puerto: 3, etiquetado: true, identificado_en: '2026-10-11T09:00:00' } })
+  })
+
+  const revision = orden.getByRole('region', { name: 'Revisión de la falla' })
+  await expect(revision.getByText('Red identificada: 12 de 250')).toBeVisible()
+  await expect(revision.getByText('Etiqueta el conector con el contrato', { exact: false })).toBeVisible()
+  await expect(revision.getByLabel('Caja NAP')).toHaveValue('4')
+  await revision.getByLabel('Puerto que marcó el láser').selectOption({ label: 'P3 · Ana Diaz' })
+  await revision.getByLabel('Etiqueté el conector con el contrato VM01').check()
+  await revision.getByRole('button', { name: /Guardar identificación/ }).click()
+  await expect(revision.getByText('está registrado a Ana Diaz (contrato AD01)', { exact: false })).toBeVisible()
+  await revision.getByRole('button', { name: /el láser marca este puerto: quitárselo/ }).click()
+  await expect.poll(() => envios.length).toBe(2)
+  expect(envios[1]).toEqual({ caja_nap_id: 4, puerto: 3, etiquetado: true, quitar_a_otro: true })
+})
+
+test('sin internet: fibra bien pero sin PPPoE apunta a la ONU', async ({ page }) => {
+  const orden = await reparacionEnCurso(page, 'sin_internet', 'en_camino', {}, {
+    mikrotik: { disponible: true, pppoe_online: false },
+    olt: { disponible: true, onu_online: true, potencia_rx_dbm: '-20.50' },
+  })
+  const revision = orden.getByRole('region', { name: 'Revisión de la falla' })
+  await revision.getByRole('button', { name: 'Revisar ahora' }).click()
+  await expect(revision.getByText('Potencia de la fibra (-20.50 dBm)')).toBeVisible()
+  await expect(revision.getByText('La fibra está bien pero no hay sesión PPPoE', { exact: false })).toBeVisible()
+})
+
+test('router o WiFi: entra a la ONU con sus cuentas y anota el extensor', async ({ page }) => {
+  const orden = await reparacionEnCurso(page, 'router_wifi', 'en_camino', {
+    acceso_onu: [{ marca: 'huawei', url: 'http://192.168.100.1', cuentas: [{ usuario: 'telecomadmin', clave: 'admintelecom' }] }],
+  }, {})
+  let extensor: Record<string, unknown> | null = null
+  await page.route('**/api/ordenes/57/extensor', async (route) => {
+    extensor = route.request().postDataJSON()
+    await route.fulfill({ json: { detalle: 'TP-Link en la sala' } })
+  })
+  const revision = orden.getByRole('region', { name: 'Revisión de la falla' })
+  await expect(revision.getByRole('link', { name: /Abrir ONU Huawei · 192.168.100.1/ })).toHaveAttribute('href', 'http://192.168.100.1')
+  await expect(revision.getByText('telecomadmin / admintelecom')).toBeVisible()
+  await revision.getByRole('button', { name: 'Anotar extensor de rango' }).click()
+  await revision.getByLabel('Extensor de rango').fill('TP-Link en la sala')
+  await revision.getByRole('button', { name: 'Anotar', exact: true }).click()
+  await expect.poll(() => extensor).toEqual({ detalle: 'TP-Link en la sala' })
+})
+
+test('trabajando: la misma revisión sirve para terminar y avisa si la potencia sigue alta', async ({ page }) => {
+  const orden = await reparacionEnCurso(page, 'cable_roto', 'trabajando', {}, {
+    olt: { disponible: true, onu_online: true, potencia_rx_dbm: '-28.40' },
+  })
+  let cierre: Record<string, unknown> | null = null
+  await page.route('**/api/soporte/incidencias/57', (route) => route.fulfill({ json: { id: 57, version: 4 } }))
+  await page.route('**/api/soporte/incidencias/57/resolver', async (route) => {
+    cierre = route.request().postDataJSON()
+    await route.fulfill({ json: { id: 57, estado: 'terminada' } })
+  })
+  await expect(orden.getByRole('button', { name: /Terminar reparación/ })).toBeDisabled()
+  await orden.getByRole('button', { name: 'Verificar señal' }).click()
+  await expect(orden.getByText('Si la dejas así, explica por qué.', { exact: false })).toBeVisible()
+  await orden.getByLabel('Qué encontraste y qué hiciste').fill('Se empalmó, el poste sigue con la caja dañada')
+  await orden.getByRole('button', { name: /Terminar reparación/ }).click()
+  await expect.poll(() => cierre).toEqual({ solucion: 'Se empalmó, el poste sigue con la caja dañada', version: 4 })
+})
+
+test('en camino a una reparación el técnico ve PPPoE y potencia, completa el teléfono y cambia la ONU', async ({ page }) => {
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  await page.route(/\/api\/ordenes\/$/, (route) => route.fulfill({ json: [
+    { id: 56, tipo: 'reparacion', estado: 'en_camino', version: 2, cliente_id: 9, categoria_soporte: 'sin_internet', prioridad: 'alta',
+      descripcion: 'Subió la potencia', cliente: { id: 9, contrato: 'VM01', nombre: 'Victor Martinez', direccion: 'Rancheria', telefono: null }, fecha_programada: null },
+  ] }))
+  let ficha = { id: 9, cedula: 'VM01', telefono: null as string | null, latitud: null, longitud: null, suggested_user: 'victor.martinez',
+    suggested_pass: 'Fz12345', identificador_onu: 'HWTC11111111', potencia_optica: '-29.10 dBm' }
+  await page.route('**/api/clientes/VM01/portal', (route) => route.fulfill({ json: ficha }))
+  await page.route('**/api/network/diagnostico/conexion/9', (route) => route.fulfill({ json: { online: true, datos: { uptime: '5m' } } }))
+  await page.route('**/api/network/diagnostico/trafico/9', (route) => route.fulfill({ json: { velocidad_bajada: 3_000_000, velocidad_subida: 500_000 } }))
+  let contacto: Record<string, unknown> | null = null
+  await page.route('**/api/ordenes/56/cliente-contacto', async (route) => {
+    contacto = route.request().postDataJSON()
+    ficha = { ...ficha, telefono: '4811234567' }
+    await route.fulfill({ json: { telefono: '4811234567' } })
+  })
+  await page.route('**/api/ordenes/56/revision', (route) => route.fulfill({ json: REVISION_VACIA }))
+  await page.route('**/api/ordenes/56/onus-disponibles', (route) => route.fulfill({ json: [
+    { id: 11, identificador: 'HWTC22222222', modelo: 'HG8145V5' },
+  ] }))
+  let cambio: Record<string, unknown> | null = null
+  await page.route('**/api/ordenes/56/cambiar-onu', async (route) => {
+    cambio = route.request().postDataJSON()
+    ficha = { ...ficha, identificador_onu: 'HWTC22222222' }
+    await route.fulfill({ json: { onu: 'HWTC22222222', onu_anterior: 'HWTC11111111' } })
+  })
+  await page.goto('/tech/dashboard')
+  await page.getByRole('button', { name: 'Agenda', exact: true }).click()
+
+  const datos = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Victor Martinez' }) })
+    .getByRole('region', { name: 'Datos del cliente' })
+  await expect(datos.getByText('victor.martinez')).toBeVisible()
+  await expect(datos.getByText('Fz12345')).toBeVisible()
+  await expect(datos.getByText('-29.10 dBm')).toBeVisible()
+  await expect(datos.getByText('Conectado · 5m')).toBeVisible()
+  await expect(datos.getByText('Sin teléfono')).toBeVisible()
+
+  await datos.getByRole('button', { name: 'Editar teléfono' }).click()
+  await datos.getByLabel('Teléfono del cliente').fill('481 123 4567')
+  await datos.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect.poll(() => contacto).toEqual({ telefono: '481 123 4567' })
+  await expect(datos.getByText('4811234567')).toBeVisible()
+
+  await datos.getByRole('button', { name: 'Cambiar ONU' }).click()
+  await datos.getByLabel('ONU nueva').fill('2222')
+  await datos.getByRole('option', { name: /HWTC22222222/ }).click()
+  await datos.getByRole('button', { name: /Guardar cambio de ONU/ }).click()
+  await expect.poll(() => cambio).toEqual({ estado_vieja_onu: 'CON_FALLA', onu_id: 11 })
+  await expect(datos.getByText('HWTC22222222')).toBeVisible()
 })
 
 test('el enlace del aviso de señal muestra esos clientes y deja mandar técnico aunque solo hayan caído 3 dB', async ({ page }) => {

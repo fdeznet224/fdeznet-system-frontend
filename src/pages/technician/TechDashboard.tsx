@@ -13,6 +13,7 @@ import {
     CheckBadgeIcon,
     ChevronRightIcon,
     PlusIcon,
+    MapIcon,
 } from '@heroicons/react/24/outline';
 
 import ChatModal from '@/components/chat/ChatModal';
@@ -26,6 +27,8 @@ import { submitOperation } from '../../offline/sync';
 import { apiErrorMessage } from '@/utils/apiError';
 import { CATEGORIAS_FALLA } from '@/utils/categoriasFalla';
 import FinalizarReparacion from './FinalizarReparacion';
+import RutaReparacion from './RutaReparacion';
+import DatosReparacion from './DatosReparacion';
 import { BOTON_EXITO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO, TARJETA, TITULO_SECCION } from './estilo';
 
 interface TechnicianUser {
@@ -55,7 +58,7 @@ interface TechnicianOrder {
     cliente_id?: number;
     prospecto_nombre?: string;
     prospecto_direccion?: string;
-    cliente?: Pick<TechnicianClient, 'id' | 'nombre' | 'direccion'> & { telefono?: string | null; latitud?: number | null; longitud?: number | null };
+    cliente?: Pick<TechnicianClient, 'id' | 'nombre' | 'direccion'> & { contrato?: string | null; telefono?: string | null; latitud?: number | null; longitud?: number | null };
     prospecto_telefono?: string | null;
     prioridad?: string;
     categoria_soporte?: string | null;
@@ -91,7 +94,7 @@ export default function TechDashboard() {
     const { online } = useSync();
     const { brand } = useBrand();
     
-    const [activeTab, setActiveTab] = useState<'inicio' | 'agenda' | 'retiros'>('inicio');
+    const [activeTab, setActiveTab] = useState<'inicio' | 'agenda' | 'ruta' | 'retiros'>('inicio');
     
     const [instalaciones, setInstalaciones] = useState<TechnicianClient[]>([]);
     const [ordenes, setOrdenes] = useState<TechnicianOrder[]>([]);
@@ -245,6 +248,7 @@ export default function TechDashboard() {
                 : { texto: 'Instalación', punto: 'bg-blue-500', color: 'text-blue-600 dark:text-blue-400' };
         const direccion = (orden.servicio?.direccion || orden.cliente?.direccion || orden.prospecto_direccion || 'Sin dirección').replace(/\s*·?\s*https?:\/\/\S+/g, '');
         const urgente = orden.prioridad === 'alta' || orden.prioridad === 'urgente';
+        const conPanel = reparacion && orden.estado !== 'asignada' && Boolean(orden.cliente?.contrato);
         return (
         <article key={`orden-${orden.id}`} className={`${TARJETA} space-y-3 p-4`}>
             <div>
@@ -277,6 +281,18 @@ export default function TechDashboard() {
                 )}
             </div>
             {renderContacto(orden)}
+            {conPanel && orden.cliente?.contrato && (
+                // Ya en camino: revisión según la falla, PPPoE, ONU y potencia a la mano,
+                // corregir sus datos y (trabajando) terminar la reparación.
+                <DatosReparacion
+                    ordenId={orden.id}
+                    contrato={orden.cliente.contrato}
+                    online={online}
+                    categoria={orden.categoria_soporte}
+                    estado={orden.estado}
+                    onTerminada={() => setOrdenes((current) => current.filter((item) => item.id !== orden.id))}
+                />
+            )}
             {orden.tipo === 'retiro' ? (
                 // Retiro: solo ir a recoger el equipo, sin "en camino" ni "iniciar".
                 <div className="space-y-2">
@@ -307,7 +323,7 @@ export default function TechDashboard() {
                     </button>
                 )
             ) : orden.categoria_soporte && orden.estado === 'trabajando' ? (
-                <FinalizarReparacion
+                conPanel ? null : <FinalizarReparacion
                     ordenId={orden.id}
                     online={online}
                     onTerminada={() => setOrdenes((current) => current.filter((item) => item.id !== orden.id))}
@@ -463,6 +479,13 @@ export default function TechDashboard() {
                     </div>
                 )}
 
+                {/* PESTAÑA: RUTA (clientes con la potencia alta cerca) */}
+                {activeTab === 'ruta' && (
+                    <div className="animate-in fade-in duration-300">
+                        <RutaReparacion online={online} onAgendada={() => user && void fetchAllData(user.id)} />
+                    </div>
+                )}
+
                 {/* PESTAÑA: RETIROS */}
                 {activeTab === 'retiros' && (
                     <div className="animate-in fade-in duration-300 space-y-3">
@@ -483,9 +506,10 @@ export default function TechDashboard() {
 
             {/* BARRA INFERIOR */}
             <nav aria-label="Secciones" className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">
-                <div className="mx-auto grid max-w-3xl grid-cols-3">
+                <div className="mx-auto grid max-w-3xl grid-cols-4">
                     <NavButton icon={HomeIcon} label="Inicio" active={activeTab === 'inicio'} onClick={() => setActiveTab('inicio')} />
                     <NavButton icon={ClipboardDocumentListIcon} label="Agenda" badge={ordenesAgenda.length + instalaciones.length} active={activeTab === 'agenda'} onClick={() => setActiveTab('agenda')} />
+                    <NavButton icon={MapIcon} label="Ruta" active={activeTab === 'ruta'} onClick={() => setActiveTab('ruta')} />
                     <NavButton icon={ArchiveBoxArrowDownIcon} label="Retiros" badge={ordenesRetiro.length} active={activeTab === 'retiros'} onClick={() => setActiveTab('retiros')} />
                 </div>
             </nav>

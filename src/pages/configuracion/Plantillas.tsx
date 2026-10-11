@@ -55,7 +55,10 @@ export default function Plantillas() {
         'reconexion': '🚀 Reconexión de Servicio',
         'promesa_pago': '🤝 Promesa de Pago Registrada',
         'recordatorio_promesa': '⏰ Hoy Vence la Promesa de Pago',
-        'datos_pago': '🏦 Datos para Depósito o Transferencia'
+        'datos_pago': '🏦 Datos para Depósito o Transferencia',
+        'reporte_registrado': '🛠️ Reporte de Falla Registrado',
+        'reporte_tecnico_asignado': '👷 Técnico Asignado al Reporte',
+        'tecnico_en_camino': '🚗 Técnico en Camino'
     };
 
     // Colección visual para el pie de página
@@ -72,7 +75,9 @@ export default function Plantillas() {
         { tag: '{periodo_hasta}', desc: 'Fin del periodo' }, { tag: '{dias_con_servicio}', desc: 'Días cobrados' },
         { tag: '{dias_sin_servicio}', desc: 'Días no cobrados' }, { tag: '{ajuste_suspension}', desc: 'Descuento por corte' },
         { tag: '{monto_servicio_original}', desc: 'Servicio antes del ajuste' }, { tag: '{cargos_adicionales}', desc: 'Otros cargos' },
-        { tag: '{total_factura}', desc: 'Total de la factura' }
+        { tag: '{total_factura}', desc: 'Total de la factura' },
+        { tag: '{folio}', desc: 'Número del reporte' }, { tag: '{falla}', desc: 'Falla reportada' },
+        { tag: '{tecnico}', desc: 'Nombre del técnico' }
     ];
 
     return (

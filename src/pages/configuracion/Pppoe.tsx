@@ -4,6 +4,7 @@ import { ArrowLeftIcon, KeyIcon, ShieldCheckIcon, SparklesIcon } from '@heroicon
 import { toast } from 'react-hot-toast';
 
 import client from '../../api/axios';
+import AccesoOnu from './AccesoOnu';
 
 type PasswordMode = 'fija' | 'aleatoria';
 type CharacterType = 'numeros' | 'letras' | 'alfanumerica';
@@ -155,6 +156,8 @@ export default function Pppoe() {
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </div>
+
+      <AccesoOnu />
     </div>
   );
 }

@@ -5,31 +5,38 @@ import { CheckBadgeIcon, SignalIcon } from '@heroicons/react/24/outline';
 import client from '../../api/axios';
 import { apiErrorMessage } from '@/utils/apiError';
 import { BOTON_EXITO, BOTON_SECUNDARIO, CAMPO } from './estilo';
-
-interface Diagnostico {
-    resultado?: string;
-    sugerencia?: string | null;
-    olt: { disponible?: boolean; onu_online?: boolean | null; potencia_rx_dbm?: number | string | null };
-}
+import type { Diagnostico } from './revision';
 
 /**
  * Cierre de una reparación: el técnico verifica la señal en vivo (queda
  * guardada como prueba de cómo quedó) y escribe qué encontró y qué hizo.
  */
-export default function FinalizarReparacion({ ordenId, online, onTerminada }: {
+export default function FinalizarReparacion({ ordenId, online, onTerminada, diagnostico: externo, verificando, onVerificar, alerta }: {
     ordenId: number;
     online: boolean;
     onTerminada: () => void;
+    // Con la revisión de la falla abierta, la verificación es la misma "Revisar ahora".
+    diagnostico?: Diagnostico | null;
+    verificando?: boolean;
+    onVerificar?: () => void;
+    alerta?: string | null;
 }) {
     const [solucion, setSolucion] = useState('');
-    const [diagnostico, setDiagnostico] = useState<Diagnostico | null>(null);
-    const [ocupado, setOcupado] = useState<'verificando' | 'terminando' | null>(null);
+    const [propio, setPropio] = useState<Diagnostico | null>(null);
+    const [estado, setOcupado] = useState<'verificando' | 'terminando' | null>(null);
+    const controlado = onVerificar !== undefined;
+    const diagnostico = controlado ? externo ?? null : propio;
+    const ocupado = verificando ? 'verificando' : estado;
 
     const verificar = async () => {
+        if (onVerificar) {
+            onVerificar();
+            return;
+        }
         setOcupado('verificando');
         try {
             const { data } = await client.post<Diagnostico>(`/soporte/incidencias/${ordenId}/diagnosticar`);
-            setDiagnostico(data);
+            setPropio(data);
         } catch (error) {
             toast.error(apiErrorMessage(error, 'No se pudo verificar la señal'));
         } finally {
@@ -82,6 +89,7 @@ export default function FinalizarReparacion({ ordenId, online, onTerminada }: {
                     {diagnostico.sugerencia && <span className="mt-1 block font-semibold opacity-80">{diagnostico.sugerencia}</span>}
                 </div>
             )}
+            {alerta && diagnostico && <p className="rounded-xl bg-rose-50 p-3 text-xs font-semibold text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{alerta}</p>}
             <textarea
                 aria-label="Qué encontraste y qué hiciste"
                 rows={3}

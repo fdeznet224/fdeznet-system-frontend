@@ -40,6 +40,9 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
         { id: 'promesa_pago', label: '🤝 Promesa de Pago' },
         { id: 'recordatorio_promesa', label: '⏰ Hoy Vence la Promesa' },
         { id: 'datos_pago', label: '🏦 Datos de Pago del Bot' },
+        { id: 'reporte_registrado', label: '🛠️ Reporte de Falla Registrado' },
+        { id: 'reporte_tecnico_asignado', label: '👷 Técnico Asignado al Reporte' },
+        { id: 'tecnico_en_camino', label: '🚗 Técnico en Camino' },
     ];
 
     const categoriasVariables = [
@@ -85,6 +88,14 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
                 { name: 'ajuste_suspension', label: 'Ajuste Suspensión', desc: 'Importe descontado por días sin servicio' },
                 { name: 'cargos_adicionales', label: 'Cargos Extra', desc: 'Suma de cargos adicionales de la factura' },
                 { name: 'total_factura', label: 'Total Factura', desc: 'Total final de la factura después de ajustes' },
+            ]
+        },
+        {
+            titulo: "🛠️ Reportes de Falla",
+            variables: [
+                { name: 'folio', label: 'Folio', desc: 'Número del reporte (Ej: 123)' },
+                { name: 'falla', label: 'Falla', desc: 'Lo reportado (Ej: sin internet)' },
+                { name: 'tecnico', label: 'Técnico', desc: 'Nombre del técnico asignado' },
             ]
         },
         {
