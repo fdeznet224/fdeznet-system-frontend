@@ -25,6 +25,8 @@ interface ClienteUnificado {
     longitud?: number;
     zona?: string;
     identificador_onu?: string;
+    tipo_conexion?: 'fibra' | 'radio';
+    antena?: Antena | null;
     servicio: {
         plan_nombre: string;
         precio_plan: number;
@@ -56,10 +58,59 @@ interface DashboardStatusResponse {
     detalle_clientes?: Record<string, DashboardClientStatus>;
 }
 
-type ClientFilter = 'todos' | 'online' | 'offline' | 'potencia_alta' | 'potencia_normal' | 'suspendidos' | 'activos' | 'morosos';
+type ClientFilter = 'todos' | 'online' | 'offline' | 'potencia_alta' | 'potencia_normal' | 'suspendidos' | 'activos' | 'morosos' | 'radio' | 'fibra' | 'antena_caida';
 
 /** Última potencia óptica leída de la OLT (se lee cada hora). */
 interface Potencia { rx: number; nivel: 'alta' | 'normal'; fecha: string | null }
+
+/** Último ping a la antena (Ubiquiti) de un cliente por radioenlace. */
+interface Antena { ip: string | null; responde: boolean | null; latencia_ms: number | null; perdida: number | null; fecha: string | null }
+
+/** Ícono de cómo llega el servicio: antena (radioenlace) o fibra óptica. */
+function IconoConexion({ tipo }: { tipo?: 'fibra' | 'radio' }) {
+    const radio = tipo === 'radio';
+    return (
+        <span
+            title={radio ? 'Radioenlace' : 'Fibra óptica'}
+            aria-label={radio ? 'Radioenlace' : 'Fibra óptica'}
+            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${radio
+                ? 'bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300'
+                : 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300'}`}
+        >
+            {radio ? (
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M12 12v10M8 22h8M12 12l-3 10M12 12l3 10" />
+                    <circle cx="12" cy="9" r="1.5" />
+                    <path d="M8.5 5.5a5 5 0 0 0 0 7M15.5 5.5a5 5 0 0 1 0 7M6 3a8.5 8.5 0 0 0 0 12M18 3a8.5 8.5 0 0 1 0 12" />
+                </svg>
+            ) : (
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M3 17c4 0 5-10 9-10s5 10 9 10" />
+                    <circle cx="3" cy="17" r="1.6" fill="currentColor" />
+                    <circle cx="21" cy="17" r="1.6" fill="currentColor" />
+                </svg>
+            )}
+        </span>
+    );
+}
+
+/** Para radioenlace va en lugar de la potencia de la ONU. */
+function AntenaCliente({ antena }: { antena?: Antena | null }) {
+    if (!antena) return null;
+    const base = 'mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-black';
+    if (!antena.ip) return <span className={`${base} bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400`}>Sin IP de antena</span>;
+    if (antena.responde == null) return <span className={`${base} bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400`}>Antena sin revisar</span>;
+    return (
+        <span
+            title={`Antena ${antena.ip}${antena.perdida ? ` · ${antena.perdida}% de pérdida` : ''}`}
+            className={`${base} ${antena.responde
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'}`}
+        >
+            {antena.responde ? `Antena responde${antena.latencia_ms != null ? ` · ${antena.latencia_ms} ms` : ''}` : 'Antena no responde'}
+        </span>
+    );
+}
 
 /** "Potencia alta": la señal ya pasó de -27 dBm y la conexión empieza a fallar. */
 function PotenciaCliente({ potencia }: { potencia?: Potencia }) {
@@ -109,7 +160,7 @@ interface ClientModalState {
     modo?: ToolMode;
 }
 
-const mobileStatusFilters: ClientFilter[] = ['todos', 'online', 'offline', 'potencia_alta', 'potencia_normal', 'suspendidos', 'morosos'];
+const mobileStatusFilters: ClientFilter[] = ['todos', 'online', 'offline', 'potencia_alta', 'potencia_normal', 'radio', 'fibra', 'antena_caida', 'suspendidos', 'morosos'];
 
 export default function Clientes() {
     const [clientes, setClientes] = useState<ClienteUnificado[]>([]);
@@ -225,6 +276,9 @@ export default function Clientes() {
             if (filtroEstado === 'offline') return onlineStatus.get(c.id.toString())?.online === false; // 🔥 Atrapa los errores de conexión
             if (filtroEstado === 'potencia_alta') return potencias[c.id.toString()]?.nivel === 'alta';
             if (filtroEstado === 'potencia_normal') return potencias[c.id.toString()]?.nivel === 'normal';
+            if (filtroEstado === 'radio') return c.tipo_conexion === 'radio';
+            if (filtroEstado === 'fibra') return c.tipo_conexion !== 'radio';
+            if (filtroEstado === 'antena_caida') return c.tipo_conexion === 'radio' && c.antena?.responde === false;
 
             return true;
         });
@@ -240,6 +294,8 @@ export default function Clientes() {
         potenciaNormal: clientes.filter(c => potencias[c.id.toString()]?.nivel === 'normal').length,
         suspendidos: clientes.filter(c => c.servicio.estado_servicio !== 'activo').length,
         morosos: clientes.filter(c => c.finanzas.total_deuda > 0).length,
+        radio: clientes.filter(c => c.tipo_conexion === 'radio').length,
+        antenaCaida: clientes.filter(c => c.tipo_conexion === 'radio' && c.antena?.responde === false).length,
     }), [clientes, onlineStatus, potencias]);
 
     // Contadores de arriba: tocar uno filtra la lista; tocarlo otra vez la muestra completa.
@@ -249,6 +305,8 @@ export default function Clientes() {
         { filtro: 'potencia_alta', valor: resumen.potenciaAlta, texto: 'Potencia alta', color: 'text-rose-600 dark:text-rose-400', activo: 'border-rose-500 bg-rose-500/10' },
         { filtro: 'potencia_normal', valor: resumen.potenciaNormal, texto: 'Potencia normal', color: 'text-sky-600 dark:text-sky-400', activo: 'border-sky-500 bg-sky-500/10' },
         { filtro: 'suspendidos', valor: resumen.suspendidos, texto: 'Suspendidos', color: 'text-amber-600 dark:text-amber-400', activo: 'border-amber-500 bg-amber-500/10' },
+        ...(resumen.radio > 0 ? [{ filtro: 'radio' as ClientFilter, valor: resumen.radio, texto: 'Radioenlace', color: 'text-violet-600 dark:text-violet-400', activo: 'border-violet-500 bg-violet-500/10' }] : []),
+        ...(resumen.antenaCaida > 0 ? [{ filtro: 'antena_caida' as ClientFilter, valor: resumen.antenaCaida, texto: 'Antena no responde', color: 'text-rose-600 dark:text-rose-400', activo: 'border-rose-500 bg-rose-500/10' }] : []),
     ];
 
     return (
@@ -352,6 +410,9 @@ export default function Clientes() {
                             <option value="offline">🔴 Offline</option>
                             <option value="potencia_alta">📉 Potencia alta</option>
                             <option value="potencia_normal">📶 Potencia normal</option>
+                            <option value="radio">📡 Radioenlace</option>
+                            <option value="fibra">〰️ Fibra óptica</option>
+                            <option value="antena_caida">📡 Antena no responde</option>
                             <option value="suspendidos">⛔ Suspendidos</option>
                             <option value="morosos">💰 Con Deuda</option>
                         </select>
@@ -401,6 +462,9 @@ export default function Clientes() {
                                             {est === 'offline' && 'Sin conexión'}
                                             {est === 'potencia_alta' && 'Potencia alta'}
                                             {est === 'potencia_normal' && 'Potencia normal'}
+                                            {est === 'radio' && 'Radioenlace'}
+                                            {est === 'fibra' && 'Fibra óptica'}
+                                            {est === 'antena_caida' && 'Antena no responde'}
                                             {est === 'suspendidos' && 'Suspendidos'}
                                             {est === 'morosos' && 'Con deuda'}
                                         </button>
@@ -464,7 +528,7 @@ export default function Clientes() {
                                     return (
                                         <tr key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className="group cursor-pointer bg-transparent align-top transition hover:bg-slate-50 dark:hover:bg-slate-800/30">
                                             <td className="px-5 py-3">
-                                                <div className="text-sm font-black text-slate-800 transition-colors group-hover:text-blue-500 dark:text-white">{c.nombre}</div>
+                                                <div className="flex items-center gap-1.5 text-sm font-black text-slate-800 transition-colors group-hover:text-blue-500 dark:text-white"><IconoConexion tipo={c.tipo_conexion} />{c.nombre}</div>
                                                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
                                                     <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-slate-700 dark:bg-slate-800 dark:text-slate-200" title="Número de contrato">{c.cedula || 'Sin contrato'}</span>
                                                     <span className="inline-flex items-center gap-1"><MapPinIcon className="h-3.5 w-3.5" />{c.zona || 'Sin zona'}</span>
@@ -479,7 +543,7 @@ export default function Clientes() {
                                             </td>
                                             <td className="px-5 py-3">
                                                 <ConexionCliente status={statusData} />
-                                                <PotenciaCliente potencia={potencias[c.id.toString()]} />
+                                                {c.tipo_conexion === 'radio' ? <AntenaCliente antena={c.antena} /> : <PotenciaCliente potencia={potencias[c.id.toString()]} />}
                                                 {reportes && <ReporteCliente reporte={reportes[c.id.toString()]} potencia={potencias[c.id.toString()]} sugerir={Boolean(idsRevisar)} onReportar={() => setToolModal({ show: true, cliente: c, modo: 'reportar_falla' })} />}
                                             </td>
                                             <td className="px-5 py-3 text-center">
@@ -513,7 +577,7 @@ export default function Clientes() {
                                     <article key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm transition-all active:scale-[0.985] dark:border-slate-800 dark:bg-slate-900">
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0">
-                                                <h3 className="text-sm font-black leading-tight text-slate-800 dark:text-white">{c.nombre}</h3>
+                                                <h3 className="flex items-center gap-1.5 text-sm font-black leading-tight text-slate-800 dark:text-white"><IconoConexion tipo={c.tipo_conexion} />{c.nombre}</h3>
                                                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
                                                     <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-slate-700 dark:bg-slate-800 dark:text-slate-200">{c.cedula || 'Sin contrato'}</span>
                                                     <span className="inline-flex items-center gap-1"><MapPinIcon className="h-3.5 w-3.5" />{c.zona || 'Sin zona'}</span>
@@ -534,7 +598,7 @@ export default function Clientes() {
                                             <div className="min-w-0">
                                                 <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Conexión</span>
                                                 <div className="mt-0.5"><ConexionCliente status={statusData} /></div>
-                                                <PotenciaCliente potencia={potencias[c.id.toString()]} />
+                                                {c.tipo_conexion === 'radio' ? <AntenaCliente antena={c.antena} /> : <PotenciaCliente potencia={potencias[c.id.toString()]} />}
                                                 {reportes && <ReporteCliente reporte={reportes[c.id.toString()]} potencia={potencias[c.id.toString()]} sugerir={Boolean(idsRevisar)} onReportar={() => setToolModal({ show: true, cliente: c, modo: 'reportar_falla' })} />}
                                             </div>
                                             <div className="min-w-0 text-right">

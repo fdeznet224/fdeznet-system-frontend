@@ -15,7 +15,7 @@ import {
     GlobeAmericasIcon, CheckCircleIcon, NoSymbolIcon,
     ClockIcon, ArrowDownTrayIcon, ArrowUpTrayIcon
 } from '@heroicons/react/24/outline';
-import { EstadoOnu, ReiniciarOnu } from './HerramientasOnu';
+import { EstadoAntena, EstadoOnu, ReiniciarOnu } from './HerramientasOnu';
 import PotenciaEnVivo from './PotenciaEnVivo';
 import ReportarFalla from './ReportarFalla';
 import { apiErrorMessage } from '@/utils/apiError';
@@ -27,6 +27,7 @@ interface ClientReference {
     ip_asignada?: string;
     estado?: string;
     identificador_onu?: string;
+    tipo_conexion?: 'fibra' | 'radio';
     servicio?: {
         ip_asignada?: string;
         estado_servicio?: string;
@@ -101,7 +102,7 @@ interface Props {
     modoInicial?: ToolMode;
 }
 
-export type ToolMode = 'menu' | 'estado_real' | 'consumo_vivo' | 'onu_estado' | 'potencia' | 'reiniciar_onu' | 'reportar_falla' | 'suspender_reactivar' | 'eliminar' | 'dar_de_baja';
+export type ToolMode = 'menu' | 'estado_real' | 'consumo_vivo' | 'antena' | 'onu_estado' | 'potencia' | 'reiniciar_onu' | 'reportar_falla' | 'suspender_reactivar' | 'eliminar' | 'dar_de_baja';
 
 type ContentProps = Omit<Props, 'cliente'> & { cliente: ClientReference };
 
@@ -126,6 +127,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
     });
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}') as { rol?: string };
     const canManageTermination = ['admin', 'supervisor'].includes(currentUser.rol ?? '');
+    const esRadio = clienteProp.tipo_conexion === 'radio';
     const clientId = clienteProp.id;
 
     const refreshClienteData = useCallback(async () => {
@@ -337,9 +339,15 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                                 <MenuButton icon={ServerIcon} label="Estado" desc="Ping" variant="blue" onClick={() => { setDataEstado(null); setMode('estado_real'); }} />
                                 <MenuButton icon={PresentationChartLineIcon} label="Tráfico" desc="En vivo" variant="purple" onClick={() => { setDataConsumo(null); setMode('consumo_vivo'); }} />
 
-                                <MenuButton icon={CpuChipIcon} label="ONU" desc="Estado en la OLT" variant="blue" onClick={() => setMode('onu_estado')} />
-                                <MenuButton icon={SignalIcon} label="Potencia" desc="En vivo" variant="emerald" onClick={() => setMode('potencia')} />
-                                <MenuButton icon={ArrowPathIcon} label="Reiniciar ONU" desc="Sin borrar su configuración" variant="purple" onClick={() => setMode('reiniciar_onu')} />
+                                {esRadio ? (
+                                    <MenuButton icon={SignalIcon} label="Antena" desc="¿Responde? (ping)" variant="emerald" onClick={() => setMode('antena')} />
+                                ) : (
+                                    <>
+                                        <MenuButton icon={CpuChipIcon} label="ONU" desc="Estado en la OLT" variant="blue" onClick={() => setMode('onu_estado')} />
+                                        <MenuButton icon={SignalIcon} label="Potencia" desc="En vivo" variant="emerald" onClick={() => setMode('potencia')} />
+                                        <MenuButton icon={ArrowPathIcon} label="Reiniciar ONU" desc="Sin borrar su configuración" variant="purple" onClick={() => setMode('reiniciar_onu')} />
+                                    </>
+                                )}
                                 {canManageTermination && <MenuButton icon={WrenchScrewdriverIcon} label="Reportar falla" desc="Mandar a un técnico" variant="orange" onClick={() => setMode('reportar_falla')} />}
 
                                 <MenuButton
@@ -458,6 +466,13 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        )}
+
+                        {mode === 'antena' && (
+                            <div className="space-y-4 animate-in slide-in-from-right-4">
+                                <BackButton onClick={() => setMode('menu')} />
+                                <EstadoAntena clienteId={clientId} />
                             </div>
                         )}
 

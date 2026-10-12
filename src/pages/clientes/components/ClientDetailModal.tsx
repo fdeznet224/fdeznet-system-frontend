@@ -59,6 +59,8 @@ interface DetailedClient extends Omit<Cliente, 'estado'> {
     estado: string;
     olt?: OltItem;
     onu_asignada?: EquipmentItem;
+    tipo_conexion?: 'fibra' | 'radio';
+    ip_antena?: string | null;
 }
 
 interface ClientInvoice {
@@ -203,7 +205,8 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         plantilla_id: 0, zona_id: 0, router_id: 0, plan_id: 0,
         ip_asignada: '', mac_address: '', user_pppoe: '', pass_pppoe: '',
         olt_id: 0, caja_nap_id: 0, puerto_nap: 0,
-        latitud: '', longitud: '', identificador_onu: ''
+        latitud: '', longitud: '', identificador_onu: '',
+        tipo_conexion: 'fibra' as 'fibra' | 'radio', ip_antena: ''
     });
 
     const napsUrl = (
@@ -305,7 +308,8 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                 mac_address: cliente.mac_address || '',
                 olt_id: cliente.olt?.id || 0, caja_nap_id: cliente.caja_nap?.id || 0, puerto_nap: cliente.puerto_nap || 0,
                 latitud: cliente.latitud ? cliente.latitud.toString() : '', longitud: cliente.longitud ? cliente.longitud.toString() : '',
-                identificador_onu: cliente.onu_asignada?.identificador || ''
+                identificador_onu: cliente.onu_asignada?.identificador || '',
+                tipo_conexion: cliente.tipo_conexion === 'radio' ? 'radio' : 'fibra', ip_antena: cliente.ip_antena || ''
             });
             setIsEditing(true);
         } else {
@@ -366,6 +370,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             const payload: Record<string, unknown> = {
                 ...formData,
                 mac_address: formData.mac_address || null,
+                ip_antena: formData.ip_antena.trim() || null,
                 latitud: formData.latitud ? parseFloat(formData.latitud) : null,
                 longitud: formData.longitud ? parseFloat(formData.longitud) : null
             };
@@ -738,7 +743,10 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         <DetailTile label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
                                         <DetailTile label="Plan" value={servicioActual?.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
                                         <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight copy onClick={cliente?.ip_asignada ? () => abrirIpHttp(cliente.ip_asignada || '') : undefined} />
-                                        <DetailTile label="ONU serial" value={cliente?.onu_asignada?.identificador || 'Sin equipo'} copy />
+                                        <DetailTile label="Conexión" value={cliente?.tipo_conexion === 'radio' ? 'Radioenlace' : 'Fibra óptica'} />
+                                        {cliente?.tipo_conexion === 'radio'
+                                            ? <DetailTile label="IP de la antena" value={cliente?.ip_antena || 'Sin IP'} copy />
+                                            : <DetailTile label="ONU serial" value={cliente?.onu_asignada?.identificador || 'Sin equipo'} copy />}
                                         <DetailTile label="Dirección" value={cliente?.direccion || 'N/A'} />
                                     </div>
                                 </SectionCard>
@@ -869,6 +877,21 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                             <SectionCard title="Infraestructura y Red" icon={SignalIcon}>
                                 {isEditing ? (
                                     <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className={labelClass} htmlFor="tipo_conexion">Conexión</label>
+                                                <select id="tipo_conexion" name="tipo_conexion" value={formData.tipo_conexion} onChange={handleInputChange} className={flatInputClass}>
+                                                    <option value="fibra">Fibra óptica</option>
+                                                    <option value="radio">Radioenlace (antena)</option>
+                                                </select>
+                                            </div>
+                                            {formData.tipo_conexion === 'radio' && (
+                                                <div>
+                                                    <label className={labelClass} htmlFor="ip_antena">IP de la antena</label>
+                                                    <input id="ip_antena" name="ip_antena" value={formData.ip_antena} onChange={handleInputChange} placeholder="192.168.1.20" inputMode="decimal" className={`${flatInputClass} font-mono`} />
+                                                </div>
+                                            )}
+                                        </div>
                                         <div><label className={labelClass}>OLT Central</label><select name="olt_id" value={formData.olt_id} onChange={handleInputChange} className={flatInputClass}><option value={0}>Seleccionar OLT...</option>{olts.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}</select></div>
                                         
                                         <div className="grid grid-cols-2 gap-3">

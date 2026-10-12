@@ -2237,3 +2237,35 @@ test('panel de la OLT: editar pestañas con confirmación', async ({ page }) => 
   await expect.poll(() => cambios.length).toBe(1)
   expect(cambios[0]).toEqual({ serial: 'HWTCdec861ad', operacion: 'service_port_borrar', datos: { srvid: '2' } })
 })
+
+test('clientes por radioenlace: ícono de antena, estado de la antena y revisarla desde herramientas', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  const base = {
+    cedula: '', telefono: '', direccion: '', zona: 'Sagrado Corazon', identificador_onu: 'Sin registrar',
+    servicio: { plan_nombre: 'Básico', precio_plan: 220, ip_asignada: '10.10.10.41', router_nombre: 'VG', estado_servicio: 'activo', nap_info: 'No Asignado' },
+    finanzas: { facturas_pendientes_cant: 0, total_deuda: 0, saldo_a_favor: 0, estado_financiero: 'al_dia' },
+  }
+  await page.route('**/api/clientes/listado-completo-unificado', (route) => route.fulfill({ json: [
+    { ...base, id: 291, nombre: 'Concepcion Radio', tipo_conexion: 'radio', antena: { ip: '192.168.1.20', responde: false, latencia_ms: null, perdida: 100, fecha: '2026-10-11T22:00:00' } },
+    { ...base, id: 165, nombre: 'Teresa Fibra', zona: 'Vicente Guerrero', tipo_conexion: 'fibra', antena: null },
+  ] }))
+  let revisiones = 0
+  await page.route('**/api/clientes/291/verificar-antena', async (route) => {
+    revisiones += 1
+    await route.fulfill({ json: { status: 'success', data: { ip: '192.168.1.20', responde: true, latencia_ms: 3.2, perdida: 0, fecha: '2026-10-11T22:05:00' } } })
+  })
+  await page.goto('/admin/clientes')
+
+  await expect(page.getByLabel('Radioenlace').filter({ visible: true }).first()).toBeVisible()
+  await expect(page.getByLabel('Fibra óptica').filter({ visible: true }).first()).toBeVisible()
+  await expect(page.getByText('Antena no responde').filter({ visible: true }).first()).toBeVisible()
+
+  await page.getByRole('button', { name: 'Herramientas de Concepcion Radio' }).filter({ visible: true }).click()
+  const herramientas = page.getByRole('dialog', { name: 'Herramientas del cliente' })
+  await expect(herramientas.getByRole('button', { name: /^ONU/ })).toHaveCount(0)
+  await herramientas.getByRole('button', { name: /^Antena/ }).click()
+  await expect(herramientas.getByText('La antena responde')).toBeVisible()
+  await expect(herramientas.getByText('3.2 ms')).toBeVisible()
+  expect(revisiones).toBe(1)
+})

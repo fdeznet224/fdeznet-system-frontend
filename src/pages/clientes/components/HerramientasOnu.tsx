@@ -138,3 +138,72 @@ export function ReiniciarOnu({ clienteId, onListo }: { clienteId: number; onList
         </div>
     );
 }
+
+interface EstadoAntenaData { ip: string | null; responde: boolean | null; latencia_ms: number | null; perdida: number | null; fecha: string | null }
+
+/** Antena del cliente por radioenlace: ping desde su MikroTik al momento. */
+export function EstadoAntena({ clienteId }: { clienteId: number }) {
+    const [estado, setEstado] = useState<EstadoAntenaData | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [leyendo, setLeyendo] = useState(false);
+
+    const revisar = useCallback(async () => {
+        setLeyendo(true);
+        setError(null);
+        try {
+            const { data } = await client.post<{ data: EstadoAntenaData }>(`/clientes/${clienteId}/verificar-antena`);
+            setEstado(data.data);
+        } catch (e) {
+            setError(apiErrorMessage(e, 'No se pudo revisar la antena'));
+        } finally {
+            setLeyendo(false);
+        }
+    }, [clienteId]);
+
+    useEffect(() => {
+        const primera = window.setTimeout(() => void revisar(), 0);
+        return () => window.clearTimeout(primera);
+    }, [revisar]);
+
+    if (error) {
+        return (
+            <div className="space-y-3 py-6 text-center">
+                <p className="text-sm font-bold text-rose-600 dark:text-rose-400">{error}</p>
+                <button type="button" onClick={() => void revisar()} className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-black dark:bg-slate-800">Reintentar</button>
+            </div>
+        );
+    }
+    if (!estado) {
+        return (
+            <div className="flex flex-col items-center py-12 text-slate-500">
+                <ArrowPathIcon className="mb-3 h-10 w-10 animate-spin text-indigo-600 dark:text-indigo-500" />
+                <p className="text-[10px] font-black uppercase tracking-widest">Haciendo ping a la antena…</p>
+            </div>
+        );
+    }
+    const responde = Boolean(estado.responde);
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center gap-3">
+                <div className={`flex h-14 w-14 items-center justify-center rounded-full border-4 ${responde ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10' : 'border-rose-200 bg-rose-50 dark:border-rose-500/30 dark:bg-rose-500/10'}`}>
+                    {responde ? <CheckCircleIcon className="h-7 w-7 text-emerald-600 dark:text-emerald-500" /> : <NoSymbolIcon className="h-7 w-7 text-rose-600 dark:text-rose-500" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className={`text-xl font-black ${responde ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        {responde ? 'La antena responde' : 'La antena no responde'}
+                    </p>
+                    <p className="truncate text-xs text-slate-500">Ping desde su MikroTik</p>
+                </div>
+                <button type="button" aria-label="Volver a revisar la antena" onClick={() => void revisar()} disabled={leyendo} className="rounded-lg p-2 text-slate-400 hover:text-slate-700 disabled:opacity-50 dark:hover:text-slate-200">
+                    <ArrowPathIcon className={`h-5 w-5 ${leyendo ? 'animate-spin' : ''}`} />
+                </button>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 dark:border-slate-800 dark:bg-slate-950">
+                <div className={fila}><span className={etiqueta}>IP de la antena</span><span className={`${valor} font-mono`}>{estado.ip}</span></div>
+                <div className={fila}><span className={etiqueta}>Latencia</span><span className={valor}>{estado.latencia_ms != null ? `${estado.latencia_ms} ms` : '--'}</span></div>
+                <div className={fila}><span className={etiqueta}>Pérdida</span><span className={valor}>{estado.perdida != null ? `${estado.perdida}%` : '--'}</span></div>
+            </div>
+            {!responde && <p className="text-xs text-slate-500">Revisa que la antena tenga energía y que esté apuntando a su sector. Si el PPPoE está en línea pero la antena no responde, puede ser que cambió su IP.</p>}
+        </div>
+    );
+}
