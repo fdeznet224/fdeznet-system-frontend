@@ -184,6 +184,15 @@ function duracion(segundosTexto?: string): string {
     return `${d}d ${h}h ${m}m ${s}s`;
 }
 
+const sinAcentos = (texto: string) => texto.normalize('NFKD').replace(/[^\w ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+/** La OLT guarda el nombre sin acentos y recortado: si ya lo trae, no se repite debajo. */
+function nombreEnDescripcion(f: { descripcion: string; cliente_nombre: string | null }): boolean {
+    const nombre = sinAcentos(f.cliente_nombre ?? '');
+    const descripcion = sinAcentos(f.descripcion);
+    return !!nombre && (descripcion.startsWith(nombre) || nombre.startsWith(descripcion.split(' ').slice(0, -1).join(' ') || '\u0000'));
+}
+
 const valorOn = (v?: string) => (v && v.toLowerCase() !== 'unknown' ? v : 'Unknown');
 const capital = (v?: string) => (v ? v.charAt(0).toUpperCase() + v.slice(1) : 'N/A');
 
@@ -504,7 +513,7 @@ export default function OltPanelPage() {
         <span className="vp-desc">
             <span>
                 {f.descripcion || f.onu_id}
-                {f.cliente_nombre && <small className="vp-cliente">Cliente: {f.cliente_nombre}</small>}
+                {f.cliente_nombre && !nombreEnDescripcion(f) && <small className="vp-cliente">Cliente: {f.cliente_nombre}</small>}
             </span>
             {puedeCambiar && (
                 <button type="button" className="vp-lapiz" aria-label={`Editar descripción de ${f.onu_id}`} onClick={() => setEditando({ onu: f.onu_id, texto: f.descripcion })}>
@@ -624,7 +633,7 @@ export default function OltPanelPage() {
                                     <td>{puedeCambiar && <input type="checkbox" aria-label={`Seleccionar ${f.onu_id}`} checked={seleccion.has(f.onu_id)} onChange={() => alternar(f.onu_id)} />}</td>
                                     <td>{f.onu_id}</td>
                                     <td><span className={`vp-estado ${f.online ? 'is-online' : 'is-offline'}`}>{f.online ? 'Online' : 'Offline'}</span></td>
-                                    <td>{descripcion(f)}</td>
+                                    <td className="vp-col-desc">{descripcion(f)}</td>
                                     <td>{f.modelo || 'unknown'}</td>
                                     <td>{f.perfil}</td>
                                     <td>{f.modo}</td>

@@ -1034,8 +1034,8 @@ export default function OltRadarVsolPage() {
           <div className="olt-card__body">
             <div className="olt-picker__head">
               <div>
-                <h2 className="olt-picker__title">¿Qué OLT quieres escanear?</h2>
-                <p className="olt-page__subtitle">El escaneo empieza solo cuando eliges una OLT.</p>
+                <h2 className="olt-picker__title">¿Qué OLT quieres abrir?</h2>
+                <p className="olt-page__subtitle">La OLT se consulta solo cuando la abres.</p>
               </div>
               <button className="olt-btn olt-btn--light" type="button" onClick={handleOpenNewOlt}>
                 + Nueva OLT
@@ -1060,17 +1060,19 @@ export default function OltRadarVsolPage() {
                     </div>
                   </div>
                   <div className="olt-picker__actions">
-                    <button
-                      className="olt-btn"
-                      type="button"
-                      onClick={() => elegirOlt(Number(olt.id))}
-                      aria-label={`Escanear ${olt.nombre || `OLT ${olt.id}`}`}
-                    >
-                      Escanear
-                    </button>
-                    {(olt.tipo_integracion || "vsol_api") !== "snmp" && (
-                      <Link className="olt-btn olt-btn--light" to={`/admin/radar/${olt.id}/panel`} aria-label={`Panel de ${olt.nombre || `OLT ${olt.id}`}`}>
-                        Panel OLT
+                    {(olt.tipo_integracion || "vsol_api") === "snmp" ? (
+                      // Las OLT por SNMP (EPON) no tienen panel web: siguen con el escaneo.
+                      <button
+                        className="olt-btn"
+                        type="button"
+                        onClick={() => elegirOlt(Number(olt.id))}
+                        aria-label={`Escanear ${olt.nombre || `OLT ${olt.id}`}`}
+                      >
+                        Escanear
+                      </button>
+                    ) : (
+                      <Link className="olt-btn" to={`/admin/radar/${olt.id}/panel`} aria-label={`Abrir ${olt.nombre || `OLT ${olt.id}`}`}>
+                        Abrir
                       </Link>
                     )}
                     <button className="olt-btn olt-btn--light" type="button" onClick={() => handleOpenEditOlt(olt)}>

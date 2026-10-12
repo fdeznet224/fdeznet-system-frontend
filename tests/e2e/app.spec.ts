@@ -481,79 +481,26 @@ test('carga el panel técnico tipado', async ({ page }) => {
   await expect(page.getByLabel('Buscar cliente')).toBeVisible()
 })
 
-test('el radar OLT no escanea hasta elegir la OLT', async ({ page }) => {
+test('el radar OLT no consulta hasta abrir una OLT y la VSOL abre su panel', async ({ page }) => {
   const escaneos: string[] = []
   page.on('request', (request) => {
-    if (/\/olts\/\d+\/monitoreo/.test(request.url())) escaneos.push(request.url())
+    if (/\/olts\/\d+\/(monitoreo|panel)/.test(request.url())) escaneos.push(request.url())
   })
   await authenticateAs(page)
   await mockApi(page)
+  await page.route('**/api/olts/1/panel/pons', (route) => route.fulfill({ json: { status: 'success', data: [{ pon: 1, port_id: 5, nombre: 'PON 0/1' }] } }))
+  await page.route('**/api/olts/1/panel/onus?**', (route) => route.fulfill({ json: { status: 'success', data: { olt: 'OLT Centro', total: 0, online: 0, offline: 0, onus: [] } } }))
   await page.goto('/admin/radar')
 
   await expect(page.getByRole('heading', { name: 'Radar OLT / Fibra' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: '¿Qué OLT quieres escanear?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '¿Qué OLT quieres abrir?' })).toBeVisible()
   await expect(page.getByText('OLT Paraíso')).toBeVisible()
   expect(escaneos).toHaveLength(0)
 
-  await page.getByRole('button', { name: 'Escanear OLT Centro' }).click()
-  await expect(page.getByText('Escaneando', { exact: true })).toBeVisible()
-  await expect(page.locator('.olt-empty:visible')).toHaveText('Sin resultados.')
-  expect(escaneos).toHaveLength(1)
-  expect(escaneos[0]).toContain('/olts/1/monitoreo')
-
-  await page.getByRole('button', { name: 'Cambiar OLT' }).click()
-  await expect(page.getByRole('heading', { name: '¿Qué OLT quieres escanear?' })).toBeVisible()
-  expect(escaneos).toHaveLength(1)
-})
-
-test('el radar muestra la causa de la caída, el diagnóstico y reinicia la ONU', async ({ page }) => {
-  await authenticateAs(page)
-  await mockApi(page)
-  await page.goto('/admin/radar')
-  await page.getByRole('button', { name: 'Escanear OLT Paraíso' }).click()
-
-  // La ONU caída avisa que es problema de fibra, no de luz.
-  await expect(page.locator('.olt-pill:visible', { hasText: '✂ Posible falla de fibra' }).first()).toBeVisible()
-
-  await page.locator('button:visible', { hasText: 'Ver datos' }).first().click()
-  await expect(page.getByText('Distancia a la OLT')).toBeVisible()
-  await expect(page.getByText('1.44 km')).toBeVisible()
-  await expect(page.getByText('24 h 43 min').or(page.getByText('1 d 0 h'))).toBeVisible()
-  await expect(page.getByText('Última caída:')).toBeVisible()
-
-  const reinicio = page.waitForRequest((request) => (
-    request.url().includes('/olts/2/onus/1/3/reiniciar') && request.method() === 'POST'
-  ))
-  page.once('dialog', (dialog) => void dialog.accept())
-  await page.getByRole('button', { name: '⟳ Reiniciar ONU' }).click()
-  const peticion = await reinicio
-  expect(peticion.postDataJSON()).toEqual({ serial: 'HWTC0000AAAA' })
-  await expect(page.getByText('La ONU se está reiniciando')).toBeVisible()
-})
-
-test('el admin elimina de la OLT una ONU apagada sin cliente', async ({ page }) => {
-  await authenticateAs(page)
-  await mockApi(page)
-  await page.route('**/api/olts/2/monitoreo-api', (route) => route.fulfill({ json: { status: 'success', data: {
-    origen: 'vsol_api', clientes_activos: [], clientes_caidos: [],
-    onus_api: [
-      { onu_id: 'GPON0/1:15', pon_id: '1', serial: 'HWTC388120AE', identificador: 'HWTC388120AE', estado_fisico: 'offline', rx_power: 'N/A' },
-    ],
-  } } }))
-  const borrados: unknown[] = []
-  await page.route('**/api/olts/2/onus/1/15/eliminar', async (route) => {
-    borrados.push(route.request().postDataJSON())
-    await route.fulfill({ json: { status: 'success', data: { eliminada: true } } })
-  })
-  await page.goto('/admin/radar')
-  await page.getByRole('button', { name: 'Escanear OLT Paraíso' }).click()
-  await page.locator('button:visible', { hasText: 'Ver datos' }).first().click()
-
-  await expect(page.getByRole('button', { name: '⟳ Reiniciar ONU' })).toBeDisabled()
-  page.once('dialog', (dialog) => void dialog.accept())
-  await page.getByRole('button', { name: 'Eliminar de la OLT' }).click()
-  await expect.poll(() => borrados).toEqual([{ serial: 'HWTC388120AE' }])
-  await expect(page.getByText('ONU HWTC388120AE eliminada de la OLT')).toBeVisible()
+  await page.getByRole('link', { name: 'Abrir OLT Centro' }).click()
+  await expect(page).toHaveURL(/\/admin\/radar\/1\/panel$/)
+  await expect(page.getByRole('button', { name: /PON 0\/1/ })).toBeVisible()
+  expect(escaneos.every((url) => url.includes('/olts/1/panel'))).toBe(true)
 })
 
 test('carga el panel principal con sus contratos tipados', async ({ page }) => {
