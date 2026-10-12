@@ -317,6 +317,14 @@
 .vp-tabla.vp-tabla--compacta { min-width: 560px; }
 .vp-valores { max-width: 560px; }
 
+/* Formularios de las pestañas */
+.vp-form-op { border: 1px solid var(--vp-linea); border-radius: 14px; padding: 16px 18px; }
+.vp-form-op h4 { margin: 0 0 12px; color: var(--vp-titulo); font-size: 15px; font-weight: 600; }
+.vp-form-op .vp-formulario { margin-bottom: 12px; }
+.vp-btn--chico { min-height: 28px; padding: 2px 12px; font-size: 13px; }
+.vp-btn--peligro.vp-btn--lleno { background: var(--vp-offline); border-color: var(--vp-offline); color: #fff; }
+.vp-secciones > .vp-campo { max-width: 260px; }
+
 /* Formularios (Añadir Manualmente, Modificar) */
 .vp-modal-caja--ancha { width: min(560px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; }
 .vp-formulario { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; margin-bottom: 16px; }

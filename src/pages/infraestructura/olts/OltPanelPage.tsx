@@ -264,7 +264,7 @@ function DetalleOnu({ oltId, oltNombre, onu, onVolver }: { oltId: number; oltNom
                     ))}
                 </div>
             </div>
-            {seccion !== 'general' && <SeccionOnu oltId={oltId} pon={onu.pon} onuid={onu.onuid} seccion={seccion} />}
+            {seccion !== 'general' && <SeccionOnu key={seccion} oltId={oltId} pon={onu.pon} onuid={onu.onuid} serial={onu.serial} onuId={onu.onu_id} puedeCambiar={rolActual() === 'admin'} seccion={seccion} />}
             {seccion === 'general' && error && <p className="vp-error">{error}</p>}
             {seccion === 'general' && !datos && !error && <div className="vp-vacio">Consultando la ONU…</div>}
             {seccion === 'general' && datos && (

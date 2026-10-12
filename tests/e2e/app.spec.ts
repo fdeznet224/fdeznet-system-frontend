@@ -2167,7 +2167,7 @@ test('panel de la OLT: pestañas del detalle y volver a la lista', async ({ page
   await page.getByRole('button', { name: 'Ver GPON0/4:2' }).click()
   await page.getByRole('tab', { name: 'Línea' }).click()
   await expect(page.getByText('dba_INTERNET')).toBeVisible()
-  await expect(page.getByText('10,4')).toBeVisible()
+  await expect(page.getByRole('cell', { name: '10,4' })).toBeVisible()
   await page.getByRole('button', { name: 'Lista de ONUs' }).first().click()
   await expect(page.getByRole('button', { name: 'Ver GPON0/4:2' })).toBeVisible()
 })
@@ -2193,4 +2193,47 @@ test('panel de la OLT: añadir manualmente y modificar como la VSOL', async ({ p
   await modificar.getByLabel('SN', { exact: true }).fill('HWTC0B46D3AF')
   await modificar.getByRole('button', { name: 'Aplicar' }).click()
   await expect.poll(() => cambios).toEqual([{ serial: 'HWTCdec861ad', modo: '0', valor: 'HWTC0B46D3AF', perfil: null }])
+})
+
+test('panel de la OLT: editar pestañas con confirmación', async ({ page }) => {
+  await panelBase(page)
+  await page.route('**/api/olts/7/panel/onus/4/2/seccion/puerto', (route) => route.fulfill({ json: { status: 'success', data: { puertos: [
+    { selectonuport: '1', en_port: '0', loop_detect: '0', selectPortSpeed: '0x0', mac_limit: '0', us_cir: '0', us_pir: '0', ds_cir: '0', ds_pir: '0' },
+    { selectonuport: '2', en_port: '0', loop_detect: '0', selectPortSpeed: '0x0', mac_limit: '0', us_cir: '0', us_pir: '0', ds_cir: '0', ds_pir: '0' },
+  ], estado: [
+    { selectonuport: '1', link_status: 'up', admin_status: 'enable', loop_status: 'disable', speed_config: 'auto', speed_status: 'unknown', max_frame: '1632' },
+    { selectonuport: '2', link_status: 'up', admin_status: 'enable', loop_status: 'disable', speed_config: 'auto', speed_status: 'unknown', max_frame: '1632' },
+  ] } } }))
+  await page.route('**/api/olts/7/panel/onus/4/2/seccion/linea', (route) => route.fulfill({ json: { status: 'success', data: {
+    tcont: [], gemport: [], servicio: [], vlan_puerto: [], perfiles_dba: ['dba_INTERNET'],
+    service_port: [{ servicePort: '2', gemport: '1', vlan: '4', beginVid: '4', endVid: '4', sVlan: 'N/A', mode: '1:1', description: 'N/A' }],
+  } } }))
+  const cambios: unknown[] = []
+  await page.route('**/api/olts/7/panel/onus/4/2/config', async (route) => { cambios.push(route.request().postDataJSON()); await route.fulfill({ json: { status: 'success', data: { ok: true } } }) })
+  await page.goto('/admin/radar/7/panel')
+  await page.getByRole('button', { name: 'Ver GPON0/4:2' }).click()
+
+  await page.getByRole('tab', { name: 'Puerto' }).click()
+  await page.getByLabel('Puerto a configurar').selectOption('2')
+  const subida = page.locator('form', { hasText: 'ETH 2: límite de subida' })
+  await subida.getByLabel('PIR (kbps)').fill('20000')
+  await subida.getByRole('button', { name: 'Aplicar' }).click()
+  expect(cambios).toHaveLength(0)  // pide confirmación
+  await page.getByRole('dialog', { name: 'ETH 2: límite de subida' }).getByRole('button', { name: 'Confirmar' }).click()
+  await expect.poll(() => cambios).toEqual([{ serial: 'HWTCdec861ad', operacion: 'puerto_subida', datos: { us_cir: '0', us_pir: '20000', selectonuport: '2' } }])
+
+  // El básico parte del estado real (admin enable), no del en_port=0 que reporta la OLT.
+  const basico = page.locator('form', { hasText: 'ETH 2: datos básicos' })
+  await basico.getByLabel('Velocidad').selectOption('0x3')
+  await basico.getByRole('button', { name: 'Aplicar' }).click()
+  await page.getByRole('dialog', { name: 'ETH 2: datos básicos' }).getByRole('button', { name: 'Confirmar' }).click()
+  await expect.poll(() => cambios.length).toBe(2)
+  expect(cambios[1]).toEqual({ serial: 'HWTCdec861ad', operacion: 'puerto_basico', datos: { en_port: '1', loop_detect: '0', selectPortSpeed: '0x3', mac_limit: '0', selectonuport: '2' } })
+  cambios.length = 0
+
+  await page.getByRole('tab', { name: 'Línea' }).click()
+  await page.getByRole('button', { name: 'Borrar service port 2' }).click()
+  await page.getByRole('dialog', { name: 'Borrar service port 2' }).getByRole('button', { name: 'Confirmar' }).click()
+  await expect.poll(() => cambios.length).toBe(1)
+  expect(cambios[0]).toEqual({ serial: 'HWTCdec861ad', operacion: 'service_port_borrar', datos: { srvid: '2' } })
 })
