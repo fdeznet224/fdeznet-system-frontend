@@ -2116,3 +2116,68 @@ test('el enlace del aviso de señal muestra esos clientes y deja mandar técnico
   await expect(page.getByText('Clientes del aviso de señal', { exact: false })).toHaveCount(0)
   await expect(page.locator('button:visible', { hasText: 'Reportar falla' })).toHaveCount(0)  // potencia normal: sin acceso
 })
+
+test('panel de la OLT: lista como la VSOL, acciones con confirmación y detalle', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  const fila = (onuid: number, online: boolean, descripcion: string, serial: string) => ({
+    onu_id: `GPON0/4:${onuid}`, pon: 4, onuid, online, descripcion, modelo: online ? 'HG8145V5V3' : 'unknown',
+    perfil: 'default', modo: 'SN', serial, marcada: false, activa: true, rx: online ? '-17.17' : null, tx: '2.02',
+    estado_admin: 'enable', estado_omcc: 'enable', fase: online ? 'working' : 'offline', ultimo_registro: '2026/10/08 10:44:52',
+    ultima_baja: 'N/A', causa_ultima_baja: 'N/A', tiempo_activa: '3 09:43:53', cliente_id: 7, cliente_nombre: descripcion,
+  })
+  await page.route('**/api/olts/7/panel/pons', (route) => route.fulfill({ json: { status: 'success', data: [
+    { pon: 1, port_id: 5, nombre: 'PON 0/1' }, { pon: 4, port_id: 8, nombre: 'PON 0/4' },
+  ] } }))
+  await page.route('**/api/olts/7/panel/onus?**', (route) => route.fulfill({ json: { status: 'success', data: {
+    olt: 'Vicente Guerrero', total: 3, online: 2, offline: 1, onus: [
+      fila(1, false, 'Jose Luis Valencia Gomez E7D2', 'HWTCae02efae'),
+      fila(2, true, 'Teresa Gomez Lopez 5BAF', 'HWTCdec861ad'),
+      fila(3, true, 'Claudia Vazquez Mendez AD20', 'HWTC0b5f63af'),
+    ] } } }))
+  const acciones: unknown[] = []
+  await page.route('**/api/olts/7/panel/onus/4/2/accion', async (route) => {
+    acciones.push(route.request().postDataJSON())
+    await route.fulfill({ json: { status: 'success', data: { ok: true } } })
+  })
+  await page.route('**/api/olts/7/panel/onus/4/2', (route) => route.fulfill({ json: { status: 'success', data: {
+    onu_id: 'GPON0/4:2', online: true,
+    detalle: { Description: 'Teresa Gomez Lopez 5BAF', 'Main Software Version': 'V5R022C00S266', SN: 'HWTCdec861ad', 'System Uptime': '302006 s', 'Equipment ID': 'HG8145X6-10' },
+    optica: { 'Rx Optical Level(ONU)': '-15.48', 'Lower Rx Optical Threshold': '-25.00', 'Upper Rx Optical Threshold': '-8.00', 'Tx Optical Level': '2.33', Distance: '439', Interface: 'PON_0/4' },
+  } } }))
+  await page.goto('/admin/radar/7/panel')
+
+  await expect(page.getByRole('button', { name: /PON 0\/1/ })).toBeVisible()
+  await expect(page.getByText('Teresa Gomez Lopez 5BAF').filter({ visible: true }).first()).toBeVisible()
+  await expect(page.getByText('Offline', { exact: true }).filter({ visible: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Eliminar GPON0/4:2' }).click()
+  const dialogo = page.getByRole('dialog', { name: 'Eliminar ONU' })
+  await expect(dialogo).toBeVisible()
+  expect(acciones).toHaveLength(0)  // no borra sin confirmar
+  await dialogo.getByRole('button', { name: 'Eliminar', exact: true }).click()
+  await expect.poll(() => acciones).toEqual([{ accion: 'eliminar', serial: 'HWTCdec861ad' }])
+
+  await page.getByRole('button', { name: 'Ver GPON0/4:2' }).click()
+  await expect(page.getByText('Información Detallada')).toBeVisible()
+  await expect(page.getByText('-15.48 dBm')).toBeVisible()
+  await expect(page.getByText('3d 11h 53m 26s')).toBeVisible()
+})
+
+test('panel de la OLT: Eliminar Todo pide escribir el PON', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/olts/7/panel/pons', (route) => route.fulfill({ json: { status: 'success', data: [{ pon: 4, port_id: 8, nombre: 'PON 0/4' }] } }))
+  await page.route('**/api/olts/7/panel/onus?**', (route) => route.fulfill({ json: { status: 'success', data: { olt: 'VG', total: 0, online: 0, offline: 0, onus: [] } } }))
+  let borrados = 0
+  await page.route('**/api/olts/7/panel/pon/4/eliminar-todo', async (route) => { borrados += 1; await route.fulfill({ json: { status: 'success', data: { ok: true } } }) })
+  await page.goto('/admin/radar/7/panel')
+
+  await page.getByRole('button', { name: 'Eliminar Todo' }).click()
+  const dialogo = page.getByRole('dialog', { name: 'Eliminar Todo' })
+  const boton = dialogo.getByRole('button', { name: 'Eliminar Todo' })
+  await expect(boton).toBeDisabled()
+  await dialogo.getByLabel('Confirmación').fill('PON 0/4')
+  await boton.click()
+  await expect.poll(() => borrados).toBe(1)
+})

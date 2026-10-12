@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { TouchEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
@@ -1067,6 +1068,11 @@ export default function OltRadarVsolPage() {
                     >
                       Escanear
                     </button>
+                    {(olt.tipo_integracion || "vsol_api") !== "snmp" && (
+                      <Link className="olt-btn olt-btn--light" to={`/admin/radar/${olt.id}/panel`} aria-label={`Panel de ${olt.nombre || `OLT ${olt.id}`}`}>
+                        Panel OLT
+                      </Link>
+                    )}
                     <button className="olt-btn olt-btn--light" type="button" onClick={() => handleOpenEditOlt(olt)}>
                       Editar
                     </button>

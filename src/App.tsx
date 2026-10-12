@@ -66,6 +66,7 @@ const TechInstallForm = lazy(() => import('@/pages/technician/TechInstallForm'))
 const TechActivar = lazy(() => import('@/pages/technician/TechActivar'));
 const QrScanner = lazy(() => import('@/pages/tools/QrScanner'));
 const OltRadarVsolPage = lazy(() => import('@/pages/infraestructura/olts/OltRadarVsolPage'));
+const OltPanelPage = lazy(() => import('@/pages/infraestructura/olts/OltPanelPage'));
 
 function RouteFallback() {
   const { brand } = useBrand();
@@ -217,6 +218,7 @@ function App() {
                 <Route path="/admin/naps" element={protectedPage(<CajasNap />, ['admin'])} />
                 <Route path="/admin/redes" element={protectedPage(<Redes />, ['admin'])} />
                 <Route path="/admin/radar" element={protectedPage(<OltRadarVsolPage />, ['admin'])} />
+                <Route path="/admin/radar/:oltId/panel" element={protectedPage(<OltPanelPage />, ['admin'])} />
                 <Route path="/admin/radar-vsol" element={protectedPage(<OltRadarVsolPage />, ['admin'])} />
                 <Route path="/admin/inventario" element={protectedPage(<Inventario />, ['admin', 'supervisor'])} />
                 
