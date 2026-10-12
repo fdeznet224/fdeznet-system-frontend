@@ -66,7 +66,7 @@ interface Potencia { rx: number; nivel: 'alta' | 'normal'; fecha: string | null 
 /** Último ping a la antena (Ubiquiti) de un cliente por radioenlace. */
 interface Antena { ip: string | null; responde: boolean | null; latencia_ms: number | null; perdida: number | null; fecha: string | null }
 
-/** Cómo llega el servicio: 📡 radioenlace o 💡 fibra óptica. */
+/** Cómo llega el servicio: 📡 radioenlace o ⚡ fibra óptica. */
 function IconoConexion({ tipo }: { tipo?: 'fibra' | 'radio' }) {
     const radio = tipo === 'radio';
     return (
@@ -76,7 +76,7 @@ function IconoConexion({ tipo }: { tipo?: 'fibra' | 'radio' }) {
             aria-label={radio ? 'Radioenlace' : 'Fibra óptica'}
             className="shrink-0 select-none text-sm leading-none"
         >
-            {radio ? '📡' : '💡'}
+            {radio ? '📡' : '⚡'}
         </span>
     );
 }
@@ -398,7 +398,7 @@ export default function Clientes() {
                             <option value="potencia_alta">📉 Potencia alta</option>
                             <option value="potencia_normal">📶 Potencia normal</option>
                             <option value="radio">📡 Radioenlace</option>
-                            <option value="fibra">💡 Fibra óptica</option>
+                            <option value="fibra">⚡ Fibra óptica</option>
                             <option value="antena_caida">🚫 Antena no responde</option>
                             <option value="suspendidos">⛔ Suspendidos</option>
                             <option value="morosos">💰 Con Deuda</option>
