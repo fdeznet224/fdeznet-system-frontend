@@ -743,7 +743,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         <DetailTile label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
                                         <DetailTile label="Plan" value={servicioActual?.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
                                         <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight copy onClick={cliente?.ip_asignada ? () => abrirIpHttp(cliente.ip_asignada || '') : undefined} />
-                                        <DetailTile label="Conexión" value={cliente?.tipo_conexion === 'radio' ? 'Radioenlace' : 'Fibra óptica'} />
+                                        <DetailTile label="Conexión" value={cliente?.tipo_conexion === 'radio' ? '📡 Radioenlace' : '💡 Fibra óptica'} />
                                         {cliente?.tipo_conexion === 'radio'
                                             ? <DetailTile label="IP de la antena" value={cliente?.ip_antena || 'Sin IP'} copy />
                                             : <DetailTile label="ONU serial" value={cliente?.onu_asignada?.identificador || 'Sin equipo'} copy />}
@@ -881,8 +881,8 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             <div>
                                                 <label className={labelClass} htmlFor="tipo_conexion">Conexión</label>
                                                 <select id="tipo_conexion" name="tipo_conexion" value={formData.tipo_conexion} onChange={handleInputChange} className={flatInputClass}>
-                                                    <option value="fibra">Fibra óptica</option>
-                                                    <option value="radio">Radioenlace (antena)</option>
+                                                    <option value="fibra">💡 Fibra óptica</option>
+                                                    <option value="radio">📡 Radioenlace (antena)</option>
                                                 </select>
                                             </div>
                                             {formData.tipo_conexion === 'radio' && (

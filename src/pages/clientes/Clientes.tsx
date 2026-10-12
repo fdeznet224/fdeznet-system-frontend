@@ -66,30 +66,17 @@ interface Potencia { rx: number; nivel: 'alta' | 'normal'; fecha: string | null 
 /** Último ping a la antena (Ubiquiti) de un cliente por radioenlace. */
 interface Antena { ip: string | null; responde: boolean | null; latencia_ms: number | null; perdida: number | null; fecha: string | null }
 
-/** Ícono de cómo llega el servicio: antena (radioenlace) o fibra óptica. */
+/** Cómo llega el servicio: 📡 radioenlace o 💡 fibra óptica. */
 function IconoConexion({ tipo }: { tipo?: 'fibra' | 'radio' }) {
     const radio = tipo === 'radio';
     return (
         <span
+            role="img"
             title={radio ? 'Radioenlace' : 'Fibra óptica'}
             aria-label={radio ? 'Radioenlace' : 'Fibra óptica'}
-            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${radio
-                ? 'bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300'
-                : 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300'}`}
+            className="shrink-0 select-none text-sm leading-none"
         >
-            {radio ? (
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M12 12v10M8 22h8M12 12l-3 10M12 12l3 10" />
-                    <circle cx="12" cy="9" r="1.5" />
-                    <path d="M8.5 5.5a5 5 0 0 0 0 7M15.5 5.5a5 5 0 0 1 0 7M6 3a8.5 8.5 0 0 0 0 12M18 3a8.5 8.5 0 0 1 0 12" />
-                </svg>
-            ) : (
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M3 17c4 0 5-10 9-10s5 10 9 10" />
-                    <circle cx="3" cy="17" r="1.6" fill="currentColor" />
-                    <circle cx="21" cy="17" r="1.6" fill="currentColor" />
-                </svg>
-            )}
+            {radio ? '📡' : '💡'}
         </span>
     );
 }
@@ -411,8 +398,8 @@ export default function Clientes() {
                             <option value="potencia_alta">📉 Potencia alta</option>
                             <option value="potencia_normal">📶 Potencia normal</option>
                             <option value="radio">📡 Radioenlace</option>
-                            <option value="fibra">〰️ Fibra óptica</option>
-                            <option value="antena_caida">📡 Antena no responde</option>
+                            <option value="fibra">💡 Fibra óptica</option>
+                            <option value="antena_caida">🚫 Antena no responde</option>
                             <option value="suspendidos">⛔ Suspendidos</option>
                             <option value="morosos">💰 Con Deuda</option>
                         </select>
