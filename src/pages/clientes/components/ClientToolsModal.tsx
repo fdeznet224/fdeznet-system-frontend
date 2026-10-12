@@ -15,7 +15,7 @@ import {
     GlobeAmericasIcon, CheckCircleIcon, NoSymbolIcon,
     ClockIcon, ArrowDownTrayIcon, ArrowUpTrayIcon
 } from '@heroicons/react/24/outline';
-import { EstadoOnu, ReiniciarOnu } from './HerramientasOnu';
+import { EstadoOnu, ReautorizarOnu, ReiniciarOnu } from './HerramientasOnu';
 import PotenciaEnVivo from './PotenciaEnVivo';
 import ReportarFalla from './ReportarFalla';
 import { apiErrorMessage } from '@/utils/apiError';
@@ -101,7 +101,7 @@ interface Props {
     modoInicial?: ToolMode;
 }
 
-export type ToolMode = 'menu' | 'estado_real' | 'consumo_vivo' | 'onu_estado' | 'potencia' | 'reiniciar_onu' | 'reportar_falla' | 'suspender_reactivar' | 'eliminar' | 'dar_de_baja';
+export type ToolMode = 'menu' | 'estado_real' | 'consumo_vivo' | 'onu_estado' | 'potencia' | 'reiniciar_onu' | 'reautorizar_onu' | 'reportar_falla' | 'suspender_reactivar' | 'eliminar' | 'dar_de_baja';
 
 type ContentProps = Omit<Props, 'cliente'> & { cliente: ClientReference };
 
@@ -340,6 +340,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                                 <MenuButton icon={CpuChipIcon} label="ONU" desc="Estado en la OLT" variant="blue" onClick={() => setMode('onu_estado')} />
                                 <MenuButton icon={SignalIcon} label="Potencia" desc="En vivo" variant="emerald" onClick={() => setMode('potencia')} />
                                 <MenuButton icon={ArrowPathIcon} label="Reiniciar ONU" desc="Sin borrar su configuración" variant="purple" onClick={() => setMode('reiniciar_onu')} />
+                                {canManageTermination && <MenuButton icon={CpuChipIcon} label="Reautorizar en la OLT" desc="En línea pero sin PPPoE" variant="blue" onClick={() => setMode('reautorizar_onu')} />}
                                 {canManageTermination && <MenuButton icon={WrenchScrewdriverIcon} label="Reportar falla" desc="Mandar a un técnico" variant="orange" onClick={() => setMode('reportar_falla')} />}
 
                                 <MenuButton
@@ -479,6 +480,13 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                             <div className="animate-in slide-in-from-right-4">
                                 <BackButton onClick={() => setMode('menu')} />
                                 <ReiniciarOnu clienteId={clientId} onListo={() => { setMode('menu'); onActionSuccess(); }} />
+                            </div>
+                        )}
+
+                        {mode === 'reautorizar_onu' && (
+                            <div className="animate-in slide-in-from-right-4">
+                                <BackButton onClick={() => setMode('menu')} />
+                                <ReautorizarOnu clienteId={clientId} onListo={() => { setMode('menu'); onActionSuccess(); }} />
                             </div>
                         )}
 

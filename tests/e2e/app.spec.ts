@@ -1814,6 +1814,26 @@ test('herramientas del cliente: estado de la ONU, potencia y reinicio', async ({
   await expect(page.getByText('La ONU se está reiniciando', { exact: false })).toBeVisible()
 })
 
+test('herramientas del cliente: reautorizar en la OLT la ONU en línea sin PPPoE', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  let reautorizaciones = 0
+  await page.route('**/api/clientes/1/reautorizar-onu', async (route) => {
+    reautorizaciones += 1
+    await route.fulfill({ json: { status: 'success', data: { olt: 'Vicente Guerrero', serial: 'HWTCAEC3C0AD', ubicacion_anterior: 'GPON0/1:2' } } })
+  })
+  await page.goto('/admin/clientes')
+
+  await page.getByRole('button', { name: 'Herramientas de Cliente E2E' }).click()
+  const herramientas = page.getByRole('dialog', { name: 'Herramientas del cliente' })
+  await herramientas.getByRole('button', { name: /^Reautorizar en la OLT/ }).click()
+  await expect(herramientas.getByText('¿Reautorizar en la OLT?')).toBeVisible()
+  expect(reautorizaciones).toBe(0)  // no borra sin confirmar
+  await herramientas.getByRole('button', { name: 'Reautorizar en la OLT', exact: true }).click()
+  await expect.poll(() => reautorizaciones).toBe(1)
+  await expect(page.getByText('Se borró de la OLT', { exact: false })).toBeVisible()
+})
+
 test('con potencia alta se levanta el reporte de falla desde la lista con la revisión remota', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)
