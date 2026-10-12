@@ -49,6 +49,51 @@
 .vp button { font: inherit; cursor: pointer; }
 .vp button:disabled { cursor: not-allowed; }
 
+/* Navegación: siempre a la vista para regresar o cambiar de OLT. */
+.vp-nav {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: var(--vp-fondo);
+  border-bottom: 1px solid var(--vp-linea);
+  margin: -16px -20px 16px;
+  padding: 12px 20px;
+  border-radius: 18px 18px 0 0;
+}
+.vp-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--vp-primario);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+}
+.vp-volver svg { width: 20px; height: 20px; }
+.vp-volver:hover { background: var(--vp-primario-oscuro); color: #fff; }
+.vp-ruta { color: var(--vp-tenue); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vp-ruta b { color: var(--vp-titulo); font-weight: 600; }
+.vp-cambiar-olt { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: var(--vp-tenue); }
+.vp-cambiar-olt select {
+  min-height: 42px;
+  border: 1px solid var(--vp-borde);
+  border-radius: var(--vp-radio);
+  background: var(--vp-fondo);
+  color: var(--vp-titulo);
+  font: inherit;
+  padding: 0 12px;
+}
+.vp-nav .vp-btn { min-height: 42px; display: inline-flex; align-items: center; }
+
 /* Pestañas */
 .vp-tabs {
   display: flex;
@@ -266,6 +311,30 @@
 .vp-info-lista div { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--vp-linea); color: var(--vp-texto); }
 .vp-info-lista b { font-weight: 500; color: var(--vp-titulo); text-align: right; }
 
+/* Pestañas del detalle */
+.vp-secciones { display: flex; flex-direction: column; gap: 28px; }
+.vp-bloque .vp-seccion { margin-bottom: 12px; }
+.vp-tabla.vp-tabla--compacta { min-width: 560px; }
+.vp-valores { max-width: 560px; }
+
+/* Formularios (Añadir Manualmente, Modificar) */
+.vp-modal-caja--ancha { width: min(560px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; }
+.vp-formulario { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; margin-bottom: 16px; }
+.vp-campo { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--vp-tenue); }
+.vp-campo input, .vp-campo select {
+  min-height: 38px;
+  border: 1px solid var(--vp-borde);
+  border-radius: var(--vp-radio);
+  background: var(--vp-fondo);
+  color: var(--vp-titulo);
+  font: inherit;
+  font-size: 14px;
+  padding: 0 10px;
+  margin: 0;
+}
+.vp-campo input:focus, .vp-campo select:focus { outline: none; border-color: var(--vp-primario); }
+.vp-nota { font-size: 13px; color: var(--vp-tenue); }
+
 /* Confirmaciones */
 .vp-modal {
   position: fixed;
@@ -315,6 +384,10 @@
 
 @media (max-width: 640px) {
   .vp { padding: 12px 16px 24px; }
+  .vp-nav { margin: -12px -16px 14px; padding: 10px 16px; }
+  .vp-cambiar-olt { margin-left: 0; flex: 1; }
+  .vp-cambiar-olt select { flex: 1; min-width: 0; }
+  .vp-ruta { flex-basis: 100%; order: 3; }
   .vp-tabs { gap: 24px; }
   .vp-derecha { align-items: stretch; width: 100%; }
   .vp-acciones { justify-content: flex-start; gap: 10px; }
@@ -322,4 +395,5 @@
   .vp-input { flex: 1; width: auto; min-width: 0; }
   .vp-buscar .vp-btn--lleno { flex-shrink: 0; padding: 6px 12px; }
   .vp-medidores, .vp-tarjetas { grid-template-columns: 1fr; }
+  .vp-formulario { grid-template-columns: 1fr; }
 }

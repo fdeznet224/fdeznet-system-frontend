@@ -2128,3 +2128,69 @@ test('panel de la OLT: Eliminar Todo pide escribir el PON', async ({ page }) => 
   await boton.click()
   await expect.poll(() => borrados).toBe(1)
 })
+
+async function panelBase(page: Page) {
+  await authenticateAs(page)
+  await mockApi(page)
+  const onu = {
+    onu_id: 'GPON0/4:2', pon: 4, onuid: 2, online: true, descripcion: 'Teresa Gomez Lopez 5BAF', modelo: 'HG8145X6-10',
+    perfil: 'default', modo: 'SN', serial: 'HWTCdec861ad', marcada: false, activa: true, rx: '-15.48', tx: '2.3',
+    estado_admin: 'enable', estado_omcc: 'enable', fase: 'working', ultimo_registro: null, ultima_baja: null,
+    causa_ultima_baja: null, tiempo_activa: null, cliente_id: 1, cliente_nombre: 'Teresa Gomez Lopez',
+  }
+  await page.route('**/api/olts/7/panel/pons', (route) => route.fulfill({ json: { status: 'success', data: [{ pon: 4, port_id: 8, nombre: 'PON 0/4' }] } }))
+  await page.route('**/api/olts/7/panel/onus?**', (route) => route.fulfill({ json: { status: 'success', data: { olt: 'Vicente Guerrero', total: 1, online: 1, offline: 0, onus: [onu] } } }))
+  await page.route('**/api/olts/7/panel/onus/4/2', (route) => route.fulfill({ json: { status: 'success', data: { onu_id: 'GPON0/4:2', online: true, detalle: {}, optica: {} } } }))
+  await page.route('**/api/olts/7/panel/pon/4/perfiles', (route) => route.fulfill({ json: { status: 'success', data: {
+    onu_id_sugerido: '1', perfil_linea: ['line_INTERNET'], perfil_servicio: ['srv_INTERNET'], perfil_alarma: ['alarm_INTERNET'],
+    perfil_onu: ['default'], perfil_privado: [], perfil_formato: [], modos: { 0: 'SN', 1: 'LOID', 2: 'LOID + contraseña', 3: 'Contraseña', 4: 'SN + contraseña' },
+  } } }))
+}
+
+test('panel de la OLT: pestañas del detalle y volver a la lista', async ({ page }) => {
+  await panelBase(page)
+  await page.route('**/api/olts/7/panel/onus/4/2/seccion/linea', (route) => route.fulfill({ json: { status: 'success', data: {
+    tcont: [{ tcontid: '1', tcontname: 'tcont_1', dbaprofile: 'dba_INTERNET' }], gemport: [], vlan_puerto: [],
+    servicio: [{ servicename: 'ser_INTERNET', gemid: '1', vlanmode: '1', vlanlist: '10,4', coslist: 'N/A' }],
+    service_port: [{ servicePort: '1', gemport: '1', vlan: '10', beginVid: '10', endVid: '10', sVlan: 'N/A', mode: '1:1', description: 'N/A' }],
+  } } }))
+  await page.route('**/api/olts/7/panel/pon/4/versiones', (route) => route.fulfill({ json: { status: 'success', data: [
+    { onu_id: 'GPON0/4:2', descripcion: 'Teresa Gomez Lopez 5BAF', version_principal: 'V5R022C00S266', version_standby: 'V5R022C00S266', version_hw: '2C6D.A' },
+  ] } }))
+  await page.goto('/admin/radar/7/panel')
+
+  await expect(page.getByRole('link', { name: 'Radar' })).toBeVisible()
+  await page.getByRole('button', { name: 'Versión de la ONU' }).click()
+  await expect(page.getByText('V5R022C00S266').first()).toBeVisible()
+  await page.getByRole('button', { name: 'Lista de ONUs', exact: true }).last().click()
+
+  await page.getByRole('button', { name: 'Ver GPON0/4:2' }).click()
+  await page.getByRole('tab', { name: 'Línea' }).click()
+  await expect(page.getByText('dba_INTERNET')).toBeVisible()
+  await expect(page.getByText('10,4')).toBeVisible()
+  await page.getByRole('button', { name: 'Lista de ONUs' }).first().click()
+  await expect(page.getByRole('button', { name: 'Ver GPON0/4:2' })).toBeVisible()
+})
+
+test('panel de la OLT: añadir manualmente y modificar como la VSOL', async ({ page }) => {
+  await panelBase(page)
+  const altas: unknown[] = []
+  const cambios: unknown[] = []
+  await page.route('**/api/olts/7/panel/pon/4/alta', async (route) => { altas.push(route.request().postDataJSON()); await route.fulfill({ json: { status: 'success', data: { ok: true } } }) })
+  await page.route('**/api/olts/7/panel/onus/4/2/modificar', async (route) => { cambios.push(route.request().postDataJSON()); await route.fulfill({ json: { status: 'success', data: { ok: true } } }) })
+  await page.goto('/admin/radar/7/panel')
+
+  await page.getByRole('button', { name: 'Añadir Manualmente' }).click()
+  const alta = page.getByRole('dialog', { name: 'Añadir Manualmente · PON 0/4' })
+  await alta.getByLabel('SN', { exact: true }).fill('HWTC0B46D3AF')
+  await alta.getByRole('button', { name: 'Añadir', exact: true }).click()
+  await expect.poll(() => altas).toEqual([expect.objectContaining({
+    onuid: 1, modo: '0', sn: 'HWTC0B46D3AF', perfil_onu: 'default', perfil_linea: 'line_INTERNET', perfil_servicio: 'srv_INTERNET', perfil_alarma: 'alarm_INTERNET',
+  })])
+
+  await page.getByRole('button', { name: 'Modificar GPON0/4:2' }).click()
+  const modificar = page.getByRole('dialog', { name: 'Modificar GPON0/4:2' })
+  await modificar.getByLabel('SN', { exact: true }).fill('HWTC0B46D3AF')
+  await modificar.getByRole('button', { name: 'Aplicar' }).click()
+  await expect.poll(() => cambios).toEqual([{ serial: 'HWTCdec861ad', modo: '0', valor: 'HWTC0B46D3AF', perfil: null }])
+})

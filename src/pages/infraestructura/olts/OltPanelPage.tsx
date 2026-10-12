@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
-    ArrowPathIcon, ArrowUturnLeftIcon, ChevronDownIcon, Cog6ToothIcon, FunnelIcon,
-    LockClosedIcon, LockOpenIcon, MagnifyingGlassIcon, PencilIcon, StarIcon, TrashIcon,
+    ArrowLeftIcon, ArrowPathIcon, ChevronDownIcon, Cog6ToothIcon, FunnelIcon,
+    LockClosedIcon, LockOpenIcon, MagnifyingGlassIcon, PencilIcon, PencilSquareIcon, StarIcon, TrashIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 
 import client from '@/api/axios';
 import { apiErrorMessage } from '@/utils/apiError';
+import { AltaManual, ModificarOnu, SECCIONES_DETALLE, SeccionOnu, VersionesPon, type SeccionDetalle } from './PanelSecciones';
 import './panel.css';
 
 /** Copia del panel web de la OLT VSOL: lista de ONU con las mismas columnas y acciones. */
@@ -51,7 +52,7 @@ interface PanelDetalle {
 }
 
 type Accion = 'eliminar' | 'reiniciar' | 'marcar' | 'desmarcar' | 'activar' | 'desactivar';
-type Vista = 'lista' | 'estado' | 'optica';
+type Vista = 'lista' | 'estado' | 'optica' | 'version';
 type FiltroEstado = 'todos' | 'online' | 'offline';
 
 interface Confirmacion {
@@ -218,9 +219,10 @@ function OnuIcono() {
     );
 }
 
-function DetalleOnu({ oltId, onu, onVolver }: { oltId: number; onu: PanelOnu; onVolver: () => void }) {
+function DetalleOnu({ oltId, oltNombre, onu, onVolver }: { oltId: number; oltNombre: string; onu: PanelOnu; onVolver: () => void }) {
     const [datos, setDatos] = useState<PanelDetalle | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [seccion, setSeccion] = useState<SeccionDetalle>('general');
 
     const leer = useCallback(async () => {
         setError(null);
@@ -243,17 +245,29 @@ function DetalleOnu({ oltId, onu, onVolver }: { oltId: number; onu: PanelOnu; on
 
     return (
         <div>
+            <nav className="vp-nav" aria-label="Navegación del panel">
+                <button type="button" className="vp-volver" onClick={onVolver}>
+                    <ArrowLeftIcon /> Lista de ONUs
+                </button>
+                <span className="vp-ruta">{oltNombre} › PON 0/{onu.pon} › <b>{onu.onu_id}</b></span>
+                <button type="button" className="vp-btn" onClick={() => void leer()} aria-label="Volver a leer la ONU">
+                    <ArrowPathIcon width={16} height={16} />
+                </button>
+            </nav>
             <div className="vp-detalle-cabecera">
-                <div className="vp-tabs"><button type="button" className="vp-tab is-activa">Visión General</button></div>
-                <div className="vp-detalle-id">
-                    <span>{onu.onu_id}</span>
-                    <button type="button" className="vp-lapiz" aria-label="Volver a leer" onClick={() => void leer()}><ArrowPathIcon /></button>
-                    <button type="button" className="vp-lapiz" aria-label="Volver a la lista" onClick={onVolver}><ArrowUturnLeftIcon /></button>
+                <div className="vp-tabs" role="tablist">
+                    {SECCIONES_DETALLE.map((t) => (
+                        <button key={t.clave} type="button" role="tab" aria-selected={seccion === t.clave}
+                            className={`vp-tab${seccion === t.clave ? ' is-activa' : ''}`} onClick={() => setSeccion(t.clave)}>
+                            {t.titulo}
+                        </button>
+                    ))}
                 </div>
             </div>
-            {error && <p className="vp-error">{error}</p>}
-            {!datos && !error && <div className="vp-vacio">Consultando la ONU…</div>}
-            {datos && (
+            {seccion !== 'general' && <SeccionOnu oltId={oltId} pon={onu.pon} onuid={onu.onuid} seccion={seccion} />}
+            {seccion === 'general' && error && <p className="vp-error">{error}</p>}
+            {seccion === 'general' && !datos && !error && <div className="vp-vacio">Consultando la ONU…</div>}
+            {seccion === 'general' && datos && (
                 <div className="vp-detalle">
                     <div>
                         <h2 className="vp-seccion">Topología</h2>
@@ -328,6 +342,14 @@ function DetalleOnu({ oltId, onu, onVolver }: { oltId: number; onu: PanelOnu; on
 
 export default function OltPanelPage() {
     const oltId = Number(useParams().oltId);
+    return <PanelOlt key={oltId} oltId={oltId} />;
+}
+
+interface OltOpcion { id: number; nombre: string; tipo_integracion?: string }
+
+function PanelOlt({ oltId }: { oltId: number }) {
+    const navigate = useNavigate();
+    const [olts, setOlts] = useState<OltOpcion[]>([]);
     const puedeCambiar = rolActual() === 'admin';
     const [pons, setPons] = useState<PonItem[]>([]);
     const [pon, setPon] = useState<number | null>(null);
@@ -344,6 +366,8 @@ export default function OltPanelPage() {
     const [editando, setEditando] = useState<{ onu: string; texto: string } | null>(null);
     const [confirmacion, setConfirmacion] = useState<Confirmacion | null>(null);
     const [detalle, setDetalle] = useState<PanelOnu | null>(null);
+    const [alta, setAlta] = useState(false);
+    const [modificando, setModificando] = useState<PanelOnu | null>(null);
 
     const cargar = useCallback(async (ponElegido: number | null, texto: string | null) => {
         if (ponElegido == null && !texto) return;
@@ -374,6 +398,17 @@ export default function OltPanelPage() {
             .catch((e) => vivo && setError(apiErrorMessage(e, 'No se pudo conectar con la OLT')));
         return () => { vivo = false; };
     }, [oltId, cargar]);
+
+    useEffect(() => {
+        let vivo = true;
+        client.get<OltOpcion[]>('/olts/')
+            .then(({ data }) => {
+                // Solo las VSOL tienen panel; la de SNMP sigue en el Radar.
+                if (vivo && Array.isArray(data)) setOlts(data.filter((o) => (o.tipo_integracion || 'vsol_api') !== 'snmp'));
+            })
+            .catch(() => undefined);
+        return () => { vivo = false; };
+    }, []);
 
     const refrescar = () => void cargar(pon, buscando);
 
@@ -490,6 +525,7 @@ export default function OltPanelPage() {
                     <button type="button" className={`vp-icono${f.activa ? '' : ' is-inactiva'}`} title={f.activa ? 'Desactivar' : 'Activar'} aria-label={`${f.activa ? 'Desactivar' : 'Activar'} ${f.onu_id}`} onClick={() => pedirAccion(f, f.activa ? 'desactivar' : 'activar')}>
                         {f.activa ? <LockOpenIcon /> : <LockClosedIcon />}
                     </button>
+                    <button type="button" className="vp-icono" title="Modificar" aria-label={`Modificar ${f.onu_id}`} onClick={() => setModificando(f)}><PencilSquareIcon /></button>
                     <button type="button" className="vp-icono" title="Reiniciar" aria-label={`Reiniciar ${f.onu_id}`} onClick={() => pedirAccion(f, 'reiniciar')}><ArrowPathIcon /></button>
                 </>
             )}
@@ -524,18 +560,26 @@ export default function OltPanelPage() {
     );
 
     if (detalle) {
-        return <div className="vp"><DetalleOnu oltId={oltId} onu={detalle} onVolver={() => setDetalle(null)} /></div>;
+        return <div className="vp"><DetalleOnu oltId={oltId} oltNombre={lista?.olt ?? 'OLT'} onu={detalle} onVolver={() => setDetalle(null)} /></div>;
     }
 
     const ponActual = pons.find((p) => p.pon === pon);
 
     return (
         <div className="vp">
+            <nav className="vp-nav" aria-label="Navegación del panel">
+                <Link to="/admin/radar" className="vp-volver"><ArrowLeftIcon /> Radar</Link>
+                <label className="vp-cambiar-olt">
+                    <span>OLT</span>
+                    <select aria-label="Cambiar de OLT" value={oltId} onChange={(e) => navigate(`/admin/radar/${e.target.value}/panel`)}>
+                        {(olts.length ? olts : [{ id: oltId, nombre: lista?.olt ?? `OLT ${oltId}` }]).map((o) => (
+                            <option key={o.id} value={o.id}>{o.nombre}</option>
+                        ))}
+                    </select>
+                </label>
+            </nav>
             <div className="vp-tabs">
                 <button type="button" className="vp-tab is-activa">Lista de ONUs</button>
-                <Link to="/admin/radar" className="vp-tab" style={{ marginLeft: 'auto' }}>
-                    {lista?.olt ? `${lista.olt} · Radar` : 'Volver al Radar'}
-                </Link>
             </div>
 
             <div className="vp-barra">
@@ -555,6 +599,7 @@ export default function OltPanelPage() {
                     <button type="button" className={`vp-subtab${vista === 'lista' ? ' is-activa' : ''}`} onClick={() => setVista('lista')}>Lista de ONUs</button>
                     <button type="button" className={`vp-subtab${vista === 'estado' ? ' is-activa' : ''}`} onClick={() => setVista('estado')}>Estado de la ONU</button>
                     <button type="button" className={`vp-subtab${vista === 'optica' ? ' is-activa' : ''}`} onClick={() => setVista('optica')}>Óptica de la ONU</button>
+                    <button type="button" className={`vp-subtab${vista === 'version' ? ' is-activa' : ''}`} onClick={() => setVista('version')}>Versión de la ONU</button>
                 </div>
             </div>
 
@@ -586,6 +631,7 @@ export default function OltPanelPage() {
                                 <button type="button" className="vp-btn" disabled={seleccionadas.length === 0} onClick={eliminarSeleccionadas}>Eliminar</button>
                                 <button type="button" className="vp-btn" disabled={pon == null || !!buscando} onClick={() => eliminarPon(false)}>Eliminar Todo</button>
                                 <button type="button" className="vp-btn" disabled={pon == null || !!buscando} onClick={() => eliminarPon(true)}>Eliminar Offline</button>
+                                <button type="button" className="vp-btn vp-btn--lleno" disabled={pon == null} onClick={() => setAlta(true)}>Añadir Manualmente</button>
                             </>
                         )}
                     </div>
@@ -700,11 +746,17 @@ export default function OltPanelPage() {
                     </table>
                 )}
 
-                {!cargando && lista && filas.length === 0 && <div className="vp-vacio">Sin ONUs</div>}
+                {vista === 'version' && (pon != null && !buscando
+                    ? <VersionesPon key={pon} oltId={oltId} pon={pon} />
+                    : <div className="vp-vacio">Elige un PON para ver las versiones.</div>)}
+
+                {vista !== 'version' && !cargando && lista && filas.length === 0 && <div className="vp-vacio">Sin ONUs</div>}
                 {cargando && !lista && <div className="vp-vacio">Leyendo la OLT…</div>}
             </div>
 
             {confirmacion && <ConfirmarModal datos={confirmacion} onCerrar={() => setConfirmacion(null)} />}
+            {alta && pon != null && <AltaManual oltId={oltId} pon={pon} onCerrar={() => setAlta(false)} onListo={() => { setAlta(false); refrescar(); }} />}
+            {modificando && <ModificarOnu oltId={oltId} onu={modificando} onCerrar={() => setModificando(null)} onListo={() => { setModificando(null); refrescar(); }} />}
         </div>
     );
 }
