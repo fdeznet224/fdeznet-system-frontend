@@ -16,6 +16,7 @@ import client from '@/api/axios';
 import type { ClientService } from '@/types/services';
 import { FORMAS_COBRO, nombreFormaCobro, type FormaCobro } from '@/utils/formaCobro';
 import { apiErrorMessage } from '@/utils/apiError';
+import CambiarIpModal from './CambiarIpModal';
 
 interface Props {
   clientId: number;
@@ -117,6 +118,7 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
   const plantillaElegida = templates.find((item) => String(item.id) === form.plantilla_id);
   const [technicians, setTechnicians] = useState<TechnicianCatalog[]>([]);
   const [planService, setPlanService] = useState<ClientService | null>(null);
+  const [ipService, setIpService] = useState<ClientService | null>(null);
   const [planOptions, setPlanOptions] = useState<PlanCatalog[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [savingPlan, setSavingPlan] = useState(false);
@@ -357,6 +359,16 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
                         Cambiar plan
                       </button>
                     )}
+                    {service.estado !== 'cancelado' && service.red_id && (
+                      <button
+                        type="button"
+                        onClick={() => setIpService(service)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-200 px-3 py-2 text-[10px] font-black uppercase text-slate-700 transition hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        <PencilSquareIcon className="h-4 w-4" />
+                        Cambiar IP
+                      </button>
+                    )}
                     {['activo', 'suspendido'].includes(service.estado) && (
                       <button
                         type="button"
@@ -505,6 +517,17 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
             </form>
           </div>
         </div>
+      )}
+
+      {ipService && (
+        <CambiarIpModal
+          service={ipService}
+          onClose={() => setIpService(null)}
+          onChanged={() => {
+            void fetchServices();
+            onChanged?.();
+          }}
+        />
       )}
 
       {planService && (

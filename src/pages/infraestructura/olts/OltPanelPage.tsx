@@ -44,11 +44,32 @@ export interface PanelOnu {
 
 interface PanelLista { olt: string; onus: PanelOnu[]; total: number; online: number; offline: number }
 
+/** Lo que el sistema sabe del cliente de esa ONU. */
+interface ClienteDeOnu {
+    id: number;
+    nombre: string;
+    contrato: string | null;
+    telefono: string | null;
+    estado_cliente: string | null;
+    servicio_id: number | null;
+    estado_servicio: string | null;
+    direccion: string | null;
+    zona: string | null;
+    plan: string | null;
+    mikrotik: string | null;
+    ip: string | null;
+    usuario_pppoe: string | null;
+    en_linea: boolean;
+    caja_nap: string | null;
+    puerto_nap: number | null;
+}
+
 interface PanelDetalle {
     onu_id: string;
     online: boolean;
     detalle: Record<string, string>;
     optica: Record<string, string>;
+    cliente: ClienteDeOnu | null;
 }
 
 type Accion = 'eliminar' | 'reiniciar' | 'marcar' | 'desmarcar' | 'activar' | 'desactivar';
@@ -65,7 +86,8 @@ interface Confirmacion {
 }
 
 const LARGO_DESCRIPCION = 32;
-const LARGO_BUSQUEDA = 12;
+// La búsqueda la hace el sistema (no la OLT): cabe un nombre completo.
+const LARGO_BUSQUEDA = 40;
 
 const TEXTO_ACCION: Record<Accion, { titulo: string; texto: string; boton: string; listo: string; peligro?: boolean }> = {
     eliminar: { titulo: 'Eliminar ONU', texto: 'Se borra de la OLT. Con autorización automática vuelve a darse de alta sola en 1 a 2 minutos.', boton: 'Eliminar', listo: 'ONU eliminada de la OLT', peligro: true },
@@ -219,6 +241,40 @@ function OnuIcono() {
     );
 }
 
+function ClienteEnSistema({ cliente }: { cliente: ClienteDeOnu | null }) {
+    if (!cliente) {
+        return (
+            <div className="vp-cliente-sistema is-vacio">
+                <h2 className="vp-seccion">Cliente en el sistema</h2>
+                <p>Esta ONU no está vinculada a ningún cliente.</p>
+            </div>
+        );
+    }
+    const estado = cliente.estado_servicio || cliente.estado_cliente;
+    const nap = cliente.caja_nap ? `${cliente.caja_nap}${cliente.puerto_nap ? ` · Pto. ${cliente.puerto_nap}` : ''}` : null;
+    return (
+        <div className="vp-cliente-sistema">
+            <h2 className="vp-seccion">Cliente en el sistema</h2>
+            <div className="vp-cliente-nombre">
+                <b>{cliente.nombre}</b>
+                {estado && <span className={`vp-estado-servicio is-${estado}`}>{estado}</span>}
+            </div>
+            <div className="vp-info-grid">
+                <div><span>Contrato</span><b>{cliente.contrato || '--'}</b></div>
+                <div><span>Teléfono</span><b>{cliente.telefono || '--'}</b></div>
+                <div><span>IP</span><b className="vp-mono">{cliente.ip || '--'}</b></div>
+                <div><span>Usuario PPPoE</span><b className="vp-mono">{cliente.usuario_pppoe || '--'}</b></div>
+                <div><span>Plan</span><b>{cliente.plan || '--'}</b></div>
+                <div><span>PPPoE</span><b className={cliente.en_linea ? 'is-online' : 'is-offline'}>{cliente.en_linea ? 'Conectado' : 'Sin sesión'}</b></div>
+                <div><span>Zona</span><b>{cliente.zona || '--'}</b></div>
+                <div><span>MikroTik</span><b>{cliente.mikrotik || '--'}</b></div>
+                <div><span>Caja NAP</span><b>{nap || '--'}</b></div>
+                <div><span>Dirección</span><b>{cliente.direccion || '--'}</b></div>
+            </div>
+        </div>
+    );
+}
+
 function DetalleOnu({ oltId, oltNombre, onu, onVolver }: { oltId: number; oltNombre: string; onu: PanelOnu; onVolver: () => void }) {
     const [datos, setDatos] = useState<PanelDetalle | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -307,6 +363,7 @@ function DetalleOnu({ oltId, oltNombre, onu, onVolver }: { oltId: number; oltNom
                         </div>
                     </div>
                     <aside className="vp-info">
+                        <ClienteEnSistema cliente={datos.cliente} />
                         <h2 className="vp-seccion">Información Detallada</h2>
                         <div className="vp-info-desc">
                             <PencilIcon width={18} height={18} style={{ color: 'var(--vp-primario)' }} />
@@ -608,7 +665,7 @@ function PanelOlt({ oltId }: { oltId: number }) {
                     <label className="vp-input">
                         <input
                             aria-label="Buscar en todas las PON"
-                            placeholder="Buscar en TODAS las PON"
+                            placeholder="SN, ONU, cliente, contrato o IP"
                             maxLength={LARGO_BUSQUEDA}
                             value={busqueda}
                             onChange={(e) => setBusqueda(e.target.value)}

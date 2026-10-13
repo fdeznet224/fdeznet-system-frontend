@@ -18,6 +18,7 @@ import type { Cliente } from '@/types';
 import type { ClientService } from '@/types/services';
 import { openNativeMap } from '@/utils/nativeActions';
 import ClientServicesPanel from './ClientServicesPanel';
+import CambiarIpModal from './CambiarIpModal';
 import { nombreFormaCobro } from '@/utils/formaCobro';
 import './client-detail-sheet.css';
 import { apiErrorMessage } from '@/utils/apiError';
@@ -170,6 +171,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         window.open(destino, '_blank', 'noopener,noreferrer');
     };
     const [servicios, setServicios] = useState<ClientService[]>([]);
+    const [ipService, setIpService] = useState<ClientService | null>(null);
     const [serviciosAdicionales, setServiciosAdicionales] = useState<Array<{id:number; nombre:string; precio_mensual:number; periodicidad:'mensual'|'unico'; activo:boolean; servicio_id?:number}>>([]);
     const [resumenComercial, setResumenComercial] = useState<CommercialSummary | null>(null);
     const [activeTab, setActiveTab] = useState<'resumen' | 'servicios' | 'red' | 'facturas' | 'instalacion'>('resumen'); // FACTURACION_ISP_V2_CLIENT_DETAIL_TABS_FRONTEND // FACTURACION_ISP_V2_CLIENT_DETAIL_FRONTEND
@@ -937,6 +939,29 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             )}
                                         </div>
                                         <hr className="border-slate-200 dark:border-slate-800 my-4"/>
+                                        <div>
+                                            <label className={labelClass}>IP del servicio</label>
+                                            {servicios.filter((sv) => sv.estado !== 'cancelado').map((sv) => (
+                                                <div key={sv.id} className="mb-2 flex justify-between items-center gap-3 bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl">
+                                                    <span className="min-w-0 text-sm">
+                                                        <span className="font-mono font-bold">{sv.ip_asignada || 'Sin IP'}</span>
+                                                        {servicios.length > 1 && <span className="ml-2 text-xs text-slate-500">{sv.alias}</span>}
+                                                    </span>
+                                                    {sv.red_id ? (
+                                                        <button type="button" onClick={() => setIpService(sv)} className="shrink-0 text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-3 py-1.5 rounded-lg font-bold">Cambiar</button>
+                                                    ) : (
+                                                        <span className="shrink-0 text-[10px] text-slate-500">Sin red asignada</span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {ipService && cliente && (
+                                                <CambiarIpModal
+                                                    service={ipService}
+                                                    onClose={() => setIpService(null)}
+                                                    onChanged={() => void cargarDatosCompletos(cliente.id)}
+                                                />
+                                            )}
+                                        </div>
                                         <div><label className={labelClass}>Router Concentrador</label><select name="router_id" value={formData.router_id} onChange={handleInputChange} className={flatInputClass}><option value={0}>Seleccionar...</option>{routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}</select></div>
                                         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-500/20 dark:bg-blue-900/10">
                                             <p className="text-xs font-black text-blue-700 dark:text-blue-300">
