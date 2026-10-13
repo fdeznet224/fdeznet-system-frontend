@@ -6,7 +6,7 @@ import client from '../../api/axios';
 import { apiErrorMessage } from '@/utils/apiError';
 
 type Marca = 'huawei' | 'zte';
-type Config = Record<Marca, { url: string; cuentas: string }>;
+type Config = Record<Marca, { url: string; cuentas: string }> & { radio: { puerto: string } };
 
 const MARCAS: { id: Marca; nombre: string }[] = [
   { id: 'huawei', nombre: 'Huawei' },
@@ -16,7 +16,7 @@ const CAMPO = 'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 t
 
 /** Dirección y cuentas de la ONU que ve el técnico en una reparación (conectado al WiFi del cliente). */
 export default function AccesoOnu() {
-  const [config, setConfig] = useState<Config>({ huawei: { url: '', cuentas: '' }, zte: { url: '', cuentas: '' } });
+  const [config, setConfig] = useState<Config>({ huawei: { url: '', cuentas: '' }, zte: { url: '', cuentas: '' }, radio: { puerto: '8080' } });
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
@@ -24,6 +24,7 @@ export default function AccesoOnu() {
       .then(({ data }) => setConfig((actual) => ({
         huawei: { ...actual.huawei, ...data?.huawei },
         zte: { ...actual.zte, ...data?.zte },
+        radio: { ...actual.radio, ...data?.radio },
       })))
       .catch(() => toast.error('No se pudo cargar el acceso a la ONU'));
   }, []);
@@ -67,6 +68,19 @@ export default function AccesoOnu() {
         </fieldset>
       ))}
       <p className="mb-5 text-xs text-slate-500">Varias cuentas separadas por coma, cada una como usuario:contraseña. Deja la dirección vacía para no mostrar esa marca.</p>
+
+      <fieldset className="mb-5 space-y-2">
+        <legend className="mb-2 text-sm font-black text-slate-600 dark:text-slate-300">Router de clientes por radio</legend>
+        <input
+          aria-label="Puerto web del router de clientes por radio"
+          inputMode="numeric"
+          value={config.radio.puerto}
+          onChange={(e) => setConfig((actual) => ({ ...actual, radio: { puerto: e.target.value.replace(/\D/g, '') } }))}
+          placeholder="8080"
+          className={`${CAMPO} font-mono`}
+        />
+        <p className="text-xs text-slate-500">Al tocar la IP de un cliente de radio en Clientes se abre su router en este puerto (administración remota del Mercusys). Vacío abre el puerto 80.</p>
+      </fieldset>
 
       <button
         type="button"

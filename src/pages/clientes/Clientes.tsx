@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { abrirIpHttp, usePuertoRouterRadio } from '@/hooks/usePuertoRouterRadio';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
@@ -176,10 +177,7 @@ export default function Clientes() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [toolModal, setToolModal] = useState<ClientModalState>({ show: false, cliente: null });
     const [detailModal, setDetailModal] = useState<ClientModalState>({ show: false, cliente: null });
-    const abrirIpHttp = (ip: string) => {
-        const destino = `http://${ip.trim().replace(/^https?:\/\//i, '')}`;
-        window.open(destino, '_blank', 'noopener,noreferrer');
-    };
+    const puertoRadio = usePuertoRouterRadio();
 
     const fetchData = useCallback(async () => {
         try {
@@ -526,7 +524,7 @@ export default function Clientes() {
                                                     {c.servicio.plan_nombre}
                                                     {Number(c.servicio.precio_plan) > 0 && <span className="ml-1.5 font-bold text-slate-400">${Number(c.servicio.precio_plan).toLocaleString('es-MX')}</span>}
                                                 </div>
-                                                <button type="button" onClick={(event) => { event.stopPropagation(); if (c.servicio.ip_asignada) abrirIpHttp(c.servicio.ip_asignada); }} className="mt-1 font-mono text-[11px] font-bold text-slate-500 underline decoration-dotted underline-offset-2 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">{c.servicio.ip_asignada || 'Sin IP'}</button>
+                                                <button type="button" onClick={(event) => { event.stopPropagation(); if (c.servicio.ip_asignada) abrirIpHttp(c.servicio.ip_asignada, c.tipo_conexion === 'radio' ? puertoRadio : undefined); }} className="mt-1 font-mono text-[11px] font-bold text-slate-500 underline decoration-dotted underline-offset-2 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">{c.servicio.ip_asignada || 'Sin IP'}</button>
                                             </td>
                                             <td className="px-5 py-3">
                                                 <ConexionCliente status={statusData} />
@@ -580,7 +578,7 @@ export default function Clientes() {
                                             </div>
                                             <div className="min-w-0 text-right">
                                                 <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">IP</span>
-                                                <button type="button" onClick={(event) => { event.stopPropagation(); if (c.servicio.ip_asignada) abrirIpHttp(c.servicio.ip_asignada); }} className="mt-0.5 font-mono font-bold text-slate-600 underline decoration-dotted underline-offset-2 dark:text-slate-300">{c.servicio.ip_asignada || 'Sin IP'}</button>
+                                                <button type="button" onClick={(event) => { event.stopPropagation(); if (c.servicio.ip_asignada) abrirIpHttp(c.servicio.ip_asignada, c.tipo_conexion === 'radio' ? puertoRadio : undefined); }} className="mt-0.5 font-mono font-bold text-slate-600 underline decoration-dotted underline-offset-2 dark:text-slate-300">{c.servicio.ip_asignada || 'Sin IP'}</button>
                                             </div>
                                             <div className="min-w-0">
                                                 <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Conexión</span>

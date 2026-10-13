@@ -2271,3 +2271,30 @@ test('clientes por radioenlace: ícono de antena, estado de la antena y revisarl
   await expect(herramientas.getByText('3.2 ms')).toBeVisible()
   expect(revisiones).toBe(1)
 })
+
+test('la IP de un cliente de radio abre su router en el puerto configurado', async ({ page, context }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  const base = {
+    cedula: '', telefono: '', direccion: '', zona: 'Sagrado Corazon', identificador_onu: 'Sin registrar', antena: null,
+    finanzas: { facturas_pendientes_cant: 0, total_deuda: 0, saldo_a_favor: 0, estado_financiero: 'al_dia' },
+  }
+  const servicio = (ip: string) => ({ plan_nombre: 'Básico', precio_plan: 220, ip_asignada: ip, router_nombre: 'VG', estado_servicio: 'activo', nap_info: 'No Asignado' })
+  await page.route('**/api/clientes/listado-completo-unificado', (route) => route.fulfill({ json: [
+    { ...base, id: 291, nombre: 'Concepcion Radio', tipo_conexion: 'radio', servicio: servicio('10.10.10.41') },
+    { ...base, id: 165, nombre: 'Teresa Fibra', tipo_conexion: 'fibra', servicio: servicio('10.10.10.42') },
+  ] }))
+  await page.route('**/api/configuracion/acceso-onu', (route) => route.fulfill({ json: {
+    huawei: { url: '', cuentas: '' }, zte: { url: '', cuentas: '' }, radio: { puerto: '8080' },
+  } }))
+  await context.route('http://10.10.10.*/**', (route) => route.fulfill({ body: 'router' }))
+  await page.goto('/admin/clientes')
+
+  const radio = context.waitForEvent('page')
+  await page.getByRole('button', { name: '10.10.10.41' }).filter({ visible: true }).click()
+  expect((await radio).url()).toBe('http://10.10.10.41:8080/')
+
+  const fibra = context.waitForEvent('page')
+  await page.getByRole('button', { name: '10.10.10.42' }).filter({ visible: true }).click()
+  expect((await fibra).url()).toBe('http://10.10.10.42/')
+})
