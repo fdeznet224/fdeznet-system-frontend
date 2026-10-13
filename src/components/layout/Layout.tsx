@@ -501,7 +501,7 @@ function getPageTitle(pathname: string, fallback: string): string {
         ['/admin/naps', 'Cajas NAP'],
         ['/admin/inventario', 'Inventario'],
         ['/admin/facturas', 'Facturas'],
-        ['/admin/transacciones', 'Transacciones'],
+        ['/admin/transacciones', 'Corte de Cobranza'],
         ['/admin/configuracion', 'Configuración'],
     ];
     return routes.find(([route]) => pathname.startsWith(route))?.[1] || fallback;

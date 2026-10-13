@@ -1,14 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import client from '../../api/axios'; 
+import { useState, useEffect, useCallback, useRef } from 'react';
+import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import { 
-    ArrowPathIcon,
-    MagnifyingGlassIcon, FunnelIcon,
-    PrinterIcon, BanknotesIcon, ClockIcon, ShieldExclamationIcon,
-    XCircleIcon
-} from '@heroicons/react/24/outline';
+import { ArrowPathIcon, BanknotesIcon, PrinterIcon } from '@heroicons/react/24/outline';
 import PaymentModal, { type PaymentInvoice } from './components/PaymentModal';
 import { apiErrorMessage } from '@/utils/apiError';
+import {
+    BotonAccion, Buscador, Campo, Cifra, Encabezado, Etiqueta, Lista, PaginaFinanzas, PanelFiltros, Vacio,
+} from './components/FinanzasUI';
+import { claseControl, dinero, fechaLocal } from './components/formato';
 
 interface Factura extends PaymentInvoice {
     servicio_id?: number | null;
@@ -61,18 +60,11 @@ interface FacturaFilters {
     estado: string;
 }
 
-interface ResumenCardProps {
-    label: string;
-    cantidad: number;
-    total: number;
-    color: 'emerald' | 'amber' | 'rose' | 'slate';
-}
-
 function getInitialFilters(): FacturaFilters {
     const date = new Date();
     return {
-        inicio: new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0],
-        fin: new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0],
+        inicio: fechaLocal(new Date(date.getFullYear(), date.getMonth(), 1)),
+        fin: fechaLocal(new Date(date.getFullYear(), date.getMonth() + 1, 0)),
         tipoFecha: 'vencimiento',
         routerId: '',
         estado: 'cualquiera'
@@ -87,7 +79,7 @@ export default function Facturas() {
     const [routers, setRouters] = useState<RouterOption[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const [mostrarFiltrosMovil, setMostrarFiltrosMovil] = useState(false);
+    const [mostrarFiltros, setMostrarFiltros] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedFactura, setSelectedFactura] = useState<Factura | null>(null);
     const [filtros, setFiltros] = useState<FacturaFilters>({ ...INITIAL_FILTERS });
@@ -110,7 +102,6 @@ export default function Facturas() {
             });
             setFacturas(res.data.items);
             setResumen(res.data.resumen);
-            setMostrarFiltrosMovil(false);
         } catch {
             toast.error("Error cargando facturas");
         } finally {
@@ -199,361 +190,190 @@ export default function Facturas() {
     };
 
     useEffect(() => {
-        const initialLoad = window.setTimeout(() => {
-            void client.get<RouterOption[]>('/network/routers/')
-                .then(response => setRouters(response.data))
-                .catch(() => toast.error("Error cargando routers"));
-            void fetchFacturas(INITIAL_FILTERS);
-        }, 0);
-        return () => window.clearTimeout(initialLoad);
-    }, [fetchFacturas]);
+        void client.get<RouterOption[]>('/network/routers/')
+            .then(response => setRouters(response.data))
+            .catch(() => toast.error("Error cargando routers"));
+    }, []);
 
-    // Busca mientras se escribe (desde 2 letras) y vuelve al mes al borrar.
+    // Los filtros se aplican solos; la búsqueda (desde 2 letras) espera a que
+    // se deje de escribir y busca en todas las fechas.
     const [busquedaAplicada, setBusquedaAplicada] = useState('');
+    const aplicadaRef = useRef<string | null>(null);
     useEffect(() => {
-        if (busquedaActiva === busquedaAplicada) return;
         if (busquedaActiva && busquedaActiva.length < 2) return;
         const timer = window.setTimeout(() => {
+            aplicadaRef.current = busquedaActiva;
             setBusquedaAplicada(busquedaActiva);
             void fetchFacturas(filtros, busquedaActiva);
-        }, 400);
+        }, busquedaActiva === (aplicadaRef.current ?? busquedaActiva) ? 0 : 400);
         return () => window.clearTimeout(timer);
-    }, [busquedaActiva, busquedaAplicada, fetchFacturas, filtros]);
+    }, [busquedaActiva, fetchFacturas, filtros]);
+
+    const filtrarEstado = (estado: string) =>
+        setFiltros((actual) => ({ ...actual, estado: actual.estado === estado ? 'cualquiera' : estado }));
+    const filtrosActivos = [
+        filtros.routerId,
+        filtros.estado !== 'cualquiera',
+        filtros.tipoFecha !== INITIAL_FILTERS.tipoFecha,
+        filtros.inicio !== INITIAL_FILTERS.inicio || filtros.fin !== INITIAL_FILTERS.fin,
+    ].filter(Boolean).length;
 
     return (
-        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 h-[calc(100dvh-80px)] md:h-[calc(100vh-100px)] overflow-hidden transition-colors duration-300">
-            
-            {/* HEADER (Fijo) */}
-            <div className="flex justify-between items-center px-1 md:px-0 flex-none shrink-0">
-                <div>
-                    <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight transition-colors">
-                        Gestión Financiera
-                    </h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-[11px] md:text-sm mt-0.5 hidden sm:block">Control de facturación y cobranza centralizada</p>
-                </div>
-                
-                <div className="flex items-center gap-1.5 shrink-0">
+        <PaginaFinanzas>
+            <Encabezado
+                titulo="Facturas"
+                subtitulo="Cobra, anula o descarga las facturas de tus clientes"
+                accion={
                     <button
-                        onClick={() => setMostrarFiltrosMovil(!mostrarFiltrosMovil)}
-                        className={`md:hidden p-2.5 rounded-xl border transition-all shadow-sm ${mostrarFiltrosMovil ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white dark:bg-[#1a1f2e] border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}
-                    >
-                        <FunnelIcon className="w-5 h-5" />
-                    </button>
-
-                    <button
+                        type="button"
                         onClick={() => void emisionMasiva()}
                         disabled={emitiendo}
                         title="Emite ahora las facturas que ya tocan y no se han emitido"
-                        className="disabled:opacity-60 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2.5 md:px-4 md:py-2.5 rounded-xl font-extrabold shadow-md active:scale-95 transition text-[10px] md:text-sm tracking-wide uppercase md:normal-case"
+                        className="h-10 shrink-0 rounded-xl bg-slate-900 px-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-60 dark:bg-white dark:text-slate-900"
                     >
-                        <span>{emitiendo ? 'Emitiendo…' : 'Emisión Masiva'}</span>
+                        {emitiendo ? 'Emitiendo…' : 'Emisión masiva'}
                     </button>
-                </div>
-            </div>
+                }
+            />
 
-            {/* KPI RESUMEN (Fijo) */}
-            {resumen && (
-                <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:pb-0 scrollbar-none flex-none shrink-0">
-                    <ResumenCard label="Pagado" cantidad={resumen.pagadas_cant} total={resumen.pagadas_total} color="emerald" />
-                    <ResumenCard label="Pendiente" cantidad={resumen.pendientes_cant} total={resumen.pendientes_total} color="amber" />
-                    <ResumenCard label="Vencido" cantidad={resumen.vencidas_cant} total={resumen.vencidas_total} color="rose" />
-                    <ResumenCard label="Anulado" cantidad={resumen.anuladas_cant} total={resumen.anuladas_total} color="slate" />
-                </div>
-            )}
+            <Buscador
+                valor={busqueda}
+                onCambio={setBusqueda}
+                placeholder="Nombre, contrato o folio"
+                etiqueta="Buscar factura por nombre, contrato o folio"
+                filtrosAbiertos={mostrarFiltros}
+                filtrosActivos={filtrosActivos}
+                onFiltros={() => setMostrarFiltros((abierto) => !abierto)}
+            />
 
-            {/* BUSCADOR (Fijo) */}
-            <div className="flex-none shrink-0">
-                <div className="relative">
-                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                    <input
-                        type="search"
-                        value={busqueda}
-                        onChange={e => setBusqueda(e.target.value)}
-                        placeholder="Buscar por nombre, contrato o folio"
-                        aria-label="Buscar factura por nombre, contrato o folio"
-                        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm text-slate-800 shadow-sm outline-none transition-colors focus:border-blue-500 dark:border-slate-700 dark:bg-[#1a1f2e] dark:text-white"
-                    />
-                    {busqueda && (
-                        <button onClick={() => setBusqueda('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white" title="Borrar búsqueda">
-                            <XCircleIcon className="h-5 w-5" />
-                        </button>
-                    )}
-                </div>
-                {busquedaAplicada && (
-                    <p className="mt-1 px-1 text-[11px] text-slate-500 dark:text-slate-400">
-                        Buscando «{busquedaAplicada}» en todas las fechas · {facturas.length} factura{facturas.length === 1 ? '' : 's'}
-                    </p>
-                )}
-            </div>
-
-            {/* FILTROS MÓVIL DESPLEGABLES (Fijo cuando se abre) */}
-            {mostrarFiltrosMovil && (
-                <div className="md:hidden bg-white dark:bg-[#1a1f2e] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg space-y-3 flex-none shrink-0 animate-in fade-in slide-in-from-top-2 z-10 relative">
-                    
-                    {/* 🔥 NUEVO EN MÓVIL: Selector de Tipo de Fecha */}
-                    <div>
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 block">Filtrar por</label>
-                        <select className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 outline-none focus:border-blue-500" value={filtros.tipoFecha} onChange={e => setFiltros({ ...filtros, tipoFecha: e.target.value })}>
-                            <option value="vencimiento">Fecha de Vencimiento</option>
-                            <option value="emision">Fecha de Emisión</option>
-                            <option value="pago">Día del Pago</option>
+            {mostrarFiltros && (
+                <PanelFiltros>
+                    <Campo etiqueta="Fecha de">
+                        <select className={claseControl} value={filtros.tipoFecha} onChange={e => setFiltros({ ...filtros, tipoFecha: e.target.value })}>
+                            <option value="vencimiento">Vencimiento</option>
+                            <option value="emision">Emisión</option>
+                            <option value="pago">Pago</option>
                         </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 block">Desde</label>
-                            <input type="date" className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 outline-none focus:border-blue-500" value={filtros.inicio} onChange={e => setFiltros({ ...filtros, inicio: e.target.value })} />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 block">Hasta</label>
-                            <input type="date" className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 outline-none focus:border-blue-500" value={filtros.fin} onChange={e => setFiltros({ ...filtros, fin: e.target.value })} />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 block">Nodo / Router</label>
-                        <select className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 outline-none focus:border-blue-500" value={filtros.routerId} onChange={e => setFiltros({ ...filtros, routerId: e.target.value })}>
-                            <option value="">-- Todos --</option>
+                    </Campo>
+                    <Campo etiqueta="Estado">
+                        <select className={claseControl} value={filtros.estado} onChange={e => setFiltros({ ...filtros, estado: e.target.value })}>
+                            <option value="cualquiera">Todos</option>
+                            <option value="pagada">Pagadas</option>
+                            <option value="pendiente">Pendientes</option>
+                            <option value="vencida">Vencidas</option>
+                            <option value="promesa">Con promesa</option>
+                            <option value="anulada">Anuladas</option>
+                        </select>
+                    </Campo>
+                    <Campo etiqueta="Desde">
+                        <input type="date" className={claseControl} value={filtros.inicio} onChange={e => setFiltros({ ...filtros, inicio: e.target.value })} />
+                    </Campo>
+                    <Campo etiqueta="Hasta">
+                        <input type="date" className={claseControl} value={filtros.fin} onChange={e => setFiltros({ ...filtros, fin: e.target.value })} />
+                    </Campo>
+                    <Campo etiqueta="Router" ancho>
+                        <select className={claseControl} value={filtros.routerId} onChange={e => setFiltros({ ...filtros, routerId: e.target.value })}>
+                            <option value="">Todos</option>
                             {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
                         </select>
+                    </Campo>
+                    <div className="col-span-2 flex items-end justify-end">
+                        <BotonAccion onClick={() => setFiltros({ ...INITIAL_FILTERS })}>Quitar filtros</BotonAccion>
                     </div>
-                    <div>
-                        <label className="text-[10px] font-black text-amber-500 uppercase tracking-wider mb-1 block">Filtrar Estado</label>
-                        <select className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 font-bold outline-none focus:border-blue-500" value={filtros.estado} onChange={e => setFiltros({ ...filtros, estado: e.target.value })}>
-                            <option value="cualquiera">Todos los estados</option>
-                            <option value="pagada">✅ Pagadas</option>
-                            <option value="pendiente">⏳ Pendientes</option>
-                            <option value="promesa">🤝 Promesas</option>
-                            <option value="anulada">❌ Anuladas</option>
-                        </select>
-                    </div>
-                    <button onClick={() => void fetchFacturas(filtros, busquedaActiva)} className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl flex items-center justify-center gap-2 font-black text-sm transition active:scale-95 shadow-md mt-2">
-                        {loading ? <ArrowPathIcon className="w-5 h-5 animate-spin"/> : <MagnifyingGlassIcon className="w-5 h-5" />}
-                        Aplicar Filtros
-                    </button>
+                </PanelFiltros>
+            )}
+
+            {resumen && (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <Cifra etiqueta="Pagado" valor={dinero(resumen.pagadas_total)} detalle={cuantas(resumen.pagadas_cant)} tono="emerald" activo={filtros.estado === 'pagada'} onClick={() => filtrarEstado('pagada')} />
+                    <Cifra etiqueta="Pendiente" valor={dinero(resumen.pendientes_total)} detalle={cuantas(resumen.pendientes_cant)} tono="amber" activo={filtros.estado === 'pendiente'} onClick={() => filtrarEstado('pendiente')} />
+                    <Cifra etiqueta="Vencido" valor={dinero(resumen.vencidas_total)} detalle={cuantas(resumen.vencidas_cant)} tono="rose" activo={filtros.estado === 'vencida'} onClick={() => filtrarEstado('vencida')} />
+                    <Cifra etiqueta="Anulado" valor={dinero(resumen.anuladas_total)} detalle={cuantas(resumen.anuladas_cant)} tono="slate" activo={filtros.estado === 'anulada'} onClick={() => filtrarEstado('anulada')} />
                 </div>
             )}
-            
-            {/* FILTROS ESCRITORIO (Fijo) */}
-            <div className="hidden md:grid bg-white dark:bg-[#1a1f2e] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 grid-cols-6 gap-4 items-end shadow-sm dark:shadow-xl flex-none shrink-0 transition-colors">
-                <div>
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5 block">Tipo Fecha</label>
-                    <select className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 outline-none focus:border-blue-500 transition-colors" value={filtros.tipoFecha} onChange={e => setFiltros({ ...filtros, tipoFecha: e.target.value })}>
-                        <option value="vencimiento">F. Vencimiento</option>
-                        <option value="emision">F. Emisión</option>
-                        {/* 🔥 NUEVO EN ESCRITORIO: Opción de filtrado por pago */}
-                        <option value="pago">Fecha Pagada</option> 
-                    </select>
-                </div>
-                <div>
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5 block">Desde</label>
-                    <input type="date" className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 outline-none focus:border-blue-500 transition-colors" value={filtros.inicio} onChange={e => setFiltros({ ...filtros, inicio: e.target.value })} />
-                </div>
-                <div>
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5 block">Hasta</label>
-                    <input type="date" className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 outline-none focus:border-blue-500 transition-colors" value={filtros.fin} onChange={e => setFiltros({ ...filtros, fin: e.target.value })} />
-                </div>
-                <div>
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5 block">Nodo / Router</label>
-                    <select className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 outline-none focus:border-blue-500 transition-colors cursor-pointer" value={filtros.routerId} onChange={e => setFiltros({ ...filtros, routerId: e.target.value })}>
-                        <option value="">-- Todos --</option>
-                        {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="text-[10px] font-black text-amber-500 uppercase tracking-wider mb-1.5 block">Filtrar Estado</label>
-                    <select className="bg-slate-50 dark:bg-[#0f1219] border border-slate-200 dark:border-slate-700 rounded-lg w-full text-xs text-slate-800 dark:text-white p-2 font-bold outline-none focus:border-blue-500 transition-colors" value={filtros.estado} onChange={e => setFiltros({ ...filtros, estado: e.target.value })}>
-                        <option value="cualquiera">Todos los estados</option>
-                        <option value="pagada">✅ Pagadas</option>
-                        <option value="pendiente">⏳ Pendientes</option>
-                        <option value="promesa">🤝 Promesas</option>
-                        <option value="anulada">❌ Anuladas</option>
-                    </select>
-                </div>
-                <button onClick={() => void fetchFacturas(filtros, busquedaActiva)} className="w-full bg-blue-600 hover:bg-blue-500 text-white h-[36px] rounded-xl flex items-center justify-center gap-2 font-black text-xs transition active:scale-95 shadow-md">
-                    {loading ? <ArrowPathIcon className="w-4 h-4 animate-spin"/> : <MagnifyingGlassIcon className="w-4 h-4" />}
-                    Filtrar
-                </button>
-            </div>
 
-            <div className="flex-1 min-h-0 md:bg-white md:dark:bg-[#1a1f2e] md:rounded-2xl md:border md:border-slate-200 md:dark:border-slate-800 md:shadow-xl overflow-hidden flex flex-col transition-colors relative">
-                
-                <div className="overflow-y-auto flex-1 custom-scrollbar pb-10">
-                    
-                    {/* --- VISTA DESKTOP (TABLA) --- */}
-                    <table className="w-full text-left text-xs text-slate-600 dark:text-slate-400 border-collapse hidden md:table">
-                        <thead className="bg-slate-100 dark:bg-[#0f1219] text-slate-600 dark:text-slate-200 uppercase font-black sticky top-0 z-10 shadow-sm border-b border-slate-200 dark:border-slate-800 transition-colors">
-                            <tr>
-                                <th className="p-4">Folio</th>
-                                <th className="p-4">Cliente</th>
-                                <th className="p-4">Vencimiento / Prórroga</th>
-                                <th className="p-4">Total</th>
-                                <th className="p-4 text-center">Estado</th>
-                                <th className="p-4 text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                            {loading && facturas.length === 0 ? (
-                                <tr><td colSpan={6} className="p-8 text-center"><ArrowPathIcon className="w-6 h-6 animate-spin mx-auto text-blue-500"/></td></tr>
-                            ) : facturas.length === 0 ? (
-                                <tr><td colSpan={6} className="p-8 text-center font-bold text-slate-500">No se encontraron facturas.</td></tr>
-                            ) : facturas.map(f => {
-                                const isVencida = new Date(f.fecha_vencimiento) < new Date() && f.estado === 'pendiente';
-                                return (
-                                    <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition group bg-transparent">
-                                        <td className="p-4 font-mono text-slate-400">#{f.id.toString().padStart(6, '0')}</td>
-                                        <td className="p-4">
-                                            <div className="font-black text-slate-800 dark:text-white text-sm">{f.cliente?.nombre}{f.cliente?.cedula && <span className="ml-2 font-mono text-[10px] font-bold text-slate-500">Contrato {f.cliente.cedula}</span>}</div>
-                                            <div className="text-[10px] text-slate-500 font-mono">
-                                                {f.servicio ? `${f.servicio.alias} · #${f.servicio.id}` : 'Servicio principal'} · {f.cliente?.ip_asignada}
-                                            </div>
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="flex items-center gap-1.5"><ClockIcon className="w-3.5 h-3.5" /> {f.fecha_vencimiento}</span>
-                                                {f.es_promesa_activa && (
-                                                    <span className="bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-500/20 text-[9px] font-black flex items-center gap-1 w-fit">
-                                                        <ShieldExclamationIcon className="w-3 h-3" /> PROMESA: {f.fecha_promesa_pago}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="text-sm font-black text-slate-800 dark:text-white">${f.total}</div>
-                                            <div className="text-[9px] text-slate-500 truncate max-w-[120px]">{f.plan_snapshot}</div>
-                                            {(f.dias_con_servicio != null || Number(f.cargos_adicionales_total || 0) > 0) && (
-                                                <div className="mt-1 text-[9px] font-bold text-blue-600 dark:text-blue-400">
-                                                    {f.dias_con_servicio ?? 0} con servicio · {f.dias_sin_servicio ?? 0} sin servicio
-                                                    {Number(f.cargos_adicionales_total || 0) > 0 && ` · Extras $${f.cargos_adicionales_total}`}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <span className={`px-2.5 py-1 rounded-lg text-[10px] uppercase font-black border ${f.estado === 'pagada' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' :
-                                                    ['anulada', 'sin_cargo'].includes(f.estado) ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700' :
-                                                        isVencida ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20' :
-                                                            'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
-                                                }`}>
-                                                {f.estado === 'pendiente' && isVencida ? 'VENCIDA' : f.estado === 'sin_cargo' ? 'SIN CARGO' : f.estado}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                {!['pagada', 'anulada', 'sin_cargo'].includes(f.estado) && (
-                                                    <button onClick={() => { setSelectedFactura(f); setShowPaymentModal(true); }} className="text-emerald-600 dark:text-emerald-400 hover:text-white hover:bg-emerald-600 p-2 rounded-lg transition border border-emerald-200 dark:border-emerald-500/20" title="Cobrar"><BanknotesIcon className="w-4 h-4" /></button>
-                                                )}
-                                                {!['anulada', 'sin_cargo'].includes(f.estado) && (
-                                                    <button onClick={() => void handleAnular(f)} className="text-rose-600 hover:text-white hover:bg-rose-600 p-2 rounded-lg transition border border-rose-200 dark:border-rose-500/20" title="Anular factura"><XCircleIcon className="w-4 h-4" /></button>
-                                                )}
-                                                <button onClick={() => void descargarPdf(f)} disabled={descargandoId === f.id} className="text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 p-2 rounded-lg border border-slate-200 dark:border-slate-700 transition disabled:opacity-50" title="Descargar PDF" aria-label={`Descargar PDF de la factura ${f.id}`}>{descargandoId === f.id ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : <PrinterIcon className="w-4 h-4" />}</button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+            {busquedaAplicada && (
+                <p className="-mt-1 px-1 text-xs text-slate-500 dark:text-slate-400">
+                    Buscando «{busquedaAplicada}» en todas las fechas · {facturas.length} factura{facturas.length === 1 ? '' : 's'}
+                </p>
+            )}
 
-                    {/* --- VISTA MÓVIL (TARJETAS) --- */}
-                    <div className="md:hidden flex flex-col gap-3 px-1 pb-10">
-                        {loading && facturas.length === 0 ? (
-                            <div className="p-8 text-center"><ArrowPathIcon className="w-6 h-6 animate-spin mx-auto text-blue-500"/></div>
-                        ) : facturas.length === 0 ? (
-                            <div className="p-8 text-center text-slate-500 font-bold">No se encontraron facturas.</div>
-                        ) : facturas.map(f => {
-                            const isVencida = new Date(f.fecha_vencimiento) < new Date() && f.estado === 'pendiente';
-                            return (
-                                <div key={f.id} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col gap-3 relative overflow-hidden shadow-sm transition-colors">
-                                    
-                                    {/* Indicador lateral de estado */}
-                                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${f.estado === 'pagada' ? 'bg-emerald-500' : isVencida ? 'bg-rose-500' : ['anulada', 'sin_cargo'].includes(f.estado) ? 'bg-slate-400' : 'bg-amber-500'}`}></div>
-                                    
-                                    {/* Top: Header / Folio & Estado */}
-                                    <div className="flex justify-between items-start pl-2">
-                                        <div>
-                                            <span className="text-[10px] font-mono font-black text-slate-400 dark:text-slate-500">#{f.id.toString().padStart(6, '0')}</span>
-                                            <h3 className="font-black text-slate-900 dark:text-white text-base mt-0.5 leading-tight">{f.cliente?.nombre}</h3>
-                                            {f.cliente?.cedula && <span className="text-[10px] font-mono font-bold text-slate-500">Contrato {f.cliente.cedula}</span>}
-                                            <span className="text-[10px] text-slate-500 font-mono mt-1 block">
-                                                {f.servicio ? `${f.servicio.alias} · Servicio #${f.servicio.id}` : 'Servicio principal'} · {f.cliente?.ip_asignada}
-                                            </span>
-                                        </div>
-                                        <span className={`px-2 py-1 rounded text-[9px] uppercase font-black border ${f.estado === 'pagada' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' :
-                                                ['anulada', 'sin_cargo'].includes(f.estado) ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700' :
-                                                    isVencida ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20' :
-                                                        'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
-                                            }`}>
-                                            {f.estado === 'pendiente' && isVencida ? 'VENCIDA' : f.estado === 'sin_cargo' ? 'SIN CARGO' : f.estado}
-                                        </span>
-                                    </div>
-
-                                    {/* Middle: Fechas y Totales */}
-                                    <div className="pl-2 flex justify-between items-end mt-1">
-                                        <div className="flex flex-col gap-1.5">
-                                            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
-                                                <ClockIcon className="w-4 h-4" /> Vence: {f.fecha_vencimiento}
-                                            </span>
-                                            {f.es_promesa_activa && (
-                                                <span className="bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-1 rounded border border-amber-200 dark:border-amber-500/20 text-[10px] font-black flex items-center gap-1 w-fit">
-                                                    <ShieldExclamationIcon className="w-4 h-4" /> PROMESA: {f.fecha_promesa_pago}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-2xl font-black text-slate-900 dark:text-white">${f.total}</span>
-                                        </div>
-                                    </div>
-
-                                    {(f.dias_con_servicio != null || Number(f.cargos_adicionales_total || 0) > 0) && (
-                                        <div className="ml-2 grid grid-cols-2 gap-2 rounded-xl bg-blue-50 p-3 text-[10px] font-bold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
-                                            <span>Con servicio: {f.dias_con_servicio ?? 0} días</span>
-                                            <span>Sin servicio: {f.dias_sin_servicio ?? 0} días</span>
-                                            <span>Ajuste: -${f.ajuste_suspension ?? 0}</span>
-                                            <span>Extras: ${f.cargos_adicionales_total ?? 0}</span>
-                                        </div>
+            <Lista>
+                {facturas.length === 0 ? (
+                    <Vacio cargando={loading} texto="No se encontraron facturas." />
+                ) : (
+                    <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {facturas.map(f => {
+                            const estado = estadoFactura(f);
+                            const acciones = (
+                                <>
+                                    {!['pagada', 'anulada', 'sin_cargo'].includes(f.estado) && (
+                                        <BotonAccion tono="emerald" onClick={() => { setSelectedFactura(f); setShowPaymentModal(true); }}>
+                                            <BanknotesIcon className="h-4 w-4" /> Cobrar
+                                        </BotonAccion>
                                     )}
-
-                                    {/* Bottom: Acciones */}
-                                    <div className="pl-2 flex gap-2 border-t border-slate-100 dark:border-slate-800/60 pt-3 mt-2">
-                                        {!['pagada', 'anulada', 'sin_cargo'].includes(f.estado) && (
-                                            <button onClick={() => { setSelectedFactura(f); setShowPaymentModal(true); }} className="flex-1 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
-                                                <BanknotesIcon className="w-5 h-5"/> Cobrar
-                                            </button>
-                                        )}
-                                        {!['anulada', 'sin_cargo'].includes(f.estado) && (
-                                            <button onClick={() => void handleAnular(f)} className="flex-1 bg-rose-50 text-rose-600 border border-rose-200 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition active:scale-95 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400">
-                                                <XCircleIcon className="w-5 h-5"/> Anular
-                                            </button>
-                                        )}
-                                        <button onClick={() => void descargarPdf(f)} disabled={descargandoId === f.id} className="flex-1 bg-slate-50 dark:bg-[#0f1219] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm disabled:opacity-50">
-                                            {descargandoId === f.id ? <ArrowPathIcon className="w-5 h-5 animate-spin"/> : <PrinterIcon className="w-5 h-5"/>} PDF
-                                        </button>
+                                    {!['anulada', 'sin_cargo'].includes(f.estado) && (
+                                        <BotonAccion tono="rose" onClick={() => void handleAnular(f)}>Anular</BotonAccion>
+                                    )}
+                                    <BotonAccion onClick={() => void descargarPdf(f)} disabled={descargandoId === f.id} title="Descargar PDF" aria-label={`Descargar PDF de la factura ${f.id}`}>
+                                        {descargandoId === f.id ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <PrinterIcon className="h-4 w-4" />} PDF
+                                    </BotonAccion>
+                                </>
+                            );
+                            return (
+                                <li key={f.id} className="flex flex-col gap-2 p-3.5 hover:bg-slate-50 md:flex-row md:items-center md:gap-4 md:px-4 dark:hover:bg-slate-800/40">
+                                    <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <div className="font-medium leading-tight text-slate-900 dark:text-white">{f.cliente?.nombre}</div>
+                                            <div className="mt-0.5 text-xs text-slate-500">
+                                                {[f.cliente?.cedula && `Contrato ${f.cliente.cedula}`, `Folio #${f.id.toString().padStart(6, '0')}`, f.plan_snapshot].filter(Boolean).join(' · ')}
+                                            </div>
+                                        </div>
+                                        <div className="shrink-0 text-right md:hidden">
+                                            <div className="font-semibold tabular-nums text-slate-900 dark:text-white">{dinero(f.total)}</div>
+                                            <Etiqueta tono={estado.tono}>{estado.texto}</Etiqueta>
+                                        </div>
                                     </div>
-                                </div>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 md:w-56 md:flex-col md:items-start md:gap-0.5">
+                                        <span>Vence {fechaCorta(f.fecha_vencimiento)}</span>
+                                        {f.es_promesa_activa && f.fecha_promesa_pago && <span className="text-amber-600 dark:text-amber-400">Promesa hasta {fechaCorta(f.fecha_promesa_pago)}</span>}
+                                        {(f.dias_con_servicio != null || Number(f.cargos_adicionales_total || 0) > 0) && (
+                                            <span>
+                                                {f.dias_con_servicio ?? 0} días con servicio · {f.dias_sin_servicio ?? 0} sin
+                                                {Number(f.cargos_adicionales_total || 0) > 0 && ` · extras ${dinero(f.cargos_adicionales_total)}`}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="hidden w-28 text-right md:block">
+                                        <div className="font-semibold tabular-nums text-slate-900 dark:text-white">{dinero(f.total)}</div>
+                                        <Etiqueta tono={estado.tono}>{estado.texto}</Etiqueta>
+                                    </div>
+                                    <div className="-mx-1 flex justify-end gap-1 md:w-56">{acciones}</div>
+                                </li>
                             );
                         })}
-                    </div>
-                </div>
-            </div>
+                    </ul>
+                )}
+            </Lista>
 
             {selectedFactura && (
                 <PaymentModal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} factura={selectedFactura} onSuccess={() => void fetchFacturas(filtros, busquedaActiva)} />
             )}
-        </div>
+        </PaginaFinanzas>
     );
 }
 
-const ResumenCard = ({ label, cantidad, total, color }: ResumenCardProps) => {
-    const colors: Record<ResumenCardProps['color'], string> = {
-        emerald: "bg-emerald-600 border-emerald-500",
-        amber: "bg-amber-600 border-amber-500",
-        rose: "bg-rose-600 border-rose-500",
-        slate: "bg-slate-600 border-slate-500"
-    };
-    return (
-        <div className={`${colors[color]} p-4 rounded-2xl border shadow-lg shrink-0 min-w-[140px] md:min-w-0 flex-1 transition-colors`}>
-            <p className="text-[10px] font-black uppercase text-white/80 tracking-widest">{label} ({cantidad})</p>
-            <p className="text-2xl font-black text-white mt-1">${total.toLocaleString()}</p>
-        </div>
-    );
+const cuantas = (cantidad: number) => `${cantidad} factura${cantidad === 1 ? '' : 's'}`;
+
+const fechaCorta = (fecha: string) => {
+    const [anio, mes, dia] = fecha.slice(0, 10).split('-').map(Number);
+    return new Date(anio, mes - 1, dia).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+function estadoFactura(f: Factura): { texto: string; tono: 'emerald' | 'amber' | 'rose' | 'slate' } {
+    if (f.estado === 'pagada') return { texto: 'Pagada', tono: 'emerald' };
+    if (f.estado === 'anulada') return { texto: 'Anulada', tono: 'slate' };
+    if (f.estado === 'sin_cargo') return { texto: 'Sin cargo', tono: 'slate' };
+    if (f.estado === 'vencida' || new Date(f.fecha_vencimiento) < new Date()) return { texto: 'Vencida', tono: 'rose' };
+    return { texto: 'Pendiente', tono: 'amber' };
 }

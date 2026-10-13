@@ -1034,9 +1034,9 @@ test('carga facturas y su resumen financiero', async ({ page }) => {
   await mockApi(page)
   await page.goto('/admin/facturas')
 
-  await expect(page.getByRole('heading', { name: 'Gestión Financiera' })).toBeVisible()
+  await expect(page.getByRole('main').getByRole('heading', { name: 'Facturas', exact: true })).toBeVisible()
   await expect(page.locator(':is(div, h3):visible').filter({ hasText: /^Factura E2E$/ }).first()).toBeVisible()
-  await expect(page.getByText('Pendiente (1)')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Pendiente.*1 factura/ })).toBeVisible()
 })
 
 test('descarga el PDF de una factura y hace la emisión masiva', async ({ page }) => {
@@ -1265,12 +1265,28 @@ test('carga las transacciones y sus filtros financieros', async ({ page }) => {
   await mockApi(page)
   await page.goto('/admin/transacciones')
 
-  await expect(page.getByRole('heading', { name: 'Corte de Cobranza' })).toBeVisible()
-  await expect(page.getByText('Total en Pantalla')).toBeVisible()
+  await expect(page.getByRole('main').getByRole('heading', { name: 'Corte de Cobranza' })).toBeVisible()
+  await expect(page.getByText('Total cobrado')).toBeVisible()
   await expect(page.getByRole('button', { name: /Anular/ })).toBeVisible()
   await page.getByRole('button', { name: /Corregir/ }).click()
   await expect(page.getByRole('heading', { name: 'Corregir cobro #7' })).toBeVisible()
-  await expect(page.getByText(/ERR-1.*Cliente equivocado E2E/)).toBeVisible()
+  await expect(page.getByText(/Origen: ERR-1.*Cliente equivocado E2E/)).toBeVisible()
+})
+
+test('busca pagos por nombre o folio en todas las fechas para anularlos', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.goto('/admin/transacciones')
+
+  const peticion = page.waitForRequest((request) => (
+    request.url().includes('/finanzas/pagos-reporte')
+    && new URL(request.url()).searchParams.get('busqueda') === 'beimar'
+    && !new URL(request.url()).searchParams.has('start_date')
+  ))
+  await page.getByRole('searchbox', { name: 'Buscar pago por nombre, contrato, folio o referencia' }).fill('beimar')
+  await peticion
+  await expect(page.getByText('Buscando «beimar» en todas las fechas')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Anular' })).toBeVisible()
 })
 
 test('carga las estadísticas de ingresos', async ({ page }) => {
