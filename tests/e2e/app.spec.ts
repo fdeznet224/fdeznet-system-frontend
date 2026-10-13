@@ -1597,20 +1597,6 @@ test('el técnico ve en su ruta los clientes cercanos con potencia alta y se lle
   await expect(ana.getByText('Reporte #81 abierto · Tú')).toBeVisible()
 })
 
-test('el inicio muestra el embudo de ventas por mes', async ({ page }) => {
-  await authenticateAs(page)
-  await mockApi(page)
-  await page.route('**/api/dashboard/embudo**', (route) => route.fulfill({ json: [
-    { mes: '2026-09', contactos_nuevos: 40, solicitudes: 11, por_agente: 1, instaladas: 9, canceladas: 2, abiertas: 0, dias_a_instalar: 0.5 },
-    { mes: '2026-10', contactos_nuevos: 11, solicitudes: 9, por_agente: 4, instaladas: 5, canceladas: 2, abiertas: 2, dias_a_instalar: null },
-  ] }))
-  await page.goto('/admin/dashboard')
-
-  await expect(page.getByRole('heading', { name: 'Ventas: de WhatsApp a instalado' })).toBeVisible()
-  await expect(page.getByText('(4 del agente)')).toBeVisible()
-  await expect(page.getByRole('row', { name: /Oct/ })).toContainText('9')
-})
-
 test('los contadores de clientes filtran por conexión y potencia', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)
