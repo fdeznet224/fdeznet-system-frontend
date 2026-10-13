@@ -2298,3 +2298,30 @@ test('la IP de un cliente de radio abre su router en el puerto configurado', asy
   await page.getByRole('button', { name: '10.10.10.42' }).filter({ visible: true }).click()
   expect((await fibra).url()).toBe('http://10.10.10.42/')
 })
+
+const ATENUACION_E2E = {
+  umbral_db: 1.5,
+  clientes: { '1': { actual: -26.6, normal: -17.7, cambio_db: -8.9, nivel: 'bajo_fuerte' } },
+  grupos: [{
+    tipo: 'nap', nombre: 'Caja P1-M-CN-3-A', ubicacion: [19.4326, -99.1332], medidos: 2, bajaron: 2,
+    cambio_mediano_db: -7.5, peor_db: -8.9, cliente_ids: [1],
+  }],
+}
+
+test('la señal que bajó contra su normal se ve en Clientes y en el mapa con las cajas que bajaron juntas', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/ftth/atenuacion', (route) => route.fulfill({ json: ATENUACION_E2E }))
+  await page.route('**/api/ftth/potencias', (route) => route.fulfill({ json: { 1: { rx: -26.6, nivel: 'normal', fecha: '2026-10-13T16:05:00' } } }))
+  await page.goto('/admin/clientes')
+
+  const contador = page.getByRole('button', { name: /Señal bajó/ })
+  await expect(contador).toContainText('1')
+  await expect(page.getByText('▼ 8.9 dB').filter({ visible: true }).first()).toBeVisible()
+
+  await page.goto('/admin/mapa')
+  await page.getByRole('button', { name: 'Señal', exact: true }).click()
+  await expect(page.getByText('Bajaron juntos')).toBeVisible()
+  await page.getByRole('button', { name: /Caja P1-M-CN-3-A/ }).click()
+  await expect(page.getByText('Caja NAP · bajaron 2 de 2')).toBeVisible()
+})

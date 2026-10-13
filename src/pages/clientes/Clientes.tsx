@@ -59,10 +59,13 @@ interface DashboardStatusResponse {
     detalle_clientes?: Record<string, DashboardClientStatus>;
 }
 
-type ClientFilter = 'todos' | 'online' | 'offline' | 'potencia_alta' | 'potencia_normal' | 'suspendidos' | 'activos' | 'morosos' | 'radio' | 'fibra' | 'antena_caida';
+type ClientFilter = 'todos' | 'online' | 'offline' | 'potencia_alta' | 'potencia_normal' | 'senal_bajo' | 'suspendidos' | 'activos' | 'morosos' | 'radio' | 'fibra' | 'antena_caida';
 
 /** Última potencia óptica leída de la OLT (se lee cada hora). */
 interface Potencia { rx: number; nivel: 'alta' | 'normal'; fecha: string | null }
+
+/** Señal de ahora contra su normal de la semana (Monitoreo › Mapa › Señal). */
+interface CambioSenal { actual: number; normal: number; cambio_db: number; nivel: 'estable' | 'bajo' | 'bajo_fuerte' }
 
 /** Último ping a la antena (Ubiquiti) de un cliente por radioenlace. */
 interface Antena { ip: string | null; responde: boolean | null; latencia_ms: number | null; perdida: number | null; fecha: string | null }
@@ -101,9 +104,10 @@ function AntenaCliente({ antena }: { antena?: Antena | null }) {
 }
 
 /** "Potencia alta": la señal ya pasó de -27 dBm y la conexión empieza a fallar. */
-function PotenciaCliente({ potencia }: { potencia?: Potencia }) {
+function PotenciaCliente({ potencia, cambio }: { potencia?: Potencia; cambio?: CambioSenal }) {
     if (!potencia) return null;
     return (
+        <>
         <span
             title={potencia.nivel === 'alta' ? 'Potencia alta: peor que -27 dBm' : 'Potencia normal'}
             className={`mt-1 inline-block rounded-md px-1.5 py-0.5 font-mono text-[10px] font-black ${potencia.nivel === 'alta'
@@ -112,6 +116,17 @@ function PotenciaCliente({ potencia }: { potencia?: Potencia }) {
         >
             {potencia.rx.toFixed(2)} dBm
         </span>
+        {cambio && cambio.nivel !== 'estable' && (
+            <span
+                title={`Su señal normal es ${cambio.normal.toFixed(2)} dBm; ahora ${cambio.actual.toFixed(2)} dBm`}
+                className={`mt-1 ml-1 inline-block rounded-md px-1.5 py-0.5 font-mono text-[10px] font-black ${cambio.nivel === 'bajo_fuerte'
+                    ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                    : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}
+            >
+                ▼ {Math.abs(cambio.cambio_db).toFixed(1)} dB
+            </span>
+        )}
+        </>
     );
 }
 
@@ -154,6 +169,7 @@ export default function Clientes() {
     const [clientes, setClientes] = useState<ClienteUnificado[]>([]);
     const [onlineStatus, setOnlineStatus] = useState<Map<string, OnlineStatus>>(new Map());
     const [potencias, setPotencias] = useState<Record<string, Potencia>>({});
+    const [cambiosSenal, setCambiosSenal] = useState<Record<string, CambioSenal>>({});
     // null: este usuario no maneja reportes de falla (solo admin y supervisor).
     const [reportes, setReportes] = useState<Record<string, ReporteAbierto> | null>(null);
     const [routers, setRouters] = useState<RouterSummary[]>([]);
@@ -211,6 +227,11 @@ export default function Clientes() {
             } catch { console.warn("Potencias no disponibles"); }
 
             try {
+                const resAtenuacion = await client.get<{ clientes: Record<string, CambioSenal> }>('/ftth/atenuacion');
+                setCambiosSenal(resAtenuacion.data.clientes ?? {});
+            } catch { console.warn("Atenuación no disponible"); }
+
+            try {
                 const resReportes = await client.get<Record<string, ReporteAbierto>>('/soporte/abiertas');
                 setReportes(resReportes.data);
             } catch { console.warn("Reportes de falla no disponibles"); }
@@ -261,13 +282,14 @@ export default function Clientes() {
             if (filtroEstado === 'offline') return onlineStatus.get(c.id.toString())?.online === false; // 🔥 Atrapa los errores de conexión
             if (filtroEstado === 'potencia_alta') return potencias[c.id.toString()]?.nivel === 'alta';
             if (filtroEstado === 'potencia_normal') return potencias[c.id.toString()]?.nivel === 'normal';
+            if (filtroEstado === 'senal_bajo') return (cambiosSenal[c.id.toString()]?.nivel ?? 'estable') !== 'estable';
             if (filtroEstado === 'radio') return c.tipo_conexion === 'radio';
             if (filtroEstado === 'fibra') return c.tipo_conexion !== 'radio';
             if (filtroEstado === 'antena_caida') return c.tipo_conexion === 'radio' && c.antena?.responde === false;
 
             return true;
         });
-    }, [clientes, idsRevisar, busqueda, filtroRouter, filtroZona, filtroEstado, onlineStatus, potencias, routers]);
+    }, [clientes, idsRevisar, busqueda, filtroRouter, filtroZona, filtroEstado, onlineStatus, potencias, cambiosSenal, routers]);
 
     // Extraemos las zonas únicas dinámicamente de tus clientes
     const zonasUnicas = Array.from(new Set(clientes.map(c => c.zona).filter((zona): zona is string => Boolean(zona))));
@@ -277,11 +299,12 @@ export default function Clientes() {
         offline: clientes.filter(c => onlineStatus.get(c.id.toString())?.online === false).length,
         potenciaAlta: clientes.filter(c => potencias[c.id.toString()]?.nivel === 'alta').length,
         potenciaNormal: clientes.filter(c => potencias[c.id.toString()]?.nivel === 'normal').length,
+        senalBajo: clientes.filter(c => (cambiosSenal[c.id.toString()]?.nivel ?? 'estable') !== 'estable').length,
         suspendidos: clientes.filter(c => c.servicio.estado_servicio !== 'activo').length,
         morosos: clientes.filter(c => c.finanzas.total_deuda > 0).length,
         radio: clientes.filter(c => c.tipo_conexion === 'radio').length,
         antenaCaida: clientes.filter(c => c.tipo_conexion === 'radio' && c.antena?.responde === false).length,
-    }), [clientes, onlineStatus, potencias]);
+    }), [clientes, onlineStatus, potencias, cambiosSenal]);
 
     // Contadores de arriba: tocar uno filtra la lista; tocarlo otra vez la muestra completa.
     const contadores: { filtro: ClientFilter; valor: number; texto: string; color: string; activo: string }[] = [
@@ -289,6 +312,7 @@ export default function Clientes() {
         { filtro: 'offline', valor: resumen.offline, texto: 'Offline', color: 'text-slate-700 dark:text-slate-200', activo: 'border-slate-500 bg-slate-500/10' },
         { filtro: 'potencia_alta', valor: resumen.potenciaAlta, texto: 'Potencia alta', color: 'text-rose-600 dark:text-rose-400', activo: 'border-rose-500 bg-rose-500/10' },
         { filtro: 'potencia_normal', valor: resumen.potenciaNormal, texto: 'Potencia normal', color: 'text-sky-600 dark:text-sky-400', activo: 'border-sky-500 bg-sky-500/10' },
+        ...(resumen.senalBajo > 0 ? [{ filtro: 'senal_bajo' as ClientFilter, valor: resumen.senalBajo, texto: 'Señal bajó', color: 'text-orange-600 dark:text-orange-400', activo: 'border-orange-500 bg-orange-500/10' }] : []),
         { filtro: 'suspendidos', valor: resumen.suspendidos, texto: 'Suspendidos', color: 'text-amber-600 dark:text-amber-400', activo: 'border-amber-500 bg-amber-500/10' },
         ...(resumen.radio > 0 ? [{ filtro: 'radio' as ClientFilter, valor: resumen.radio, texto: 'Radioenlace', color: 'text-violet-600 dark:text-violet-400', activo: 'border-violet-500 bg-violet-500/10' }] : []),
         ...(resumen.antenaCaida > 0 ? [{ filtro: 'antena_caida' as ClientFilter, valor: resumen.antenaCaida, texto: 'Antena no responde', color: 'text-rose-600 dark:text-rose-400', activo: 'border-rose-500 bg-rose-500/10' }] : []),
@@ -528,7 +552,7 @@ export default function Clientes() {
                                             </td>
                                             <td className="px-5 py-3">
                                                 <ConexionCliente status={statusData} />
-                                                {c.tipo_conexion === 'radio' ? <AntenaCliente antena={c.antena} /> : <PotenciaCliente potencia={potencias[c.id.toString()]} />}
+                                                {c.tipo_conexion === 'radio' ? <AntenaCliente antena={c.antena} /> : <PotenciaCliente potencia={potencias[c.id.toString()]} cambio={cambiosSenal[c.id.toString()]} />}
                                                 {reportes && <ReporteCliente reporte={reportes[c.id.toString()]} potencia={potencias[c.id.toString()]} sugerir={Boolean(idsRevisar)} onReportar={() => setToolModal({ show: true, cliente: c, modo: 'reportar_falla' })} />}
                                             </td>
                                             <td className="px-5 py-3 text-center">
@@ -583,7 +607,7 @@ export default function Clientes() {
                                             <div className="min-w-0">
                                                 <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Conexión</span>
                                                 <div className="mt-0.5"><ConexionCliente status={statusData} /></div>
-                                                {c.tipo_conexion === 'radio' ? <AntenaCliente antena={c.antena} /> : <PotenciaCliente potencia={potencias[c.id.toString()]} />}
+                                                {c.tipo_conexion === 'radio' ? <AntenaCliente antena={c.antena} /> : <PotenciaCliente potencia={potencias[c.id.toString()]} cambio={cambiosSenal[c.id.toString()]} />}
                                                 {reportes && <ReporteCliente reporte={reportes[c.id.toString()]} potencia={potencias[c.id.toString()]} sugerir={Boolean(idsRevisar)} onReportar={() => setToolModal({ show: true, cliente: c, modo: 'reportar_falla' })} />}
                                             </div>
                                             <div className="min-w-0 text-right">
