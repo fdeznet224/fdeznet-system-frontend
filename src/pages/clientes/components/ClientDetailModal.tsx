@@ -192,7 +192,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [plantillas, setPlantillas] = useState<NamedItem[]>([]);
     const [naps, setNaps] = useState<NapItem[]>([]);
     const [olts, setOlts] = useState<OltItem[]>([]);
-    const [puertosOcupados, setPuertosOcupados] = useState<number[]>([]);
+    const [puertosOcupados, setPuertosOcupados] = useState<{ puerto_nap: number; nombre: string; id: number }[]>([]);
 
     const [isSwapOpen, setIsSwapOpen] = useState(false);
     const [swapData, setSwapData] = useState({ nuevo_inventario_id: '', estado_vieja_onu: 'CON_FALLA' });
@@ -359,7 +359,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     useEffect(() => {
         if (formData.caja_nap_id && isEditing) {
             client.get(`/infraestructura/naps/${formData.caja_nap_id}/detalles`)
-                .then(res => setPuertosOcupados(res.data.map((c: { puerto_nap: number }) => c.puerto_nap))).catch(() => setPuertosOcupados([]));
+                .then(res => setPuertosOcupados(Array.isArray(res.data) ? res.data : [])).catch(() => setPuertosOcupados([]));
         } else { setPuertosOcupados([]); }
     }, [formData.caja_nap_id, isEditing]);
 
@@ -466,8 +466,13 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         const capacidad = caja?.capacidad || 16;
         const options = [];
         for (let i = 1; i <= capacidad; i++) {
-            const isTaken = puertosOcupados.includes(i) && i !== cliente?.puerto_nap;
-            options.push(<option key={i} value={i} disabled={isTaken}>{isTaken ? `Pto. ${i} (Ocupado)` : `Pto. ${i} (Libre)`}</option>);
+            const ocupante = puertosOcupados.find(p => p.puerto_nap === i && p.id !== cliente?.id);
+            // En la misma caja, elegir un puerto ocupado intercambia lugares.
+            const mismaCaja = Number(formData.caja_nap_id) === cliente?.caja_nap?.id && !!cliente?.puerto_nap;
+            const texto = !ocupante ? `Pto. ${i} (Libre)`
+                : mismaCaja ? `Pto. ${i} · ${ocupante.nombre} (intercambiar)`
+                : `Pto. ${i} (Ocupado: ${ocupante.nombre})`;
+            options.push(<option key={i} value={i} disabled={!!ocupante && !mismaCaja}>{texto}</option>);
         }
         return options;
     };

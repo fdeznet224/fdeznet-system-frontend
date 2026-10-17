@@ -729,7 +729,7 @@ test('un error de validación al guardar un cliente se muestra sin romper la pan
     })
   })
   await page.goto('/admin/clientes')
-  await page.locator(':visible', { hasText: /^Cliente E2E$/ }).first().click()
+  await page.getByRole('row', { name: /Cliente E2E/ }).first().click()
   await page.getByRole('button', { name: 'Editar' }).click()
   await page.getByRole('button', { name: 'Guardar Datos' }).click()
 
