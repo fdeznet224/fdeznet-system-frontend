@@ -601,9 +601,9 @@ export default function PanelCobrador() {
                     <div className="fixed inset-0 overflow-hidden">
                         <div className="flex h-full items-end justify-center sm:items-center sm:p-4">
                             <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="translate-y-full opacity-0" enterTo="translate-y-0 opacity-100">
-                                <Dialog.Panel className="flex h-[100dvh] w-full flex-col bg-slate-50 dark:bg-[#0f1219] sm:h-[90vh] sm:max-w-lg sm:rounded-3xl">
+                                <Dialog.Panel className="flex max-h-[calc(100dvh-env(safe-area-inset-top)-1rem)] w-full flex-col overflow-hidden rounded-t-3xl bg-slate-50 dark:bg-[#0f1219] sm:max-h-[90vh] sm:max-w-lg sm:rounded-3xl">
 
-                                    <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] dark:border-slate-800 dark:bg-[#161b28] sm:rounded-t-3xl sm:pt-4">
+                                    <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 pb-3 pt-4 dark:border-slate-800 dark:bg-[#161b28]">
                                         <div className="min-w-0">
                                             <Dialog.Title className="break-words text-base font-black leading-tight">{selectedFactura?.cliente.nombre}</Dialog.Title>
                                             <p className="mt-0.5 text-xs text-slate-500">
@@ -618,7 +618,7 @@ export default function PanelCobrador() {
                                         </button>
                                     </div>
 
-                                    <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                                    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
                                         <div className={`${TARJETA} p-4`}>
                                             <p className={ETIQUETA_CAMPO}>Se está cobrando</p>
                                             <ul className="space-y-1.5">
@@ -717,7 +717,7 @@ export default function PanelCobrador() {
                                         )}
                                     </div>
 
-                                    <div className="border-t border-slate-200 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-[#161b28] sm:rounded-b-3xl">
+                                    <div className="border-t border-slate-200 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-[#161b28]">
                                         {modo === 'pagar' ? (
                                             <button type="submit" form="form-cobro" disabled={procesando} className={`${BOTON_EXITO} h-12 text-base`}>
                                                 {procesando ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <><CheckCircleIcon className="h-5 w-5" /> Cobrar {pesos(formCobro.monto || 0)}</>}
