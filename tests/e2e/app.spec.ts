@@ -619,8 +619,58 @@ test('carga el panel de cobranza con caja cerrada', async ({ page }) => {
   await mockApi(page)
   await page.goto('/admin/cobranza')
 
-  await expect(page.getByText('Recaudado Hoy')).toBeVisible()
-  await expect(page.getByText('cajero-e2e')).toBeVisible()
+  await expect(page.getByText('Cobrado hoy')).toBeVisible()
+  await expect(page.getByText('cajero-e2e').first()).toBeVisible()
+})
+
+test('el panel sigue el modo nocturno o claro del celular, aun después de abrirse antes', async ({ page }) => {
+  await authenticateAs(page, 'cajero')
+  await mockApi(page)
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/admin/cobranza')
+  await expect(page.locator('html')).not.toHaveClass(/dark/)
+
+  // Con la app abierta cambia al instante.
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await expect(page.locator('html')).toHaveClass(/dark/)
+
+  // Y al volver a abrirla manda el celular, no lo que vio la vez anterior.
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.reload()
+  await expect(page.locator('html')).not.toHaveClass(/dark/)
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.reload()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+  await expect(page.getByText('Cobrado hoy')).toBeVisible()
+})
+
+test('el cobrador busca al cliente, cobra y ve el cobro en Hoy con su nombre', async ({ page }) => {
+  await authenticateAs(page, 'cajero')
+  await mockApi(page)
+  await page.route('**/api/finanzas/clientes/1/estado-cuenta', (route) => route.fulfill({ json: {
+    total: 500, incluye: [], facturas: [{ id: 42, saldo_pendiente: 500 }], suspendido: false, factura_promesa_id: 42,
+    detalle: [{ texto: 'Mensualidad de octubre', monto: 500, actual: true }],
+  } }))
+  let pago: Record<string, unknown> | null = null
+  await page.route('**/api/sincronizacion/procesar', async (route) => {
+    const operacion = route.request().postDataJSON().operaciones[0]
+    pago = operacion.payload
+    await route.fulfill({ json: { resultados: [{ id: operacion.id, estado: 'aplicada', respuesta: {} }] } })
+  })
+  await page.goto('/admin/cobranza')
+
+  await page.getByLabel('Buscar cliente').fill('factura')
+  await page.getByRole('button', { name: /Factura E2E/ }).click()
+  const hoja = page.getByRole('dialog')
+  await expect(hoja.getByText('Mensualidad de octubre')).toBeVisible()
+  await expect(hoja.getByLabel('Monto recibido')).toHaveValue('500')
+  await hoja.getByLabel('Monto recibido').fill('300')
+  await expect(hoja.getByText(/Abono: quedan/)).toBeVisible()
+  await hoja.getByRole('button', { name: /Cobrar \$300/ }).click()
+  await expect.poll(() => pago).toMatchObject({ cliente_id: 1, metodo_pago: 'efectivo', monto_recibido: 300 })
+
+  await page.getByRole('button', { name: 'Hoy' }).click()
+  await expect(page.getByText('Cliente equivocado E2E')).toBeVisible()
 })
 
 test('impide que el técnico abra el panel administrativo', async ({ page }) => {
@@ -638,7 +688,7 @@ test('impide que el cajero abra las herramientas técnicas', async ({ page }) =>
   await page.goto('/tech/dashboard')
 
   await expect(page).toHaveURL(/\/admin\/cobranza$/)
-  await expect(page.getByText('Recaudado Hoy')).toBeVisible()
+  await expect(page.getByText('Cobrado hoy')).toBeVisible()
 })
 
 test('si la red falla un momento al volver a la app, la lista se carga sin error', async ({ page }) => {
@@ -847,6 +897,18 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y cómo se le cobra',
   await expect(page.getByText('-19.50 dBm')).toHaveCount(0)
   await expect(page.getByText('plan Plan 300 → Plan 400')).toHaveCount(0)
   expect(enviado).toMatchObject({ version: 2, zona_id: 2, plan_id: 12, plantilla_id: 2, contrato_apartado: 'A7F2', onu_id: 4, caja_nap_id: 8, puerto_nap: 3, meses_gratis: 1 })
+
+  // El celular se recarga a media explicación: los datos siguen ahí.
+  await page.reload()
+  await expect(page.getByText('clave123')).toBeVisible()
+  await page.getByRole('button', { name: 'Volver' }).click()
+  await page.getByRole('button', { name: /Ana Lopez/ }).click()
+  await expect(page.getByText('Explicación para el cliente')).toBeVisible()
+
+  // Hasta que el técnico termina la instalación.
+  await page.getByRole('button', { name: 'Terminar instalación' }).click()
+  await expect(page).toHaveURL(/\/tech\/dashboard/)
+  await expect(page.getByText('instalación sin terminar')).toHaveCount(0)
 })
 
 test('carga una instalación técnica preasignada', async ({ page }) => {

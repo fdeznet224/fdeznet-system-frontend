@@ -17,6 +17,7 @@ import SugerenciaNap from '@/components/naps/SugerenciaNap';
 import SelectorOnu from './SelectorOnu';
 import { SERIE_MINIMA, normalizarSerie } from './onu';
 import CalendarioCobro, { type FechasCobro } from '@/components/cobro/CalendarioCobro';
+import { claveResultado, guardarActivacion, terminarActivacion } from './activacionesPendientes';
 import { BOTON_EXITO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO, ETIQUETA_CAMPO, TARJETA } from './estilo';
 
 interface Opcion {
@@ -175,8 +176,15 @@ export default function TechActivar() {
     }, [ordenId]);
 
     useEffect(() => {
-        if (esNueva) return;
+        if (esNueva || !ordenId) return;
         void (async () => {
+            // Ya activado y sin terminar: la orden está cerrada en el servidor,
+            // así que lo que se le explica al cliente sale del celular.
+            const activado = await getCachedValue<Resultado>(claveResultado(ordenId)).catch(() => null);
+            if (activado) {
+                setResultado(activado);
+                return;
+            }
             try {
                 const { data, fromCache } = await cargarCatalogo();
                 const borrador = await getCachedValue<Formulario>(claveBorrador).catch(() => null);
@@ -208,7 +216,7 @@ export default function TechActivar() {
                 setContratos([]);
             }
         })();
-    }, [cargarCatalogo, claveBorrador, esNueva, navigate]);
+    }, [cargarCatalogo, claveBorrador, esNueva, navigate, ordenId]);
 
     useEffect(() => {
         if (!form.caja_nap_id) {
@@ -310,6 +318,7 @@ export default function TechActivar() {
             });
             toast.success('¡Cliente activado!', { id: aviso });
             await setCachedValue(claveBorrador, null);
+            if (ordenId) await guardarActivacion(ordenId, data).catch(() => undefined);
             setResultado(data);
         } catch (error) {
             toast.error(apiErrorMessage(error, 'No se pudo activar'), { id: aviso, duration: 8000 });
@@ -346,6 +355,11 @@ export default function TechActivar() {
             </div>
         );
     }
+
+    const terminar = async () => {
+        if (ordenId) await terminarActivacion(ordenId).catch(() => undefined);
+        navigate('/tech/dashboard');
+    };
 
     if (resultado) {
         const filas: [string, string | null | undefined][] = [
@@ -423,8 +437,11 @@ export default function TechActivar() {
                             </button>
                         </div>
                     )}
-                    <button type="button" onClick={() => navigate('/tech/dashboard')} className={`${BOTON_PRIMARIO} h-12`}>
-                        Volver a mi agenda
+                    <p className="px-1 text-center text-xs text-slate-500">
+                        Estos datos se quedan en tu celular aunque se cierre la app. Desde tu agenda vuelves a abrirlos.
+                    </p>
+                    <button type="button" onClick={() => void terminar()} className={`${BOTON_PRIMARIO} h-12`}>
+                        Terminar instalación
                     </button>
                 </div>
             </div>

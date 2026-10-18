@@ -82,14 +82,15 @@ function RouteFallback() {
   );
 }
 
+const TEMA_ELEGIDO = 'tema-elegido';
+
 function App() {
   // --- 🔥 CONECTOR INTELIGENTE (LOCALSTORAGE + SISTEMA OPERATIVO) 🔥 ---
+  // Sigue el modo claro/nocturno del celular o la PC, salvo que el usuario
+  // haya elegido uno con el botón de sol/luna.
   const [currentMode, setCurrentMode] = useState<'light' | 'dark'>(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      return savedTheme === 'light' ? 'light' : 'dark';
-    }
-    // Si no hay tema guardado, detectamos el sistema del usuario (celular/PC)
+    const elegido = localStorage.getItem(TEMA_ELEGIDO);
+    if (elegido) return elegido === 'light' ? 'light' : 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
@@ -110,18 +111,20 @@ function App() {
   // Efecto 2: Escuchadores de eventos optimizados (SIN setInterval)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'theme') {
+      if (e.key === TEMA_ELEGIDO && e.newValue) {
         setCurrentMode(e.newValue === 'light' ? 'light' : 'dark');
       }
     };
 
     const handleCustomThemeChange = (e: Event) => {
       const customEvent = e as CustomEvent;
+      localStorage.setItem(TEMA_ELEGIDO, customEvent.detail);
       setCurrentMode(customEvent.detail);
     };
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleSystemChange = (e: MediaQueryListEvent) => {
+      if (localStorage.getItem(TEMA_ELEGIDO)) return;
       setCurrentMode(e.matches ? 'dark' : 'light');
     };
 

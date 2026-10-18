@@ -19,6 +19,7 @@ import {
 import ChatModal from '@/components/chat/ChatModal';
 import { rutaEnMaps } from '@/utils/mapas';
 import ContratosApartados from './ContratosApartados';
+import ActivacionesPendientes from './ActivacionesPendientes';
 import BuscadorClientes from './BuscadorClientes';
 import { useSync } from '@/context/sync/context';
 import { useBrand } from '@/context/brand/useBrand';
@@ -372,6 +373,7 @@ export default function TechDashboard() {
                             <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Hola, {user?.usuario}</h2>
                         </div>
 
+                        <ActivacionesPendientes />
                         <BuscadorClientes />
                         <ContratosApartados />
 

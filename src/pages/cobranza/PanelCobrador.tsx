@@ -9,13 +9,14 @@ import { useNavigate } from 'react-router-dom';
 import { useSync } from '@/context/sync/context';
 import { cachedRequest, notifySessionChanged } from '../../offline/db';
 import { submitOperation } from '../../offline/sync';
-import { 
-    BanknotesIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, 
-    XMarkIcon, ArrowPathIcon, ShieldExclamationIcon, ClockIcon, 
-    ChartPieIcon, HomeIcon, CreditCardIcon, CalendarDaysIcon, 
-    CheckCircleIcon, IdentificationIcon
+import {
+    BanknotesIcon, MagnifyingGlassIcon, PowerIcon,
+    XMarkIcon, ArrowPathIcon, ClockIcon, HomeIcon, CreditCardIcon,
+    CalendarDaysIcon, CheckCircleIcon, ChevronRightIcon, SignalSlashIcon,
 } from '@heroicons/react/24/outline';
 import { apiErrorMessage } from '@/utils/apiError';
+import { useBrand } from '@/context/brand/useBrand';
+import { BOTON_EXITO, CAMPO, ETIQUETA_CAMPO, TARJETA, TITULO_SECCION } from '../technician/estilo';
 
 type PaymentMethod = 'efectivo' | 'transferencia';
 
@@ -84,6 +85,9 @@ interface PaymentHistoryItem {
     factura_id: number;
     metodo: PaymentMethod;
     monto: number;
+    cliente_nombre?: string | null;
+    fecha?: string | null;
+    referencia?: string | null;
     pendiente?: boolean;
 }
 
@@ -113,6 +117,19 @@ function formatDateLong(value?: string | null) {
     const [year, month, day] = value.slice(0, 10).split('-').map(Number);
     if (!year || !month || !day) return value;
     return `${day} de ${MESES_ES[month - 1]} de ${year}`;
+}
+
+const pesos = (monto: number | string) => Number(monto).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+
+function hoyISO() {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+function horaCorta(value?: string | null) {
+    if (!value) return '';
+    const fecha = new Date(value);
+    return Number.isNaN(fecha.getTime()) ? '' : fecha.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' });
 }
 
 function invoiceConcept(invoice?: BillingInvoice | null) {
@@ -147,9 +164,10 @@ function invoiceIsOverdue(invoice: BillingInvoice) {
 export default function PanelCobrador() {
     const navigate = useNavigate();
     const { online } = useSync();
+    const { brand } = useBrand();
     const user = JSON.parse(localStorage.getItem('user') || '{}') as CollectorUser;
-    
-    const [activeTab, setActiveTab] = useState<'cobrar' | 'promesas' | 'historial' | 'cierre'>('cobrar');
+
+    const [activeTab, setActiveTab] = useState<'cobrar' | 'promesas' | 'hoy'>('cobrar');
     const [facturas, setFacturas] = useState<BillingInvoice[]>([]);
     const [historial, setHistorial] = useState<PaymentHistoryItem[]>([]);
     const [promesas, setPromesas] = useState<BillingInvoice[]>([]);
@@ -295,6 +313,8 @@ export default function PanelCobrador() {
                     factura_id: selectedFactura.id,
                     metodo: formCobro.metodo,
                     monto: Number(formCobro.monto),
+                    cliente_nombre: cliente.nombre,
+                    fecha: new Date().toISOString(),
                     pendiente: true,
                 }, ...current]);
             } else {
@@ -378,333 +398,336 @@ export default function PanelCobrador() {
     const saldoAFavor = formCobro.monto > totalACobrar
         ? formCobro.monto - totalACobrar
         : 0;
+    const suspendido = selectedFactura?.servicio?.estado === 'suspendido';
+
+    const hoy = hoyISO();
+    const promesasOrdenadas = [...promesas].sort((a, b) => a.fecha_vencimiento.localeCompare(b.fecha_vencimiento));
+    const promesasHoy = promesas.filter((p) => p.fecha_vencimiento.slice(0, 10) <= hoy);
+    const fechaHoy = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+    const fechaHoyTexto = fechaHoy.charAt(0).toUpperCase() + fechaHoy.slice(1);
+
+    const resumenDia = (
+        <div className={`${TARJETA} p-4`}>
+            <div className="flex items-center justify-between">
+                <span className={TITULO_SECCION.replace('px-1 ', '')}>Cobrado hoy</span>
+                {!online && (
+                    <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                        <SignalSlashIcon className="h-3.5 w-3.5" /> Sin internet
+                    </span>
+                )}
+            </div>
+            <p className="mt-1 text-4xl font-black tracking-tight text-slate-900 dark:text-white">{pesos(totalCobradoHoy)}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
+                <div>
+                    <p className="flex items-center gap-1 text-xs text-slate-500"><BanknotesIcon className="h-4 w-4" /> Efectivo</p>
+                    <p className="font-bold text-slate-900 dark:text-white">{pesos(totalEfectivo)}</p>
+                </div>
+                <div>
+                    <p className="flex items-center gap-1 text-xs text-slate-500"><CreditCardIcon className="h-4 w-4" /> Transferencia</p>
+                    <p className="font-bold text-slate-900 dark:text-white">{pesos(totalTransferencia)}</p>
+                </div>
+            </div>
+        </div>
+    );
+
+    const vacio = (Icono: ComponentType<{ className?: string }>, texto: string) => (
+        <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <Icono className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+            <p className="text-sm font-semibold text-slate-500">{texto}</p>
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#0f1219] text-slate-800 dark:text-white font-sans flex flex-col transition-colors duration-300">
-            
-            {/* HEADER ADAPTATIVO */}
-            <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-sm backdrop-blur-xl transition-colors dark:border-slate-800 dark:bg-[#1a1f2e]/90 dark:shadow-xl sm:px-6">
+        <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 dark:bg-[#0f1219] dark:text-white">
+
+            <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-xl dark:border-slate-800/60 dark:bg-[#1a1f2e]/90 sm:px-6">
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center font-bold text-lg text-white shadow-lg shadow-blue-600/20">
-                        {user.usuario?.charAt(0)?.toUpperCase()}
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-sm font-black uppercase text-white dark:bg-white dark:text-slate-900">
+                        {user.usuario?.charAt(0) || 'C'}
                     </div>
                     <div>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest transition-colors">Cobrador</p>
-                        <h1 className="text-sm font-black text-slate-900 dark:text-white capitalize transition-colors">{user.usuario}</h1>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">{brand.empresa_nombre} Cobranza</p>
+                        <h1 className="text-sm font-black leading-tight text-slate-800 dark:text-white">{user.usuario}</h1>
                     </div>
                 </div>
-                <button aria-label="Cerrar sesión" onClick={handleLogout} className="app-icon-button">
-                    <ArrowRightOnRectangleIcon className="w-6 h-6" />
-                </button>
+                <div className="flex items-center gap-1">
+                    <button aria-label="Actualizar" onClick={() => void fetchData()} className="app-icon-button">
+                        <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button aria-label="Cerrar sesión" onClick={handleLogout} className="app-icon-button hover:text-rose-500 dark:hover:text-rose-500">
+                        <PowerIcon className="h-5 w-5" />
+                    </button>
+                </div>
             </div>
 
-            {/* CONTENIDO PRINCIPAL */}
-            <div className="mx-auto w-full max-w-3xl flex-1 space-y-6 overflow-y-auto p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:p-6 sm:pb-28">
-                {loading && (
-                    <div role="status" className="flex items-center justify-center gap-2 text-xs font-bold text-slate-500">
-                        <ArrowPathIcon className="h-4 w-4 animate-spin" /> Actualizando cobranza...
-                    </div>
-                )}
-                
-                {/* === PESTAÑA: COBRAR === */}
+            <div className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 sm:px-6">
+
                 {activeTab === 'cobrar' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
-                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 p-6 shadow-xl shadow-indigo-950/15">
-                            <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-xl" />
-                            <div className="relative flex items-center justify-between">
-                                <span className="text-blue-100 text-[10px] font-black uppercase tracking-widest">Recaudado Hoy</span>
-                                <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${online ? 'bg-emerald-400/20 text-emerald-100' : 'bg-amber-400/20 text-amber-100'}`}>
-                                    {online ? 'En línea' : 'Modo offline'}
+                    <div className="flex flex-col gap-3 animate-in fade-in duration-300">
+                        <div className="px-1">
+                            <p className="text-xs font-medium text-slate-400">{fechaHoyTexto}</p>
+                            <h2 className="text-xl font-black tracking-tight">Hola, {user.usuario}</h2>
+                        </div>
+
+                        {resumenDia}
+
+                        {promesasHoy.length > 0 && (
+                            <button type="button" onClick={() => setActiveTab('promesas')} className={`${TARJETA} flex items-center gap-3 p-4 text-left transition active:scale-[0.98]`}>
+                                <span className="h-10 w-1 shrink-0 rounded-full bg-amber-500" />
+                                <span className="min-w-0 flex-1">
+                                    <span className="block text-sm font-bold">{promesasHoy.length === 1 ? '1 promesa vence hoy' : `${promesasHoy.length} promesas vencen hoy`}</span>
+                                    <span className="block text-xs text-slate-500">Si no pagan, se les corta el servicio</span>
                                 </span>
-                            </div>
-                            <h2 className="text-4xl font-black text-white mt-1">${totalCobradoHoy.toLocaleString('es-MX')}</h2>
-                            <p className="mt-2 text-xs font-semibold text-blue-100/80">{historial.length} movimientos registrados</p>
-                        </div>
+                                <ChevronRightIcon className="h-5 w-5 text-slate-400" />
+                            </button>
+                        )}
 
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase ml-1 tracking-widest">Buscar Cliente</label>
-                            <div className="bg-white dark:bg-[#1a1f2e] rounded-xl flex items-center border border-slate-200 dark:border-slate-700 shadow-sm p-1 transition-colors">
-                                <MagnifyingGlassIcon className="w-6 h-6 text-slate-400 ml-3" />
-                                <input className="w-full bg-transparent p-3 text-slate-900 dark:text-white outline-none text-lg font-bold placeholder-slate-400" placeholder="Nombre, número de contrato o IP..." value={filtro} onChange={e => setFiltro(e.target.value)} />
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            {clientesFiltrados.map((group) => {
-                                const overdueCount = group.facturas.filter(invoiceIsOverdue).length;
-                                const totalDebt = group.facturas.reduce(
-                                    (sum, invoice) => sum + Number(invoice.saldo_pendiente),
-                                    0,
-                                );
-                                return (
-                                    <div key={group.key} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white transition-colors dark:border-slate-800 dark:bg-[#1a1f2e]">
-                                        <div className={`absolute bottom-0 left-0 top-0 w-1 ${overdueCount > 0 ? 'bg-rose-500' : 'bg-amber-500'}`} />
-                                        <button
-                                            type="button"
-                                            className="flex w-full items-center justify-between gap-3 p-4 pl-6 text-left active:bg-slate-50 dark:active:bg-slate-800/40"
-                                            onClick={() => void openClientCharge(group.facturas)}
-                                        >
-                                            <div className="min-w-0">
-                                                <h3 className="truncate text-base font-black text-slate-900 dark:text-white">{group.cliente.nombre}</h3>
-                                                <div className="mt-2 flex flex-wrap gap-2">
-                                                    <span className="rounded bg-indigo-600 px-1.5 py-0.5 text-[9px] font-black uppercase text-white">Número de contrato: {group.cliente.cedula || 'S/N'}</span>
-                                                    {group.cliente.ip_asignada && <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">{group.cliente.ip_asignada}</span>}
-                                                    {overdueCount > 0 && <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-black uppercase text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">{overdueCount} atrasada(s)</span>}
-                                                </div>
-                                            </div>
-                                            <div className="shrink-0 text-right">
-                                                <span className="block text-xl font-black text-emerald-600 dark:text-emerald-400">${totalDebt.toLocaleString('es-MX')}</span>
-                                                <span className="text-[10px] font-bold text-slate-500">{group.facturas.length} factura(s)</span>
-                                                <CreditCardIcon className="ml-auto mt-1 h-4 w-4 text-slate-400" />
-                                            </div>
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                            {filtro.trim() && clientesFiltrados.length === 0 && !loading && (
-                                <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm font-bold text-slate-500 dark:border-slate-700">No encontramos clientes por nombre, número de contrato o IP.</div>
+                        <label className={`${TARJETA} flex items-center gap-2 px-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/15`}>
+                            <MagnifyingGlassIcon className="h-5 w-5 shrink-0 text-slate-400" />
+                            <input
+                                aria-label="Buscar cliente"
+                                className="h-12 w-full bg-transparent text-base font-semibold outline-none placeholder:font-normal placeholder:text-slate-400"
+                                placeholder="Nombre, contrato o IP"
+                                value={filtro}
+                                onChange={e => setFiltro(e.target.value)}
+                            />
+                            {filtro && (
+                                <button type="button" aria-label="Limpiar búsqueda" onClick={() => setFiltro('')} className="rounded-full p-1 text-slate-400 hover:text-slate-600">
+                                    <XMarkIcon className="h-5 w-5" />
+                                </button>
                             )}
-                        </div>
+                        </label>
+
+                        {!filtro.trim() && (
+                            <p className="px-1 text-center text-xs text-slate-400">Busca al cliente para cobrarle o darle una promesa de pago.</p>
+                        )}
+
+                        {clientesFiltrados.map((group) => {
+                            const atrasado = group.facturas.some(invoiceIsOverdue);
+                            const totalDebt = group.facturas.reduce((sum, invoice) => sum + Number(invoice.saldo_pendiente), 0);
+                            return (
+                                <button
+                                    key={group.key}
+                                    type="button"
+                                    onClick={() => void openClientCharge(group.facturas)}
+                                    className={`${TARJETA} flex items-center gap-3 p-4 text-left transition active:scale-[0.98]`}
+                                >
+                                    <span className={`h-10 w-1 shrink-0 rounded-full ${atrasado ? 'bg-rose-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate font-bold">{group.cliente.nombre}</span>
+                                        <span className="block truncate text-xs text-slate-500">
+                                            {[group.cliente.cedula && `Contrato ${group.cliente.cedula}`, group.cliente.ip_asignada].filter(Boolean).join(' · ')}
+                                        </span>
+                                        {atrasado && <span className="mt-0.5 block text-xs font-semibold text-rose-600 dark:text-rose-400">Con atraso</span>}
+                                    </span>
+                                    <span className="shrink-0 text-right">
+                                        <span className="block text-lg font-black">{pesos(totalDebt)}</span>
+                                        <span className="block text-[11px] text-slate-500">{group.facturas.length === 1 ? '1 recibo' : `${group.facturas.length} recibos`}</span>
+                                    </span>
+                                </button>
+                            );
+                        })}
+                        {filtro.trim() && clientesFiltrados.length === 0 && !loading && (
+                            vacio(MagnifyingGlassIcon, 'Nadie con adeudo coincide con la búsqueda')
+                        )}
                     </div>
                 )}
 
-                {/* === PESTAÑA: PROMESAS === */}
                 {activeTab === 'promesas' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4">
-                        <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">Promesas Activas</h2>
-                        {promesas.length === 0 ? (
-                            <div className="text-center py-10">
-                                <ShieldExclamationIcon className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-2"/>
-                                <p className="text-slate-500 font-bold">No hay promesas activas</p>
-                            </div>
-                        ) : (
-                            promesas.map((f) => (
-                                <div key={f.id} onClick={() => void openClientCharge([f])} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer">
-                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500"></div>
-                                    <div className="pl-2">
-                                        <h3 className="font-black text-slate-900 dark:text-white text-base">{f.cliente.nombre}</h3>
-                                        <p className="mt-1 text-xs font-bold text-slate-700 dark:text-slate-200">{invoiceConcept(f)}</p>
-                                        <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-1 uppercase flex items-center gap-1">
-                                            <CalendarDaysIcon className="w-3 h-3"/> Promesa: {formatDateLong(f.fecha_vencimiento)}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">${f.saldo_pendiente}</span>
-                                    </div>
-                                </div>
-                            ))
-                        )}
+                    <div className="flex flex-col gap-3 animate-in fade-in duration-300">
+                        <div className="flex items-baseline justify-between px-1">
+                            <h2 className="text-xl font-black tracking-tight">Promesas</h2>
+                            {promesas.length > 0 && <span className="text-sm text-slate-500">Por cobrar {pesos(totalRetencionPromesas)}</span>}
+                        </div>
+                        {promesasOrdenadas.length === 0 && vacio(CalendarDaysIcon, 'No hay promesas activas')}
+                        {promesasOrdenadas.map((f) => {
+                            const vence = f.fecha_vencimiento.slice(0, 10);
+                            const urgente = vence <= hoy;
+                            return (
+                                <button key={f.id} type="button" onClick={() => void openClientCharge([f])} className={`${TARJETA} flex items-center gap-3 p-4 text-left transition active:scale-[0.98]`}>
+                                    <span className={`h-10 w-1 shrink-0 rounded-full ${urgente ? 'bg-amber-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate font-bold">{f.cliente.nombre}</span>
+                                        <span className={`block text-xs ${urgente ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-slate-500'}`}>
+                                            {vence < hoy ? 'Venció' : vence === hoy ? 'Vence hoy' : 'Paga el'} {formatDateLong(f.fecha_vencimiento)}
+                                        </span>
+                                    </span>
+                                    <span className="shrink-0 text-lg font-black">{pesos(f.saldo_pendiente)}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
 
-                {/* === PESTAÑA: HISTORIAL === */}
-                {activeTab === 'historial' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4">
-                        <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">Cobros de Hoy</h2>
-                        {historial.length === 0 ? (
-                            <div className="text-center py-10">
-                                <ClockIcon className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-2"/>
-                                <p className="text-slate-500 font-bold">Aún no hay cobros registrados hoy</p>
-                            </div>
-                        ) : (
-                            historial.map((h, i) => (
-                                <div key={i} className="bg-white dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex justify-between items-center transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-full ${h.metodo === 'efectivo' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                                            {h.metodo === 'efectivo' ? <BanknotesIcon className="w-5 h-5"/> : <CreditCardIcon className="w-5 h-5"/>}
+                {activeTab === 'hoy' && (
+                    <div className="flex flex-col gap-3 animate-in fade-in duration-300">
+                        <h2 className="px-1 text-xl font-black tracking-tight">Cobros de hoy</h2>
+                        {resumenDia}
+                        {historial.length === 0 && vacio(ClockIcon, 'Aún no hay cobros hoy')}
+                        {historial.length > 0 && (
+                            <div className={`${TARJETA} divide-y divide-slate-100 dark:divide-slate-800`}>
+                                {historial.map((h, i) => (
+                                    <div key={i} className="flex items-center gap-3 px-4 py-3">
+                                        {h.metodo === 'efectivo'
+                                            ? <BanknotesIcon className="h-5 w-5 shrink-0 text-emerald-600" />
+                                            : <CreditCardIcon className="h-5 w-5 shrink-0 text-blue-600" />}
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-semibold">{h.cliente_nombre || `Recibo #${h.factura_id}`}</p>
+                                            <p className="truncate text-xs text-slate-500">
+                                                {[horaCorta(h.fecha), h.metodo === 'efectivo' ? 'Efectivo' : 'Transferencia', h.referencia].filter(Boolean).join(' · ')}
+                                            </p>
+                                            {h.pendiente && <p className="text-xs font-semibold text-amber-600">Se enviará al tener internet</p>}
                                         </div>
-                                        <div>
-                                            <h3 className="font-bold text-sm text-slate-900 dark:text-white">Factura #{h.factura_id}</h3>
-                                            <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">{h.metodo}</p>
-                                            {h.pendiente && <p className="text-[9px] font-black uppercase text-blue-500">Pendiente de sincronizar</p>}
-                                        </div>
+                                        <span className="shrink-0 font-bold tabular-nums">{pesos(h.monto)}</span>
                                     </div>
-                                    <span className="font-black text-slate-900 dark:text-white">+${h.monto}</span>
-                                </div>
-                            ))
+                                ))}
+                            </div>
                         )}
-                    </div>
-                )}
-
-                {/* === PESTAÑA: CORTE DE COBRANZA === */}
-                {activeTab === 'cierre' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
-                        <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">Resumen de cobranza</h2>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Los cobros se liquidan por período y método de pago.</p>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4">
-                                <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
-                                    <BanknotesIcon className="w-4 h-4"/> Efectivo
-                                </span>
-                                <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">${totalEfectivo}</h3>
-                            </div>
-                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
-                                <span className="text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
-                                    <CreditCardIcon className="w-4 h-4"/> Transferencia
-                                </span>
-                                <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">${totalTransferencia}</h3>
-                            </div>
-                        </div>
-                        
-                        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl p-4">
-                             <span className="text-purple-600 dark:text-purple-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
-                                <ShieldExclamationIcon className="w-4 h-4"/> Por Promesas Activas
-                            </span>
-                            <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">${totalRetencionPromesas}</h3>
-                        </div>
                     </div>
                 )}
             </div>
 
-            {/* NAV INFERIOR ADAPTATIVO */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-slate-200 bg-white/92 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-15px_35px_-28px_rgba(15,23,42,.55)] backdrop-blur-xl transition-colors dark:border-slate-800 dark:bg-[#161b28]/92">
-                <NavButton active={activeTab === 'cobrar'} icon={HomeIcon} label="Cobrar" onClick={() => setActiveTab('cobrar')} />
-                <NavButton active={activeTab === 'promesas'} icon={ShieldExclamationIcon} label="Promesas" onClick={() => setActiveTab('promesas')} badge={promesas.length} />
-                <NavButton active={activeTab === 'historial'} icon={ClockIcon} label="Historial" onClick={() => setActiveTab('historial')} />
-                <NavButton active={activeTab === 'cierre'} icon={ChartPieIcon} label="Cierre" onClick={() => setActiveTab('cierre')} />
-            </div>
+            <nav aria-label="Secciones" className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">
+                <div className="mx-auto grid max-w-3xl grid-cols-3">
+                    <NavButton icon={HomeIcon} label="Cobrar" active={activeTab === 'cobrar'} onClick={() => setActiveTab('cobrar')} />
+                    <NavButton icon={CalendarDaysIcon} label="Promesas" badge={promesasHoy.length} active={activeTab === 'promesas'} onClick={() => setActiveTab('promesas')} />
+                    <NavButton icon={ClockIcon} label="Hoy" active={activeTab === 'hoy'} onClick={() => setActiveTab('hoy')} />
+                </div>
+            </nav>
 
-            {/* =========================================================================
-                MODAL COBRO (DISEÑO POS - ADAPTATIVO CLARO/OSCURO) 
-               ========================================================================= */}
             <Transition appear show={isModalOpen} as={Fragment}>
                 <Dialog as="div" className="relative z-50" onClose={() => setIsModalOpen(false)}>
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" />
                     <div className="fixed inset-0 overflow-hidden">
-                        <div className="flex h-full items-end justify-center p-0 sm:items-center sm:p-4">
-                            <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="translate-y-full opacity-0" enterTo="translate-y-0 opacity-100">
-                                
-                                <Dialog.Panel className="w-full bg-white dark:bg-[#0b0e14] rounded-none sm:rounded-3xl shadow-2xl p-5 sm:p-8 transition-colors flex flex-col h-[100dvh] sm:h-[92vh] sm:max-w-2xl">
-                                    
-                                    {/* CABECERA Y TARJETA DEL CLIENTE */}
-                                    <div className="flex justify-between items-center mb-4">
-                                        <div className="flex items-center gap-3 overflow-hidden">
-                                            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-xl font-bold text-white shrink-0 shadow-lg">
-                                                {selectedFactura?.cliente.nombre.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div className="min-w-0 overflow-hidden">
-                                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                                                    <IdentificationIcon className="w-3 h-3"/> {selectedFactura?.cliente.cedula || 'S/N'}
-                                                </p>
-                                                <div className="flex min-w-0 items-center gap-2">
-                                                    <h3 className="min-w-0 break-words text-base font-bold leading-tight text-slate-900 dark:text-white sm:text-lg">{selectedFactura?.cliente.nombre}</h3>
-                                                    <span className={`shrink-0 rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${selectedFactura?.servicio?.estado === 'suspendido' ? 'border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400' : 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400'}`}>
-                                                        {selectedFactura?.servicio?.estado === 'suspendido' ? 'Suspendido' : 'Activo'}
-                                                    </span>
-                                                </div>
+                        <div className="flex h-full items-end justify-center sm:items-center sm:p-4">
+                            <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="translate-y-full opacity-0" enterTo="translate-y-0 opacity-100">
+                                <Dialog.Panel className="flex h-[100dvh] w-full flex-col bg-slate-50 dark:bg-[#0f1219] sm:h-[90vh] sm:max-w-lg sm:rounded-3xl">
+
+                                    <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] dark:border-slate-800 dark:bg-[#161b28] sm:rounded-t-3xl sm:pt-4">
+                                        <div className="min-w-0">
+                                            <Dialog.Title className="break-words text-base font-black leading-tight">{selectedFactura?.cliente.nombre}</Dialog.Title>
+                                            <p className="mt-0.5 text-xs text-slate-500">
+                                                Contrato {selectedFactura?.cliente.cedula || 'S/N'} ·{' '}
+                                                <span className={suspendido ? 'font-semibold text-rose-600 dark:text-rose-400' : 'font-semibold text-emerald-600 dark:text-emerald-400'}>
+                                                    {suspendido ? 'Suspendido' : 'Activo'}
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <button aria-label="Cerrar" onClick={() => setIsModalOpen(false)} className="app-icon-button shrink-0">
+                                            <XMarkIcon className="h-5 w-5" />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                                        <div className={`${TARJETA} p-4`}>
+                                            <p className={ETIQUETA_CAMPO}>Se está cobrando</p>
+                                            <ul className="space-y-1.5">
+                                                {(cobroTotal?.detalle || []).map((item, index) => (
+                                                    <li key={index} className="flex items-start justify-between gap-3 text-sm">
+                                                        <span className="min-w-0 flex-1 break-words text-slate-700 dark:text-slate-200">
+                                                            {item.texto}
+                                                            {item.actual && <span className="ml-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">· mes actual</span>}
+                                                        </span>
+                                                        {item.monto != null && <span className="shrink-0 font-semibold tabular-nums">{pesos(item.monto)}</span>}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            <div className="mt-3 flex items-baseline justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+                                                <span className="text-sm font-semibold text-slate-500">Total</span>
+                                                <span className="text-2xl font-black">{pesos(totalACobrar)}</span>
                                             </div>
                                         </div>
-                                        <button onClick={() => setIsModalOpen(false)} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-white">
-                                            <XMarkIcon className="w-5 h-5"/>
-                                        </button>
-                                    </div>
 
-                                    {/* TOTAL A PAGAR: un solo cobro */}
-                                    <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#11131a]">
-                                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Se está cobrando</p>
-                                        <ul className="space-y-1.5 text-left">
-                                            {(cobroTotal?.detalle || []).map((item, index) => (
-                                                <li key={index} className={item.actual
-                                                    ? 'flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'
-                                                    : 'flex items-center justify-between gap-2 px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-200'}>
-                                                    <span className="min-w-0 flex-1 break-words">
-                                                        {item.actual ? '' : '• '}{item.texto}
-                                                        {item.actual && <span className="ml-2 inline-block rounded-md bg-emerald-600 px-2 py-0.5 align-middle text-[9px] font-black uppercase tracking-wider text-white">Mes actual</span>}
-                                                    </span>
-                                                    {item.monto != null && <span className="shrink-0 font-black tabular-nums">${Number(item.monto).toFixed(2)}</span>}
-                                                </li>
+                                        <div role="tablist" className="grid grid-cols-2 gap-1 rounded-xl bg-slate-200/70 p-1 dark:bg-slate-800">
+                                            {(['pagar', 'promesa'] as const).map((opcion) => (
+                                                <button
+                                                    key={opcion}
+                                                    type="button"
+                                                    role="tab"
+                                                    aria-selected={modo === opcion}
+                                                    onClick={() => setModo(opcion)}
+                                                    className={`h-10 rounded-lg text-sm font-bold transition ${modo === opcion ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-white' : 'text-slate-500'}`}
+                                                >
+                                                    {opcion === 'pagar' ? 'Cobrar' : 'Promesa de pago'}
+                                                </button>
                                             ))}
-                                        </ul>
-                                    </div>
+                                        </div>
 
-                                    {/* TABS DE ACCIÓN */}
-                                    <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-xl mb-6 shadow-sm dark:shadow-lg">
-                                        <button onClick={() => setModo('pagar')} className={`py-3 rounded-lg text-sm font-bold transition-all ${modo === 'pagar' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
-                                            Registrar Pago
-                                        </button>
-                                        <button onClick={() => setModo('promesa')} className={`py-3 rounded-lg text-sm font-bold transition-all ${modo === 'promesa' ? 'bg-orange-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
-                                            Crear Promesa
-                                        </button>
-                                    </div>
-
-                                    {/* FORMULARIOS */}
-                                    <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar">
                                         {modo === 'pagar' ? (
-                                            <form onSubmit={handleProcesarCobro} className="flex flex-col flex-1 h-full">
-                                                
-                                                <div className="mb-6 bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center shadow-sm dark:shadow-lg">
-                                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-4">Total a pagar</label>
-                                                    <div className="relative inline-block w-full max-w-[260px]">
-                                                        <span className="absolute left-0 top-1/2 -translate-y-1/2 text-4xl font-bold text-emerald-500">$</span>
-                                                        <input 
-                                                            type="number" step="0.01" required
-                                                            className="w-full border-b-2 border-transparent bg-transparent pb-1 pl-10 text-center text-6xl font-black text-slate-900 outline-none transition-all placeholder-slate-300 focus:border-emerald-500 dark:text-white dark:placeholder-slate-800 sm:text-7xl"
-                                                            style={{ fontSize: 'clamp(3.75rem, 12vw, 5rem)', lineHeight: 1 }}
-                                                            placeholder="0.00" value={formCobro.monto || ''} onChange={e => setFormCobro({...formCobro, monto: Number(e.target.value)})}
+                                            <form id="form-cobro" onSubmit={handleProcesarCobro} className="space-y-4">
+                                                <label className={`${TARJETA} block p-4`}>
+                                                    <span className={ETIQUETA_CAMPO}>Recibe</span>
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="text-3xl font-bold text-slate-400">$</span>
+                                                        <input
+                                                            type="number" step="0.01" min="0.01" required inputMode="decimal"
+                                                            aria-label="Monto recibido"
+                                                            className="w-full bg-transparent text-4xl font-black tabular-nums outline-none"
+                                                            style={{ fontSize: '2.25rem', lineHeight: 1.1 }}
+                                                            placeholder="0.00" value={formCobro.monto || ''} onChange={e => setFormCobro({ ...formCobro, monto: Number(e.target.value) })}
                                                         />
-                                                    </div>
-                                                    <p className="mt-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                                                        {formCobro.monto > 0 && formCobro.monto < totalACobrar
-                                                            ? `Abono: quedarán $${(totalACobrar - formCobro.monto).toFixed(2)} pendientes`
-                                                            : 'Edita el monto para registrar un abono o recibir una cantidad mayor.'}
-                                                    </p>
-                                                    {saldoAFavor > 0 && (
-                                                        <div className="mt-4 text-emerald-600 dark:text-emerald-400 text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 inline-block px-4 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-500/20 animate-in fade-in slide-in-from-bottom-2">
-                                                            Genera Saldo a Favor: +${saldoAFavor.toFixed(2)}
-                                                        </div>
+                                                    </span>
+                                                    {formCobro.monto > 0 && formCobro.monto < totalACobrar && (
+                                                        <span className="mt-1 block text-xs font-semibold text-amber-700 dark:text-amber-400">Abono: quedan {pesos(totalACobrar - formCobro.monto)} pendientes</span>
                                                     )}
-                                                </div>
+                                                    {saldoAFavor > 0 && (
+                                                        <span className="mt-1 block text-xs font-semibold text-emerald-600 dark:text-emerald-400">Queda saldo a favor de {pesos(saldoAFavor)}</span>
+                                                    )}
+                                                </label>
 
-                                                <div className="grid grid-cols-2 gap-3 mb-6">
-                                                    <button type="button" onClick={() => setFormCobro({...formCobro, metodo: 'efectivo'})} className={`p-4 rounded-xl border flex flex-col justify-center items-center gap-2 transition-all font-bold text-sm ${formCobro.metodo === 'efectivo' ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 shadow-sm dark:shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-slate-50 dark:bg-[#11131a] border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                                                        <BanknotesIcon className="w-6 h-6"/> Efectivo
-                                                    </button>
-                                                    <button type="button" onClick={() => setFormCobro({...formCobro, metodo: 'transferencia'})} className={`p-4 rounded-xl border flex flex-col justify-center items-center gap-2 transition-all font-bold text-sm ${formCobro.metodo === 'transferencia' ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 shadow-sm dark:shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-slate-50 dark:bg-[#11131a] border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                                                        <CreditCardIcon className="w-6 h-6"/> Transferencia
-                                                    </button>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {([['efectivo', 'Efectivo', BanknotesIcon], ['transferencia', 'Transferencia', CreditCardIcon]] as const).map(([valor, texto, Icono]) => (
+                                                        <button
+                                                            key={valor}
+                                                            type="button"
+                                                            aria-pressed={formCobro.metodo === valor}
+                                                            onClick={() => setFormCobro({ ...formCobro, metodo: valor })}
+                                                            className={`flex h-12 items-center justify-center gap-2 rounded-xl border text-sm font-bold transition ${formCobro.metodo === valor ? 'border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-500/10 dark:text-blue-300' : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-transparent dark:text-slate-300'}`}
+                                                        >
+                                                            <Icono className="h-5 w-5" /> {texto}
+                                                        </button>
+                                                    ))}
                                                 </div>
 
                                                 {formCobro.metodo === 'transferencia' && (
-                                                    <div className="mb-6 animate-in fade-in slide-in-from-top-2">
-                                                        <input type="text" required placeholder="Referencia / Folio / Banco..." className="w-full bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm shadow-sm dark:shadow-lg" value={formCobro.referencia} onChange={e => setFormCobro({...formCobro, referencia: e.target.value})} />
-                                                    </div>
+                                                    <label className="block">
+                                                        <span className={ETIQUETA_CAMPO}>Referencia o banco</span>
+                                                        <input type="text" required className={`${CAMPO} h-11`} value={formCobro.referencia} onChange={e => setFormCobro({ ...formCobro, referencia: e.target.value })} />
+                                                    </label>
                                                 )}
-
-                                                <div className="mt-auto pt-4">
-                                                    <button type="submit" disabled={procesando} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 sm:py-5 rounded-2xl shadow-lg active:scale-95 transition-all disabled:opacity-50 text-base sm:text-lg flex justify-center items-center gap-2">
-                                                        {procesando ? <ArrowPathIcon className="w-6 h-6 animate-spin"/> : <><CheckCircleIcon className="w-6 h-6" /> CONFIRMAR COBRO</>}
-                                                    </button>
-                                                </div>
                                             </form>
                                         ) : (
-                                            <form onSubmit={handleProcesarPromesa} className="flex flex-col flex-1 h-full">
-                                                <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 p-5 rounded-2xl mb-6 text-center shadow-sm dark:shadow-lg">
-                                                    <ShieldExclamationIcon className="w-12 h-12 text-orange-500 mx-auto mb-3"/>
-                                                    <p className="text-orange-700 dark:text-orange-200 text-sm font-medium">Esta acción dará acceso temporal a internet al cliente. El sistema cortará el servicio automáticamente si no paga en la fecha límite acordada.</p>
-                                                </div>
-                                                
-                                                <div className="mb-8">
-                                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-2 px-1">Fecha Límite de Pago</label>
-                                                    <input 
+                                            <form id="form-promesa" onSubmit={handleProcesarPromesa} className="space-y-4">
+                                                <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+                                                    El cliente queda con internet hasta la fecha que elijas. Si no paga ese día, el sistema le corta solo.
+                                                </p>
+                                                <label className="block">
+                                                    <span className={ETIQUETA_CAMPO}>Pagará a más tardar el</span>
+                                                    <input
                                                         type="date" required
                                                         max={selectedFactura?.fecha_maxima_promesa}
-                                                        className="w-full bg-slate-50 dark:bg-[#11131a] border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-900 dark:text-white font-bold text-center text-lg outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 shadow-sm dark:shadow-lg" 
-                                                        value={fechaPromesa} onChange={e => setFechaPromesa(e.target.value)} 
+                                                        className={`${CAMPO} h-12 text-base font-semibold`}
+                                                        value={fechaPromesa} onChange={e => setFechaPromesa(e.target.value)}
                                                     />
-                                                    <p className="mt-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
-                                                        Fecha máxima: {selectedFactura?.fecha_maxima_promesa || 'calculando...'}
-                                                    </p>
-                                                </div>
-                                                
-                                                <div className="mt-auto pt-4">
-                                                    <button type="submit" disabled={procesando} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-4 sm:py-5 rounded-2xl shadow-lg active:scale-95 transition-all disabled:opacity-50 text-base sm:text-lg flex justify-center items-center gap-2">
-                                                        {procesando ? <ArrowPathIcon className="w-6 h-6 animate-spin"/> : 'ACTIVAR SERVICIO (PROMESA)'}
-                                                    </button>
-                                                </div>
+                                                    {selectedFactura?.fecha_maxima_promesa && (
+                                                        <span className="mt-1 block text-xs text-slate-500">Lo más que se puede: {formatDateLong(selectedFactura.fecha_maxima_promesa)}</span>
+                                                    )}
+                                                </label>
                                             </form>
                                         )}
                                     </div>
 
+                                    <div className="border-t border-slate-200 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-[#161b28] sm:rounded-b-3xl">
+                                        {modo === 'pagar' ? (
+                                            <button type="submit" form="form-cobro" disabled={procesando} className={`${BOTON_EXITO} h-12 text-base`}>
+                                                {procesando ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <><CheckCircleIcon className="h-5 w-5" /> Cobrar {pesos(formCobro.monto || 0)}</>}
+                                            </button>
+                                        ) : (
+                                            <button type="submit" form="form-promesa" disabled={procesando} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 text-base font-bold text-white transition hover:bg-amber-400 active:scale-[0.98] disabled:opacity-50">
+                                                {procesando ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <><CalendarDaysIcon className="h-5 w-5" /> Guardar promesa</>}
+                                            </button>
+                                        )}
+                                    </div>
                                 </Dialog.Panel>
                             </Transition.Child>
                         </div>
@@ -715,10 +738,21 @@ export default function PanelCobrador() {
     );
 }
 
-const NavButton = ({ active, icon: Icon, label, onClick, badge = 0 }: NavButtonProps) => (
-    <button onClick={onClick} className={`relative flex min-h-12 min-w-0 max-w-20 flex-1 flex-col items-center justify-center gap-1 rounded-2xl p-2 transition active:scale-95 ${active ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
-        <Icon className={`w-6 h-6`}/>
-        <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
-        {badge > 0 && <span className="absolute top-1 right-2 bg-rose-600 text-white text-[8px] px-1 rounded-full">{badge}</span>}
+const NavButton = ({ icon: Icon, label, active, badge = 0, onClick }: NavButtonProps) => (
+    <button
+        type="button"
+        aria-label={label}
+        aria-current={active ? 'page' : undefined}
+        onClick={onClick}
+        className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 transition active:scale-95 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
+    >
+        {active && <span className="absolute top-0 h-0.5 w-10 rounded-b-full bg-blue-600 dark:bg-blue-400" />}
+        <span className="relative">
+            <Icon className="h-6 w-6" />
+            {badge > 0 && (
+                <span className="absolute -right-2.5 -top-1.5 min-w-[1.1rem] rounded-full bg-rose-600 px-1 text-center text-[10px] font-bold leading-[1.1rem] text-white">{badge > 99 ? '99+' : badge}</span>
+            )}
+        </span>
+        <span className="text-[11px] font-semibold">{label}</span>
     </button>
 );
