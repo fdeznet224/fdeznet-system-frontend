@@ -196,6 +196,33 @@ export default function Clientes() {
     const puertoRadio = usePuertoRouterRadio();
 
     const fetchData = useCallback(async () => {
+        // Los extras (en línea, potencias, señal, reportes) se piden a la vez
+        // y llenan la tabla conforme llegan: la lista no los espera.
+        void client.get<DashboardStatusResponse>('/dashboard/status-tabla-clientes')
+            .then((resOnline) => {
+                const detalleClientes = resOnline.data.detalle_clientes;
+                if (!detalleClientes) return;
+                const mapaEstados = new Map<string, OnlineStatus>();
+                Object.entries(detalleClientes).forEach(([clienteId, item]) => {
+                    mapaEstados.set(clienteId, {
+                        color: item.color,
+                        diag: item.diagnostico_sistema,
+                        online: item.estado_tecnico === 'ONLINE'
+                    });
+                });
+                setOnlineStatus(mapaEstados);
+            })
+            .catch((err) => console.warn("Dashboard online no disponible", err));
+        void client.get<Record<string, Potencia>>('/ftth/potencias')
+            .then((res) => setPotencias(res.data))
+            .catch(() => console.warn("Potencias no disponibles"));
+        void client.get<{ clientes: Record<string, CambioSenal> }>('/ftth/atenuacion')
+            .then((res) => setCambiosSenal(res.data.clientes ?? {}))
+            .catch(() => console.warn("Atenuación no disponible"));
+        void client.get<Record<string, ReporteAbierto>>('/soporte/abiertas')
+            .then((res) => setReportes(res.data))
+            .catch(() => console.warn("Reportes de falla no disponibles"));
+
         try {
             const [resClientes, resRouters] = await Promise.all([
                 client.get<ClienteUnificado[]>('/clientes/listado-completo-unificado'),
@@ -203,42 +230,9 @@ export default function Clientes() {
             ]);
             setClientes(resClientes.data);
             setRouters(resRouters.data);
-
-            try {
-                const resOnline = await client.get<DashboardStatusResponse>('/dashboard/status-tabla-clientes');
-                const detalleClientes = resOnline.data.detalle_clientes;
-
-                if (detalleClientes) {
-                    const mapaEstados = new Map<string, OnlineStatus>();
-                    Object.entries(detalleClientes).forEach(([clienteId, item]) => {
-                        mapaEstados.set(clienteId, {
-                            color: item.color,
-                            diag: item.diagnostico_sistema,
-                            online: item.estado_tecnico === 'ONLINE'
-                        });
-                    });
-                    setOnlineStatus(mapaEstados);
-                }
-            } catch (err) { console.warn("Dashboard online no disponible", err); }
-
-            try {
-                const resPotencias = await client.get<Record<string, Potencia>>('/ftth/potencias');
-                setPotencias(resPotencias.data);
-            } catch { console.warn("Potencias no disponibles"); }
-
-            try {
-                const resAtenuacion = await client.get<{ clientes: Record<string, CambioSenal> }>('/ftth/atenuacion');
-                setCambiosSenal(resAtenuacion.data.clientes ?? {});
-            } catch { console.warn("Atenuación no disponible"); }
-
-            try {
-                const resReportes = await client.get<Record<string, ReporteAbierto>>('/soporte/abiertas');
-                setReportes(resReportes.data);
-            } catch { console.warn("Reportes de falla no disponibles"); }
-
-            setLoading(false);
         } catch {
             toast.error("Error al cargar datos");
+        } finally {
             setLoading(false);
         }
     }, []);
