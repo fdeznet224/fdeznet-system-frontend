@@ -14,6 +14,7 @@ import {
     ChevronRightIcon,
     PlusIcon,
     MapIcon,
+    CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 
 import ChatModal from '@/components/chat/ChatModal';
@@ -438,6 +439,13 @@ export default function TechDashboard() {
                             className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 text-xs font-black uppercase tracking-wider text-white transition active:scale-[0.98] dark:bg-white dark:text-slate-900"
                         >
                             <PlusIcon className="h-5 w-5" /> Nueva instalación
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => navigate('/tech/simulador')}
+                            className={`${BOTON_SECUNDARIO} h-12 w-full rounded-2xl text-sm`}
+                        >
+                            <CalendarDaysIcon className="h-5 w-5" /> Simular cobro para un cliente
                         </button>
                     </div>
                 )}

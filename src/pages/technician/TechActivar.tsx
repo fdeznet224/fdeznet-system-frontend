@@ -16,7 +16,8 @@ import { apiErrorMessage } from '@/utils/apiError';
 import SugerenciaNap from '@/components/naps/SugerenciaNap';
 import SelectorOnu from './SelectorOnu';
 import { SERIE_MINIMA, normalizarSerie } from './onu';
-import CalendarioCobro, { type FechasCobro } from '@/components/cobro/CalendarioCobro';
+import ResumenCobro from '@/components/cobro/ResumenCobro';
+import type { Cobro } from '@/components/cobro/imagenCobro';
 import { claveResultado, guardarActivacion, terminarActivacion } from './activacionesPendientes';
 import { BOTON_EXITO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO, ETIQUETA_CAMPO, TARJETA } from './estilo';
 
@@ -68,17 +69,6 @@ interface Resultado {
     meses_gratis?: number;
     cobro?: Cobro | null;
 }
-
-/** Lo que el técnico le explica al cliente sobre su cobro. */
-interface Cobro extends FechasCobro {
-    mensualidad: number;
-    prorrateo?: { total: number; desde: string; hasta: string; dias: number } | null;
-    primer_pago: { fecha: string; total: number };
-    explicacion: string[];
-}
-
-const pesos = (monto: number) => monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
-const fechaCorta = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 
 interface Formulario {
     nombre: string;
@@ -398,44 +388,12 @@ export default function TechActivar() {
                         ))}
                     </div>
                     {resultado.cobro && (
-                        <div className={tarjeta}>
-                            <p className={etiqueta}>Calendario de cobro</p>
-                            <div className="grid grid-cols-2 gap-2">
-                                {resultado.cobro.prorrateo && (
-                                    <div className="rounded-2xl bg-amber-50 p-3 dark:bg-amber-500/10">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">Prorrateo</p>
-                                        <p className="text-lg font-black">{pesos(resultado.cobro.prorrateo.total)}</p>
-                                        <p className="text-[11px] text-slate-500">{fechaCorta(resultado.cobro.prorrateo.desde)} – {fechaCorta(resultado.cobro.prorrateo.hasta)}</p>
-                                    </div>
-                                )}
-                                <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Mensualidad</p>
-                                    <p className="text-lg font-black">{pesos(resultado.cobro.mensualidad)}</p>
-                                </div>
-                                <div className="col-span-2 rounded-2xl bg-emerald-50 p-3 dark:bg-emerald-500/10">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Primer pago · {fechaCorta(resultado.cobro.primer_pago.fecha)}</p>
-                                    <p className="text-2xl font-black">{pesos(resultado.cobro.primer_pago.total)}</p>
-                                </div>
-                            </div>
-                            <CalendarioCobro fechas={resultado.cobro} />
-                        </div>
-                    )}
-                    {resultado.cobro && (
-                        <div className={tarjeta}>
-                            <p className={etiqueta}>Explicación para el cliente</p>
-                            <ul className="space-y-2 text-sm leading-snug text-slate-700 dark:text-slate-300">
-                                {resultado.cobro.explicacion.map((linea) => (
-                                    <li key={linea} className="flex gap-2"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />{linea}</li>
-                                ))}
-                            </ul>
-                            <button
-                                type="button"
-                                onClick={() => copiar(resultado.cobro!.explicacion.join('\n'))}
-                                className={`${BOTON_SECUNDARIO} h-11 w-full`}
-                            >
-                                <ClipboardDocumentIcon className="h-4 w-4" /> Copiar explicación
-                            </button>
-                        </div>
+                        <ResumenCobro
+                            cobro={resultado.cobro}
+                            titulo={resultado.nombre}
+                            subtitulo={`Plan ${resultado.plan} · contrato ${resultado.contrato}`}
+                            archivo={`cobro-${resultado.contrato}`}
+                        />
                     )}
                     <p className="px-1 text-center text-xs text-slate-500">
                         Estos datos se quedan en tu celular aunque se cierre la app. Desde tu agenda vuelves a abrirlos.

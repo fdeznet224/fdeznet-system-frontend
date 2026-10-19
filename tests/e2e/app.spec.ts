@@ -911,6 +911,47 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y cómo se le cobra',
   await expect(page.getByText('instalación sin terminar')).toHaveCount(0)
 })
 
+test('el técnico simula el cobro de un cliente y le baja la imagen', async ({ page }) => {
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  // Sin menú de compartir: la imagen se descarga.
+  await page.addInitScript(() => { Object.defineProperty(navigator, 'canShare', { value: undefined }) })
+  await page.route('**/api/zonas/simulador-cobro', (route) => route.fulfill({ json: [
+    { id: 2, nombre: 'Paraíso', plantilla: { nombre: 'Día 15', dia_pago: 15, dias_tolerancia: 10 }, planes: [
+      { id: 11, nombre: 'Plan 300', precio: 300, velocidad_bajada: 20480 },
+    ] },
+  ] }))
+  let consulta = ''
+  await page.route('**/api/zonas/2/simular-cobro**', async (route) => {
+    consulta = new URL(route.request().url()).search
+    await route.fulfill({ json: {
+      zona: 'Paraíso', plan: 'Plan 300', velocidad_bajada: 20480,
+      activacion: '2026-10-18', gratis_hasta: null, mensualidad_desde: '2026-11-15', mensualidad_hasta: '2026-12-14',
+      corte: '2026-11-25', mensualidad: 300, meses_gratis: 0,
+      prorrateo: { total: 270, desde: '2026-10-18', hasta: '2026-11-14', dias: 28 },
+      primer_pago: { fecha: '2026-11-15', total: 570 },
+      explicacion: ['No tiene mes gratis: el servicio se cobra desde hoy, 18 de octubre.'],
+    } })
+  })
+  await page.goto('/tech/dashboard')
+  await page.getByRole('button', { name: 'Simular cobro para un cliente' }).click()
+
+  await page.getByRole('combobox', { name: 'Zona' }).selectOption('2')
+  await expect(page.getByText('Pagan el día 15 de cada mes · 10 días de tolerancia')).toBeVisible()
+  await page.getByRole('combobox', { name: 'Plan' }).selectOption('11')
+  await page.getByLabel('Día de instalación').fill('2026-10-18')
+  await page.getByRole('button', { name: /Cambio de compañía/ }).click()
+
+  await expect(page.getByText('$570.00').first()).toBeVisible()
+  await expect(page.getByTitle('Día de pago')).toHaveText('15')
+  await expect.poll(() => new URLSearchParams(consulta).get('meses_gratis')).toBe('0')
+  expect(new URLSearchParams(consulta).get('fecha')).toBe('2026-10-18')
+
+  const descarga = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Enviar imagen al cliente' }).click()
+  expect((await descarga).suggestedFilename()).toBe('cobro-Plan-300-2026-10-18.png')
+})
+
 test('carga una instalación técnica preasignada', async ({ page }) => {
   await authenticateAs(page, 'tecnico')
   await mockApi(page)

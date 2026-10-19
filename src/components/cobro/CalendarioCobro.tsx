@@ -1,18 +1,8 @@
-/** Fechas ISO (AAAA-MM-DD): se comparan como texto. */
-export interface FechasCobro {
-    activacion: string;
-    gratis_hasta?: string | null;
-    prorrateo?: { desde: string; hasta: string } | null;
-    mensualidad_desde: string;
-    mensualidad_hasta: string;
-    primer_pago: { fecha: string };
-    corte?: string | null;
-}
+import { iso, mesesCalendario, tipoDia, type FechasCobro, type Tipo } from './fechasCobro';
 
-type Tipo = 'gratis' | 'prorrateo' | 'mensualidad' | null;
+export type { FechasCobro };
 
 const DIAS_SEMANA = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-const MAX_MESES = 3;
 
 const FONDO: Record<Exclude<Tipo, null>, string> = {
     gratis: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300',
@@ -20,29 +10,16 @@ const FONDO: Record<Exclude<Tipo, null>, string> = {
     mensualidad: 'bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300',
 };
 
-const iso = (anio: number, mes: number, dia: number) =>
-    `${anio}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-
-const entre = (dia: string, desde?: string | null, hasta?: string | null) =>
-    Boolean(desde && hasta && dia >= desde && dia <= hasta);
-
 /**
  * Calendario de los primeros meses del cliente: mes gratis, prorrateo,
  * primera mensualidad, día de pago y día de corte, para explicárselo de un
  * vistazo en el domicilio.
  */
-export default function CalendarioCobro({ fechas }: { fechas: FechasCobro }) {
+export default function CalendarioCobro({ fechas, inicio = 'Hoy (activación)' }: { fechas: FechasCobro; inicio?: string }) {
     const [anioInicio, mesInicio] = fechas.activacion.split('-').map(Number);
-    const ultimo = fechas.corte && fechas.corte > fechas.primer_pago.fecha ? fechas.corte : fechas.primer_pago.fecha;
-    const [anioFin, mesFin] = ultimo.split('-').map(Number);
-    const totalMeses = Math.min((anioFin - anioInicio) * 12 + (mesFin - mesInicio) + 1, MAX_MESES);
+    const totalMeses = mesesCalendario(fechas);
 
-    const tipoDe = (dia: string): Tipo => {
-        if (entre(dia, fechas.prorrateo?.desde, fechas.prorrateo?.hasta)) return 'prorrateo';
-        if (entre(dia, fechas.activacion, fechas.gratis_hasta)) return 'gratis';
-        if (entre(dia, fechas.mensualidad_desde, fechas.mensualidad_hasta)) return 'mensualidad';
-        return null;
-    };
+    const tipoDe = (dia: string) => tipoDia(fechas, dia);
 
     const leyenda: [string, string][] = [
         ...(fechas.gratis_hasta ? [[FONDO.gratis, 'Mes gratis'] as [string, string]] : []),
@@ -50,7 +27,7 @@ export default function CalendarioCobro({ fechas }: { fechas: FechasCobro }) {
         [FONDO.mensualidad, '1.ª mensualidad'],
         ['bg-indigo-600 text-white', 'Día de pago'],
         ...(fechas.corte ? [['bg-rose-600 text-white', 'Corte si no paga'] as [string, string]] : []),
-        ['ring-2 ring-slate-900 dark:ring-white', 'Hoy (activación)'],
+        ['ring-2 ring-slate-900 dark:ring-white', inicio],
     ];
 
     return (
