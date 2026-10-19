@@ -54,7 +54,7 @@ export default function BuscadorClientes() {
     return (
         <div className="space-y-3">
             <label htmlFor="buscar-cliente-tecnico" className="sr-only">Buscar cliente</label>
-            <div className="flex items-center rounded-2xl border border-slate-200 bg-white transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/15 dark:border-slate-800 dark:bg-[#161b28]">
+            <div className="flex items-center rounded-2xl border border-slate-200 bg-white transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/15 dark:border-slate-800 dark:bg-slate-900">
                 <MagnifyingGlassIcon className="ml-3.5 h-5 w-5 shrink-0 text-slate-400" />
                 <input
                     id="buscar-cliente-tecnico"
@@ -84,7 +84,7 @@ export default function BuscadorClientes() {
                             key={c.id}
                             type="button"
                             onClick={() => navigate(`/tech/cliente/${encodeURIComponent(c.cedula || String(c.id))}`)}
-                            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left active:bg-slate-50 dark:border-slate-800 dark:bg-[#161b28] dark:active:bg-slate-800/40"
+                            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left active:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:active:bg-slate-800/40"
                         >
                             <div className="min-w-0">
                                 <h3 className="truncate text-sm font-black text-slate-900 dark:text-white">{c.nombre}</h3>

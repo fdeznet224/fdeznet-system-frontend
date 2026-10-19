@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
-import {
-    SignalIcon, PlusIcon, ArrowPathIcon,
-    ServerIcon, ArrowUpIcon, ArrowDownIcon,
-    PencilSquareIcon, TrashIcon, FunnelIcon, CpuChipIcon
-} from '@heroicons/react/24/outline';
+import { SignalIcon, PlusIcon, ArrowPathIcon, ServerIcon, ArrowUpIcon, ArrowDownIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import PlanModal from './components/CreatePlanModal';
 import type { PlanRecord, RouterOption } from './types';
 import { apiErrorMessage } from '@/utils/apiError';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { BOTON_ACCION_PRIMARIO } from '@/components/ui/estilo';
 
 const getErrorMessage = (error: unknown, fallback: string) => {
     return apiErrorMessage(error, fallback);
@@ -61,51 +59,23 @@ export default function Planes() {
     };
 
     return (
-        /* ✅ ADAPTADO: Texto adaptativo desde la raíz */
-        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12 transition-colors duration-300">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4">
 
-            {/* =========================================================
-                HEADER RESPONSIVO Y FILTROS COMPACTOS INLINE
-               ========================================================= */}
-            <div className="flex justify-between items-center px-1 md:px-0 flex-none gap-1.5 pb-2">
-                <div>
-                    {/* ✅ ADAPTADO: Título oscuro en modo claro */}
-                    <h2 className="text-sm sm:text-base md:text-2xl font-black text-slate-800 dark:text-white tracking-tight whitespace-nowrap">
-                        Planes de Internet
-                    </h2>
-                    {/* El badge de soporte técnico se adapta al tema */}
-                    <div className="hidden sm:flex items-center gap-3 mt-2 bg-white dark:bg-slate-800/80 w-fit px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700/50 backdrop-blur-md shadow-sm">
-                        <span className="text-slate-500 dark:text-slate-300 text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
-                            <CpuChipIcon className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" /> Sincronización PPPoE & Simple Queues
-                        </span>
-                    </div>
-                </div>
-
-                {/* Contenedor inline de herramientas micro-compacto */}
-                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-
-                    {/* Selector de Nodos Moderno, Delgado y Adaptativo */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-1.5 py-1.5 flex items-center gap-0.5 shadow-sm">
-                        <FunnelIcon className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" />
-                        <select
-                            value={selectedRouter}
-                            onChange={(e) => setSelectedRouter(e.target.value)}
-                            className="bg-transparent text-slate-700 dark:text-slate-300 font-extrabold outline-none text-[10px] md:text-xs cursor-pointer appearance-none pr-0.5"
-                        >
-                            <option value="all" className="bg-white dark:bg-slate-950 text-slate-900 dark:text-white">Todo</option>
-                            {routers.map(r => <option key={r.id} value={r.id} className="bg-white dark:bg-slate-950 text-slate-900 dark:text-white">{r.nombre.toUpperCase()}</option>)}
+            <EncabezadoPagina
+                titulo="Planes de Internet"
+                descripcion="Sincronización PPPoE y Simple Queues con cada MikroTik."
+                acciones={(
+                    <>
+                        <select aria-label="Router" value={selectedRouter} onChange={(e) => setSelectedRouter(e.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                            <option value="all">Todos los routers</option>
+                            {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
                         </select>
-                    </div>
-
-                    <button
-                        onClick={() => setModalConfig({ isOpen: true })}
-                        className="bg-blue-600 hover:bg-blue-500 text-white px-1.5 py-1.5 md:px-4 md:py-2.5 rounded-xl font-black shadow-md active:scale-95 transition flex items-center justify-center gap-1 text-[10px] md:text-sm tracking-wide uppercase md:normal-case"
-                    >
-                        <PlusIcon className="w-3.5 h-3.5 md:w-5 md:h-5" />
-                        <span>Nuevo Plan</span>
-                    </button>
-                </div>
-            </div>
+                        <button type="button" onClick={() => setModalConfig({ isOpen: true })} className={BOTON_ACCION_PRIMARIO}>
+                            <PlusIcon className="h-5 w-5" /> Nuevo Plan
+                        </button>
+                    </>
+                )}
+            />
 
             {/* =========================================================
                 GRID DE PLANES EN CONEXIÓN MIKROTIK

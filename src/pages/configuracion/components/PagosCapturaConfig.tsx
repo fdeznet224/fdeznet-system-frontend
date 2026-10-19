@@ -10,7 +10,7 @@ interface PagosCaptura {
   ventana_dias: number;
 }
 
-const inputClass = 'mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
+const inputClass = 'mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
 
 /**
  * Cómo valida el agente las capturas de transferencia. Lo que no puede
@@ -86,7 +86,7 @@ export default function PagosCapturaConfig() {
         type="button"
         onClick={() => void guardar()}
         disabled={guardando}
-        className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50 sm:w-auto"
+        className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-500 disabled:opacity-50 sm:w-auto"
       >
         {guardando ? 'Guardando…' : 'Guardar'}
       </button>

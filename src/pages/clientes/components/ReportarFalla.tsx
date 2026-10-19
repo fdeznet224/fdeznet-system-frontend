@@ -37,7 +37,7 @@ interface Tecnico {
 const UMBRAL_DEBIL = -27;
 const CAIDA_ALERTA = 3;
 
-const campo = 'w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-950';
+const campo = 'w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950';
 const etiqueta = 'mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400';
 
 /** Lo que se vio a distancia, para que el técnico llegue sabiendo qué buscar. */

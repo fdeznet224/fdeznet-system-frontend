@@ -4,14 +4,13 @@ import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import { 
-    MapPinIcon, PlusIcon, TrashIcon, 
-    MapIcon, EyeIcon, PencilSquareIcon, FunnelIcon 
-} from '@heroicons/react/24/outline';
+import { MapPinIcon, PlusIcon, TrashIcon, EyeIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 
 import CreateNapModal from './components/CreateNapModal';
 import NapDetailsModal from './components/NapDetailsModal'; 
 import { apiErrorMessage } from '@/utils/apiError';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { BOTON_ACCION_PRIMARIO } from '@/components/ui/estilo';
 
 interface CajaNap {
     id: number;
@@ -114,44 +113,22 @@ export default function CajasNap() {
     };
 
     return (
-        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-800 dark:text-slate-200 pb-12 transition-colors duration-300">
-            
-            {/* =========================================================
-                HEADER RESPONSIVO Y FILTROS COMPACTOS INLINE
-               ========================================================= */}
-            <div className="flex justify-between items-center px-1 md:px-0 flex-none gap-2 pb-2">
-                <div>
-                    <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight transition-colors">
-                        Cajas NAP (FTTH)
-                    </h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5 hidden sm:block">Gestión de puertos y ONUs en campo.</p>
-                </div>
-                
-                <div className="flex items-center gap-1.5 shrink-0">
-                    
-                    {/* Selector Micro-Compacto de Zona (ADAPTATIVO) */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-2 flex items-center gap-1 shadow-sm transition-colors">
-                        <FunnelIcon className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 md:hidden" />
-                        <MapIcon className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0 hidden md:block" />
-                        <select 
-                            value={selectedZona} 
-                            onChange={(e) => setSelectedZona(e.target.value)} 
-                            className="bg-transparent text-slate-700 dark:text-slate-300 font-bold outline-none text-xs cursor-pointer appearance-none"
-                        >
-                            <option value="all" className="bg-white dark:bg-slate-950">Todas las Zonas</option>
-                            {zonas.map(z => <option key={z.id} value={z.id} className="bg-white dark:bg-slate-950">{z.nombre}</option>)}
+        <div className="mx-auto flex max-w-7xl flex-col gap-4">
+            <EncabezadoPagina
+                titulo="Cajas NAP (FTTH)"
+                descripcion="Gestión de puertos y ONUs en campo."
+                acciones={(
+                    <>
+                        <select aria-label="Zona" value={selectedZona} onChange={(e) => setSelectedZona(e.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                            <option value="all">Todas las Zonas</option>
+                            {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
                         </select>
-                    </div>
-
-                    <button 
-                        onClick={() => setModalConfig({isOpen: true})} 
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-2 md:px-4 md:py-2.5 rounded-xl font-black shadow-md active:scale-95 transition flex items-center justify-center gap-1 text-[10px] md:text-sm tracking-wide uppercase md:normal-case"
-                    >
-                        <PlusIcon className="w-4 h-4 md:w-5 md:h-5"/> 
-                        <span>Nueva NAP</span>
-                    </button>
-                </div>
-            </div>
+                        <button type="button" onClick={() => setModalConfig({ isOpen: true })} className={BOTON_ACCION_PRIMARIO}>
+                            <PlusIcon className="h-5 w-5" /> Nueva NAP
+                        </button>
+                    </>
+                )}
+            />
 
             {/* =========================================================
                 GRID DE CAJAS DISPONIBLES (ADAPTATIVO)
@@ -239,7 +216,7 @@ export default function CajasNap() {
                                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex gap-2 mt-auto">
                                     <button 
                                         onClick={() => setDetailsModal({isOpen: true, nap})}
-                                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-black text-indigo-600 dark:text-indigo-300 hover:text-white bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-600 py-2 rounded-xl border border-indigo-100 dark:border-indigo-500/10 transition group/btn uppercase tracking-wide"
+                                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-black text-indigo-600 dark:text-indigo-300 hover:text-white bg-indigo-50 dark:bg-indigo-500/10 hover:bg-blue-600 py-2 rounded-xl border border-indigo-100 dark:border-indigo-500/10 transition group/btn uppercase tracking-wide"
                                     >
                                         <EyeIcon className="w-4 h-4"/> Ver Puertos
                                     </button>

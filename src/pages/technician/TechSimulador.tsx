@@ -92,7 +92,7 @@ export default function TechSimulador() {
     const resultado = simulacion && planId ? simulacion : null;
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-16 text-slate-900 dark:bg-[#0f1219] dark:text-white">
+        <div className="min-h-screen bg-slate-50 pb-16 text-slate-900 dark:bg-slate-950 dark:text-white">
             <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">
                 <button type="button" aria-label="Volver" onClick={() => navigate('/tech/dashboard')} className="-ml-1 rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 active:scale-90 dark:text-slate-400 dark:hover:bg-slate-800">
                     <ArrowLeftIcon className="h-5 w-5" />

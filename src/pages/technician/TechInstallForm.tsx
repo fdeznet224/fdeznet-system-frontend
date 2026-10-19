@@ -271,7 +271,7 @@ export default function TechInstallForm() {
         }
     };
 
-    if (!cliente) return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500 dark:bg-[#0f1219]">Cargando orden...</div>;
+    if (!cliente) return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500 dark:bg-slate-950">Cargando orden...</div>;
 
     const selectClase = `${CAMPO} min-h-11 appearance-none pl-10`;
     const bloqueado = 'flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-300';
@@ -281,7 +281,7 @@ export default function TechInstallForm() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-32 font-sans text-slate-900 transition-colors dark:bg-[#0f1219] dark:text-white">
+        <div className="min-h-screen bg-slate-50 pb-32 font-sans text-slate-900 transition-colors dark:bg-slate-950 dark:text-white">
 
             <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">
                 <button type="button" aria-label="Volver" onClick={() => navigate(-1)} className="-ml-1 rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 active:scale-90 dark:text-slate-400 dark:hover:bg-slate-800">

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon, KeyIcon, ShieldCheckIcon, SparklesIcon } from '@heroicons/react/24/outline';
+
+import { ShieldCheckIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 
 import client from '../../api/axios';
 import AccesoOnu from './AccesoOnu';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 type PasswordMode = 'fija' | 'aleatoria';
 type CharacterType = 'numeros' | 'letras' | 'alfanumerica';
@@ -17,7 +18,6 @@ interface PppoeConfig {
 }
 
 export default function Pppoe() {
-  const navigate = useNavigate();
   const [mode, setMode] = useState<PasswordMode>('aleatoria');
   const [password, setPassword] = useState('');
   const [length, setLength] = useState(12);
@@ -59,28 +59,10 @@ export default function Pppoe() {
   };
 
   return (
-    <div className="mx-auto mt-10 max-w-2xl animate-in p-4 fade-in duration-500">
-      <button
-        type="button"
-        onClick={() => navigate('/admin/configuracion')}
-        className="mb-6 flex items-center text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-      >
-        <ArrowLeftIcon className="mr-2 h-4 w-4" /> Regresar
-      </button>
+    <div className="mx-auto max-w-2xl">
+      <EncabezadoPagina volver={{ a: '/admin/configuracion', texto: 'Configuración' }} titulo="Seguridad PPPoE" descripcion="Cómo se asignan las contraseñas a los clientes nuevos." />
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900 dark:shadow-2xl sm:p-8">
-        <div className="mb-6 flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-rose-100 bg-rose-50 dark:border-rose-500/20 dark:bg-rose-500/10">
-            <KeyIcon className="h-6 w-6 text-rose-600 dark:text-rose-500" />
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-slate-900 dark:text-white">Seguridad PPPoE</h2>
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Define cómo se asignan las contraseñas a los clientes nuevos.
-            </p>
-          </div>
-        </div>
-
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
         <p className="mb-3 text-sm font-black text-slate-600 dark:text-slate-300">Tipo de contraseña</p>
         <div className="mb-6 grid gap-3 sm:grid-cols-2">
           <button

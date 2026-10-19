@@ -24,11 +24,14 @@ export default function Inventario() {
     ];
 
     return (
-        <div className="mx-auto flex h-[calc(100dvh-80px)] max-w-7xl flex-col gap-4 p-4 md:h-[calc(100vh-100px)] md:p-6">
-            <div className="flex flex-none flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h1 className="text-xl font-black tracking-tight text-slate-800 dark:text-white md:text-2xl">Inventario / Bodega</h1>
+        <div className="mx-auto flex max-w-7xl flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Inventario / Bodega</h1>
+                    <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">ONU en bodega, con técnicos e instaladas; y los equipos por recoger de las bajas.</p>
+                </div>
                 {pestanas.length > 1 && (
-                    <div role="tablist" aria-label="Secciones del inventario" className="grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-[#12141a] sm:w-72">
+                    <div role="tablist" aria-label="Secciones del inventario" className="grid grid-cols-2 gap-1 rounded-xl bg-slate-200/70 p-1 dark:bg-slate-800/70 sm:w-72">
                         {pestanas.map(([valor, texto, Icono]) => (
                             <button
                                 key={valor}
@@ -36,9 +39,9 @@ export default function Inventario() {
                                 role="tab"
                                 aria-selected={pestana === valor}
                                 onClick={() => cambiar(valor)}
-                                className={`flex min-h-11 items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-widest transition-colors ${pestana === valor
-                                    ? 'bg-indigo-600 text-white shadow-sm'
-                                    : 'text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800'}`}
+                                className={`flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors ${pestana === valor
+                                    ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white'
+                                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}
                             >
                                 <Icono className="h-4 w-4" /> {texto}
                             </button>
@@ -46,7 +49,7 @@ export default function Inventario() {
                     </div>
                 )}
             </div>
-            <div className="min-h-0 flex-1">
+            <div>
                 {pestana === 'equipos'
                     ? <InventarioPanel onVerRetiros={() => cambiar('retiros')} />
                     : <RetirosPanel />}

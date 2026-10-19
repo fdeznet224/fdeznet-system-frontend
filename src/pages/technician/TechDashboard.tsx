@@ -341,7 +341,7 @@ export default function TechDashboard() {
 
     return (
         /* ✅ ADAPTADO: Fondo principal transiciona al tema elegido */
-        <div className="min-h-screen bg-slate-50 dark:bg-[#0f1219] text-slate-900 dark:text-white font-sans flex flex-col overflow-hidden transition-colors duration-300">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans flex flex-col overflow-hidden transition-colors duration-300">
 
             {/* HEADER ADAPTATIVO */}
             <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-sm backdrop-blur-xl transition-colors dark:border-slate-800/60 dark:bg-[#1a1f2e]/90 dark:shadow-lg sm:px-6">
@@ -383,7 +383,7 @@ export default function TechDashboard() {
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('agenda')}
-                                className="flex flex-col items-start rounded-2xl border border-slate-200 bg-white p-4 text-left transition active:scale-[0.98] dark:border-slate-800 dark:bg-[#161b28]"
+                                className="flex flex-col items-start rounded-2xl border border-slate-200 bg-white p-4 text-left transition active:scale-[0.98] dark:border-slate-800 dark:bg-slate-900"
                             >
                                 <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                     <ClipboardDocumentListIcon className="h-4 w-4" /> Mi agenda
@@ -398,7 +398,7 @@ export default function TechDashboard() {
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('retiros')}
-                                className="flex flex-col items-start rounded-2xl border border-slate-200 bg-white p-4 text-left transition active:scale-[0.98] dark:border-slate-800 dark:bg-[#161b28]"
+                                className="flex flex-col items-start rounded-2xl border border-slate-200 bg-white p-4 text-left transition active:scale-[0.98] dark:border-slate-800 dark:bg-slate-900"
                             >
                                 <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                     <ArchiveBoxArrowDownIcon className="h-4 w-4" /> Retiros
@@ -414,7 +414,7 @@ export default function TechDashboard() {
                                 type="button"
                                 aria-label={`Lo siguiente: ${proxima.cliente?.nombre || proxima.prospecto_nombre || `Orden #${proxima.id}`}`}
                                 onClick={() => setActiveTab('agenda')}
-                                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left transition active:scale-[0.98] dark:border-slate-800 dark:bg-[#161b28]"
+                                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left transition active:scale-[0.98] dark:border-slate-800 dark:bg-slate-900"
                             >
                                 <span className={`h-10 w-1 shrink-0 rounded-full ${esReparacion(proxima) ? 'bg-rose-500' : 'bg-blue-500'}`} />
                                 <span className="min-w-0 flex-1">

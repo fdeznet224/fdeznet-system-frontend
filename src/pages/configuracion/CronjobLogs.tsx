@@ -1,17 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
-import { 
-    ArrowLeftIcon, 
-    ArrowPathIcon, 
-    TrashIcon, 
-    ClockIcon, 
-    CheckCircleIcon, 
-    XCircleIcon, 
-    ExclamationTriangleIcon,
-    CommandLineIcon
-} from '@heroicons/react/24/outline';
+import { ArrowPathIcon, TrashIcon, ClockIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { BOTON_ACCION_PRIMARIO, BOTON_ACCION_SECUNDARIO } from '@/components/ui/estilo';
 
 interface LogEntry {
     id: number;
@@ -22,7 +15,6 @@ interface LogEntry {
 }
 
 export default function CronjobLogs() {
-    const navigate = useNavigate();
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -103,54 +95,43 @@ export default function CronjobLogs() {
     };
 
     return (
-        /* ✅ ADAPTADO: Fondo base dinámico */
-        <div className="max-w-6xl mx-auto animate-in fade-in duration-500 pb-20 p-4 transition-colors duration-300">
-            
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 border-b border-slate-200 dark:border-slate-800 pb-6 transition-colors">
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                    <button onClick={() => navigate('/admin/configuracion')} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-                        <ArrowLeftIcon className="w-6 h-6" />
-                    </button>
-                    <div>
-                        <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2 transition-colors">
-                            <CommandLineIcon className="w-7 h-7 text-amber-500" />
-                            Historial de Cronjobs
-                        </h1>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm">Registro de ejecuciones automáticas del servidor.</p>
-                    </div>
-                </div>
-
-                <div className="flex gap-3 w-full md:w-auto">
+        <div className="mx-auto max-w-6xl">
+            <EncabezadoPagina
+                volver={{ a: '/admin/configuracion', texto: 'Configuración' }}
+                titulo="Historial de Cronjobs"
+                descripcion="Registro de ejecuciones automáticas del servidor."
+                acciones={(
+                    <div className="flex gap-2">
                     <button
                         onClick={handleReconcile}
                         disabled={reconciling}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+                        className={BOTON_ACCION_PRIMARIO}
                     >
                         <ArrowPathIcon className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} />
-                        <span className="hidden sm:inline font-bold uppercase text-xs tracking-widest">
+                        <span className="hidden sm:inline">
                             {reconciling ? 'Conciliando...' : 'Conciliar MikroTik'}
                         </span>
                     </button>
                     <button 
                         onClick={handleRefresh}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-200 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors"
+                        className={BOTON_ACCION_SECUNDARIO}
                     >
                         <ArrowPathIcon className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> 
-                        <span className="hidden sm:inline font-bold uppercase text-xs tracking-widest">Actualizar</span>
+                        <span className="hidden sm:inline">Actualizar</span>
                     </button>
                     <button 
                         onClick={handleClear}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 rounded-lg border border-rose-200 dark:border-rose-900/30 transition-colors"
+                        className={`${BOTON_ACCION_SECUNDARIO} text-rose-600 dark:text-rose-400`}
                     >
                         <TrashIcon className="w-4 h-4" /> 
-                        <span className="hidden sm:inline font-bold uppercase text-xs tracking-widest">Limpiar Logs</span>
+                        <span className="hidden sm:inline">Limpiar Logs</span>
                     </button>
-                </div>
-            </div>
+                    </div>
+                )}
+            />
 
             {/* Contenedor de Logs (Estilo Terminal Adaptativo) */}
-            <div className="bg-white dark:bg-[#0f1219] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-2xl overflow-hidden min-h-[500px] flex flex-col transition-colors">
+            <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-2xl overflow-hidden min-h-[500px] flex flex-col transition-colors">
                 
                 {/* Cabecera de Tabla */}
                 <div className="grid grid-cols-12 gap-4 p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-500 uppercase tracking-widest transition-colors">

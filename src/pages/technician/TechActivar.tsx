@@ -339,7 +339,7 @@ export default function TechActivar() {
 
     if (esNueva) {
         return (
-            <div className="min-h-screen bg-slate-50 pb-16 text-slate-900 dark:bg-[#0f1219] dark:text-white">
+            <div className="min-h-screen bg-slate-50 pb-16 text-slate-900 dark:bg-slate-950 dark:text-white">
                 {encabezado('Nueva instalación')}
                 <div className="mx-auto max-w-lg p-4"><NuevaSolicitud /></div>
             </div>
@@ -362,7 +362,7 @@ export default function TechActivar() {
             ['ONU', resultado.onu],
         ];
         return (
-            <div className="min-h-screen bg-slate-50 pb-16 text-slate-900 dark:bg-[#0f1219] dark:text-white">
+            <div className="min-h-screen bg-slate-50 pb-16 text-slate-900 dark:bg-slate-950 dark:text-white">
                 {encabezado('Cliente activado', resultado.nombre)}
                 <div className="mx-auto max-w-lg space-y-4 p-4">
                     <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
@@ -407,12 +407,12 @@ export default function TechActivar() {
     }
 
     if (!catalogo) {
-        return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500 dark:bg-[#0f1219]">Cargando solicitud...</div>;
+        return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500 dark:bg-slate-950">Cargando solicitud...</div>;
     }
 
     const capacidad = nap?.capacidad || 16;
     return (
-        <div className="min-h-screen bg-slate-50 pb-28 text-slate-900 dark:bg-[#0f1219] dark:text-white">
+        <div className="min-h-screen bg-slate-50 pb-28 text-slate-900 dark:bg-slate-950 dark:text-white">
             {encabezado('Activar instalación', form.nombre || `Solicitud #${catalogo.solicitud.id}`)}
             <form onSubmit={activar} className="mx-auto max-w-lg space-y-4 p-4">
                 {catalogo.solicitud.cliente_id && (

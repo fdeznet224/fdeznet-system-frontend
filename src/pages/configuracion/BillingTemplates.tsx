@@ -1,18 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import { 
-    PlusIcon, 
-    DocumentTextIcon, 
-    CalendarDaysIcon, 
-    PencilSquareIcon, 
-    TrashIcon, 
-    ChatBubbleLeftRightIcon,
-    ArrowLeftIcon
-} from '@heroicons/react/24/outline';
+import { PlusIcon, CalendarDaysIcon, PencilSquareIcon, TrashIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import CreateTemplateModal from './components/CreateTemplateModal';
 import { nombreFormaCobro, type FormaCobro } from '../../utils/formaCobro';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { BOTON_ACCION_PRIMARIO } from '@/components/ui/estilo';
 
 export interface Plantilla {
     id: number;
@@ -28,7 +22,6 @@ export interface Plantilla {
 }
 
 export default function BillingTemplates() {
-    const navigate = useNavigate();
     const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,32 +82,13 @@ export default function BillingTemplates() {
     }, [fetchData]);
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-20 p-4 transition-colors duration-300">
-            
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-4">
-                    <button 
-                        onClick={() => navigate('/admin/configuracion')} 
-                        className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-                    >
-                        <ArrowLeftIcon className="w-5 h-5" />
-                    </button>
-                    <div>
-                        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3 transition-colors">
-                            <DocumentTextIcon className="w-8 h-8 text-pink-600 dark:text-pink-500" /> 
-                            Plantillas de Cobro
-                        </h2>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Define ciclos de facturación.</p>
-                    </div>
-                </div>
-                <button 
-                    onClick={handleCreate}
-                    className="bg-pink-600 hover:bg-pink-500 text-white px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2 active:scale-95 font-black text-sm uppercase tracking-widest"
-                >
-                    <PlusIcon className="w-5 h-5" /> Nuevo Ciclo
-                </button>
-            </div>
+        <div className="space-y-6">
+            <EncabezadoPagina
+                volver={{ a: '/admin/configuracion', texto: 'Configuración' }}
+                titulo="Plantillas de Cobro"
+                descripcion="Define ciclos de facturación."
+                acciones={<button type="button" onClick={handleCreate} className={BOTON_ACCION_PRIMARIO}><PlusIcon className="h-5 w-5" /> Nuevo Ciclo</button>}
+            />
 
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -176,7 +150,7 @@ export default function BillingTemplates() {
                                         </div>
 
                                         <div className="relative">
-                                            <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white dark:border-[#0f1219] shadow-sm"></div>
+                                            <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white dark:border-slate-950 shadow-sm"></div>
                                             <p className="text-[10px] text-rose-600 dark:text-rose-400 uppercase font-black tracking-widest mb-0.5">Corte</p>
                                             <p className="text-lg font-black text-slate-900 dark:text-white transition-colors">{porInstalacion ? `${p.dias_tolerancia} días después del pago` : `Día ${fechaCorte}`}</p>
                                             <p className="text-xs text-slate-500 bg-slate-200 dark:bg-slate-800/50 inline-block px-1.5 py-0.5 rounded mt-1 font-bold transition-colors">

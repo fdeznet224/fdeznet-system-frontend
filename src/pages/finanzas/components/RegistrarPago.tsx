@@ -46,7 +46,7 @@ function classNames(...classes: string[]) {
 }
 
 // Estilos base reutilizables
-const inputClass = "w-full bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800/80 rounded-[1.25rem] p-4 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-sm transition-all";
+const inputClass = "w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-[1.25rem] p-4 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-sm transition-all";
 const labelClass = "block text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5 ml-1";
 
 export default function RegistrarPago({ onCancel, onSuccess }: Props) {
@@ -207,10 +207,10 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
     const totalCobro = Number(monto) || 0;
 
     return (
-        <div className="flex flex-col h-[100dvh] sm:h-[85vh] bg-[#f8fafc] dark:bg-[#0a0c10] font-sans overflow-hidden sm:rounded-[2rem] relative transition-colors duration-300">
+        <div className="flex flex-col h-[100dvh] sm:h-[85vh] bg-[#f8fafc] dark:bg-slate-950 font-sans overflow-hidden sm:rounded-[2rem] relative transition-colors duration-300">
             
             {/* ================= HEADER ================= */}
-            <div className="flex-none px-5 py-4 border-b border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-[#0a0c10]/80 backdrop-blur-xl z-20 flex items-center justify-between shrink-0">
+            <div className="flex-none px-5 py-4 border-b border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl z-20 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                     {selectedCliente ? (
                         <button onClick={deseleccionarCliente} className="p-2 -ml-2 text-slate-400 hover:text-slate-800 dark:hover:text-white bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all active:scale-95">
@@ -237,7 +237,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                     // VISTA 1: BUSCADOR
                     <div className="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-xl mx-auto mt-[-5vh]">
                         <div className="w-full text-center mb-8">
-                            <div className="mx-auto w-24 h-24 bg-white dark:bg-[#12141a] rounded-[2rem] flex items-center justify-center mb-6 shadow-xl border border-slate-100 dark:border-slate-800">
+                            <div className="mx-auto w-24 h-24 bg-white dark:bg-slate-900 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl border border-slate-100 dark:border-slate-800">
                                 <BanknotesIcon className="w-12 h-12 text-emerald-500" />
                             </div>
                             <h3 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mb-2">¿A quién cobramos?</h3>
@@ -251,7 +251,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                     autoFocus 
                                     type="text" 
                                     placeholder="Nombre, número de contrato de 4 dígitos o IP..."
-                                    className="w-full bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800 rounded-[1.5rem] pl-14 pr-12 py-4 text-base sm:text-lg text-slate-900 dark:text-white font-bold focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-slate-400 shadow-sm"
+                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] pl-14 pr-12 py-4 text-base sm:text-lg text-slate-900 dark:text-white font-bold focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-slate-400 shadow-sm"
                                     value={busqueda} 
                                     onChange={e => setBusqueda(e.target.value)}
                                 />
@@ -273,7 +273,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 leaveFrom="opacity-100 translate-y-0"
                                 leaveTo="opacity-0 translate-y-1"
                             >
-                                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800 rounded-[1.5rem] shadow-2xl overflow-hidden z-50">
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] shadow-2xl overflow-hidden z-50">
                                     {loadingBusqueda ? (
                                         <div className="p-6 text-center text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center gap-2">
                                             <ArrowPathIcon className="w-5 h-5 animate-spin"/> Buscando...
@@ -317,7 +317,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                     <div className="flex-1 flex flex-col p-4 sm:p-6 w-full max-w-xl mx-auto pb-32">
                         
                         {/* Tarjeta del Cliente Seleccionado */}
-                        <div className="bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800/80 rounded-[1.5rem] p-4 mb-5 flex items-center justify-between shadow-sm transition-colors">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-[1.5rem] p-4 mb-5 flex items-center justify-between shadow-sm transition-colors">
                             <div className="flex items-center gap-4 overflow-hidden">
                                 <div className="h-12 w-12 rounded-[14px] bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 flex items-center justify-center text-xl font-black text-indigo-600 dark:text-indigo-400 shrink-0">
                                     {selectedCliente.nombre.charAt(0)}
@@ -346,7 +346,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                             <>
                                 {/* Total a pagar: un solo cobro con todo incluido */}
                                 {estadoCuenta && totalPendiente > 0 ? (
-                                    <div className="mb-5 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#12141a]">
+                                    <div className="mb-5 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                                         <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Se está cobrando</p>
                                         <ul className="space-y-1.5 text-left">
                                             {estadoCuenta.detalle.map((item, index) => (
@@ -363,7 +363,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                         </ul>
                                     </div>
                                 ) : (
-                                    <div className="flex-1 flex flex-col items-center justify-center text-slate-500 bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-10 mb-6 shadow-sm">
+                                    <div className="flex-1 flex flex-col items-center justify-center text-slate-500 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-10 mb-6 shadow-sm">
                                         <CheckCircleIcon className="w-16 h-16 mx-auto mb-4 text-emerald-500"/>
                                         <p className="text-xl font-black text-slate-800 dark:text-white mb-2">¡Todo al día!</p>
                                         <p className="text-sm font-medium text-center">Este cliente no tiene recibos pendientes de pago.</p>
@@ -375,17 +375,17 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                     <div className="flex-1 flex flex-col">
                                         {/* Tabs Pagar/Promesa tipo iOS */}
                                         <div className="flex p-1 bg-slate-100 dark:bg-slate-900 rounded-[1rem] mb-6 border border-slate-200 dark:border-slate-800">
-                                            <button onClick={() => setModo('pagar')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${modo === 'pagar' ? 'bg-white dark:bg-[#12141a] text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-slate-800/80' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                                            <button onClick={() => setModo('pagar')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${modo === 'pagar' ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-slate-800/80' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                                                 Registrar Pago
                                             </button>
-                                            <button onClick={() => setModo('promesa')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${modo === 'promesa' ? 'bg-white dark:bg-[#12141a] text-amber-600 dark:text-amber-500 shadow-sm border border-slate-200 dark:border-slate-800/80' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                                            <button onClick={() => setModo('promesa')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${modo === 'promesa' ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-500 shadow-sm border border-slate-200 dark:border-slate-800/80' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                                                 Dar Prórroga
                                             </button>
                                         </div>
 
                                         {modo === 'pagar' ? (
                                             <form onSubmit={handleCobrar} className="flex flex-col flex-1">
-                                                <div className="mb-6 rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-[#12141a]">
+                                                <div className="mb-6 rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
                                                     <label className="mb-3 block text-[10px] font-black uppercase tracking-widest text-slate-500">Total a pagar</label>
                                                     <div className="relative mx-auto w-full max-w-[260px]">
                                                         <span className="absolute left-0 top-1/2 -translate-y-1/2 text-4xl font-black text-emerald-500">$</span>
@@ -411,10 +411,10 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
 
                                                 <label className={labelClass}>Forma de Pago</label>
                                                 <div className="grid grid-cols-2 gap-3 mb-6">
-                                                    <button type="button" onClick={() => setMetodo('efectivo')} className={`p-4 rounded-[1.25rem] border flex flex-col justify-center items-center gap-2 transition-all font-black text-sm uppercase tracking-wide ${metodo === 'efectivo' ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 ring-4 ring-emerald-500/10 shadow-sm' : 'bg-white dark:bg-[#12141a] border-slate-200 dark:border-slate-800 text-slate-500'}`}>
+                                                    <button type="button" onClick={() => setMetodo('efectivo')} className={`p-4 rounded-[1.25rem] border flex flex-col justify-center items-center gap-2 transition-all font-black text-sm uppercase tracking-wide ${metodo === 'efectivo' ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 ring-4 ring-emerald-500/10 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500'}`}>
                                                         <BanknotesIcon className="w-6 h-6"/> Efectivo
                                                     </button>
-                                                    <button type="button" onClick={() => setMetodo('transferencia')} className={`p-4 rounded-[1.25rem] border flex flex-col justify-center items-center gap-2 transition-all font-black text-sm uppercase tracking-wide ${metodo === 'transferencia' ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-500 text-blue-600 dark:text-blue-400 ring-4 ring-blue-500/10 shadow-sm' : 'bg-white dark:bg-[#12141a] border-slate-200 dark:border-slate-800 text-slate-500'}`}>
+                                                    <button type="button" onClick={() => setMetodo('transferencia')} className={`p-4 rounded-[1.25rem] border flex flex-col justify-center items-center gap-2 transition-all font-black text-sm uppercase tracking-wide ${metodo === 'transferencia' ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-500 text-blue-600 dark:text-blue-400 ring-4 ring-blue-500/10 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500'}`}>
                                                         <CreditCardIcon className="w-6 h-6"/> Transferencia
                                                     </button>
                                                 </div>
@@ -426,7 +426,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                                     </div>
                                                 )}
 
-                                                <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 sm:static bg-white/90 dark:bg-[#0a0c10]/90 sm:bg-transparent backdrop-blur-xl sm:backdrop-blur-none border-t border-slate-200 dark:border-slate-800 sm:border-0 z-10">
+                                                <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 sm:static bg-white/90 dark:bg-slate-950/90 sm:bg-transparent backdrop-blur-xl sm:backdrop-blur-none border-t border-slate-200 dark:border-slate-800 sm:border-0 z-10">
                                                     <button type="submit" disabled={procesando || totalCobro <= 0} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-[1.25rem] shadow-lg shadow-emerald-600/30 active:scale-95 transition-all disabled:opacity-50 text-sm uppercase tracking-widest flex justify-center items-center gap-2">
                                                         {procesando ? <ArrowPathIcon className="w-5 h-5 animate-spin"/> : <><CheckCircleIcon className="w-5 h-5" /> Cobrar ${totalCobro.toFixed(2)}</>}
                                                     </button>
@@ -453,7 +453,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                                     </div>
                                                 </div>
                                                 
-                                                <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 sm:static bg-white/90 dark:bg-[#0a0c10]/90 sm:bg-transparent backdrop-blur-xl sm:backdrop-blur-none border-t border-slate-200 dark:border-slate-800 sm:border-0 z-10">
+                                                <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 sm:static bg-white/90 dark:bg-slate-950/90 sm:bg-transparent backdrop-blur-xl sm:backdrop-blur-none border-t border-slate-200 dark:border-slate-800 sm:border-0 z-10">
                                                     <button type="submit" disabled={procesando || !fechaPromesa} className="w-full bg-amber-500 hover:bg-amber-400 text-white font-black py-4 rounded-[1.25rem] shadow-lg shadow-amber-500/30 active:scale-95 transition-all disabled:opacity-50 text-sm uppercase tracking-widest flex justify-center items-center gap-2">
                                                         {procesando ? <ArrowPathIcon className="w-5 h-5 animate-spin"/> : 'Aplicar Prórroga'}
                                                     </button>

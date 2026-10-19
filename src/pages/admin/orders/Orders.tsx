@@ -14,6 +14,8 @@ import ChatModal from '@/components/chat/ChatModal';
 import EditarSolicitudModal from './components/EditarSolicitudModal';
 import { apiErrorMessage } from '@/utils/apiError';
 import { CATEGORIAS_FALLA } from '@/utils/categoriasFalla';
+import { BOTON_ACCION_PRIMARIO, BOTON_ICONO, TARJETA } from '@/components/ui/estilo';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 interface ServiceOrder {
     id: number;
@@ -130,19 +132,19 @@ function Kpi({ titulo, valor, activo, tono, onClick }: { titulo: string; valor: 
             type="button"
             onClick={onClick}
             aria-pressed={activo}
-            className={`min-w-[6.5rem] flex-1 rounded-2xl border p-2.5 text-left md:min-w-[8.5rem] md:p-3 transition active:scale-[0.98] ${activo
-                ? 'border-blue-500 bg-blue-600 text-white shadow-md shadow-blue-600/20'
+            className={`min-w-[7rem] flex-1 snap-start rounded-2xl border px-3.5 py-2.5 text-left transition active:scale-[0.98] md:min-w-[8.5rem] ${activo
+                ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:border-blue-400 dark:bg-blue-500/10 dark:ring-blue-400'
                 : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}`}
         >
-            <p className={`text-[10px] font-black uppercase tracking-widest ${activo ? 'text-blue-100' : 'text-slate-400'}`}>{titulo}</p>
-            <p className={`mt-0.5 text-xl font-black md:mt-1 md:text-2xl ${activo ? 'text-white' : tono}`}>{valor}</p>
+            <p className={`text-xl font-bold tabular-nums ${tono}`}>{valor}</p>
+            <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">{titulo}</p>
         </button>
     );
 }
 
 function Dato({ icono: Icono, children, alerta = false }: { icono: ComponentType<{ className?: string }>; children: React.ReactNode; alerta?: boolean }) {
     return (
-        <span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold ${alerta
+        <span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium ${alerta
             ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
             : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
             <Icono className="h-3.5 w-3.5 shrink-0" /> {children}
@@ -317,44 +319,31 @@ export default function Orders() {
                 || (nombreDe(zonas, o.zona_id)?.nombre || '').toLowerCase().includes(busqueda));
     }, [filtro, ordenes, searchTerm, zonas]);
 
-    const campoClase = 'min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200';
+    const campoClase = 'min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200';
 
     return (
-        <div className="flex min-h-full flex-col gap-4 bg-slate-50 p-4 pb-24 font-sans text-slate-800 transition-colors dark:bg-[#0f1219] dark:text-white md:p-6">
+        <div className="flex flex-col gap-4 text-slate-800 dark:text-white">
+            <EncabezadoPagina
+                etiqueta="Órdenes de servicio"
+                titulo={esReparacion ? 'Reparaciones' : 'Instalaciones'}
+                descripcion={esReparacion
+                    ? 'Reportes de falla abiertos. Asigna o cambia el técnico; le llega por WhatsApp qué debe hacer.'
+                    : 'Solicitudes por instalar. Asigna técnico y fecha; el técnico activa al cliente desde su app.'}
+                acciones={(
+                    <>
+                        <button type="button" onClick={() => void fetchData()} aria-label="Actualizar" className={BOTON_ICONO}>
+                            <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+                        </button>
+                        {!esReparacion && (
+                            <button type="button" onClick={() => setIsCreateModalOpen(true)} aria-label="Nueva Orden" className={BOTON_ACCION_PRIMARIO}>
+                                <PlusIcon className="h-5 w-5" /> Nueva solicitud
+                            </button>
+                        )}
+                    </>
+                )}
+            />
 
-            {/* ENCABEZADO */}
-            <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Órdenes de servicio</p>
-                    <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white md:text-3xl">{esReparacion ? 'Reparaciones' : 'Instalaciones'}</h1>
-                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 md:text-sm">
-                        {esReparacion
-                            ? 'Reportes de falla abiertos. Asigna o cambia el técnico; le llega por WhatsApp qué debe hacer.'
-                            : 'Solicitudes por instalar. Asigna técnico y fecha; el técnico activa al cliente desde su app.'}
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => void fetchData()}
-                        aria-label="Actualizar"
-                        className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 transition hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-white"
-                    >
-                        <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                    {!esReparacion && <button
-                        type="button"
-                        onClick={() => setIsCreateModalOpen(true)}
-                        aria-label="Nueva Orden"
-                        className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-500 active:scale-95"
-                    >
-                        <PlusIcon className="h-5 w-5" />
-                        <span>Nueva solicitud</span>
-                    </button>}
-                </div>
-            </div>
-
-            <div role="tablist" aria-label="Tipo de orden" className="flex gap-1 rounded-2xl bg-slate-200/70 p-1 dark:bg-slate-800/70 sm:w-fit">
+            <div role="tablist" aria-label="Tipo de orden" className="flex gap-1 rounded-xl bg-slate-200/70 p-1 dark:bg-slate-800/70 sm:w-fit">
                 {([['instalaciones', 'Instalaciones'], ['reparaciones', 'Reparaciones']] as [Vista, string][]).map(([valor, texto]) => (
                     <button
                         key={valor}
@@ -362,8 +351,8 @@ export default function Orders() {
                         role="tab"
                         aria-selected={vista === valor}
                         onClick={() => cambiarVista(valor)}
-                        className={`flex-1 rounded-xl px-5 py-2 text-xs font-black transition sm:flex-none ${vista === valor
-                            ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-white'
+                        className={`flex-1 rounded-lg px-5 py-2 text-sm font-semibold transition sm:flex-none ${vista === valor
+                            ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white'
                             : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}
                     >
                         {texto}
@@ -372,7 +361,7 @@ export default function Orders() {
             </div>
 
             {/* RESUMEN / FILTROS */}
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+            <div className="no-scrollbar -mx-4 flex snap-x gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">
                 <Kpi titulo="Todas" valor={conteos.todas} activo={filtro === 'todas'} tono="text-slate-900 dark:text-white" onClick={() => setFiltro('todas')} />
                 <Kpi titulo="Sin técnico" valor={conteos.sin_tecnico} activo={filtro === 'sin_tecnico'} tono="text-amber-600" onClick={() => setFiltro('sin_tecnico')} />
                 <Kpi titulo="Asignadas" valor={conteos.asignadas} activo={filtro === 'asignadas'} tono="text-blue-600" onClick={() => setFiltro('asignadas')} />
@@ -386,7 +375,7 @@ export default function Orders() {
                 <input
                     type="search"
                     placeholder="Buscar por nombre, teléfono, zona o dirección..."
-                    className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-12 pr-10 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -400,12 +389,12 @@ export default function Orders() {
             {/* LISTADO */}
             {loading && ordenes.length === 0 ? (
                 <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                    {[0, 1, 2, 3].map((i) => <div key={i} className="h-56 animate-pulse rounded-3xl bg-white dark:bg-slate-900" />)}
+                    {[0, 1, 2, 3].map((i) => <div key={i} className="h-56 animate-pulse rounded-2xl bg-white dark:bg-slate-900" />)}
                 </div>
             ) : filteredOrders.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900">
-                    <ClipboardDocumentListIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" />
-                    <p className="mt-3 font-black text-slate-700 dark:text-slate-200">
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900">
+                    <ClipboardDocumentListIcon className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                    <p className="mt-3 font-semibold text-slate-700 dark:text-slate-200">
                         {ordenes.length === 0 ? (esReparacion ? 'No hay reparaciones abiertas' : 'No hay instalaciones pendientes') : 'Ninguna orden coincide'}
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
@@ -425,19 +414,19 @@ export default function Orders() {
                         const zona = nombreDe(zonas, orden.zona_id);
                         const plan = nombreDe(planes, orden.plan_id);
                         return (
-                            <article key={orden.id} className="flex flex-col rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900 md:p-5">
+                            <article key={orden.id} className={`${TARJETA} flex flex-col p-4 md:p-5`}>
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-1.5">
-                                            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ring-1 ${estado.clase}`}>{estado.texto}</span>
+                                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${estado.clase}`}>{estado.texto}</span>
                                             {orden.desdeWhatsapp && (
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20">
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20">
                                                     <SparklesIcon className="h-3 w-3" /> Agente IA
                                                 </span>
                                             )}
-                                            <span className="text-[11px] font-bold text-slate-400">#{orden.id} · {antiguedad(orden.creada)}</span>
+                                            <span className="text-xs text-slate-400">#{orden.id} · {antiguedad(orden.creada)}</span>
                                         </div>
-                                        <h3 className="mt-2 truncate text-lg font-black text-slate-900 dark:text-white">{orden.nombre}</h3>
+                                        <h3 className="mt-2 truncate text-base font-semibold text-slate-900 dark:text-white">{orden.nombre}</h3>
                                     </div>
                                     {orden.telefono && (
                                         <a href={`tel:${orden.telefono}`} aria-label={`Llamar a ${orden.nombre}`} className="shrink-0 rounded-xl border border-slate-200 p-2.5 text-slate-500 transition hover:border-blue-300 hover:text-blue-600 dark:border-slate-700">
@@ -453,7 +442,7 @@ export default function Orders() {
                                     </p>
                                     {orden.tipo && orden.tipo !== 'instalacion' && (
                                         <div className="rounded-xl bg-rose-50 p-2.5 text-xs text-rose-800 dark:bg-rose-500/10 dark:text-rose-200">
-                                            <p className="font-black">
+                                            <p className="font-semibold">
                                                 🔧 {orden.tipo === 'cambio_domicilio' ? 'Cambio de domicilio' : (CATEGORIAS_FALLA[orden.falla || ''] || 'Reparación')}
                                                 {PRIORIDAD_ALTA.has(orden.prioridad || '') && <span className="ml-1.5 rounded bg-rose-600 px-1.5 py-0.5 text-[10px] uppercase text-white">{orden.prioridad}</span>}
                                             </p>
@@ -465,7 +454,7 @@ export default function Orders() {
                                         {!esReparacion && <Dato icono={WifiIcon}>{plan ? `${plan.nombre}${plan.precio ? ` · $${plan.precio}` : ''}` : 'Plan por definir'}</Dato>}
                                         {orden.telefono && <Dato icono={PhoneIcon}>{orden.telefono}</Dato>}
                                         {enlace && (
-                                            <a href={enlace} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300">
+                                            <a href={enlace} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300">
                                                 <MapPinIcon className="h-3.5 w-3.5" /> Ver ubicación
                                             </a>
                                         )}
@@ -473,9 +462,9 @@ export default function Orders() {
                                     </div>
                                 </div>
 
-                                <div className={`mt-4 grid grid-cols-1 gap-2 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950/60 ${esReparacion ? '' : 'sm:grid-cols-2'}`}>
+                                <div className={`mt-4 grid grid-cols-1 gap-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-950/60 ${esReparacion ? '' : 'sm:grid-cols-2'}`}>
                                     <label className="block">
-                                        <span className="mb-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400"><UserCircleIcon className="h-3.5 w-3.5" /> Técnico</span>
+                                        <span className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500"><UserCircleIcon className="h-3.5 w-3.5" /> Técnico</span>
                                         <select
                                             aria-label={`Técnico de ${orden.nombre}`}
                                             value={orden.tecnico?.id ?? ''}
@@ -488,12 +477,12 @@ export default function Orders() {
                                         </select>
                                     </label>
                                     {!esReparacion && <div>
-                                        <span className="mb-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400"><CalendarDaysIcon className="h-3.5 w-3.5" /> Visita</span>
+                                        <span className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500"><CalendarDaysIcon className="h-3.5 w-3.5" /> Visita</span>
                                         <button
                                             type="button"
                                             aria-label={`Agendar visita de ${orden.nombre}`}
                                             onClick={() => setEditando(orden)}
-                                            className={`min-h-10 w-full rounded-xl border px-3 text-left text-xs font-black transition ${orden.fecha_programada
+                                            className={`min-h-10 w-full rounded-xl border px-3 text-left text-xs font-semibold transition ${orden.fecha_programada
                                                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'
                                                 : 'border-dashed border-slate-300 bg-white text-slate-500 hover:border-blue-400 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-950'}`}
                                         >
@@ -506,7 +495,7 @@ export default function Orders() {
                                     {!esReparacion && <button
                                         type="button"
                                         onClick={() => { setTargetCliente(orden); setShowChatModal(true); }}
-                                        className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-black transition active:scale-[0.98] ${noLeidos > 0
+                                        className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${noLeidos > 0
                                             ? 'bg-emerald-600 text-white hover:bg-emerald-500'
                                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'}`}
                                     >
@@ -516,14 +505,14 @@ export default function Orders() {
                                     {!esReparacion && <button
                                         type="button"
                                         onClick={() => setEditando(orden)}
-                                        className="h-10 rounded-xl border border-slate-200 px-4 text-xs font-black text-slate-700 transition hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:text-slate-200"
+                                        className="h-10 rounded-xl border border-slate-200 px-4 text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:text-slate-200"
                                     >
                                         Editar
                                     </button>}
                                     <button
                                         type="button"
                                         onClick={() => void handleDelete(orden)}
-                                        className="h-10 rounded-xl px-4 text-xs font-black text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                                        className="h-10 rounded-xl px-4 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
                                     >
                                         Cancelar
                                     </button>

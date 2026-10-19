@@ -8,6 +8,9 @@ import {
     PhoneIcon, MapPinIcon, ChevronRightIcon
 } from '@heroicons/react/24/outline';
 
+import { Dialog, DialogPanel } from '@headlessui/react';
+import { BOTON_ACCION_PRIMARIO, BOTON_ICONO, BOTON_SECUNDARIO, TARJETA, TEXTO_TONO, type Tono } from '@/components/ui/estilo';
+import { EncabezadoPagina, Pildora, Vacio } from '@/components/ui/Pagina';
 import ClientToolsModal, { type ToolMode } from './components/ClientToolsModal';
 import { CATEGORIAS_FALLA } from '@/utils/categoriasFalla';
 import CreateClientModal from './components/CreateClientModal';
@@ -88,7 +91,7 @@ function IconoConexion({ tipo }: { tipo?: 'fibra' | 'radio' }) {
 /** Para radioenlace va en lugar de la potencia de la ONU. */
 function AntenaCliente({ antena }: { antena?: Antena | null }) {
     if (!antena) return null;
-    const base = 'mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-black';
+    const base = 'mt-1 inline-block rounded-md px-1.5 py-0.5 text-[11px] font-semibold';
     if (!antena.ip) return <span className={`${base} bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400`}>Sin IP de antena</span>;
     if (antena.responde == null) return <span className={`${base} bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400`}>Antena sin revisar</span>;
     return (
@@ -110,7 +113,7 @@ function PotenciaCliente({ potencia, cambio }: { potencia?: Potencia; cambio?: C
         <>
         <span
             title={potencia.nivel === 'alta' ? 'Potencia alta: peor que -27 dBm' : 'Potencia normal'}
-            className={`mt-1 inline-block rounded-md px-1.5 py-0.5 font-mono text-[10px] font-black ${potencia.nivel === 'alta'
+            className={`mt-1 inline-block rounded-md px-1.5 py-0.5 font-mono text-[11px] font-semibold ${potencia.nivel === 'alta'
                 ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
                 : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'}`}
         >
@@ -119,7 +122,7 @@ function PotenciaCliente({ potencia, cambio }: { potencia?: Potencia; cambio?: C
         {cambio && cambio.nivel !== 'estable' && (
             <span
                 title={`Su señal normal es ${cambio.normal.toFixed(2)} dBm; ahora ${cambio.actual.toFixed(2)} dBm`}
-                className={`mt-1 ml-1 inline-block rounded-md px-1.5 py-0.5 font-mono text-[10px] font-black ${cambio.nivel === 'bajo_fuerte'
+                className={`mt-1 ml-1 inline-block rounded-md px-1.5 py-0.5 font-mono text-[11px] font-semibold ${cambio.nivel === 'bajo_fuerte'
                     ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
                     : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}
             >
@@ -139,7 +142,7 @@ function ReporteCliente({ reporte, potencia, sugerir, onReportar }: { reporte?: 
         return (
             <span
                 title={`${CATEGORIAS_FALLA[reporte.categoria] || reporte.categoria} · ${reporte.estado.replace('_', ' ')}${reporte.tecnico ? ` · ${reporte.tecnico}` : ' · sin técnico'}`}
-                className="mt-1 ml-1 inline-block rounded-md bg-orange-50 px-1.5 py-0.5 text-[10px] font-black text-orange-700 dark:bg-orange-500/10 dark:text-orange-300"
+                className="mt-1 ml-1 inline-block rounded-md bg-orange-50 px-1.5 py-0.5 text-[11px] font-semibold text-orange-700 dark:bg-orange-500/10 dark:text-orange-300"
             >
                 🔧 Reporte #{reporte.id}
             </span>
@@ -150,7 +153,7 @@ function ReporteCliente({ reporte, potencia, sugerir, onReportar }: { reporte?: 
         <button
             type="button"
             onClick={(event) => { event.stopPropagation(); onReportar(); }}
-            className="mt-1 ml-1 inline-block rounded-md border border-orange-200 px-1.5 py-0.5 text-[10px] font-black text-orange-700 hover:bg-orange-50 dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-500/10"
+            className="mt-1 ml-1 inline-block rounded-md border border-orange-200 px-1.5 py-0.5 text-[11px] font-semibold text-orange-700 hover:bg-orange-50 dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-500/10"
         >
             Reportar falla
         </button>
@@ -175,7 +178,6 @@ export default function Clientes() {
     const [routers, setRouters] = useState<RouterSummary[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [mostrarBusquedaMovil, setMostrarBusquedaMovil] = useState(false);
     const [mostrarFiltrosMovil, setMostrarFiltrosMovil] = useState(false);
 
     const [busqueda, setBusqueda] = useState('');
@@ -300,262 +302,214 @@ export default function Clientes() {
     }), [clientes, onlineStatus, potencias, cambiosSenal]);
 
     // Contadores de arriba: tocar uno filtra la lista; tocarlo otra vez la muestra completa.
-    const contadores: { filtro: ClientFilter; valor: number; texto: string; color: string; activo: string }[] = [
-        { filtro: 'online', valor: resumen.online, texto: 'Online', color: 'text-emerald-600 dark:text-emerald-400', activo: 'border-emerald-500 bg-emerald-500/10' },
-        { filtro: 'offline', valor: resumen.offline, texto: 'Offline', color: 'text-slate-700 dark:text-slate-200', activo: 'border-slate-500 bg-slate-500/10' },
-        { filtro: 'potencia_alta', valor: resumen.potenciaAlta, texto: 'Potencia alta', color: 'text-rose-600 dark:text-rose-400', activo: 'border-rose-500 bg-rose-500/10' },
-        { filtro: 'potencia_normal', valor: resumen.potenciaNormal, texto: 'Potencia normal', color: 'text-sky-600 dark:text-sky-400', activo: 'border-sky-500 bg-sky-500/10' },
-        ...(resumen.senalBajo > 0 ? [{ filtro: 'senal_bajo' as ClientFilter, valor: resumen.senalBajo, texto: 'Señal bajó', color: 'text-orange-600 dark:text-orange-400', activo: 'border-orange-500 bg-orange-500/10' }] : []),
-        { filtro: 'suspendidos', valor: resumen.suspendidos, texto: 'Suspendidos', color: 'text-amber-600 dark:text-amber-400', activo: 'border-amber-500 bg-amber-500/10' },
-        ...(resumen.radio > 0 ? [{ filtro: 'radio' as ClientFilter, valor: resumen.radio, texto: 'Radioenlace', color: 'text-violet-600 dark:text-violet-400', activo: 'border-violet-500 bg-violet-500/10' }] : []),
-        ...(resumen.antenaCaida > 0 ? [{ filtro: 'antena_caida' as ClientFilter, valor: resumen.antenaCaida, texto: 'Antena no responde', color: 'text-rose-600 dark:text-rose-400', activo: 'border-rose-500 bg-rose-500/10' }] : []),
+    const contadores: { filtro: ClientFilter; valor: number; texto: string; tono: Tono }[] = [
+        { filtro: 'online', valor: resumen.online, texto: 'Online', tono: 'verde' },
+        { filtro: 'offline', valor: resumen.offline, texto: 'Offline', tono: 'neutro' },
+        { filtro: 'potencia_alta', valor: resumen.potenciaAlta, texto: 'Potencia alta', tono: 'rojo' },
+        { filtro: 'potencia_normal', valor: resumen.potenciaNormal, texto: 'Potencia normal', tono: 'azul' },
+        ...(resumen.senalBajo > 0 ? [{ filtro: 'senal_bajo' as ClientFilter, valor: resumen.senalBajo, texto: 'Señal bajó', tono: 'ambar' as Tono }] : []),
+        { filtro: 'suspendidos', valor: resumen.suspendidos, texto: 'Suspendidos', tono: 'ambar' },
+        ...(resumen.radio > 0 ? [{ filtro: 'radio' as ClientFilter, valor: resumen.radio, texto: 'Radioenlace', tono: 'violeta' as Tono }] : []),
+        ...(resumen.antenaCaida > 0 ? [{ filtro: 'antena_caida' as ClientFilter, valor: resumen.antenaCaida, texto: 'Antena no responde', tono: 'rojo' as Tono }] : []),
     ];
+    const hayFiltros = Boolean(filtroRouter || filtroZona || filtroEstado !== 'todos');
+    const SELECTOR = 'h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
 
     return (
-        <div className="flex min-h-0 flex-col gap-4 font-sans text-slate-700 dark:text-slate-200 lg:h-[calc(100vh-9rem)] lg:gap-6">
-
-            {/* =========================================================
-                HEADER Y ACCIONES DE FILTRADO COMPACTO
-               ========================================================= */}
-            <div className="flex-none space-y-3">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <p className="mb-1 hidden text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 sm:block">Directorio</p>
-                        <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                            Gestión de Clientes
-                            <span className="text-xs bg-slate-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full font-bold sm:inline hidden">
-                                {clientesFiltrados.length}
-                            </span>
-                        </h2>
-                        <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm">Servicios, conectividad y cobranza</p>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                            aria-label="Buscar en clientes"
-                            onClick={() => { setMostrarBusquedaMovil(!mostrarBusquedaMovil); setMostrarFiltrosMovil(false); }}
-                            className={`xl:hidden p-2 rounded-xl border transition-all ${mostrarBusquedaMovil ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'}`}
-                        >
-                            <MagnifyingGlassIcon className="w-4 h-4" />
-                        </button>
-
-                        <button
-                            aria-label="Filtrar clientes"
-                            onClick={() => { setMostrarFiltrosMovil(!mostrarFiltrosMovil); setMostrarBusquedaMovil(false); }}
-                            className={`xl:hidden p-2 rounded-xl border transition-all flex items-center gap-1 ${mostrarFiltrosMovil ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'}`}
-                        >
-                            <FunnelIcon className="w-4 h-4" />
-                            {(filtroRouter || filtroZona || filtroEstado !== 'todos') && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-                            )}
-                        </button>
-
-                        <button aria-label="Nuevo Cliente" onClick={() => setIsCreateOpen(true)} className="flex min-h-11 items-center gap-2 rounded-2xl bg-blue-600 px-3 text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 active:scale-95 md:px-4">
-                            <UserPlusIcon className="w-5 h-5" /> <span className="hidden text-sm font-black sm:inline">Nuevo cliente</span>
-                        </button>
-                    </div>
-                </div>
-
-                {idsRevisar && (
-                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm dark:border-orange-500/30 dark:bg-orange-500/10">
-                        <p className="font-bold text-orange-800 dark:text-orange-300">
-                            📉 Clientes del aviso de señal ({idsRevisar.size}). Elige a quién mandar técnico con «Reportar falla».
-                        </p>
-                        <button type="button" onClick={() => setSearchParams({})} className="shrink-0 rounded-xl border border-orange-300 px-3 py-1.5 text-xs font-black text-orange-800 dark:border-orange-500/40 dark:text-orange-300">
-                            Ver todos
-                        </button>
-                    </div>
+        <div className="flex flex-col gap-4">
+            <EncabezadoPagina
+                titulo="Clientes"
+                descripcion={loading ? 'Cargando...' : `${clientesFiltrados.length === clientes.length ? clientes.length : `${clientesFiltrados.length} de ${clientes.length}`} clientes · servicios, conexión y cobranza`}
+                acciones={(
+                    <button aria-label="Nuevo Cliente" onClick={() => setIsCreateOpen(true)} className={BOTON_ACCION_PRIMARIO}>
+                        <UserPlusIcon className="h-5 w-5" /> Nuevo cliente
+                    </button>
                 )}
+            />
 
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-                    {contadores.map((c) => (
+            {idsRevisar && (
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm dark:border-orange-500/30 dark:bg-orange-500/10">
+                    <p className="font-semibold text-orange-800 dark:text-orange-300">
+                        📉 Clientes del aviso de señal ({idsRevisar.size}). Elige a quién mandar técnico con «Reportar falla».
+                    </p>
+                    <button type="button" onClick={() => setSearchParams({})} className="shrink-0 rounded-xl border border-orange-300 px-3 py-1.5 text-xs font-semibold text-orange-800 dark:border-orange-500/40 dark:text-orange-300">
+                        Ver todos
+                    </button>
+                </div>
+            )}
+
+            {/* BÚSQUEDA Y FILTROS */}
+            <div className="flex gap-2">
+                <div className="relative min-w-0 flex-1">
+                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="search"
+                        aria-label="Buscar en clientes"
+                        placeholder="Buscar por nombre, contrato, zona o IP..."
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                    />
+                </div>
+                <div className="hidden gap-2 xl:flex">
+                    <select aria-label="Nodo" value={filtroRouter} onChange={(e) => setFiltroRouter(e.target.value)} className={SELECTOR}>
+                        <option value="">Todos los Nodos</option>
+                        {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                    </select>
+                    <select aria-label="Zona" value={filtroZona} onChange={(e) => setFiltroZona(e.target.value)} className={SELECTOR}>
+                        <option value="">Todas las Zonas</option>
+                        {zonasUnicas.map((z) => <option key={z} value={z}>{z}</option>)}
+                    </select>
+                    <select aria-label="Estado" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as ClientFilter)} className={SELECTOR}>
+                        <option value="todos">Todos los Estados</option>
+                        {mobileStatusFilters.filter((est) => est !== 'todos').map((est) => <option key={est} value={est}>{NOMBRE_FILTRO[est]}</option>)}
+                    </select>
+                </div>
+                <button
+                    type="button"
+                    aria-label="Filtrar clientes"
+                    onClick={() => setMostrarFiltrosMovil(true)}
+                    className={`relative xl:hidden ${BOTON_ICONO} h-11 w-11`}
+                >
+                    <FunnelIcon className="h-5 w-5" />
+                    {hayFiltros && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500" />}
+                </button>
+            </div>
+
+            {/* CONTADORES: en celular se deslizan de lado */}
+            <div className="no-scrollbar -mx-4 flex snap-x gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+                {contadores.map((c) => {
+                    const activo = filtroEstado === c.filtro;
+                    return (
                         <button
                             key={c.filtro}
                             type="button"
-                            aria-pressed={filtroEstado === c.filtro}
+                            aria-pressed={activo}
+                            aria-label={`${c.valor} ${c.texto}`}
                             title={c.filtro === 'potencia_alta' ? 'Señal peor que -27 dBm en la última lectura' : undefined}
-                            onClick={() => setFiltroEstado(filtroEstado === c.filtro ? 'todos' : c.filtro)}
-                            className={`rounded-2xl border p-3 text-left transition-colors ${filtroEstado === c.filtro ? c.activo : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'}`}
+                            onClick={() => setFiltroEstado(activo ? 'todos' : c.filtro)}
+                            className={`flex min-w-[7.5rem] shrink-0 snap-start flex-col rounded-2xl border px-3.5 py-2.5 text-left transition sm:min-w-[9rem] ${activo
+                                ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:border-blue-400 dark:bg-blue-500/10 dark:ring-blue-400'
+                                : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}`}
                         >
-                            <span className={`block text-lg font-black md:text-2xl ${c.color}`}>{c.valor}</span>
-                            <span className="block text-[9px] font-black uppercase leading-tight tracking-wider text-slate-400 md:text-[10px]">{c.texto}</span>
+                            <span className={`text-xl font-bold tabular-nums ${TEXTO_TONO[c.tono]}`}>{c.valor}</span>
+                            <span className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">{c.texto}</span>
                         </button>
-                    ))}
-                </div>
+                    );
+                })}
+            </div>
 
-                {/* 🖥️ FILTROS ESCRITORIO */}
-                <div className="hidden xl:flex gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-md dark:shadow-lg overflow-x-auto">
-                    <div className="relative min-w-[250px] flex-1">
-                        <MagnifyingGlassIcon className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-                        <input
-                            type="text" placeholder="Buscar por nombre, contrato, zona o IP..."
-                            className="w-full bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-sm font-medium transition-colors"
-                            value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-                        />
-                    </div>
-                    
-                    <div className="flex gap-3 shrink-0">
-                        <select value={filtroRouter} onChange={(e) => setFiltroRouter(e.target.value)} className="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 outline-none text-sm font-bold cursor-pointer">
-                            <option value="">Todos los Nodos</option>
-                            {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-                        </select>
-
-                        {/* 🔥 SELECT DE ZONAS ESCRITORIO 🔥 */}
-                        <select value={filtroZona} onChange={(e) => setFiltroZona(e.target.value)} className="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 outline-none text-sm font-bold cursor-pointer">
-                            <option value="">Todas las Zonas</option>
-                            {zonasUnicas.map((z) => <option key={z} value={z}>{z}</option>)}
-                        </select>
-
-                        <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as ClientFilter)} className="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-black text-sm cursor-pointer">
-                            <option value="todos">Todos los Estados</option>
-                            <option value="online">🟢 Online</option>
-                            <option value="offline">🔴 Offline</option>
-                            <option value="potencia_alta">📉 Potencia alta</option>
-                            <option value="potencia_normal">📶 Potencia normal</option>
-                            <option value="radio">📡 Radioenlace</option>
-                            <option value="fibra">⚡ Fibra óptica</option>
-                            <option value="antena_caida">🚫 Antena no responde</option>
-                            <option value="suspendidos">⛔ Suspendidos</option>
-                            <option value="morosos">💰 Con Deuda</option>
-                        </select>
-                    </div>
-                </div>
-
-                {/* 📱 DESPLEGABLE MÓVIL A (Búsqueda) */}
-                {mostrarBusquedaMovil && (
-                    <div className="xl:hidden relative bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700/60 shadow-md">
-                        <MagnifyingGlassIcon className="absolute left-5 top-4 w-4 h-4 text-slate-400" />
-                        <input
-                            type="text" placeholder="Nombre, contrato, zona o IP..." autoFocus
-                            className="w-full bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 pl-10 pr-10 py-2 rounded-lg border border-slate-200 dark:border-slate-800 focus:border-blue-500 outline-none text-xs font-medium"
-                            value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-                        />
-                        {busqueda && (
-                            <button onClick={() => setBusqueda('')} className="absolute right-5 top-3.5 text-xs text-slate-400 hover:text-slate-900 dark:hover:text-white font-bold">Limpiar</button>
-                        )}
-                    </div>
-                )}
-
-                {/* 📱 DESPLEGABLE MÓVIL B (Filtros) */}
-                {mostrarFiltrosMovil && (
-                    <div className="fixed inset-0 z-[75] flex items-end bg-slate-950/55 backdrop-blur-sm xl:hidden" onClick={() => setMostrarFiltrosMovil(false)}>
-                        <div role="dialog" aria-modal="true" aria-label="Filtros de clientes" onClick={(event) => event.stopPropagation()} className="w-full animate-in rounded-t-[2rem] border border-slate-200 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 shadow-2xl slide-in-from-bottom-8 dark:border-slate-800 dark:bg-slate-900 sm:mx-auto sm:mb-4 sm:max-w-lg sm:rounded-[2rem]">
-                            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-700" />
-                            <div className="mb-5 flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-lg font-black text-slate-900 dark:text-white">Filtrar clientes</h3>
-                                    <p className="text-xs text-slate-500">Estado, nodo y zona</p>
-                                </div>
-                                <button type="button" onClick={() => setMostrarFiltrosMovil(false)} className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white active:scale-95">
+            {/* FILTROS (celular y tableta) */}
+            <Dialog open={mostrarFiltrosMovil} onClose={() => setMostrarFiltrosMovil(false)} aria-label="Filtros de clientes" className="fixed inset-0 z-[75] xl:hidden">
+                <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm" aria-hidden="true" />
+                <div className="fixed inset-x-0 bottom-0 flex justify-center sm:bottom-4">
+                    <DialogPanel className="w-full rounded-t-3xl border border-slate-200 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:max-w-lg sm:rounded-3xl">
+                        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
+                        <div className="mb-4 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Filtrar clientes</h3>
+                                <p className="text-xs text-slate-500">Estado, nodo y zona</p>
+                            </div>
+                            <div className="flex gap-2">
+                                {hayFiltros && (
+                                    <button type="button" onClick={() => { setFiltroEstado('todos'); setFiltroRouter(''); setFiltroZona(''); }} className="rounded-xl px-3 py-2 text-xs font-semibold text-slate-500">
+                                        Quitar
+                                    </button>
+                                )}
+                                <button type="button" onClick={() => setMostrarFiltrosMovil(false)} className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white active:scale-95">
                                     Listo
                                 </button>
                             </div>
-
-                            <div>
-                                <span className="mb-2 block text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Estado técnico</span>
-                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                    {mobileStatusFilters.map((est) => (
-                                        <button
-                                            key={est} onClick={() => setFiltroEstado(est)}
-                                            className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-black transition-all ${filtroEstado === est ? 'border-blue-500 bg-blue-600 text-white' : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400'}`}
-                                        >
-                                            {est === 'todos' && `Todos (${clientes.length})`}
-                                            {est === 'online' && 'En línea'}
-                                            {est === 'offline' && 'Sin conexión'}
-                                            {est === 'potencia_alta' && 'Potencia alta'}
-                                            {est === 'potencia_normal' && 'Potencia normal'}
-                                            {est === 'radio' && 'Radioenlace'}
-                                            {est === 'fibra' && 'Fibra óptica'}
-                                            {est === 'antena_caida' && 'Antena no responde'}
-                                            {est === 'suspendidos' && 'Suspendidos'}
-                                            {est === 'morosos' && 'Con deuda'}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-                                <label>
-                                    <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Nodo / MikroTik</span>
-                                    <select
-                                        value={filtroRouter} onChange={(e) => setFiltroRouter(e.target.value)}
-                                        className="app-field truncate py-2 text-xs font-extrabold"
-                                    >
-                                        <option value="">Todos los nodos</option>
-                                        {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-                                    </select>
-                                </label>
-                                <label>
-                                    <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Zona</span>
-                                    <select
-                                        value={filtroZona} onChange={(e) => setFiltroZona(e.target.value)}
-                                        className="app-field truncate py-2 text-xs font-extrabold"
-                                    >
-                                        <option value="">Todas las zonas</option>
-                                        {zonasUnicas.map((z) => <option key={z} value={z}>{z}</option>)}
-                                    </select>
-                                </label>
-                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                        <span className="mb-2 block text-xs font-semibold text-slate-500">Estado</span>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                            {mobileStatusFilters.map((est) => (
+                                <button
+                                    key={est}
+                                    type="button"
+                                    onClick={() => setFiltroEstado(est)}
+                                    className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold transition ${filtroEstado === est ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}
+                                >
+                                    {est === 'todos' ? `Todos (${clientes.length})` : NOMBRE_FILTRO[est]}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+                            <label>
+                                <span className="mb-1.5 block text-xs font-semibold text-slate-500">Nodo / MikroTik</span>
+                                <select value={filtroRouter} onChange={(e) => setFiltroRouter(e.target.value)} className={`${SELECTOR} w-full`}>
+                                    <option value="">Todos los nodos</option>
+                                    {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                                </select>
+                            </label>
+                            <label>
+                                <span className="mb-1.5 block text-xs font-semibold text-slate-500">Zona</span>
+                                <select value={filtroZona} onChange={(e) => setFiltroZona(e.target.value)} className={`${SELECTOR} w-full`}>
+                                    <option value="">Todas las zonas</option>
+                                    {zonasUnicas.map((z) => <option key={z} value={z}>{z}</option>)}
+                                </select>
+                            </label>
+                        </div>
+                    </DialogPanel>
+                </div>
+            </Dialog>
 
-            {/* =========================================================
-                ZONA DE DATOS PRINCIPALES
-               ========================================================= */}
-            <div className="app-card flex min-h-[28rem] flex-1 flex-col overflow-hidden transition-colors duration-300">
-                {loading ? (
-                    <div className="flex justify-center items-center h-full">
-                        <ArrowPathIcon className="w-8 h-8 animate-spin text-blue-500" />
-                    </div>
-                ) : (
-                    <div className="overflow-y-auto flex-1 custom-scrollbar">
-
-                        {/* 🖥️ VISTA ESCRITORIO: filas de dos líneas */}
-                        <table className="hidden w-full border-collapse text-left text-xs md:table">
-                            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100 font-black uppercase tracking-wider text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+            {/* LISTA */}
+            {loading ? (
+                <div className={`${TARJETA} flex h-72 items-center justify-center`}>
+                    <ArrowPathIcon className="h-8 w-8 animate-spin text-blue-500" />
+                </div>
+            ) : clientesFiltrados.length === 0 ? (
+                <div className={TARJETA}>
+                    <Vacio icono={MagnifyingGlassIcon} titulo="Ningún cliente coincide" detalle="Cambia la búsqueda o quita los filtros." />
+                </div>
+            ) : (
+                <>
+                    {/* Computadora: tabla */}
+                    <div className={`${TARJETA} hidden overflow-hidden md:block`}>
+                        <table className="w-full border-collapse text-left text-sm">
+                            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
                                 <tr>
-                                    <th className="px-5 py-3">Cliente</th>
-                                    <th className="px-5 py-3">Plan / IP</th>
-                                    <th className="px-5 py-3">Conexión</th>
-                                    <th className="px-5 py-3 text-center">Servicio</th>
-                                    <th className="px-5 py-3 text-right">Finanzas</th>
-                                    <th className="w-16 px-5 py-3 text-center"><span className="sr-only">Acciones</span></th>
+                                    <th className="px-4 py-3 font-semibold">Cliente</th>
+                                    <th className="px-4 py-3 font-semibold">Plan / IP</th>
+                                    <th className="px-4 py-3 font-semibold">Conexión</th>
+                                    <th className="px-4 py-3 text-center font-semibold">Servicio</th>
+                                    <th className="px-4 py-3 text-right font-semibold">Finanzas</th>
+                                    <th className="w-14 px-4 py-3"><span className="sr-only">Acciones</span></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {clientesFiltrados.map((c) => {
                                     const statusData = onlineStatus.get(c.id.toString());
                                     return (
-                                        <tr key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className="group cursor-pointer bg-transparent align-top transition hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                                            <td className="px-5 py-3">
-                                                <div className="flex items-center gap-1.5 text-sm font-black text-slate-800 transition-colors group-hover:text-blue-500 dark:text-white"><IconoConexion tipo={c.tipo_conexion} />{c.nombre}</div>
-                                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                                                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-slate-700 dark:bg-slate-800 dark:text-slate-200" title="Número de contrato">{c.cedula || 'Sin contrato'}</span>
+                                        <tr key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className="group cursor-pointer align-top transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-1.5 font-semibold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400"><IconoConexion tipo={c.tipo_conexion} />{c.nombre}</div>
+                                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                                                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200" title="Número de contrato">{c.cedula || 'Sin contrato'}</span>
                                                     <span className="inline-flex items-center gap-1"><MapPinIcon className="h-3.5 w-3.5" />{c.zona || 'Sin zona'}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-5 py-3">
-                                                <div className="text-xs font-extrabold text-blue-600 dark:text-blue-400">
+                                            <td className="px-4 py-3">
+                                                <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
                                                     {c.servicio.plan_nombre}
-                                                    {Number(c.servicio.precio_plan) > 0 && <span className="ml-1.5 font-bold text-slate-400">${Number(c.servicio.precio_plan).toLocaleString('es-MX')}</span>}
+                                                    {Number(c.servicio.precio_plan) > 0 && <span className="ml-1.5 text-slate-400">${Number(c.servicio.precio_plan).toLocaleString('es-MX')}</span>}
                                                 </div>
-                                                <button type="button" onClick={(event) => { event.stopPropagation(); if (c.servicio.ip_asignada) void abrirEquipo(c.servicio.ip_asignada); }} className="mt-1 font-mono text-[11px] font-bold text-slate-500 underline decoration-dotted underline-offset-2 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">{c.servicio.ip_asignada || 'Sin IP'}</button>
+                                                <button type="button" onClick={(event) => { event.stopPropagation(); if (c.servicio.ip_asignada) void abrirEquipo(c.servicio.ip_asignada); }} className="mt-1 font-mono text-xs text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-500 dark:text-blue-400">{c.servicio.ip_asignada || 'Sin IP'}</button>
                                             </td>
-                                            <td className="px-5 py-3">
+                                            <td className="px-4 py-3">
                                                 <ConexionCliente status={statusData} />
                                                 {c.tipo_conexion === 'radio' ? <AntenaCliente antena={c.antena} /> : <PotenciaCliente potencia={potencias[c.id.toString()]} cambio={cambiosSenal[c.id.toString()]} />}
                                                 {reportes && <ReporteCliente reporte={reportes[c.id.toString()]} potencia={potencias[c.id.toString()]} sugerir={Boolean(idsRevisar)} onReportar={() => setToolModal({ show: true, cliente: c, modo: 'reportar_falla' })} />}
                                             </td>
-                                            <td className="px-5 py-3 text-center">
+                                            <td className="px-4 py-3 text-center">
                                                 <EstadoServicio estado={c.servicio.estado_servicio} />
                                             </td>
-                                            <td className="px-5 py-3 text-right">
+                                            <td className="px-4 py-3 text-right">
                                                 <FinanzasCliente finanzas={c.finanzas} />
                                             </td>
-                                            <td className="px-5 py-3 text-center">
-                                                <button aria-label={`Herramientas de ${c.nombre}`} onClick={(e) => { e.stopPropagation(); setToolModal({ show: true, cliente: c }); }} className="relative rounded-xl border border-slate-200 bg-slate-100 p-1.5 text-slate-400 transition hover:text-slate-900 active:scale-90 dark:border-slate-700 dark:bg-slate-800 dark:hover:text-white">
+                                            <td className="px-4 py-3 text-center">
+                                                <button aria-label={`Herramientas de ${c.nombre}`} onClick={(e) => { e.stopPropagation(); setToolModal({ show: true, cliente: c }); }} className={`${BOTON_ICONO} h-9 w-9`}>
                                                     <WrenchScrewdriverIcon className="h-4 w-4" />
                                                 </button>
                                             </td>
@@ -564,81 +518,80 @@ export default function Clientes() {
                                 })}
                             </tbody>
                         </table>
+                    </div>
 
-                        {/* 📱 VISTA MÓVIL */}
-                        <div className="flex flex-col gap-3 p-1 pb-4 md:hidden">
-                            {clientesFiltrados.map((c) => {
-                                const statusData = onlineStatus.get(c.id.toString());
-                                const mapHref = getNativeMapHref({
-                                    latitude: c.latitud,
-                                    longitude: c.longitud,
-                                    address: c.direccion,
-                                    label: c.nombre,
-                                });
-                                return (
-                                    <article key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm transition-all active:scale-[0.985] dark:border-slate-800 dark:bg-slate-900">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="min-w-0">
-                                                <h3 className="flex items-center gap-1.5 text-sm font-black leading-tight text-slate-800 dark:text-white"><IconoConexion tipo={c.tipo_conexion} />{c.nombre}</h3>
-                                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                                                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-slate-700 dark:bg-slate-800 dark:text-slate-200">{c.cedula || 'Sin contrato'}</span>
-                                                    <span className="inline-flex items-center gap-1"><MapPinIcon className="h-3.5 w-3.5" />{c.zona || 'Sin zona'}</span>
-                                                </div>
+                    {/* Celular: tarjetas */}
+                    <div className="flex flex-col gap-3 md:hidden">
+                        {clientesFiltrados.map((c) => {
+                            const statusData = onlineStatus.get(c.id.toString());
+                            const mapHref = getNativeMapHref({
+                                latitude: c.latitud,
+                                longitude: c.longitud,
+                                address: c.direccion,
+                                label: c.nombre,
+                            });
+                            return (
+                                <article key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className={`${TARJETA} p-4 transition active:scale-[0.99]`}>
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <h3 className="flex items-center gap-1.5 font-semibold leading-tight text-slate-900 dark:text-white"><IconoConexion tipo={c.tipo_conexion} /><span className="truncate">{c.nombre}</span></h3>
+                                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                                                <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{c.cedula || 'Sin contrato'}</span>
+                                                <span className="inline-flex items-center gap-1"><MapPinIcon className="h-3.5 w-3.5" />{c.zona || 'Sin zona'}</span>
                                             </div>
-                                            <EstadoServicio estado={c.servicio.estado_servicio} />
                                         </div>
+                                        <EstadoServicio estado={c.servicio.estado_servicio} />
+                                    </div>
 
-                                        <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-[11px] dark:border-slate-800 dark:bg-slate-950/50">
-                                            <div className="min-w-0">
-                                                <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Plan</span>
-                                                <p className="mt-0.5 truncate font-extrabold text-blue-600 dark:text-blue-400">{c.servicio.plan_nombre}</p>
-                                            </div>
-                                            <div className="min-w-0 text-right">
-                                                <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">IP</span>
-                                                <button type="button" onClick={(event) => { event.stopPropagation(); if (c.servicio.ip_asignada) void abrirEquipo(c.servicio.ip_asignada); }} className="mt-0.5 font-mono font-bold text-slate-600 underline decoration-dotted underline-offset-2 dark:text-slate-300">{c.servicio.ip_asignada || 'Sin IP'}</button>
-                                            </div>
-                                            <div className="min-w-0">
-                                                <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Conexión</span>
-                                                <div className="mt-0.5"><ConexionCliente status={statusData} /></div>
+                                    <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
+                                        <div className="min-w-0">
+                                            <dt className="text-slate-400">Plan</dt>
+                                            <dd className="mt-0.5 truncate font-semibold text-slate-800 dark:text-slate-200">{c.servicio.plan_nombre}</dd>
+                                        </div>
+                                        <div className="min-w-0 text-right">
+                                            <dt className="text-slate-400">IP</dt>
+                                            <dd><button type="button" onClick={(event) => { event.stopPropagation(); if (c.servicio.ip_asignada) void abrirEquipo(c.servicio.ip_asignada); }} className="mt-0.5 font-mono font-semibold text-blue-600 underline decoration-dotted underline-offset-2 dark:text-blue-400">{c.servicio.ip_asignada || 'Sin IP'}</button></dd>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <dt className="text-slate-400">Conexión</dt>
+                                            <dd className="mt-0.5">
+                                                <ConexionCliente status={statusData} />
                                                 {c.tipo_conexion === 'radio' ? <AntenaCliente antena={c.antena} /> : <PotenciaCliente potencia={potencias[c.id.toString()]} cambio={cambiosSenal[c.id.toString()]} />}
                                                 {reportes && <ReporteCliente reporte={reportes[c.id.toString()]} potencia={potencias[c.id.toString()]} sugerir={Boolean(idsRevisar)} onReportar={() => setToolModal({ show: true, cliente: c, modo: 'reportar_falla' })} />}
-                                            </div>
-                                            <div className="min-w-0 text-right">
-                                                <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Finanzas</span>
-                                                <div className="mt-0.5"><FinanzasCliente finanzas={c.finanzas} /></div>
-                                            </div>
+                                            </dd>
                                         </div>
+                                        <div className="min-w-0 text-right">
+                                            <dt className="text-slate-400">Finanzas</dt>
+                                            <dd className="mt-0.5"><FinanzasCliente finanzas={c.finanzas} /></dd>
+                                        </div>
+                                    </dl>
 
-                                        <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-2">
-                                            <button aria-label={`Herramientas de ${c.nombre}`} onClick={(e) => { e.stopPropagation(); setToolModal({ show: true, cliente: c }); }} className="relative flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-600 shadow-sm active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                                <WrenchScrewdriverIcon className="h-4 w-4 text-blue-500" /> Herramientas
+                                    <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-2">
+                                        <button aria-label={`Herramientas de ${c.nombre}`} onClick={(e) => { e.stopPropagation(); setToolModal({ show: true, cliente: c }); }} className={`${BOTON_SECUNDARIO} h-11`}>
+                                            <WrenchScrewdriverIcon className="h-4 w-4 text-blue-500" /> Herramientas
+                                        </button>
+                                        {c.telefono && (
+                                            <a aria-label={`Llamar a ${c.nombre}`} href={`tel:${c.telefono}`} onClick={(e) => e.stopPropagation()} className={`${BOTON_ICONO} h-11 w-11 text-emerald-600 dark:text-emerald-400`}>
+                                                <PhoneIcon className="h-5 w-5" />
+                                            </a>
+                                        )}
+                                        {mapHref ? (
+                                            <a aria-label={`Abrir ubicación de ${c.nombre}`} href={mapHref} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className={`${BOTON_ICONO} h-11 w-11 text-blue-600 dark:text-blue-400`}>
+                                                <MapPinIcon className="h-5 w-5" />
+                                            </a>
+                                        ) : (
+                                            <button aria-label="Ver detalle" className={`${BOTON_ICONO} h-11 w-11`}>
+                                                <ChevronRightIcon className="h-5 w-5" />
                                             </button>
-                                            {c.telefono && (
-                                                <a aria-label={`Llamar a ${c.nombre}`} href={`tel:${c.telefono}`} onClick={(e) => e.stopPropagation()} className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 active:scale-95 dark:text-emerald-400">
-                                                    <PhoneIcon className="h-5 w-5" />
-                                                </a>
-                                            )}
-                                            {mapHref ? (
-                                                <a aria-label={`Abrir ubicación de ${c.nombre}`} href={mapHref} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 active:scale-95 dark:text-blue-400">
-                                                    <MapPinIcon className="h-5 w-5" />
-                                                </a>
-                                            ) : (
-                                                <button aria-label="Ver detalle" className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-500 dark:bg-slate-800">
-                                                    <ChevronRightIcon className="h-5 w-5" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </article>
-                                );
-                            })}
-                        </div>
+                                        )}
+                                    </div>
+                                </article>
+                            );
+                        })}
                     </div>
-                )}
-            </div>
+                </>
+            )}
 
-            {/* =========================================================
-                MODALES MODULARES
-               ========================================================= */}
             <ClientToolsModal
                 isOpen={toolModal.show}
                 onClose={() => setToolModal({ show: false, cliente: null })}
@@ -652,26 +605,37 @@ export default function Clientes() {
     );
 }
 
+const NOMBRE_FILTRO: Record<ClientFilter, string> = {
+    todos: 'Todos',
+    online: 'En línea',
+    offline: 'Sin conexión',
+    potencia_alta: 'Potencia alta',
+    potencia_normal: 'Potencia normal',
+    senal_bajo: 'Señal bajó',
+    suspendidos: 'Suspendidos',
+    activos: 'Activos',
+    morosos: 'Con deuda',
+    radio: 'Radioenlace',
+    fibra: 'Fibra óptica',
+    antena_caida: 'Antena no responde',
+};
+
 function ConexionCliente({ status }: { status?: OnlineStatus }) {
-    if (!status) return <span className="text-[11px] font-bold text-slate-400">Revisando…</span>;
+    if (!status) return <span className="text-xs text-slate-400">Revisando…</span>;
     return (
         <div className="min-w-0" title={status.diag}>
-            <span className={`inline-flex items-center gap-1.5 text-[11px] font-black ${status.online ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${status.online ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
                 <span className={`h-2 w-2 rounded-full ${status.online ? 'animate-pulse bg-emerald-500' : 'bg-rose-500'}`} />
                 {status.online ? 'En línea' : 'Sin conexión'}
             </span>
-            {!status.online && status.diag && <div className="mt-0.5 max-w-[11rem] truncate text-[10px] font-medium text-slate-400">{status.diag}</div>}
+            {!status.online && status.diag && <div className="mt-0.5 max-w-[11rem] truncate text-xs text-slate-400">{status.diag}</div>}
         </div>
     );
 }
 
 function EstadoServicio({ estado }: { estado: string }) {
-    const activo = estado === 'activo';
-    return (
-        <span className={`inline-block shrink-0 rounded-lg border px-2 py-0.5 text-[10px] font-black uppercase ${activo ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400' : 'border-rose-500/20 bg-rose-500/5 text-rose-500'}`}>
-            {estado.replace(/_/g, ' ')}
-        </span>
-    );
+    const texto = estado.replace(/_/g, ' ');
+    return <Pildora tono={estado === 'activo' ? 'verde' : 'rojo'} punto>{texto.charAt(0).toUpperCase() + texto.slice(1)}</Pildora>;
 }
 
 function FinanzasCliente({ finanzas }: { finanzas: ClienteUnificado['finanzas'] }) {
@@ -680,16 +644,16 @@ function FinanzasCliente({ finanzas }: { finanzas: ClienteUnificado['finanzas'] 
     if (deuda <= 0) {
         return (
             <div>
-                <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">Al día</div>
-                {aFavor > 0 && <div className="text-[10px] font-bold text-emerald-600/80">A favor ${aFavor.toLocaleString('es-MX')}</div>}
+                <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Al día</div>
+                {aFavor > 0 && <div className="text-xs text-emerald-600/80">A favor ${aFavor.toLocaleString('es-MX')}</div>}
             </div>
         );
     }
     const facturas = finanzas.facturas_pendientes_cant;
     return (
         <div>
-            <div className="text-sm font-black text-rose-500">Debe ${deuda.toLocaleString('es-MX')}</div>
-            {facturas > 0 && <div className="text-[10px] font-bold text-slate-400">{facturas} factura{facturas === 1 ? '' : 's'}</div>}
+            <div className="text-sm font-semibold text-rose-600 dark:text-rose-400">Debe ${deuda.toLocaleString('es-MX')}</div>
+            {facturas > 0 && <div className="text-xs text-slate-400">{facturas} factura{facturas === 1 ? '' : 's'}</div>}
         </div>
     );
 }

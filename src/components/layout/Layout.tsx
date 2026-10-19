@@ -1,38 +1,18 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Dialog, DialogPanel } from '@headlessui/react';
 import {
-    useState,
-    useEffect,
-    useRef,
-    type ComponentType,
-} from 'react';
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import client from '@/api/axios';
-import {
-    HomeIcon, UsersIcon, SignalIcon, ArrowLeftOnRectangleIcon,
-    Bars3Icon, XMarkIcon, ServerStackIcon, GlobeAltIcon,
-    Cog6ToothIcon, CurrencyDollarIcon, DocumentTextIcon,
-    BanknotesIcon, ChartBarIcon, ChevronDownIcon,
-    ChevronRightIcon, ComputerDesktopIcon, CubeIcon,
-    CpuChipIcon, ClipboardDocumentListIcon, MapIcon,
-    ShieldCheckIcon, MagnifyingGlassIcon, ArchiveBoxIcon, BriefcaseIcon,
-    SunIcon, MoonIcon, ChatBubbleLeftRightIcon, SparklesIcon
+    ArrowRightStartOnRectangleIcon, ChevronDownIcon, MagnifyingGlassIcon,
+    MoonIcon, SignalIcon, Squares2X2Icon, SunIcon, XMarkIcon,
 } from '@heroicons/react/24/outline';
 
+import client from '@/api/axios';
 import ClientDetailModal from '@/pages/clientes/components/ClientDetailModal';
 import { notifySessionChanged } from '@/offline/db';
 import type { AppRole } from '@/utils/roles';
 import { useBrand } from '@/context/brand/useBrand';
-
-interface ClienteBusquedaApi {
-    id: number;
-    nombre: string;
-    telefono?: string | null;
-    estado: string;
-    total_deuda: number;
-}
-
-interface ClienteGlobal extends Omit<ClienteBusquedaApi, 'telefono'> {
-    telefono: string;
-}
+import BuscadorGlobal, { type ClienteEncontrado } from './BuscadorGlobal';
+import { GRUPO_PRINCIPAL, barraDelRol, grupoDeRuta, gruposDelRol, itemDeRuta, type ItemNav } from './navegacion';
 
 interface SessionUser {
     usuario: string;
@@ -46,9 +26,7 @@ interface LicenseNotice {
     vigente_hasta: string | null;
 }
 
-function normalizeCliente(cliente: ClienteBusquedaApi): ClienteGlobal {
-    return { ...cliente, telefono: cliente.telefono || '' };
-}
+const NOMBRE_ROL: Record<AppRole, string> = { admin: 'Administrador', supervisor: 'Supervisor', cajero: 'Cajero', tecnico: 'Técnico' };
 
 function getSessionUser(raw: string | null): SessionUser {
     if (!raw) return { usuario: 'Invitado', rol: 'cajero' };
@@ -56,19 +34,9 @@ function getSessionUser(raw: string | null): SessionUser {
         const parsed: unknown = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') {
             const record = parsed as Record<string, unknown>;
-            const role = typeof record.rol === 'string'
-                ? record.rol.trim().toLowerCase()
-                : '';
-            if (
-                role === 'admin'
-                || role === 'supervisor'
-                || role === 'cajero'
-                || role === 'tecnico'
-            ) {
-                return {
-                    usuario: typeof record.usuario === 'string' ? record.usuario : 'Invitado',
-                    rol: role,
-                };
+            const role = typeof record.rol === 'string' ? record.rol.trim().toLowerCase() : '';
+            if (role === 'admin' || role === 'supervisor' || role === 'cajero' || role === 'tecnico') {
+                return { usuario: typeof record.usuario === 'string' ? record.usuario : 'Invitado', rol: role };
             }
         }
     } catch {
@@ -77,43 +45,33 @@ function getSessionUser(raw: string | null): SessionUser {
     return { usuario: 'Invitado', rol: 'cajero' };
 }
 
+function Inicial({ nombre, className = '' }: { nombre: string; className?: string }) {
+    return (
+        <span className={`flex shrink-0 items-center justify-center rounded-full bg-slate-900 font-bold uppercase text-white dark:bg-white dark:text-slate-900 ${className}`}>
+            {(nombre || '?').charAt(0)}
+        </span>
+    );
+}
+
 export default function Layout() {
     const { brand } = useBrand();
     const navigate = useNavigate();
     const location = useLocation();
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-    const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
+    const user = getSessionUser(localStorage.getItem('user'));
+
     const [licenseNotice, setLicenseNotice] = useState<LicenseNotice | null>(null);
+    const [buscadorAbierto, setBuscadorAbierto] = useState(false);
+    const [masAbierto, setMasAbierto] = useState(false);
+    const [clienteAbierto, setClienteAbierto] = useState<ClienteEncontrado | null>(null);
+    const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark'));
 
-    // --- 🔥 NUEVO MOTOR DE MODO CLARO / OSCURO 🔥 ---
-    const [darkMode, setDarkMode] = useState(() => {
-        return localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark');
-    });
-
-    // 2. Función súper limpia que se ejecuta al presionar tu botón de Sol/Luna
-    const handleToggleTheme = () => {
-        const newMode = !darkMode;
-        setDarkMode(newMode);
-
-        // ¡LA MAGIA! Le enviamos la señal a App.tsx para que actualice TODO (Tailwind + Material UI) al instante
-        window.dispatchEvent(new CustomEvent('theme-changed', { detail: newMode ? 'dark' : 'light' }));
-    };
-
-    // --- ESTADOS PARA EL BUSCADOR GLOBAL ---
-    const [busquedaGlobal, setBusquedaGlobal] = useState('');
-    const [resultadosBusqueda, setResultadosBusqueda] = useState<ClienteGlobal[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
-    const [showDropdown, setShowDropdown] = useState(false);
-    const searchRef = useRef<HTMLDivElement>(null);
-    const mobileSearchRef = useRef<HTMLDivElement>(null);
-
-    // --- ESTADOS PARA EL MODAL DE DETALLE DE CLIENTE ---
-    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-    const [selectedCliente, setSelectedCliente] = useState<ClienteGlobal | null>(null);
-
-    const storedUser = localStorage.getItem('user');
-    const user = getSessionUser(storedUser);
+    const grupos = useMemo(() => gruposDelRol(user.rol), [user.rol]);
+    const barra = useMemo(() => barraDelRol(user.rol), [user.rol]);
+    const actual = itemDeRuta(location.pathname);
+    const grupoActual = grupoDeRuta(location.pathname);
+    // Cada grupo se abre o cierra a mano; sin tocarlo, solo está abierto el de la pantalla actual.
+    const [gruposElegidos, setGruposElegidos] = useState<Record<string, boolean>>({});
+    const grupoAbierto = (nombre: string) => gruposElegidos[nombre] ?? nombre === grupoActual?.nombre;
 
     useEffect(() => {
         let active = true;
@@ -128,280 +86,139 @@ export default function Layout() {
         return () => { active = false; window.clearInterval(timer); };
     }, []);
 
-    // LÓGICA DEL BUSCADOR GLOBAL
+    // Ctrl+K (o ⌘K) abre el buscador desde cualquier pantalla.
     useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (busquedaGlobal.trim().length > 2) {
-                setIsSearching(true);
-                try {
-                    const res = await client.get<ClienteBusquedaApi[]>('/clientes/buscar', {
-                        params: { query: busquedaGlobal }
-                    });
-                    setResultadosBusqueda(res.data.map(normalizeCliente));
-                    setShowDropdown(true);
-                } catch {
-                    console.error("Error en búsqueda global");
-                } finally {
-                    setIsSearching(false);
-                }
-            } else {
-                setResultadosBusqueda([]);
-                setShowDropdown(false);
-            }
-        }, 350);
-        return () => clearTimeout(timer);
-    }, [busquedaGlobal]);
-
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            const target = e.target as Node;
-            if (
-                searchRef.current
-                && !searchRef.current.contains(target)
-                && !mobileSearchRef.current?.contains(target)
-            ) {
-                setShowDropdown(false);
+        const atajo = (evento: KeyboardEvent) => {
+            if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === 'k') {
+                evento.preventDefault();
+                setBuscadorAbierto(true);
             }
         };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        window.addEventListener('keydown', atajo);
+        return () => window.removeEventListener('keydown', atajo);
     }, []);
 
-    const handleSelectCliente = (cliente: ClienteGlobal) => {
-        setBusquedaGlobal('');
-        setShowDropdown(false);
-        setSelectedCliente(cliente);
-        setIsDetailModalOpen(true);
+    const cambiarTema = () => {
+        const oscuro = !darkMode;
+        setDarkMode(oscuro);
+        window.dispatchEvent(new CustomEvent('theme-changed', { detail: oscuro ? 'dark' : 'light' }));
     };
 
-    const handleLogout = () => {
+    const cerrarSesion = () => {
         void client.post('/auth/logout').finally(() => {
             localStorage.clear();
             notifySessionChanged();
             navigate('/');
         });
     };
-    const toggleSubMenu = (name: string) => setOpenSubMenu(openSubMenu === name ? null : name);
 
-    const menus = allMenus
-        .filter(item => item.roles.includes(user.rol))
-        .map(item => ({
-            ...item,
-            submenu: item.submenu?.filter(
-                sub => !sub.roles || sub.roles.includes(user.rol),
-            ),
-        }))
-        .filter(item => !item.submenu || item.submenu.length > 0);
+    const alternarGrupo = (nombre: string) => setGruposElegidos((elegidos) => ({ ...elegidos, [nombre]: !grupoAbierto(nombre) }));
 
-    const pageTitle = getPageTitle(location.pathname, brand.empresa_nombre);
+    const titulo = actual?.nombre || brand.empresa_nombre;
+    const enBarra = barra.some((item) => item.ruta === actual?.ruta);
+    const esActual = (item: ItemNav) => actual?.ruta === item.ruta;
+    const temaEtiqueta = darkMode ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro';
+
+    const logo = (
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl" style={{ backgroundColor: brand.color_primario }}>
+            {brand.logo_url ? <img src={brand.logo_url} alt="" className="h-full w-full object-contain" /> : <SignalIcon className="h-5 w-5 text-white" />}
+        </span>
+    );
+
     return (
-        /* ✅ ADAPTADO: Las clases cambian dinámicamente con dark:bg-slate-950 bg-slate-50 text-slate-900 dark:text-slate-100 */
-        <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-300">
-            {sidebarOpen && <div className="fixed inset-0 z-20 bg-slate-950/55 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)}></div>}
-
-            {/* SIDEBAR */}
-            <aside className={`fixed inset-y-0 left-0 z-30 w-[min(88vw,19rem)] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl transform transition-transform duration-300 ease-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:relative lg:w-64 lg:translate-x-0 flex flex-col`}>
-                <div className="h-20 flex items-center justify-center border-b border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-950/50">
-                    <div className="flex items-center space-x-2">
-                        <div className="h-8 w-8 rounded-lg flex items-center justify-center overflow-hidden shadow-lg shadow-blue-500/20" style={{ backgroundColor: brand.color_primario }}>{brand.logo_url ? <img src={brand.logo_url} alt={brand.empresa_nombre} className="h-full w-full object-contain" /> : <SignalIcon className="h-5 w-5 text-white" />}</div>
-                        <h1 className="truncate text-xl font-black tracking-wide text-slate-900 dark:text-white">{brand.empresa_nombre}</h1>
+        <div className="flex h-[100dvh] overflow-hidden bg-[#f5f6f8] font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+            {/* BARRA LATERAL (computadora) */}
+            <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:flex">
+                <div className="flex h-16 items-center gap-3 px-5">
+                    {logo}
+                    <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{brand.empresa_nombre}</p>
+                        <p className="text-xs text-slate-500">Administración</p>
                     </div>
                 </div>
 
-                <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
-                    {menus.map((item) => {
-                        if (item.submenu) {
-                            const isOpen = openSubMenu === item.name;
-                            const isParentActive = item.submenu.some(sub => location.pathname.startsWith(sub.path));
-                            return (
-                                <div key={item.name} className="space-y-1">
-                                    <button onClick={() => toggleSubMenu(item.name)} className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${isParentActive || isOpen ? 'bg-slate-200/60 dark:bg-slate-800/50 text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 hover:text-slate-900 dark:hover:text-white'}`}>
-                                        <div className="flex items-center">
-                                            <item.icon className={`w-6 h-6 mr-3 ${isParentActive ? 'text-blue-500' : 'text-slate-400 dark:text-slate-500'}`} />
-                                            <span className="font-bold text-sm">{item.name}</span>
-                                        </div>
-                                        {isOpen ? <ChevronDownIcon className="w-4 h-4 text-slate-500" /> : <ChevronRightIcon className="w-4 h-4 text-slate-400" />}
-                                    </button>
-                                    {isOpen && (
-                                        <div className="pl-4 space-y-1 bg-slate-50 dark:bg-slate-900/30 rounded-b-xl py-2 border-l-2 border-slate-300 dark:border-slate-700 ml-4">
-                                            {item.submenu.map((sub) => (
-                                                <Link key={sub.name} to={sub.path} onClick={() => setSidebarOpen(false)} className={`flex items-center px-4 py-2 rounded-lg transition-colors text-xs font-bold ${location.pathname === sub.path ? 'text-blue-600 bg-blue-500/10' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                                                    <sub.icon className={`w-4 h-4 mr-3 ${location.pathname === sub.path ? 'text-blue-500' : 'opacity-70'}`} />
-                                                    {sub.name}
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        }
-                        const itemPath = item.path ?? '/';
-                        const isActive = location.pathname.startsWith(itemPath);
-                        return (
-                            <Link key={item.name} to={itemPath} onClick={() => setSidebarOpen(false)} className={`flex items-center px-4 py-3 rounded-xl transition-all duration-200 group relative ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'}`}>
-                                <item.icon className={`w-6 h-6 mr-3 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-blue-500'}`} />
-                                <span className="font-bold text-sm">{item.name}</span>
+                <div className="px-3 pb-2">
+                    <button type="button" onClick={() => setBuscadorAbierto(true)} className="flex h-10 w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400 transition hover:border-slate-300 hover:text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-slate-600 dark:hover:text-slate-300">
+                        <MagnifyingGlassIcon className="h-4 w-4" />
+                        <span className="flex-1 text-left">Buscar cliente...</span>
+                        <kbd className="rounded-md border border-slate-200 bg-white px-1.5 font-sans text-[10px] font-semibold text-slate-400 dark:border-slate-700 dark:bg-slate-800">Ctrl K</kbd>
+                    </button>
+                </div>
+
+                <nav aria-label="Menú principal" className="custom-scrollbar flex-1 space-y-1 overflow-y-auto px-3 py-2">
+                    {grupos.map((grupo, indice) => {
+                        const enlaces = grupo.items.map((item) => (
+                            <Link
+                                key={item.ruta}
+                                to={item.ruta}
+                                aria-current={esActual(item) ? 'page' : undefined}
+                                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${esActual(item)
+                                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
+                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-white'}`}
+                            >
+                                <item.icono className={`h-5 w-5 shrink-0 ${esActual(item) ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
+                                <span className="truncate">{item.nombre}</span>
                             </Link>
+                        ));
+                        if (indice === 0) return <div key={grupo.nombre} className="space-y-0.5 pb-2">{enlaces}</div>;
+                        const abierto = grupoAbierto(grupo.nombre);
+                        return (
+                            <div key={grupo.nombre}>
+                                <button
+                                    type="button"
+                                    onClick={() => alternarGrupo(grupo.nombre)}
+                                    aria-expanded={abierto}
+                                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200"
+                                >
+                                    {grupo.nombre}
+                                    <ChevronDownIcon className={`h-3.5 w-3.5 transition ${abierto ? '' : '-rotate-90'}`} />
+                                </button>
+                                {abierto && <div className="space-y-0.5 pb-2">{enlaces}</div>}
+                            </div>
                         );
                     })}
                 </nav>
 
-                <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30">
-                    <button onClick={handleLogout} className="flex items-center w-full px-4 py-3 text-rose-600 dark:text-red-400 hover:bg-rose-500/10 rounded-xl transition duration-200 font-bold">
-                        <ArrowLeftOnRectangleIcon className="w-6 h-6 mr-3" />
-                        <span className="font-bold">Cerrar Sesión</span>
+                <div className="flex items-center gap-3 border-t border-slate-200 p-3 dark:border-slate-800">
+                    <Inicial nombre={user.usuario} className="h-9 w-9 text-sm" />
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user.usuario}</p>
+                        <p className="text-xs text-slate-500">{NOMBRE_ROL[user.rol]}</p>
+                    </div>
+                    <button type="button" onClick={cambiarTema} title={temaEtiqueta} aria-label={temaEtiqueta} className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white">
+                        {darkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+                    </button>
+                    <button type="button" onClick={cerrarSesion} title="Cerrar sesión" aria-label="Cerrar sesión" className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400">
+                        <ArrowRightStartOnRectangleIcon className="h-5 w-5" />
                     </button>
                 </div>
             </aside>
 
-            {/* MAIN CONTENT */}
-            <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-                <header className="app-topbar min-h-16 sm:min-h-20 bg-white/90 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between px-3 sm:px-6 sticky top-0 z-50 transition-colors duration-300">
-                    <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-                        <button aria-label="Abrir menú" onClick={() => setSidebarOpen(!sidebarOpen)} className="app-icon-button lg:hidden">
-                            {sidebarOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
-                        </button>
-                        <div className="min-w-0 lg:hidden">
-                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">{brand.empresa_nombre}</p>
-                            <h2 className="truncate text-sm font-black text-slate-900 dark:text-white">{pageTitle}</h2>
-                        </div>
-                    </div>
-
-                    {/* BUSCADOR GLOBAL */}
-                    <div className="hidden sm:block flex-1 max-w-md mx-4 sm:mx-8 relative" ref={searchRef}>
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <MagnifyingGlassIcon className={`w-4 h-4 transition-colors ${isSearching ? 'text-blue-500 animate-pulse' : 'text-slate-400 dark:text-slate-500'}`} />
-                            </div>
-                            <input
-                                type="text"
-                                className="block w-full bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-xs sm:text-sm rounded-xl py-2.5 pl-9 pr-4 focus:ring-2 focus:ring-blue-500/30 outline-none transition-all placeholder:text-slate-400"
-                                placeholder="Buscar cliente por nombre..."
-                                value={busquedaGlobal}
-                                onChange={(e) => setBusquedaGlobal(e.target.value)}
-                                onFocus={() => busquedaGlobal.length > 2 && setShowDropdown(true)}
-                            />
-                        </div>
-
-                        {/* Dropdown de resultados */}
-                        {showDropdown && (
-                            <div className="absolute mt-2 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-[60] animate-in fade-in duration-200">
-                                {resultadosBusqueda.length > 0 ? (
-                                    <div className="py-2">
-                                        <p className="px-4 py-1 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Resultados</p>
-                                        {resultadosBusqueda.map((c) => (
-                                            <div
-                                                key={c.id}
-                                                onClick={() => handleSelectCliente(c)}
-                                                className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer flex items-center justify-between group transition-colors border-b border-slate-100 dark:border-slate-700/50 last:border-0"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-9 w-9 rounded-full bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center font-black text-xs uppercase border border-blue-500/20">
-                                                        {c.nombre.charAt(0)}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-500 transition-colors">{c.nombre}</p>
-                                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono tracking-tighter">{c.telefono}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-col items-end gap-1">
-                                                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${c.estado === 'activo' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'}`}>
-                                                        {c.estado}
-                                                    </span>
-                                                    {c.total_deuda > 0 && <span className="text-[10px] text-rose-500 dark:text-rose-400 font-bold">Deuda: ${c.total_deuda}</span>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="p-8 text-center">
-                                        <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">No hay coincidencias</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* CONTENEDOR DERECHO: INTERRUPTOR DE TEMA (SOL / LUNA) + USUARIO */}
-                    <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
-
-                        <button
-                            aria-label="Buscar cliente"
-                            onClick={() => setMobileSearchOpen((open) => !open)}
-                            className="app-icon-button sm:hidden"
-                        >
+            <div className="flex min-w-0 flex-1 flex-col">
+                {/* ENCABEZADO */}
+                <header className="app-topbar sticky top-0 z-40 flex min-h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90 lg:min-h-16 lg:px-8">
+                    <div className="lg:hidden">{logo}</div>
+                    {/* Celular: la marca (el título grande va en la página). Computadora: dónde estás. */}
+                    <p className="min-w-0 flex-1 truncate text-base font-bold text-slate-900 dark:text-white lg:hidden">{brand.empresa_nombre}</p>
+                    <nav aria-label="Ubicación" className="hidden min-w-0 flex-1 items-center gap-2 text-sm lg:flex">
+                        <span className="text-slate-400">{grupoActual && grupoActual.nombre !== GRUPO_PRINCIPAL ? grupoActual.nombre : brand.empresa_nombre}</span>
+                        <span className="text-slate-300 dark:text-slate-600">/</span>
+                        <span className="truncate font-semibold text-slate-900 dark:text-white">{titulo}</span>
+                    </nav>
+                    <span className="lg:hidden">
+                        <button type="button" aria-label="Buscar cliente" onClick={() => setBuscadorAbierto(true)} className="app-icon-button">
                             <MagnifyingGlassIcon className="h-5 w-5" />
                         </button>
-
-                        {/* 🔥 INTERRUPTOR PREMIUM MODO CLARO / OSCURO 🔥 */}
-                        <button
-                            onClick={handleToggleTheme} // 👈 AQUÍ ESTÁ EL CAMBIO
-                            className="app-icon-button"
-                            title={darkMode ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
-                        >
-                            {darkMode ? (
-                                <SunIcon className="w-4 h-4 text-amber-400 animate-fadeIn" />
-                            ) : (
-                                <MoonIcon className="w-4 h-4 text-indigo-500 animate-fadeIn" />
-                            )}
-                        </button>
-
-                        <div className="text-right hidden sm:block">
-                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">{user.usuario}</p>
-                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black ring-1 ring-inset uppercase mt-0.5 ${user.rol === 'admin' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-blue-500/20' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20'}`}>{user.rol}</span>
-                        </div>
-                        <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-black shadow-md border border-white/20 capitalize select-none shrink-0">{(user.usuario || '?').charAt(0)}</div>
-                    </div>
-
-                    {mobileSearchOpen && (
-                        <div ref={mobileSearchRef} className="absolute inset-x-0 top-full border-b border-slate-200 bg-white/98 p-3 shadow-xl dark:border-slate-800 dark:bg-slate-900/98 sm:hidden">
-                            <div className="relative">
-                                <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
-                                <input
-                                    autoFocus
-                                    type="search"
-                                    className="app-field pl-10"
-                                    placeholder="Buscar cliente por nombre..."
-                                    value={busquedaGlobal}
-                                    onChange={(e) => setBusquedaGlobal(e.target.value)}
-                                    onFocus={() => busquedaGlobal.length > 2 && setShowDropdown(true)}
-                                />
-                                {showDropdown && (
-                                    <div className="absolute inset-x-0 top-full z-[70] mt-2 max-h-[60dvh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
-                                        {resultadosBusqueda.map((c) => (
-                                            <button
-                                                type="button"
-                                                key={c.id}
-                                                onClick={() => {
-                                                    handleSelectCliente(c);
-                                                    setMobileSearchOpen(false);
-                                                }}
-                                                className="flex w-full items-center justify-between gap-3 rounded-xl p-3 text-left hover:bg-slate-100 dark:hover:bg-slate-700"
-                                            >
-                                                <span className="min-w-0">
-                                                    <span className="block truncate text-sm font-black">{c.nombre}</span>
-                                                    <span className="block text-xs text-slate-500">{c.telefono || `Cliente #${c.id}`}</span>
-                                                </span>
-                                                <span className={`app-status ${c.estado === 'activo' ? 'app-status--success' : 'app-status--danger'}`}>{c.estado}</span>
-                                            </button>
-                                        ))}
-                                        {!isSearching && resultadosBusqueda.length === 0 && busquedaGlobal.length > 2 && (
-                                            <p className="p-5 text-center text-sm font-bold text-slate-500">Sin coincidencias</p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                    </span>
+                    <button type="button" aria-label="Tu cuenta y más secciones" onClick={() => setMasAbierto(true)} className="lg:hidden">
+                        <Inicial nombre={user.usuario} className="h-9 w-9 text-sm" />
+                    </button>
                 </header>
 
-                {/* AREA DE RENDERIZADO PRINCIPAL */}
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#f5f7fb] dark:bg-slate-950 px-3 py-4 sm:p-6 lg:p-8 relative custom-scrollbar transition-colors duration-300">
-                    {/* El reflejo de luz de fondo adaptado para no encandilar en claro */}
-                    <div className="absolute top-0 left-0 w-full h-96 bg-blue-500/[0.01] dark:bg-blue-600/5 rounded-full blur-3xl pointer-events-none transform -translate-y-1/2 -translate-x-1/2"></div>
-                    <div className="relative z-10 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-10">
+                <main className="custom-scrollbar relative flex-1 overflow-y-auto overflow-x-hidden">
+                    <div className="mx-auto w-full max-w-[1600px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 lg:px-8 lg:pb-10 lg:pt-6">
                         {licenseNotice && ['gracia', 'vencida', 'suspendida', 'revocada'].includes(licenseNotice.estado) && (
-                            <div className={`mb-4 rounded-2xl border p-4 text-sm font-black ${licenseNotice.estado === 'gracia' ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200' : 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200'}`}>
+                            <div className={`mb-4 rounded-2xl border p-4 text-sm font-semibold ${licenseNotice.estado === 'gracia' ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200' : 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200'}`}>
                                 {licenseNotice.mensaje}{licenseNotice.plan_nombre ? ` · Plan ${licenseNotice.plan_nombre}` : ''}
                             </div>
                         )}
@@ -410,99 +227,97 @@ export default function Layout() {
                 </main>
             </div>
 
-            {/* MODALES GLOBALES */}
-            {selectedCliente && (
-                <ClientDetailModal
-                    isOpen={isDetailModalOpen}
-                    onClose={() => {
-                        setIsDetailModalOpen(false);
-                        setSelectedCliente(null);
-                    }}
-                    cliente={selectedCliente}
-                />
-            )}
+            {/* BARRA DE ABAJO (celular) */}
+            <nav aria-label="Navegación rápida" className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 lg:hidden">
+                <div className="mx-auto grid max-w-lg" style={{ gridTemplateColumns: `repeat(${barra.length + 1}, minmax(0, 1fr))` }}>
+                    {barra.map((item) => (
+                        <Link
+                            key={item.ruta}
+                            to={item.ruta}
+                            aria-current={esActual(item) ? 'page' : undefined}
+                            className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold transition ${esActual(item) ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}
+                        >
+                            <span className={`flex h-7 w-12 items-center justify-center rounded-full transition ${esActual(item) ? 'bg-blue-50 dark:bg-blue-500/15' : ''}`}>
+                                <item.icono className="h-5 w-5" />
+                            </span>
+                            {item.corto || item.nombre}
+                        </Link>
+                    ))}
+                    <button
+                        type="button"
+                        onClick={() => setMasAbierto(true)}
+                        className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold transition ${!enBarra && actual ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}
+                    >
+                        <span className={`flex h-7 w-12 items-center justify-center rounded-full ${!enBarra && actual ? 'bg-blue-50 dark:bg-blue-500/15' : ''}`}>
+                            <Squares2X2Icon className="h-5 w-5" />
+                        </span>
+                        Más
+                    </button>
+                </div>
+            </nav>
 
+            {/* MÁS: todas las secciones y la cuenta (celular) */}
+            <Dialog open={masAbierto} onClose={() => setMasAbierto(false)} aria-label="Más secciones" className="fixed inset-0 z-[80] lg:hidden">
+                <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm" aria-hidden="true" />
+                <div className="fixed inset-x-0 bottom-0 flex max-h-[88dvh]">
+                    <DialogPanel className="flex w-full flex-col overflow-hidden rounded-t-3xl bg-[#f5f6f8] dark:bg-slate-950">
+                        <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+                            <Inicial nombre={user.usuario} className="h-10 w-10" />
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{user.usuario}</p>
+                                <p className="text-xs text-slate-500">{NOMBRE_ROL[user.rol]} · {brand.empresa_nombre}</p>
+                            </div>
+                            <button type="button" onClick={() => setMasAbierto(false)} aria-label="Cerrar" className="rounded-lg p-2 text-slate-400">
+                                <XMarkIcon className="h-6 w-6" />
+                            </button>
+                        </div>
+                        <div className="flex-1 space-y-5 overflow-y-auto p-4">
+                            {grupos.map((grupo) => (
+                                <div key={grupo.nombre}>
+                                    <p className="mb-2 px-1 text-xs font-semibold text-slate-400">{grupo.nombre}</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {grupo.items.map((item) => (
+                                            <Link
+                                                key={item.ruta}
+                                                to={item.ruta}
+                                                onClick={() => setMasAbierto(false)}
+                                                className={`flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border p-2 text-center text-xs font-semibold leading-tight transition active:scale-95 ${esActual(item)
+                                                    ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300'
+                                                    : 'border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'}`}
+                                            >
+                                                <item.icono className="h-6 w-6" />
+                                                {item.nombre}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                            <div className="grid grid-cols-2 gap-2 pb-[env(safe-area-inset-bottom)]">
+                                <button type="button" onClick={cambiarTema} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                                    {darkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+                                    {darkMode ? 'Modo claro' : 'Modo oscuro'}
+                                </button>
+                                <button type="button" onClick={cerrarSesion} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white text-sm font-semibold text-rose-600 dark:border-rose-500/30 dark:bg-slate-900 dark:text-rose-400">
+                                    <ArrowRightStartOnRectangleIcon className="h-5 w-5" />
+                                    Cerrar sesión
+                                </button>
+                            </div>
+                        </div>
+                    </DialogPanel>
+                </div>
+            </Dialog>
+
+            <BuscadorGlobal
+                abierto={buscadorAbierto}
+                rol={user.rol}
+                onCerrar={() => setBuscadorAbierto(false)}
+                onCliente={setClienteAbierto}
+                onSeccion={(item) => navigate(item.ruta)}
+            />
+
+            {clienteAbierto && (
+                <ClientDetailModal isOpen onClose={() => setClienteAbierto(null)} cliente={clienteAbierto} />
+            )}
         </div>
     );
-}
-
-interface SubMenuItem {
-    name: string;
-    path: string;
-    icon: ComponentType<{ className?: string }>;
-    roles?: AppRole[];
-}
-
-interface MenuItem {
-    name: string;
-    path?: string;
-    icon: ComponentType<{ className?: string }>;
-    roles: AppRole[];
-    submenu?: SubMenuItem[];
-}
-
-const allMenus: MenuItem[] = [
-    { name: 'Dashboard', path: '/admin/dashboard', icon: HomeIcon, roles: ['admin'] },
-    { name: 'Terminal de Cobro', path: '/admin/cobranza', icon: ComputerDesktopIcon, roles: ['cajero'] },
-    { name: 'Clientes', path: '/admin/clientes', icon: UsersIcon, roles: ['admin', 'supervisor'] },
-    {
-        name: 'Operaciones', icon: BriefcaseIcon, roles: ['admin', 'supervisor'],
-        submenu: [
-            { name: 'Órdenes / Instalaciones', path: '/admin/ordenes', icon: ClipboardDocumentListIcon, roles: ['admin', 'supervisor'] },
-            { name: 'Bandeja WhatsApp', path: '/admin/whatsapp/salidas', icon: ChatBubbleLeftRightIcon, roles: ['admin', 'supervisor'] },
-            { name: 'Inventario / Bodega', path: '/admin/inventario', icon: ArchiveBoxIcon, roles: ['admin', 'supervisor'] },
-        ]
-    },
-    {
-        name: 'Finanzas', icon: CurrencyDollarIcon, roles: ['admin'],
-        submenu: [
-            { name: 'Facturas', path: '/admin/facturas', icon: DocumentTextIcon },
-            { name: 'Cortes de Cobranza', path: '/admin/transacciones', icon: BanknotesIcon },
-            { name: 'Estadísticas', path: '/admin/estadisticas', icon: ChartBarIcon },
-        ]
-    },
-    {
-        name: 'Infraestructura', icon: CpuChipIcon, roles: ['admin'],
-        submenu: [
-            { name: 'Mapa de Red', path: '/admin/mapa', icon: MapIcon },
-            { name: 'Nodos / Routers', path: '/admin/routers', icon: ServerStackIcon },
-            { name: 'Cajas NAP (Fibra)', path: '/admin/naps', icon: CubeIcon },
-            { name: 'Radar OLT', path: '/admin/radar', icon: SignalIcon },
-            { name: 'Redes IP (Pools)', path: '/admin/redes', icon: GlobeAltIcon },
-            { name: 'Planes de Internet', path: '/admin/planes', icon: SignalIcon },
-        ]
-    },
-    {
-        name: 'Configuración', icon: Cog6ToothIcon, roles: ['admin'],
-        submenu: [
-            { name: 'General', path: '/admin/configuracion', icon: ComputerDesktopIcon },
-            { name: 'Zonas y Áreas', path: '/admin/configuracion/zonas', icon: GlobeAltIcon },
-            { name: 'Usuarios Sistema', path: '/admin/configuracion/usuarios', icon: UsersIcon },
-            { name: 'Plantillas Mensajes', path: '/admin/configuracion/mensajes', icon: DocumentTextIcon },
-            { name: 'Bot de WhatsApp', path: '/admin/configuracion/bot-whatsapp', icon: SparklesIcon },
-            { name: 'Conexión WhatsApp', path: '/admin/configuracion/whatsapp-qr', icon: SignalIcon },
-            { name: 'Plantillas Fact.', path: '/admin/configuracion/plantillas-facturacion', icon: BanknotesIcon },
-            { name: 'Perfiles PPPoE', path: '/admin/configuracion/pppoe', icon: ServerStackIcon },
-            { name: 'Logs Sistema/Cron', path: '/admin/configuracion/cron', icon: ClipboardDocumentListIcon },
-            { name: 'Sistema y Respaldo', path: '/admin/configuracion/sistema', icon: Cog6ToothIcon },
-            { name: 'Almacenamiento', path: '/admin/configuracion/almacenamiento', icon: ArchiveBoxIcon },
-            { name: 'Importar Datos', path: '/admin/configuracion/importar', icon: ArrowLeftOnRectangleIcon },
-            { name: 'Túneles VPN', path: '/admin/configuracion/vpn', icon: ShieldCheckIcon },
-        ]
-    },
-];
-
-function getPageTitle(pathname: string, fallback: string): string {
-    const routes: Array<[string, string]> = [
-        ['/admin/dashboard', 'Inicio'],
-        ['/admin/clientes', 'Clientes'],
-        ['/admin/ordenes', 'Órdenes'],
-        ['/admin/radar', 'Radar OLT'],
-        ['/admin/naps', 'Cajas NAP'],
-        ['/admin/inventario', 'Inventario'],
-        ['/admin/facturas', 'Facturas'],
-        ['/admin/transacciones', 'Corte de Cobranza'],
-        ['/admin/configuracion', 'Configuración'],
-    ];
-    return routes.find(([route]) => pathname.startsWith(route))?.[1] || fallback;
 }

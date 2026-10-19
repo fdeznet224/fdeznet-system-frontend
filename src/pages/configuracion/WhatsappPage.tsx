@@ -1,27 +1,13 @@
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+
+
 import WhatsappConfig from '../configuracion/WhatsappConfig'; 
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 export default function WhatsappPage() {
-    const navigate = useNavigate();
 
     return (
-        /* ✅ ADAPTADO: Fondo principal dinámico */
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
-            
-            {/* Cabecera con botón de regreso */}
-            <div className="flex items-center gap-4 mb-6">
-                <button 
-                    onClick={() => navigate(-1)}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-                >
-                    <ArrowLeftIcon className="w-6 h-6" />
-                </button>
-                <div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white transition-colors">Conexión WhatsApp</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Escanea el código QR para activar el bot.</p>
-                </div>
-            </div>
+        <div className="flex h-full flex-col">
+            <EncabezadoPagina volver={{ a: '/admin/configuracion', texto: 'Configuración' }} titulo="Conexión WhatsApp" descripcion="Escanea el código QR para activar el bot." />
 
             {/* Contenedor del Escáner */}
             <div className="flex-1 flex items-center justify-center p-4">

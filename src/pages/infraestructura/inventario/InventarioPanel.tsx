@@ -69,7 +69,7 @@ function AvisoStock({ stock, onCambiar }: { stock: Stock; onCambiar: (stock: Sto
     return (
         <div className={`flex flex-none flex-wrap items-center justify-between gap-2 rounded-2xl border px-4 py-3 text-xs ${stock.bajo
             ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300'
-            : 'border-slate-200 bg-white text-slate-500 dark:border-slate-800 dark:bg-[#12141a] dark:text-slate-400'}`}>
+            : 'border-slate-200 bg-white text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400'}`}>
             <span className="flex items-center gap-2 font-bold">
                 {stock.bajo && <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />}
                 {stock.bajo
@@ -89,7 +89,7 @@ function AvisoStock({ stock, onCambiar }: { stock: Stock; onCambiar: (stock: Sto
                             className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                         />
                     </label>
-                    <button type="button" onClick={() => void guardar()} className="rounded-lg bg-indigo-600 px-3 py-1.5 font-black text-white">Guardar</button>
+                    <button type="button" onClick={() => void guardar()} className="rounded-lg bg-blue-600 px-3 py-1.5 font-black text-white">Guardar</button>
                 </span>
             ) : (
                 <button type="button" onClick={() => { setMinimo(String(stock.minimo)); setEditando(true); }} className="font-black text-indigo-600 dark:text-indigo-400">
@@ -230,7 +230,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                     {/* Botón Lupa (Solo Móvil) */}
                     <button 
                         onClick={() => setMobileView(mobileView === 'search' ? 'none' : 'search')}
-                        className={`sm:hidden p-3 rounded-xl border transition-all ${mobileView === 'search' || busqueda ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400' : 'bg-slate-50 dark:bg-[#0a0c10] border-slate-200 dark:border-slate-800 text-slate-500'}`}
+                        className={`sm:hidden p-3 rounded-xl border transition-all ${mobileView === 'search' || busqueda ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400' : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-500'}`}
                     >
                         <MagnifyingGlassIcon className="w-5 h-5" />
                     </button>
@@ -238,7 +238,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                     {/* Botón Filtro (Solo Móvil) */}
                     <button 
                         onClick={() => setMobileView(mobileView === 'zone' ? 'none' : 'zone')}
-                        className={`sm:hidden p-3 rounded-xl border transition-all ${mobileView === 'zone' || filtroZona !== 'Todas' ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400' : 'bg-slate-50 dark:bg-[#0a0c10] border-slate-200 dark:border-slate-800 text-slate-500'}`}
+                        className={`sm:hidden p-3 rounded-xl border transition-all ${mobileView === 'zone' || filtroZona !== 'Todas' ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400' : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-500'}`}
                     >
                         <FunnelIcon className="w-5 h-5" />
                     </button>
@@ -247,7 +247,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                     <button
                         aria-label="Ingresar equipo"
                         onClick={() => { setShowModal(true); setIsScanning(false); setModelo(''); setNuevoId(''); }}
-                        className="p-3 sm:px-5 sm:py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl sm:rounded-[1rem] font-black shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                        className="p-3 sm:px-5 sm:py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl sm:rounded-[1rem] font-black shadow-lg shadow-blue-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
                         <UserPlusIcon className="w-5 h-5" /> 
                         <span className="hidden sm:inline text-xs tracking-widest uppercase">Ingresar Equipo</span>
@@ -267,7 +267,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                         placeholder="Buscar por MAC o Cliente..." 
                         value={busqueda} 
                         onChange={e => setBusqueda(e.target.value)}
-                        className="w-full bg-white dark:bg-[#12141a] border border-indigo-500 rounded-[1.25rem] py-3.5 pl-11 pr-4 text-sm font-bold text-slate-900 dark:text-white outline-none shadow-sm placeholder:text-slate-400"
+                        className="w-full bg-white dark:bg-slate-900 border border-indigo-500 rounded-[1.25rem] py-3.5 pl-11 pr-4 text-sm font-bold text-slate-900 dark:text-white outline-none shadow-sm placeholder:text-slate-400"
                     />
                 </div>
             )}
@@ -278,7 +278,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                     <select 
                         value={filtroZona} 
                         onChange={e => setFiltroZona(e.target.value)} 
-                        className="w-full appearance-none bg-white dark:bg-[#12141a] border border-indigo-500 rounded-[1.25rem] py-3.5 pl-11 pr-10 text-sm font-black text-slate-700 dark:text-slate-300 outline-none shadow-sm cursor-pointer"
+                        className="w-full appearance-none bg-white dark:bg-slate-900 border border-indigo-500 rounded-[1.25rem] py-3.5 pl-11 pr-10 text-sm font-black text-slate-700 dark:text-slate-300 outline-none shadow-sm cursor-pointer"
                     >
                         {zonasUnicas.map(z => <option key={z} value={z}>{z === 'Todas' ? 'Todas las Zonas' : z}</option>)}
                     </select>
@@ -295,13 +295,13 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                         placeholder="Buscar por MAC, Serial o Cliente..." 
                         value={busqueda} 
                         onChange={e => setBusqueda(e.target.value)}
-                        className="w-full bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800/80 rounded-[1.25rem] py-3.5 pl-11 pr-4 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm placeholder:text-slate-400"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-[1.25rem] py-3.5 pl-11 pr-4 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm placeholder:text-slate-400"
                     />
                 </div>
                 
                 <div className="relative shrink-0 w-auto">
                     <MapPinIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500 pointer-events-none" />
-                    <select value={filtroZona} onChange={e => setFiltroZona(e.target.value)} className="appearance-none bg-white dark:bg-[#12141a] border border-slate-200 dark:border-slate-800/80 rounded-[1.25rem] py-3.5 pl-10 pr-10 text-xs font-black text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm cursor-pointer">
+                    <select value={filtroZona} onChange={e => setFiltroZona(e.target.value)} className="appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-[1.25rem] py-3.5 pl-10 pr-10 text-xs font-black text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm cursor-pointer">
                         {zonasUnicas.map(z => <option key={z} value={z}>{z === 'Todas' ? 'Todas las Zonas' : z}</option>)}
                     </select>
                     <FunnelIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
@@ -318,7 +318,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
             </div>
 
             {/* LISTA DE EQUIPOS */}
-            <div className="flex-1 min-h-0 bg-transparent md:bg-white md:dark:bg-[#12141a] md:rounded-[1.5rem] md:border md:border-slate-200 md:dark:border-slate-800/80 md:shadow-sm overflow-hidden flex flex-col transition-colors duration-200 relative">
+            <div className="flex-1 min-h-0 bg-transparent md:bg-white md:dark:bg-slate-900 md:rounded-[1.5rem] md:border md:border-slate-200 md:dark:border-slate-800/80 md:shadow-sm overflow-hidden flex flex-col transition-colors duration-200 relative">
                 <div className="overflow-y-auto flex-1 custom-scrollbar pb-10 md:pb-0">
                     
                     {/* VISTA ESCRITORIO */}
@@ -392,9 +392,9 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                         {loading && equipos.length === 0 ? (
                             <div className="p-8 text-center"><ArrowPathIcon className="w-6 h-6 animate-spin mx-auto text-indigo-500" /></div>
                         ) : equiposFiltradosFinal.length === 0 ? (
-                            <div className="p-8 text-center text-slate-400 font-bold bg-white dark:bg-[#12141a] rounded-2xl border border-slate-200 dark:border-slate-800">No se encontraron equipos.</div>
+                            <div className="p-8 text-center text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">No se encontraron equipos.</div>
                         ) : equiposFiltradosFinal.map((eq) => (
-                            <div key={eq.id} className="bg-white dark:bg-[#12141a] rounded-[1.5rem] p-4 border border-slate-200/80 dark:border-slate-800 flex flex-col gap-3 shadow-sm relative overflow-hidden transition-colors">
+                            <div key={eq.id} className="bg-white dark:bg-slate-900 rounded-[1.5rem] p-4 border border-slate-200/80 dark:border-slate-800 flex flex-col gap-3 shadow-sm relative overflow-hidden transition-colors">
 
                                 <div className="flex justify-between items-start gap-2">
                                     <div className="flex items-start gap-3 overflow-hidden">
@@ -450,11 +450,11 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                     </Transition.Child>
 
                     <div className="fixed inset-0 overflow-hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-                        <Dialog.Panel className="w-full sm:max-w-md bg-white dark:bg-[#12141a] rounded-t-[2rem] sm:rounded-3xl shadow-2xl flex flex-col relative transition-all duration-300">
+                        <Dialog.Panel className="w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-3xl shadow-2xl flex flex-col relative transition-all duration-300">
                             
                             <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mt-3 mb-1 sm:hidden shrink-0" />
 
-                            <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex justify-between items-center bg-white dark:bg-[#12141a] rounded-t-[2rem] sm:rounded-t-none">
+                            <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex justify-between items-center bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-t-none">
                                 <h3 className="text-slate-900 dark:text-white font-black text-lg flex items-center gap-2">
                                     <ArchiveBoxIcon className="w-6 h-6 text-indigo-500" /> Nuevo Equipo
                                 </h3>
@@ -474,7 +474,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                                         </button>
                                     </div>
                                 ) : (
-                                    <button onClick={() => setIsScanning(true)} className="w-full py-8 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 bg-slate-50 dark:bg-[#0a0c10] rounded-3xl flex flex-col items-center gap-2 transition-all group cursor-pointer active:scale-[0.98]">
+                                    <button onClick={() => setIsScanning(true)} className="w-full py-8 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 bg-slate-50 dark:bg-slate-950 rounded-3xl flex flex-col items-center gap-2 transition-all group cursor-pointer active:scale-[0.98]">
                                         <div className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm group-hover:scale-110 transition-transform"><CameraIcon className="w-8 h-8 text-indigo-500" /></div>
                                         <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">Escanear Código (MAC/SN)</span>
                                     </button>
@@ -483,13 +483,13 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                                 <form onSubmit={handleRegistrar} className="space-y-4 pt-2">
                                     <div>
                                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1.5 ml-1">Identificador Manual</label>
-                                        <input type="text" placeholder="Ej. HWTCB991C1AE" className="w-full bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 text-slate-900 dark:text-white font-mono uppercase font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-inner" value={nuevoId} onChange={(e) => setNuevoId(e.target.value.toUpperCase())} required />
+                                        <input type="text" placeholder="Ej. HWTCB991C1AE" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 text-slate-900 dark:text-white font-mono uppercase font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-inner" value={nuevoId} onChange={(e) => setNuevoId(e.target.value.toUpperCase())} required />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1.5 ml-1">Tecnología</label>
-                                            <select className="w-full bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 text-slate-800 dark:text-white font-black text-xs outline-none focus:border-indigo-500 appearance-none shadow-inner" value={tecnologia} onChange={e => setTecnologia(e.target.value)}>
+                                            <select className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 text-slate-800 dark:text-white font-black text-xs outline-none focus:border-blue-500 appearance-none shadow-inner" value={tecnologia} onChange={e => setTecnologia(e.target.value)}>
                                                 <option value="GPON">GPON</option>
                                                 <option value="EPON">EPON</option>
                                             </select>
@@ -499,7 +499,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                                             <input
                                                 list="modelos-onu"
                                                 placeholder="Ej. ZTE F670L"
-                                                className="w-full bg-slate-50 dark:bg-[#0a0c10] border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 text-slate-900 dark:text-white font-bold text-xs outline-none focus:border-indigo-500 transition-all shadow-inner"
+                                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 text-slate-900 dark:text-white font-bold text-xs outline-none focus:border-blue-500 transition-all shadow-inner"
                                                 value={modelo}
                                                 onChange={e => setModelo(e.target.value)}
                                                 required
@@ -513,7 +513,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
                                             </datalist>
                                         </div>
                                     </div>
-                                    <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.98] uppercase text-[11px] tracking-widest mt-4">Guardar Equipo en Stock</button>
+                                    <button type="submit" className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] uppercase text-[11px] tracking-widest mt-4">Guardar Equipo en Stock</button>
                                 </form>
                             </div>
                         </Dialog.Panel>
@@ -525,7 +525,7 @@ export default function InventarioPanel({ onVerRetiros }: Props) {
 }
 
 const KpiCard = ({ title, value, icon: Icon, color, bg, border, onClick, active }: KpiCardProps) => (
-    <button type="button" onClick={onClick} className={`p-4 text-left rounded-[1.25rem] border cursor-pointer transition-all shrink-0 min-w-[140px] snap-start flex-1 flex flex-col justify-between ${active ? `border-indigo-500 bg-white dark:bg-[#12141a] shadow-md ring-4 ring-indigo-500/10` : `border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#12141a]/60 hover:bg-slate-50 dark:hover:bg-[#12141a] shadow-sm`}`}>
+    <button type="button" onClick={onClick} className={`p-4 text-left rounded-[1.25rem] border cursor-pointer transition-all shrink-0 min-w-[140px] snap-start flex-1 flex flex-col justify-between ${active ? `border-indigo-500 bg-white dark:bg-slate-900 shadow-md ring-4 ring-indigo-500/10` : `border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-sm`}`}>
         <div className="flex justify-between items-start mb-2">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</p>
             <div className={`p-1.5 rounded-xl border ${bg} ${border}`}><Icon className={`w-4 h-4 ${color}`} /></div>

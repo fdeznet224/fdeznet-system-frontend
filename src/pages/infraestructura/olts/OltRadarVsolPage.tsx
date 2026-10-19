@@ -573,7 +573,7 @@ function OltFormModal({
   };
 
   const inputCls =
-    "w-full rounded-xl border border-slate-700/50 bg-[#0b0c10] px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500";
+    "w-full rounded-xl border border-slate-700/50 bg-[#0b0c10] px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500";
   const labelCls = "block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1";
 
   return (

@@ -9,7 +9,7 @@ import {
 
 function ImagePlaceholder({ label }: { label: string }) {
     return (
-        <div className="w-full aspect-video bg-[#12141a] border border-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-500 my-8 shadow-inner group transition-colors hover:border-indigo-500/50">
+        <div className="w-full aspect-video bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-500 my-8 shadow-inner group transition-colors hover:border-indigo-500/50">
             <PhotoIcon className="w-12 h-12 mb-3 text-slate-600 group-hover:text-indigo-500 transition-colors" />
             <p className="font-bold text-sm tracking-wide">{label}</p>
             <p className="text-[10px] uppercase tracking-widest mt-1 opacity-50">(Reemplazar por etiqueta &lt;img&gt;)</p>
@@ -31,10 +31,10 @@ export default function DocsPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-[#0a0c10] text-slate-300 font-sans selection:bg-indigo-500/30 flex flex-col">
+        <div className="min-h-screen bg-slate-950 text-slate-300 font-sans selection:bg-indigo-500/30 flex flex-col">
             
             {/* ================= NAVBAR ================= */}
-            <nav className="flex-none h-20 border-b border-slate-800/80 bg-[#0a0c10]/80 backdrop-blur-xl z-50 sticky top-0 px-6 flex items-center justify-between">
+            <nav className="flex-none h-20 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl z-50 sticky top-0 px-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link to="/" className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-all">
                         <ArrowLeftIcon className="w-5 h-5" />

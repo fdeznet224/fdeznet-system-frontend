@@ -77,7 +77,7 @@ export default function ContratosApartados() {
     const [siguiente, ...resto] = apartados;
 
     return (
-        <section aria-label="Contratos apartados" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-[#161b28]">
+        <section aria-label="Contratos apartados" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                     <DocumentTextIcon className="h-5 w-5" />

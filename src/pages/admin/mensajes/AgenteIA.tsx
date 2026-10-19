@@ -26,7 +26,7 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   error: 'Con error',
 };
 
-const inputClass = 'w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 outline-none focus:border-violet-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
+const inputClass = 'w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
 
 /** Conocimiento, consumo y sugerencias del agente. El modo se elige en Bot de WhatsApp. */
 export default function AgenteIA() {
@@ -91,7 +91,7 @@ export default function AgenteIA() {
             type="button"
             onClick={() => void guardar()}
             disabled={guardando}
-            className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-black text-white hover:bg-violet-500 disabled:opacity-50"
+            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white hover:bg-blue-500 disabled:opacity-50"
           >
             {guardando ? 'Guardando…' : 'Guardar conocimiento'}
           </button>

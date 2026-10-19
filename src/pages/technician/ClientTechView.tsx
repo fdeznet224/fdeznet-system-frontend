@@ -254,7 +254,7 @@ export default function ClientTechView() {
     };
 
     if (loading) return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#0f1219]">
+        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
             <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-blue-600 border-t-transparent" />
         </div>
     );
@@ -280,7 +280,7 @@ export default function ClientTechView() {
     const potencia = String(liveSignal?.potencia || data.potencia_optica || '--.--').replace(/\s*dBm\s*$/i, '');
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-24 font-sans text-slate-900 transition-colors dark:bg-[#0f1219] dark:text-white">
+        <div className="min-h-screen bg-slate-50 pb-24 font-sans text-slate-900 transition-colors dark:bg-slate-950 dark:text-white">
 
             {/* ENCABEZADO */}
             <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">
@@ -464,7 +464,7 @@ export default function ClientTechView() {
             {isChatOpen && (
                 <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4">
                     <div className="flex h-[85vh] w-full flex-col border-t border-slate-200 bg-slate-50 shadow-2xl animate-in slide-in-from-bottom-full duration-300 dark:border-slate-800 dark:bg-[#0b0e14] sm:h-[600px] sm:max-w-md sm:rounded-2xl sm:border">
-                        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-[#161b28] sm:rounded-t-2xl">
+                        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 sm:rounded-t-2xl">
                             <div className="min-w-0">
                                 <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">{data.nombre}</h3>
                                 <p className="text-xs text-emerald-600 dark:text-emerald-400">{data.telefono}</p>
@@ -475,7 +475,7 @@ export default function ClientTechView() {
                         <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
                             {chatMessages.map((msg, index) => (
                                 <div key={msg.id ?? index} className={`flex ${msg.direccion === 'salida' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${msg.direccion === 'salida' ? 'rounded-tr-sm bg-emerald-600 text-white' : 'rounded-tl-sm border border-slate-200 bg-white text-slate-800 dark:border-slate-800 dark:bg-[#161b28] dark:text-slate-200'}`}>
+                                    <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${msg.direccion === 'salida' ? 'rounded-tr-sm bg-emerald-600 text-white' : 'rounded-tl-sm border border-slate-200 bg-white text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'}`}>
                                         <p>{msg.mensaje}</p>
                                         <p className={`mt-1 text-right text-[10px] ${msg.direccion === 'salida' ? 'text-emerald-100' : 'text-slate-400'}`}>
                                             {new Date(msg.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -486,7 +486,7 @@ export default function ClientTechView() {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        <div className="border-t border-slate-200 bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-[#161b28]">
+                        <div className="border-t border-slate-200 bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-900">
                             <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 pl-4 dark:border-slate-700 dark:bg-[#0b0e14]">
                                 <input type="text" aria-label="Mensaje" className="flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white" placeholder="Escribe un mensaje..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} />
                                 <button type="button" aria-label="Enviar" onClick={handleSendMessage} disabled={!newMessage.trim() || isSending} className={`flex h-10 w-10 items-center justify-center rounded-full transition active:scale-90 ${newMessage.trim() && !isSending ? 'bg-emerald-600 text-white hover:bg-emerald-500' : 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600'}`}>

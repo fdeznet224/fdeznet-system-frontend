@@ -1,21 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
-import { 
-    ArrowLeftIcon, 
-    ShieldCheckIcon, 
-    PencilSquareIcon, 
-    XMarkIcon,
-    ServerStackIcon,
-    TrashIcon,
-    UserCircleIcon,
-    KeyIcon,
-    IdentificationIcon,
-    EyeIcon,
-    EyeSlashIcon,
-} from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
+import { ShieldCheckIcon, PencilSquareIcon, XMarkIcon, ServerStackIcon, TrashIcon, UserCircleIcon, KeyIcon, IdentificationIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+
 import { apiErrorMessage } from '@/utils/apiError';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 interface SystemUser {
     id: number;
@@ -68,7 +57,6 @@ const getApiError = (error: unknown, fallback: string) => {
 };
 
 export default function Usuarios() {
-    const navigate = useNavigate();
     
     const [usuarios, setUsuarios] = useState<SystemUser[]>([]);
     const [listaRouters, setListaRouters] = useState<RouterCatalog[]>([]);
@@ -168,18 +156,8 @@ export default function Usuarios() {
     };
 
     return (
-        /* ✅ ADAPTADO: Fondo principal dinámico */
-        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-10 p-4 md:p-0 transition-colors duration-300">
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
-                <button onClick={() => navigate('/admin/configuracion')} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-                    <ArrowLeftIcon className="w-5 h-5" />
-                </button>
-                <div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white transition-colors">Gestión de Usuarios</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">Administra accesos y asignación de routers del personal.</p>
-                </div>
-            </div>
+        <div className="mx-auto max-w-7xl space-y-6">
+            <EncabezadoPagina volver={{ a: '/admin/configuracion', texto: 'Configuración' }} titulo="Gestión de Usuarios" descripcion="Administra accesos y asignación de routers del personal." />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
@@ -267,7 +245,7 @@ export default function Usuarios() {
                                     placeholder="Ej. 5215512345678"
                                     value={form.telefono_whatsapp}
                                     onChange={e => setForm({...form, telefono_whatsapp: e.target.value.replace(/[^0-9+ ()-]/g, '')})}
-                                    className="w-full mt-1.5 bg-slate-50 dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 text-slate-800 dark:text-white text-sm focus:border-indigo-500 outline-none"
+                                    className="w-full mt-1.5 bg-slate-50 dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 text-slate-800 dark:text-white text-sm focus:border-blue-500 outline-none"
                                 />
                                 <p className="mt-1 text-[10px] text-slate-500">Incluye código de país. Este número identifica al técnico en el bot privado.</p>
                             </div>
@@ -333,7 +311,7 @@ export default function Usuarios() {
                             <input type="checkbox" checked={form.bot_whatsapp_habilitado} onChange={e => setForm({...form, bot_whatsapp_habilitado: e.target.checked})} className="w-5 h-5 rounded text-indigo-600" />
                         </label>
 
-                        <button className={`w-full font-black py-4 rounded-xl mt-4 shadow-md transition-all flex justify-center items-center gap-2 ${editingId ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-blue-600 hover:bg-blue-500'} text-white`}>
+                        <button className={`w-full font-black py-4 rounded-xl mt-4 shadow-md transition-all flex justify-center items-center gap-2 ${editingId ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-600 hover:bg-blue-500'} text-white`}>
                             {editingId ? <PencilSquareIcon className="w-5 h-5"/> : <ShieldCheckIcon className="w-5 h-5"/>}
                             {editingId ? 'Guardar Cambios' : 'Registrar Nuevo Usuario'}
                         </button>

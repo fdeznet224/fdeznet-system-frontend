@@ -180,7 +180,7 @@ export default function AgenteSugerencias({ clienteId, onEnviada }: Props) {
           )}
 
           <textarea
-            className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none focus:border-violet-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
             rows={3}
             value={textos[s.id] ?? s.respuesta_propuesta ?? ''}
             onChange={(e) => setTextos((prev) => ({ ...prev, [s.id]: e.target.value }))}
@@ -199,7 +199,7 @@ export default function AgenteSugerencias({ clienteId, onEnviada }: Props) {
               type="button"
               onClick={() => void enviar(s)}
               disabled={ocupado === s.id || !(textos[s.id] ?? s.respuesta_propuesta ?? '').trim()}
-              className="flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-black text-white hover:bg-violet-500 disabled:opacity-50"
+              className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-black text-white hover:bg-blue-500 disabled:opacity-50"
             >
               <PaperAirplaneIcon className="h-4 w-4" /> Enviar
             </button>

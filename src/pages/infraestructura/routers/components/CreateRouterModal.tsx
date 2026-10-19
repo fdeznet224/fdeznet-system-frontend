@@ -181,7 +181,7 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                                         tipo_seguridad: e.target.value as RouterFormData['tipo_seguridad'],
                                         tipo_control: 'colas_dinamicas',
                                     })}
-                                    className="w-full bg-white dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-black text-sm outline-none focus:border-purple-500"
+                                    className="w-full bg-white dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-black text-sm outline-none focus:border-blue-500"
                                 >
                                     <option value="pppoe">PPPoE (PPP Secrets)</option>
                                     <option value="dhcp">DHCP estático (IP + MAC)</option>

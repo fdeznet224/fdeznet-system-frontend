@@ -2,18 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import {
-  BellAlertIcon,
-  ChatBubbleLeftRightIcon,
-  CpuChipIcon,
-  KeyIcon,
-  ServerStackIcon,
-  SignalIcon,
-  SparklesIcon,
-} from '@heroicons/react/24/outline';
+import { BellAlertIcon, ChatBubbleLeftRightIcon, CpuChipIcon, ServerStackIcon, SignalIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
 import PagosCapturaConfig from './components/PagosCapturaConfig';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 interface ConexionIA {
   url: string;
@@ -27,7 +20,7 @@ interface Equipos {
   olts: number | null;
 }
 
-const inputClass = 'mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
+const inputClass = 'mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
 const tarjeta = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5';
 
 function detalleError(error: unknown, respaldo: string) {
@@ -122,7 +115,7 @@ function SeccionIA() {
         <button type="button" onClick={() => void probar()} disabled={ocupado} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 hover:border-violet-400 hover:text-violet-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
           Probar conexión
         </button>
-        <button type="button" onClick={() => void guardar()} disabled={ocupado} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-black text-white hover:bg-violet-500 disabled:opacity-50">
+        <button type="button" onClick={() => void guardar()} disabled={ocupado} className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-500 disabled:opacity-50">
           {ocupado ? 'Procesando…' : 'Guardar'}
         </button>
       </div>
@@ -239,16 +232,8 @@ function SeccionEquipos() {
 
 export default function Integraciones() {
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-indigo-100 p-2 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
-          <KeyIcon className="h-6 w-6" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Integraciones y claves</h1>
-          <p className="text-sm text-slate-500">Conexiones con servicios externos. Las claves se guardan cifradas y nunca se vuelven a mostrar.</p>
-        </div>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <EncabezadoPagina volver={{ a: '/admin/configuracion', texto: 'Configuración' }} titulo="Integraciones y claves" descripcion="Conexiones con servicios externos. Las claves se guardan cifradas y nunca se vuelven a mostrar." />
 
       <section className={tarjeta}><PagosCapturaConfig /></section>
       <section className={tarjeta}><SeccionIA /></section>

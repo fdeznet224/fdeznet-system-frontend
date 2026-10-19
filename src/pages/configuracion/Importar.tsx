@@ -1,16 +1,10 @@
 import { useState, useEffect } from 'react';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import { 
-    CloudArrowUpIcon, 
-    DocumentTextIcon, 
-    ArrowLeftIcon, 
-    ArrowDownTrayIcon,
-    ExclamationTriangleIcon,
-    CheckCircleIcon
-} from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
+import { CloudArrowUpIcon, DocumentTextIcon, ArrowDownTrayIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+
 import { apiErrorMessage } from '@/utils/apiError';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 interface CatalogOption {
     id: number;
@@ -32,7 +26,6 @@ interface CatalogInput {
 }
 
 export default function Importar() {
-    const navigate = useNavigate();
     
     const [routerId, setRouterId] = useState('');
     const [redId, setRedId] = useState('');
@@ -165,18 +158,8 @@ export default function Importar() {
     ];
 
     return (
-        /* ✅ ADAPTADO: Fondo dinámico */
-        <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20 p-4 transition-colors duration-300">
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-2">
-                <button onClick={() => navigate('/admin/configuracion')} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-                    <ArrowLeftIcon className="w-6 h-6" />
-                </button>
-                <div>
-                    <h2 className="text-3xl font-black text-slate-900 dark:text-white transition-colors">Importación Masiva</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Sincroniza tu MikroTik con la Base de Datos.</p>
-                </div>
-            </div>
+        <div className="mx-auto max-w-6xl space-y-6">
+            <EncabezadoPagina volver={{ a: '/admin/configuracion', texto: 'Configuración' }} titulo="Importación Masiva" descripcion="Sincroniza tu MikroTik con la Base de Datos." />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 

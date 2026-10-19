@@ -3,7 +3,7 @@ import '@fontsource/plus-jakarta-sans';
 
 export const getDesignTokens = (mode: PaletteMode) => ({
   typography: {
-    fontFamily: '"Plus Jakarta Sans", sans-serif',
+    fontFamily: '"Inter Variable", ui-sans-serif, system-ui, sans-serif',
     h5: { fontWeight: 800, letterSpacing: '-0.5px' },
     h6: { fontWeight: 700 },
     subtitle1: { fontWeight: 600 },

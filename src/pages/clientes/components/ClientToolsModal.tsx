@@ -323,7 +323,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                                         setDataConsumo(null);
                                         setMode('menu');
                                     }}
-                                    className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-black text-slate-900 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                    className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-black text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                                 >
                                     {servicios.map((servicio) => (
                                         <option key={servicio.id} value={servicio.id}>

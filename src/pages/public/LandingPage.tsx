@@ -34,10 +34,10 @@ export default function LandingPage() {
     const whatsappLink = "https://wa.me/529613632496?text=Hola%20FdezNet,%20me%20interesa%20contratar%20su%20sistema%20para%20mi%20WISP.";
 
     return (
-        <div className="min-h-screen bg-[#0a0c10] text-slate-200 font-sans selection:bg-indigo-500/30">
+        <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500/30">
             
             {/* ================= NAVBAR ================= */}
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0c10]/80 backdrop-blur-xl border-b border-slate-800/80">
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-500/20">
@@ -103,7 +103,7 @@ export default function LandingPage() {
                 {/* Dashboard Mockup/Preview */}
                 <div className="mt-20 max-w-6xl mx-auto relative z-10">
                     <div className="bg-slate-900 border border-slate-800 rounded-[2rem] shadow-2xl p-2 sm:p-4">
-                        <div className="bg-[#0a0c10] rounded-[1.5rem] border border-slate-800/50 aspect-video md:aspect-[21/9] flex items-center justify-center relative overflow-hidden">
+                        <div className="bg-slate-950 rounded-[1.5rem] border border-slate-800/50 aspect-video md:aspect-[21/9] flex items-center justify-center relative overflow-hidden">
                             <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-slate-900 to-black"></div>
                             <ChartBarIcon className="w-20 h-20 text-slate-800" />
                             <p className="absolute bottom-10 text-slate-600 font-black uppercase tracking-widest text-sm">Preview del Panel de Control</p>
@@ -169,7 +169,7 @@ export default function LandingPage() {
                     </div>
 
                     {/* 🔥 BANNER DESTACADO PARA LA PWA 🔥 */}
-                    <div className="bg-gradient-to-br from-indigo-900/40 via-[#12141a] to-blue-900/20 p-8 md:p-10 rounded-[2rem] border border-indigo-500/30 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden group">
+                    <div className="bg-gradient-to-br from-indigo-900/40 via-slate-900 to-blue-900/20 p-8 md:p-10 rounded-[2rem] border border-indigo-500/30 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-700"></div>
                         <div className="w-20 h-20 rounded-3xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0 z-10 shadow-[0_0_30px_rgba(79,70,229,0.2)]">
                             <DevicePhoneMobileIcon className="w-10 h-10 text-indigo-400" />
@@ -284,7 +284,7 @@ export default function LandingPage() {
 }
 
 const FeatureCard = ({ icon: Icon, color, bg, border, title, desc }: FeatureCardProps) => (
-    <div className="bg-[#12141a] p-6 rounded-[1.5rem] border border-slate-800/80 hover:border-slate-700 transition-colors group">
+    <div className="bg-slate-900 p-6 rounded-[1.5rem] border border-slate-800/80 hover:border-slate-700 transition-colors group">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${bg} ${border} border group-hover:scale-110 transition-transform`}>
             <Icon className={`w-6 h-6 ${color}`} />
         </div>
@@ -294,7 +294,7 @@ const FeatureCard = ({ icon: Icon, color, bg, border, title, desc }: FeatureCard
 );
 
 const PricingCard = ({ name, price, period, clients, features, recommended, badgeText, link }: PricingCardProps) => (
-    <div className={`relative bg-[#12141a] p-8 rounded-[2rem] border transition-transform ${recommended ? 'border-indigo-500 shadow-[0_0_40px_rgba(79,70,229,0.15)] transform md:-translate-y-4' : 'border-slate-800/80'}`}>
+    <div className={`relative bg-slate-900 p-8 rounded-[2rem] border transition-transform ${recommended ? 'border-indigo-500 shadow-[0_0_40px_rgba(79,70,229,0.15)] transform md:-translate-y-4' : 'border-slate-800/80'}`}>
         
         {badgeText && (
             <div className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${recommended ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}>

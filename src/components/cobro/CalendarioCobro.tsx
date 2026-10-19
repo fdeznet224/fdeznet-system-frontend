@@ -25,7 +25,7 @@ export default function CalendarioCobro({ fechas, inicio = 'Hoy (activación)' }
         ...(fechas.gratis_hasta ? [[FONDO.gratis, 'Mes gratis'] as [string, string]] : []),
         ...(fechas.prorrateo ? [[FONDO.prorrateo, 'Prorrateo'] as [string, string]] : []),
         [FONDO.mensualidad, '1.ª mensualidad'],
-        ['bg-indigo-600 text-white', 'Día de pago'],
+        ['bg-blue-600 text-white', 'Día de pago'],
         ...(fechas.corte ? [['bg-rose-600 text-white', 'Corte si no paga'] as [string, string]] : []),
         ['ring-2 ring-slate-900 dark:ring-white', inicio],
     ];
@@ -54,7 +54,7 @@ export default function CalendarioCobro({ fechas, inicio = 'Hoy (activación)' }
                                 const pago = dia === fechas.primer_pago.fecha;
                                 const corte = dia === fechas.corte;
                                 const clase = pago
-                                    ? 'bg-indigo-600 text-white font-black'
+                                    ? 'bg-blue-600 text-white font-black'
                                     : corte
                                         ? 'bg-rose-600 text-white font-black'
                                         : tipo ? FONDO[tipo] : 'text-slate-500 dark:text-slate-400';

@@ -17,6 +17,8 @@ import RouterPingButton from './components/RouterPingButton';
 import type { RouterActionResponse, RouterRecord } from './types';
 import { useBrand } from '@/context/brand/useBrand';
 import { apiErrorMessage } from '@/utils/apiError';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { BOTON_ACCION_PRIMARIO } from '@/components/ui/estilo';
 
 const getErrorMessage = (error: unknown, fallback: string) => {
     return apiErrorMessage(error, fallback);
@@ -84,34 +86,13 @@ export default function Routers() {
     }, [fetchRouters]);
 
     return (
-        /* ✅ ADAPTADO: Colores transicionan de blanco a slate oscuro suavemente */
-        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12 transition-colors duration-300">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4">
 
-            {/* =========================================================
-                HEADER RESPONSIVO DE NODOS
-               ========================================================= */}
-            <div className="flex justify-between items-center px-1 md:px-0 flex-none gap-2 pb-2">
-                <div>
-                    {/* ✅ ADAPTADO: Título en negro para claro, blanco para oscuro */}
-                    <h2 className="text-xl md:text-3xl font-black text-slate-800 dark:text-white tracking-tight transition-colors">
-                        Nodos MikroTik
-                    </h2>
-                    {/* Badge se aclara en modo light */}
-                    <div className="hidden sm:flex items-center gap-3 mt-2 bg-white dark:bg-slate-800/80 w-fit px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700/50 backdrop-blur-md shadow-sm transition-colors">
-                        <span className="text-slate-500 dark:text-slate-300 text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
-                            <ShieldCheckIcon className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" /> Exclusivo PPPoE & Colas Simples
-                        </span>
-                    </div>
-                </div>
-
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-2 md:px-5 md:py-3 rounded-xl font-extrabold shadow-md hover:shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-1 text-[10px] md:text-sm tracking-wide uppercase md:normal-case shrink-0"
-                >
-                    <PlusIcon className="w-4 h-4 md:w-5 md:h-5" />
-                    <span>Vincular Nodo</span>
-                </button>
-            </div>
+            <EncabezadoPagina
+                titulo="Nodos MikroTik"
+                descripcion="Exclusivo PPPoE y colas simples."
+                acciones={<button type="button" onClick={() => setIsModalOpen(true)} className={BOTON_ACCION_PRIMARIO}><PlusIcon className="h-5 w-5" /> Vincular Nodo</button>}
+            />
 
             {/* GRID */}
             {loading ? (

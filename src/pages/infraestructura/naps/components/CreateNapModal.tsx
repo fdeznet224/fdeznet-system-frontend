@@ -206,7 +206,7 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, olts
                                     onClick={() => setFormData({...formData, capacidad: cap})}
                                     className={`p-3 rounded-xl border-2 font-black text-sm transition-all ${
                                         formData.capacidad === cap 
-                                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-md' 
+                                        ? 'bg-blue-600 border-indigo-500 text-white shadow-md' 
                                         : 'bg-slate-50 dark:bg-[#0b0c10] border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300 dark:hover:border-slate-500'
                                     }`}
                                 >

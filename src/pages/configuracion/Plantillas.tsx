@@ -1,15 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
-import { 
-    ChatBubbleLeftRightIcon, PlusIcon, PencilSquareIcon, 
-     XCircleIcon, ArrowLeftIcon, SparklesIcon
-} from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
+import { ChatBubbleLeftRightIcon, PlusIcon, PencilSquareIcon, XCircleIcon, SparklesIcon } from '@heroicons/react/24/outline';
+
 import CreateMessageModal, { type MessageTemplate } from './components/CreateMessageModal';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { BOTON_ACCION_PRIMARIO } from '@/components/ui/estilo';
 
 export default function Plantillas() {
-    const navigate = useNavigate();
     const [plantillas, setPlantillas] = useState<MessageTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -81,25 +79,13 @@ export default function Plantillas() {
     ];
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500 pb-10 p-4 md:p-6 max-w-7xl mx-auto transition-colors duration-300">
-            
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                    <button onClick={() => navigate('/admin/configuracion')} className="p-2 bg-slate-100 dark:bg-[#161822] rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
-                        <ArrowLeftIcon className="w-5 h-5" />
-                    </button>
-                    <div className="min-w-0">
-                        <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2 transition-colors truncate">
-                            <ChatBubbleLeftRightIcon className="w-6 h-6 md:w-8 md:h-8 text-emerald-600 dark:text-emerald-500 shrink-0"/>
-                            Plantillas de WhatsApp
-                        </h2>
-                        <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm mt-1 truncate">Configura los mensajes automáticos y variables del Bot.</p>
-                    </div>
-                </div>
-                <button onClick={handleCreate} className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 md:py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition-all shadow-md active:scale-95 uppercase tracking-widest text-xs shrink-0">
-                    <PlusIcon className="w-5 h-5"/> Crear Plantilla
-                </button>
-            </div>
+        <div className="mx-auto max-w-7xl space-y-6">
+            <EncabezadoPagina
+                volver={{ a: '/admin/configuracion', texto: 'Configuración' }}
+                titulo="Plantillas de WhatsApp"
+                descripcion="Configura los mensajes automáticos y variables del Bot."
+                acciones={<button type="button" onClick={handleCreate} className={BOTON_ACCION_PRIMARIO}><PlusIcon className="h-5 w-5" /> Crear Plantilla</button>}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {loading ? (

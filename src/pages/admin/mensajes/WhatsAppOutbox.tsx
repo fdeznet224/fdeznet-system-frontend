@@ -1,23 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import {
-  ArrowLeftIcon,
-  ArrowPathIcon,
-  CheckCircleIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ClockIcon,
-  ExclamationTriangleIcon,
-  MagnifyingGlassIcon,
-  PaperAirplaneIcon,
-  QueueListIcon,
-  SignalIcon,
-  TrashIcon,
-} from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
+import { ArrowPathIcon, CheckCircleIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, PaperAirplaneIcon, QueueListIcon, SignalIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
 import { apiErrorMessage } from '@/utils/apiError';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { BOTON_ACCION_PRIMARIO, BOTON_ICONO } from '@/components/ui/estilo';
 
 type OutboxStatus =
   | 'pendiente'
@@ -122,7 +110,6 @@ function statusStyles(status: OutboxStatus) {
 }
 
 export default function WhatsAppOutbox() {
-  const navigate = useNavigate();
   const [data, setData] = useState<OutboxResponse | null>(null);
   const [connection, setConnection] = useState<WhatsAppStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -280,30 +267,25 @@ export default function WhatsAppOutbox() {
   );
 
   return (
-    <div className="min-h-full space-y-5 bg-slate-50 p-4 text-slate-900 dark:bg-[#0f1219] dark:text-white md:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={() => navigate(-1)} className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 dark:border-slate-700 dark:bg-slate-900">
-            <ArrowLeftIcon className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-black">Bandeja de WhatsApp</h1>
-            <p className="text-sm text-slate-500">Entrega, errores, cola e intentos de todos los mensajes salientes.</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setCampaignOpen((value) => !value)} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-black text-white">
-            <PaperAirplaneIcon className="h-4 w-4" /> Mensaje masivo
-          </button>
-          <span className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black ${connection?.connected ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>
-            <SignalIcon className="h-4 w-4" />
-            {connection?.connected ? 'WhatsApp conectado' : 'WhatsApp desconectado'}
-          </span>
-          <button type="button" onClick={() => void fetchData()} className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 dark:border-slate-700 dark:bg-slate-900" aria-label="Actualizar">
-            <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      </header>
+    <div className="space-y-5 text-slate-900 dark:text-white">
+      <EncabezadoPagina
+        titulo="Bandeja de WhatsApp"
+        descripcion="Entrega, errores, cola e intentos de todos los mensajes salientes."
+        acciones={(
+          <>
+            <span className={`inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold ${connection?.connected ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'}`}>
+              <SignalIcon className="h-4 w-4" />
+              {connection?.connected ? 'WhatsApp conectado' : 'WhatsApp desconectado'}
+            </span>
+            <button type="button" onClick={() => void fetchData()} className={BOTON_ICONO} aria-label="Actualizar">
+              <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button type="button" onClick={() => setCampaignOpen((value) => !value)} className={BOTON_ACCION_PRIMARIO}>
+              <PaperAirplaneIcon className="h-4 w-4" /> Mensaje masivo
+            </button>
+          </>
+        )}
+      />
 
       {campaignOpen && (
         <form onSubmit={sendCampaign} className="space-y-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm dark:border-blue-900/50 dark:bg-blue-950/20">

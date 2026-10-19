@@ -1,24 +1,10 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import {
-  ArrowLeftIcon,
-  ArrowPathIcon,
-  CheckCircleIcon,
-  ClipboardDocumentIcon,
-  CloudArrowUpIcon,
-  CommandLineIcon,
-  BanknotesIcon,
-  KeyIcon,
-  MagnifyingGlassIcon,
-  PencilSquareIcon,
-  PlusIcon,
-  RocketLaunchIcon,
-  ServerStackIcon,
-  TrashIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowPathIcon, CheckCircleIcon, ClipboardDocumentIcon, CloudArrowUpIcon, CommandLineIcon, BanknotesIcon, KeyIcon, MagnifyingGlassIcon, PencilSquareIcon, PlusIcon, RocketLaunchIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import client from "@/api/axios";
+import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { BOTON_ACCION_PRIMARIO } from '@/components/ui/estilo';
 
 interface LicenseStatus {
   configurada: boolean;
@@ -378,33 +364,17 @@ export default function LicenciasVersiones() {
   ).length;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 pb-24 sm:p-6">
-      <div className="flex items-center gap-4 border-b border-slate-200 pb-5 dark:border-slate-800">
-        <button
-          onClick={() => navigate(-1)}
-          className="rounded-xl bg-slate-100 p-2 text-slate-500 dark:bg-slate-800"
-        >
-          <ArrowLeftIcon className="h-6 w-6" />
-        </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="flex items-center gap-2 text-xl font-black text-slate-900 dark:text-white sm:text-2xl">
-            <ServerStackIcon className="h-6 w-6 text-blue-500" /> Licencias y
-            versiones
-          </h1>
-          <p className="text-xs text-slate-500 sm:text-sm">
-            Controla esta VPS y las instalaciones vendidas.
-          </p>
-        </div>
-        {isCentral && (
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-black text-white sm:px-4 sm:text-sm"
-          >
-            <PlusIcon className="h-5 w-5" />
-            <span className="hidden sm:inline">Nueva instalación</span>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <EncabezadoPagina
+        volver={{ a: '/admin/configuracion', texto: 'Configuración' }}
+        titulo="Licencias y versiones"
+        descripcion="Controla esta VPS y las instalaciones vendidas."
+        acciones={isCentral && (
+          <button type="button" onClick={() => setShowCreate(true)} className={BOTON_ACCION_PRIMARIO}>
+            <PlusIcon className="h-5 w-5" /> Nueva instalación
           </button>
         )}
-      </div>
+      />
 
       {loading ? (
         <div className="py-20 text-center text-sm font-bold text-slate-500">

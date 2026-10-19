@@ -2,11 +2,13 @@
 import { useNavigate } from 'react-router-dom';
 import { 
     MapPinIcon, ChatBubbleLeftRightIcon, ArrowUpTrayIcon, 
-    UsersIcon, AdjustmentsHorizontalIcon, KeyIcon, 
+    UsersIcon, KeyIcon, 
     DocumentTextIcon, Cog6ToothIcon, QrCodeIcon,
     CommandLineIcon, ShieldCheckIcon, PaintBrushIcon, CloudArrowUpIcon, CircleStackIcon, ArchiveBoxArrowDownIcon,
     PuzzlePieceIcon
 } from '@heroicons/react/24/outline';
+import { TARJETA } from '@/components/ui/estilo';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 export default function Configuracion() {
     const navigate = useNavigate();
@@ -143,67 +145,24 @@ export default function Configuracion() {
     ];
 
     return (
-        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12">
-            
-            {/* =========================================================
-                HEADER MINIMALISTA DE CONFIGURACIÓN
-               ========================================================= */}
-            <div className="px-1 md:px-0 flex-none">
-                {/* ✅ LIMPIO: Texto puro sin íconos fijos */}
-                <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-                    Configuración General
-                </h2>
-                <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm mt-0.5 hidden sm:block">
-                    Administra las conexiones, automatizaciones y herramientas del sistema.
-                </p>
+        <div className="mx-auto flex max-w-7xl flex-col gap-4">
+            <EncabezadoPagina titulo="Configuración General" descripcion="Administra las conexiones, automatizaciones y herramientas del sistema." />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {herramientas.map((item) => (
+                    <button
+                        key={item.path}
+                        type="button"
+                        onClick={() => navigate(item.path)}
+                        className={`${TARJETA} group flex h-full flex-col p-4 text-left transition hover:border-slate-300 active:scale-[0.98] dark:hover:border-slate-700`}
+                    >
+                        <span className={`mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${item.bg}`}>
+                            <item.icon className={`h-5 w-5 ${item.color}`} />
+                        </span>
+                        <span className="text-sm font-semibold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">{item.titulo}</span>
+                        <span className="mt-1 flex-1 text-xs leading-normal text-slate-500 dark:text-slate-400">{item.descripcion}</span>
+                    </button>
+                ))}
             </div>
-            
-            <div className="border-t border-slate-200 dark:border-slate-800/80 my-1 flex-none"></div>
-
-            {/* =========================================================
-                GRID DE TARJETAS MODULARES ADAPTATIVAS
-               ========================================================= */}
-            <div className="flex-1 flex flex-col gap-4">
-                <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2 px-1 md:px-0 flex-none">
-                    <AdjustmentsHorizontalIcon className="w-4 h-4" />
-                    Herramientas Administrativas
-                </h3>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                    {herramientas.map((item, index) => {
-                        const isPanelCortes = item.titulo === "Panel de Control & Cortes";
-                        return (
-                            <button
-                                key={index}
-                                onClick={() => navigate(item.path)}
-                                className={`group relative p-5 rounded-2xl border transition-all duration-300 text-left flex flex-col h-full active:scale-95 cursor-pointer
-                                ${isPanelCortes 
-                                    ? 'bg-white dark:bg-slate-800 border-indigo-500/40 dark:border-indigo-500/50 hover:border-indigo-500 shadow-md dark:shadow-indigo-500/5 ring-1 ring-indigo-500/10' 
-                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800/80 hover:border-blue-500/40 dark:hover:border-blue-500/50 shadow-sm dark:shadow-xl hover:shadow-md'}`}
-                            >
-                                {/* Contenedor del Icono */}
-                                <div className={`w-11 h-11 ${item.bg} rounded-xl flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform duration-200 shrink-0`}>
-                                    <item.icon className={`w-5 h-5 ${item.color}`} />
-                                </div>
-                                
-                                {/* Título Dinámico */}
-                                <h3 className={`text-base font-black transition-colors ${
-                                    isPanelCortes 
-                                        ? 'text-slate-800 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300' 
-                                        : 'text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400'}`}>
-                                    {item.titulo}
-                                </h3>
-                                
-                                {/* Descripción Dinámica */}
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-normal flex-1">
-                                    {item.descripcion}
-                                </p>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
         </div>
     );
 }

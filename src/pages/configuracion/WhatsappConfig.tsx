@@ -114,7 +114,7 @@ export default function WhatsappConfig() {
     return (
         <div className="max-w-6xl mx-auto p-2 sm:p-4 lg:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-28">
             
-            <div className="bg-white dark:bg-[#0f1219] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl overflow-hidden flex flex-col lg:flex-row min-h-[500px] transition-colors w-full">
+            <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl overflow-hidden flex flex-col lg:flex-row min-h-[500px] transition-colors w-full">
                 
                 {/* --- COLUMNA IZQUIERDA: GESTIÓN DE CONEXIÓN --- */}
                 <div className="flex-1 p-4 sm:p-8 lg:p-10 flex flex-col relative transition-colors w-full">
@@ -140,7 +140,7 @@ export default function WhatsappConfig() {
                                 <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mb-6 sm:mb-8 leading-relaxed px-2">
                                     El enlace con WhatsApp está apagado. Enciende el servicio para sincronizar tu cuenta.
                                 </p>
-                                <button onClick={handleIniciarMotor} disabled={reloading} className="w-full sm:w-auto px-6 py-3.5 sm:py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black flex justify-center items-center gap-2 sm:gap-3 transition-all active:scale-95 shadow-lg shadow-indigo-600/30 disabled:opacity-50 text-sm sm:text-base">
+                                <button onClick={handleIniciarMotor} disabled={reloading} className="w-full sm:w-auto px-6 py-3.5 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black flex justify-center items-center gap-2 sm:gap-3 transition-all active:scale-95 shadow-lg shadow-blue-600/30 disabled:opacity-50 text-sm sm:text-base">
                                     {reloading ? <ArrowPathIcon className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> : <PlayCircleIcon className="w-6 h-6 sm:w-7 sm:h-7" />}
                                     ENCENDER SERVICIO
                                 </button>
@@ -215,7 +215,7 @@ export default function WhatsappConfig() {
                                 >
                                     <div className="flex justify-between items-start">
                                         <div className="flex gap-3 sm:gap-4 items-start">
-                                            <div className={`p-2 rounded-xl shrink-0 ${isSelected ? `bg-white dark:bg-[#0f1219] shadow-sm` : 'bg-slate-100 dark:bg-slate-800'}`}>
+                                            <div className={`p-2 rounded-xl shrink-0 ${isSelected ? `bg-white dark:bg-slate-950 shadow-sm` : 'bg-slate-100 dark:bg-slate-800'}`}>
                                                 <item.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${isSelected ? activeStyles.text : 'text-slate-400'}`} />
                                             </div>
                                             <div>

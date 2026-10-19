@@ -1,15 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ArrowLeftIcon, ArrowUpTrayIcon, CheckCircleIcon, PaintBrushIcon, PhotoIcon } from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
+import { ArrowUpTrayIcon, CheckCircleIcon, PhotoIcon } from '@heroicons/react/24/outline';
+
 import { toast } from 'react-hot-toast';
 import client from '@/api/axios';
 import { DEFAULT_BRAND, type BrandConfig } from '@/context/brand/brand';
 import { useBrand } from '@/context/brand/useBrand';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 const fieldClass = 'w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
 
 export default function MarcaBlanca() {
-  const navigate = useNavigate();
   const { brand, refreshBrand } = useBrand();
   const [form, setForm] = useState<BrandConfig>(brand);
   const [saving, setSaving] = useState(false);
@@ -33,11 +33,8 @@ export default function MarcaBlanca() {
     finally { setUploading(null); }
   };
 
-  return <div className="mx-auto max-w-5xl space-y-6 p-4 pb-28 sm:p-6">
-    <div className="flex items-center gap-4 border-b border-slate-200 pb-5 dark:border-slate-800">
-      <button onClick={() => navigate(-1)} className="rounded-xl bg-slate-100 p-2 text-slate-500 dark:bg-slate-800"><ArrowLeftIcon className="h-6 w-6" /></button>
-      <div><h1 className="flex items-center gap-2 text-2xl font-black text-slate-900 dark:text-white"><PaintBrushIcon className="h-6 w-6 text-blue-500" /> Marca blanca</h1><p className="text-sm text-slate-500">Identidad visible de esta instalación.</p></div>
-    </div>
+  return <div className="mx-auto max-w-5xl space-y-6 pb-24">
+    <EncabezadoPagina volver={{ a: '/admin/configuracion', texto: 'Configuración' }} titulo="Marca blanca" descripcion="Identidad visible de esta instalación." />
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div className="grid gap-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-2 sm:p-7">
         <Field label="Nombre del ISP"><input className={fieldClass} value={form.empresa_nombre} onChange={(e) => update('empresa_nombre', e.target.value)} /></Field>

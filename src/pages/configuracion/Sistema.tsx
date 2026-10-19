@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import { 
-    Cog6ToothIcon, BellAlertIcon, ScissorsIcon, 
-    CheckCircleIcon, ArrowLeftIcon, ClockIcon, 
-    CalendarDaysIcon, ShieldCheckIcon, ChatBubbleLeftRightIcon, SignalIcon
-} from '@heroicons/react/24/outline';
+import { BellAlertIcon, ScissorsIcon, CheckCircleIcon, ClockIcon, CalendarDaysIcon, ShieldCheckIcon, ChatBubbleLeftRightIcon, SignalIcon } from '@heroicons/react/24/outline';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 interface ConfigSistema {
     id: number;
@@ -28,7 +25,6 @@ interface ConfigSistema {
 }
 
 export default function Sistema() {
-    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     
@@ -84,28 +80,15 @@ export default function Sistema() {
     if (loading) return <div className="flex justify-center h-96 items-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div></div>;
 
     return (
-        <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-32 p-4 transition-colors duration-300">
-            
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-8 border-b border-slate-200 dark:border-slate-800 pb-6 transition-colors">
-                <button onClick={() => navigate(-1)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-                    <ArrowLeftIcon className="w-6 h-6" />
-                </button>
-                <div>
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2 transition-colors">
-                        <Cog6ToothIcon className="w-6 sm:w-6 h-6 text-purple-600 dark:text-purple-500" />
-                        Sistema & Cronjobs
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">Configuración global del servidor.</p>
-                </div>
-            </div>
+        <div className="mx-auto max-w-6xl pb-24">
+            <EncabezadoPagina volver={{ a: '/admin/configuracion', texto: 'Configuración' }} titulo="Sistema & Cronjobs" descripcion="Configuración global del servidor." />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
                 
                 {/* COLUMNA IZQUIERDA */}
                 <div className="space-y-6">
                     {/* TARJETA CORTES */}
-                    <div className="bg-white dark:bg-[#0f1219] rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-xl relative overflow-hidden transition-colors">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-xl relative overflow-hidden transition-colors">
                         <div className="absolute top-0 right-0 p-4 opacity-[0.05] pointer-events-none">
                             <ScissorsIcon className="w-40 h-40 -rotate-12 text-rose-500"/>
                         </div>
@@ -167,7 +150,7 @@ export default function Sistema() {
                     </div>
 
                     {/* TARJETA FACTURACIÓN */}
-                    <div className="bg-white dark:bg-[#0f1219] rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-xl relative overflow-hidden transition-colors">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-xl relative overflow-hidden transition-colors">
                          <h2 className="text-lg font-black mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
                             <CalendarDaysIcon className="w-5 h-5 text-purple-600 dark:text-purple-500"/>
                             Automatización de Facturas
@@ -186,14 +169,14 @@ export default function Sistema() {
                                 <label className="font-black block text-slate-900 dark:text-white text-sm mb-3 flex items-center gap-2">
                                     <ClockIcon className="w-4 h-4 text-slate-500"/> Hora de Generación (Cronjob)
                                 </label>
-                                <input type="time" className="w-full bg-slate-100 dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white font-black outline-none focus:border-purple-500 transition text-center tracking-widest"
+                                <input type="time" className="w-full bg-slate-100 dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 transition text-center tracking-widest"
                                     value={config.hora_generacion_facturas || ''} onChange={e => handleChange('hora_generacion_facturas', e.target.value)} />
                             </div>
                         </div>
                     </div>
 
                     {/* TARJETA MONITOREO DE FIBRA */}
-                    <div className="bg-white dark:bg-[#0f1219] rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-xl relative overflow-hidden transition-colors">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-xl relative overflow-hidden transition-colors">
                         <h2 className="text-lg font-black mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
                             <SignalIcon className="w-5 h-5 text-blue-600 dark:text-blue-500"/>
                             Monitoreo de Fibra
@@ -217,7 +200,7 @@ export default function Sistema() {
                 </div>
 
                 {/* COLUMNA DERECHA */}
-                <div className="bg-white dark:bg-[#0f1219] rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-xl relative overflow-hidden flex flex-col h-full transition-colors">
+                <div className="bg-white dark:bg-slate-950 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-xl relative overflow-hidden flex flex-col h-full transition-colors">
                     <div className="absolute top-0 right-0 p-4 opacity-[0.05] pointer-events-none">
                         <BellAlertIcon className="w-64 h-64 -rotate-12 text-emerald-500"/>
                     </div>
@@ -265,9 +248,9 @@ export default function Sistema() {
 
             {/* Footer Flotante */}
             <div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none p-4">
-                <div className="pointer-events-auto bg-white/90 dark:bg-[#0f1219]/90 backdrop-blur-md p-2 pl-4 sm:pl-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl flex gap-4 sm:gap-6 items-center transition-colors">
+                <div className="pointer-events-auto bg-white/90 dark:bg-slate-950/90 backdrop-blur-md p-2 pl-4 sm:pl-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl flex gap-4 sm:gap-6 items-center transition-colors">
                     <span className="text-[10px] sm:text-xs font-black text-slate-500 hidden sm:block uppercase">Cambios pendientes</span>
-                    <button onClick={guardarCambios} disabled={saving} className="bg-purple-600 hover:bg-purple-500 text-white font-black py-3 px-6 sm:px-8 rounded-xl shadow-md active:scale-95 transition flex items-center gap-2 text-xs sm:text-sm uppercase tracking-widest w-full sm:w-auto justify-center">
+                    <button onClick={guardarCambios} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white font-black py-3 px-6 sm:px-8 rounded-xl shadow-md active:scale-95 transition flex items-center gap-2 text-xs sm:text-sm uppercase tracking-widest w-full sm:w-auto justify-center">
                         {saving ? 'Guardando...' : <><CheckCircleIcon className="w-5 h-5"/> Guardar</>}
                     </button>
                 </div>
@@ -293,7 +276,7 @@ interface CardInputRightProps {
 }
 
 const Toggle = ({ checked, onChange, color = 'emerald' }: ToggleProps) => {
-    const colors: Record<ToggleColor, string> = { emerald: 'bg-emerald-500', rose: 'bg-rose-500', purple: 'bg-purple-600', slate: 'bg-slate-400' };
+    const colors: Record<ToggleColor, string> = { emerald: 'bg-emerald-500', rose: 'bg-rose-500', purple: 'bg-blue-600', slate: 'bg-slate-400' };
     return (
         <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors shrink-0 ${checked ? colors[color] : 'bg-slate-300 dark:bg-slate-700'}`}>
             <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`}></div>
@@ -308,7 +291,7 @@ const CardInputRight = ({ label, sub, value, onChange, textColor }: CardInputRig
             <p className="text-[9px] sm:text-[10px] text-slate-500 mt-1 uppercase tracking-widest font-black leading-tight">{sub}</p>
         </div>
         <div className="relative flex items-center shrink-0">
-            <input type="number" className="w-14 sm:w-16 bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 text-slate-900 dark:text-white font-mono text-center text-base sm:text-lg font-black outline-none focus:border-purple-500 transition-colors" value={value || 0} onChange={event => onChange(Number(event.target.value))} />
+            <input type="number" className="w-14 sm:w-16 bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 text-slate-900 dark:text-white font-mono text-center text-base sm:text-lg font-black outline-none focus:border-blue-500 transition-colors" value={value || 0} onChange={event => onChange(Number(event.target.value))} />
         </div>
     </div>
 );

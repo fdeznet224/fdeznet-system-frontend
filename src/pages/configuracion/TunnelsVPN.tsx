@@ -9,6 +9,8 @@ import {
     QrCodeIcon, ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 import { apiErrorMessage } from '@/utils/apiError';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { BOTON_ACCION_PRIMARIO } from '@/components/ui/estilo';
 
 interface VpnTunnel {
     id: number;
@@ -175,28 +177,13 @@ export default function TunnelsVPN() {
     }, [fetchTunnels]);
 
     return (
-        <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 transition-colors duration-300">
-            
-            {/* HEADER */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-2">
-                <div>
-                    <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3 transition-colors">
-                        <ShieldCheckIcon className="w-8 h-8 text-emerald-600 dark:text-emerald-500" />
-                        Infraestructura VPN
-                    </h2>
-                    <div className="flex items-center gap-3 mt-2 bg-white dark:bg-slate-800/80 w-fit px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700/50 shadow-sm transition-colors">
-                        <span className="text-slate-500 dark:text-slate-300 text-[10px] sm:text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
-                            <ServerStackIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Nodos y Accesos Remotos
-                        </span>
-                    </div>
-                </div>
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 font-black text-sm uppercase tracking-widest"
-                >
-                    <PlusIcon className="w-5 h-5" /> Nuevo Túnel
-                </button>
-            </div>
+        <div className="mx-auto max-w-7xl space-y-6">
+            <EncabezadoPagina
+                volver={{ a: '/admin/configuracion', texto: 'Configuración' }}
+                titulo="Infraestructura VPN"
+                descripcion="Nodos y accesos remotos por WireGuard."
+                acciones={<button type="button" onClick={() => setShowCreateModal(true)} className={BOTON_ACCION_PRIMARIO}><PlusIcon className="h-5 w-5" /> Nuevo Túnel</button>}
+            />
 
             {/* GRID DE TÚNELES */}
             {loading ? (
@@ -313,7 +300,7 @@ export default function TunnelsVPN() {
                                     <div className="mt-3 space-y-2">
                                         <div className="flex items-center justify-between gap-2">
                                             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Rutas disponibles por MikroTik</p>
-                                            <button type="button" onClick={toggleAllSubnets} className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wide text-white">
+                                            <button type="button" onClick={toggleAllSubnets} className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wide text-white">
                                                 {routedSubnets.every(item => selectedSubnetSet().has(item.subred)) ? 'Quitar todas' : 'Acceso global'}
                                             </button>
                                         </div>

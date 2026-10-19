@@ -1,9 +1,20 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *)); /* 👈 LE DICTA A TAILWIND V4 QUE TRABAJE POR INYECCIÓN DE CLASES */
 
+/* Inter va dentro de la app (sin Google Fonts) para que funcione sin internet. */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Los mismos tonos azul noche en todo el sistema (admin, técnico y cobrador). */
+  --color-slate-900: #161b28;
+  --color-slate-950: #0f1219;
+  /* Inter en 900 se ve tosca: lo "negro" queda en 800. */
+  --font-weight-black: 800;
+}
+
 /* ✅ SOLUCIÓN: Cambia dinámicamente según la clase .dark del HTML raíz */
 body {
-  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300;
+  @apply bg-[#f5f6f8] font-sans text-slate-900 antialiased dark:bg-[#0f1219] dark:text-slate-100 transition-colors duration-300;
+  font-feature-settings: "cv11", "ss01";
   min-width: 320px;
   min-height: 100dvh;
   margin: 0;
@@ -48,9 +59,9 @@ textarea {
 
 .dark {
   --app-primary: #60a5fa;
-  --app-surface: #111827;
-  --app-surface-soft: #0f172a;
-  --app-border: #263449;
+  --app-surface: #161b28;
+  --app-surface-soft: #0f1219;
+  --app-border: #1e293b;
   --app-shadow: 0 22px 55px -30px rgb(0 0 0 / 0.8);
 }
 
@@ -59,7 +70,7 @@ textarea {
 }
 
 .app-icon-button {
-  @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white;
+  @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white;
 }
 
 .app-field {
@@ -82,8 +93,7 @@ textarea {
 .app-card {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
-  box-shadow: var(--app-shadow);
-  @apply rounded-3xl;
+  @apply rounded-2xl;
 }
 
 /* =========================================================

@@ -147,7 +147,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                 <div className="fixed inset-0 overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
-                            <Dialog.Panel className="bg-white dark:bg-[#0f1219] w-full max-w-5xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col md:flex-row overflow-hidden transition-colors">
+                            <Dialog.Panel className="bg-white dark:bg-slate-950 w-full max-w-5xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col md:flex-row overflow-hidden transition-colors">
                                 
                                 <button onClick={onClose} aria-label="Cerrar ciclo" className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 dark:hover:text-white z-10 transition-colors">
                                     <XMarkIcon className="w-6 h-6" />
@@ -171,7 +171,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                                             <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Nombre del Ciclo</label>
                                             <input 
                                                 type="text" 
-                                                className="w-full bg-slate-50 dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-slate-900 dark:text-white text-sm focus:border-pink-500 outline-none transition-all placeholder:text-slate-400" 
+                                                className="w-full bg-slate-50 dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-slate-900 dark:text-white text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-400" 
                                                 placeholder="Ej: Pagos día 15..." 
                                                 required 
                                                 value={formData.nombre} 
@@ -241,11 +241,11 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                                         </div>
 
                                         <label className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-[#1a1f2e] rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer transition-colors">
-                                            <input type="checkbox" className="w-5 h-5 rounded text-pink-600 focus:ring-pink-500" checked={formData.recordatorio_whatsapp} onChange={e => setFormData({...formData, recordatorio_whatsapp: e.target.checked})} />
+                                            <input type="checkbox" className="w-5 h-5 rounded text-pink-600 focus:ring-blue-500" checked={formData.recordatorio_whatsapp} onChange={e => setFormData({...formData, recordatorio_whatsapp: e.target.checked})} />
                                             <span className="text-sm font-black text-slate-900 dark:text-white transition-colors">Notificaciones WhatsApp</span>
                                         </label>
 
-                                        <button type="submit" disabled={isSubmitting} className="w-full bg-pink-600 hover:bg-pink-500 text-white font-black py-4 rounded-xl shadow-md transition-all active:scale-95">
+                                        <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl shadow-md transition-all active:scale-95">
                                             {isSubmitting ? 'Guardando...' : 'Guardar Ciclo'}
                                         </button>
                                     </form>

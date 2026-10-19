@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { ArrowLeftIcon, ChatBubbleLeftRightIcon, SparklesIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
+import { ChatBubbleLeftRightIcon, SparklesIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
 import AgenteIA, { type ConfiguracionAgente, type ModoAgente } from '@/pages/admin/mensajes/AgenteIA';
 import BotFlowBuilder from './BotFlowBuilder';
 import { apiErrorMessage } from '@/utils/apiError';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 const OPCIONES: { valor: ModoAgente; titulo: string; descripcion: string }[] = [
   { valor: 'automatico', titulo: 'Agente de IA', descripcion: 'Contesta solo, las 24 horas, consultando el sistema: cuenta, conexión, promesas y comprobantes.' },
@@ -17,7 +18,6 @@ const OPCIONES: { valor: ModoAgente; titulo: string; descripcion: string }[] = [
 type Pestana = 'agente' | 'flujo';
 
 export default function BotWhatsapp() {
-  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [modo, setModo] = useState<ModoAgente | null>(null);
   const [tieneClave, setTieneClave] = useState(false);
@@ -48,16 +48,8 @@ export default function BotWhatsapp() {
   const verPestana = (valor: Pestana) => setParams(valor === 'agente' ? {} : { tab: valor }, { replace: true });
 
   return (
-    <div className="mx-auto max-w-[1700px] space-y-6 p-4 pb-10 md:p-6">
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/admin/configuracion')} className="rounded-xl bg-slate-100 p-2 dark:bg-slate-800" aria-label="Regresar">
-          <ArrowLeftIcon className="h-5 w-5" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Bot de WhatsApp</h1>
-          <p className="text-sm text-slate-500">Elige quién contesta a los clientes y configúralo.</p>
-        </div>
-      </div>
+    <div className="mx-auto max-w-[1700px] space-y-6">
+      <EncabezadoPagina volver={{ a: '/admin/configuracion', texto: 'Configuración' }} titulo="Bot de WhatsApp" descripcion="Elige quién contesta a los clientes y configúralo." />
 
       <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-xs font-black uppercase tracking-wide text-slate-500">¿Quién contesta a los clientes?</h2>
@@ -93,7 +85,7 @@ export default function BotWhatsapp() {
             key={valor}
             type="button"
             onClick={() => verPestana(valor)}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-black ${pestana === valor ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-black ${pestana === valor ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
           >
             <Icono className="h-4 w-4" /> {titulo}
           </button>

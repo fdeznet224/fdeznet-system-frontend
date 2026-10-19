@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
-import { 
-    MapPinIcon, PlusIcon, ArrowLeftIcon, 
-    PencilSquareIcon, TrashIcon, XMarkIcon 
-} from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
+import { MapPinIcon, PlusIcon, PencilSquareIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
+
 import { apiErrorMessage } from '@/utils/apiError';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 interface Zone {
     id: number;
@@ -37,7 +35,6 @@ const getApiError = (error: unknown, fallback: string) => {
 };
 
 export default function Zonas() {
-    const navigate = useNavigate();
     const [zonas, setZonas] = useState<Zone[]>([]);
     
     // Estados del formulario
@@ -146,7 +143,7 @@ export default function Zonas() {
         setEditandoId(null);
     };
 
-    const campoClase = `w-full bg-white dark:bg-slate-950 border rounded-xl p-3 text-slate-900 dark:text-white text-sm outline-none transition-all focus:ring-2 shadow-sm ${editandoId ? 'border-indigo-300 dark:border-indigo-700 focus:border-indigo-500 focus:ring-indigo-500/20' : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20'}`;
+    const campoClase = `w-full bg-white dark:bg-slate-950 border rounded-xl p-3 text-slate-900 dark:text-white text-sm outline-none transition-all focus:ring-2 shadow-sm ${editandoId ? 'border-indigo-300 dark:border-indigo-700 focus:border-blue-500 focus:ring-blue-500/20' : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20'}`;
 
     const handleEliminar = async (id: number, nombreZona: string) => {
         if (!confirm(`¿Estás seguro de eliminar la zona "${nombreZona}"?\n\nEsta acción fallará si hay clientes asignados a ella.`)) return;
@@ -165,27 +162,14 @@ export default function Zonas() {
     // ============================================================================
 
     return (
-        <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500 p-4 transition-colors duration-300">
-            
-            {/* Header con Botón Volver */}
-            <div className="flex items-center gap-4 mb-6">
-                <button 
-                    onClick={() => navigate('/admin/configuracion')} 
-                    className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-sm transition-all active:scale-95"
-                >
-                    <ArrowLeftIcon className="w-5 h-5" />
-                </button>
-                <div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white transition-colors">Gestión de Zonas</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">Cada zona dice qué MikroTik, OLT y día de pago le tocan; al dar de alta un cliente se eligen solos.</p>
-                </div>
-            </div>
+        <div className="mx-auto max-w-5xl space-y-6">
+            <EncabezadoPagina volver={{ a: '/admin/configuracion', texto: 'Configuración' }} titulo="Gestión de Zonas" descripcion="Cada zona dice qué MikroTik, OLT y día de pago le tocan; al dar de alta un cliente se eligen solos." />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
                 {/* COLUMNA 1: Formulario */}
                 <div className="md:col-span-1 h-fit relative">
-                    <div className={`p-6 rounded-[1.5rem] border shadow-sm transition-all duration-300 ${editandoId ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-500/20' : 'bg-white dark:bg-[#12141a] border-slate-200 dark:border-slate-800/80'}`}>
+                    <div className={`p-6 rounded-[1.5rem] border shadow-sm transition-all duration-300 ${editandoId ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-500/20' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800/80'}`}>
                         
                         <div className="flex justify-between items-start mb-5">
                             <h3 className={`text-lg font-black flex items-center gap-2 ${editandoId ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-white'}`}>
@@ -207,7 +191,7 @@ export default function Zonas() {
                                     type="text" 
                                     placeholder="Ej: Zona Norte" 
                                     required 
-                                    className={`w-full bg-white dark:bg-slate-950 border rounded-xl p-3.5 text-slate-900 dark:text-white text-sm outline-none transition-all focus:ring-2 shadow-sm ${editandoId ? 'border-indigo-300 dark:border-indigo-700 focus:border-indigo-500 focus:ring-indigo-500/20' : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20'}`}
+                                    className={`w-full bg-white dark:bg-slate-950 border rounded-xl p-3.5 text-slate-900 dark:text-white text-sm outline-none transition-all focus:ring-2 shadow-sm ${editandoId ? 'border-indigo-300 dark:border-indigo-700 focus:border-blue-500 focus:ring-blue-500/20' : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20'}`}
                                     value={nombre} 
                                     onChange={e => setForm({ ...form, nombre: e.target.value })} 
                                 />
@@ -252,7 +236,7 @@ export default function Zonas() {
                             <button 
                                 type="submit" 
                                 disabled={procesando || !nombre.trim()}
-                                className={`w-full font-black py-3.5 rounded-xl text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50 ${editandoId ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20'}`}
+                                className={`w-full font-black py-3.5 rounded-xl text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50 ${editandoId ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20'}`}
                             >
                                 {procesando ? 'Guardando...' : (editandoId ? 'Actualizar Cambios' : 'Crear Zona')}
                             </button>
@@ -263,11 +247,11 @@ export default function Zonas() {
                 {/* COLUMNA 2: Lista de Zonas */}
                 <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-max">
                     {zonas.map(z => (
-                        <div key={z.id} className={`p-4 rounded-[1.25rem] border flex justify-between items-center group transition-all duration-300 shadow-sm ${editandoId === z.id ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-white dark:bg-[#12141a] border-slate-200 dark:border-slate-800/80 hover:border-blue-300 dark:hover:border-blue-700'}`}>
+                        <div key={z.id} className={`p-4 rounded-[1.25rem] border flex justify-between items-center group transition-all duration-300 shadow-sm ${editandoId === z.id ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800/80 hover:border-blue-300 dark:hover:border-blue-700'}`}>
                             
                             {/* Info de la zona */}
                             <div className="flex items-center gap-3 overflow-hidden">
-                                <div className={`p-2.5 rounded-xl shrink-0 transition-colors ${editandoId === z.id ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20' : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-500/20'}`}>
+                                <div className={`p-2.5 rounded-xl shrink-0 transition-colors ${editandoId === z.id ? 'bg-indigo-500 text-white shadow-md shadow-blue-600/20' : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-500/20'}`}>
                                     <MapPinIcon className="w-5 h-5" />
                                 </div>
                                 <div className="overflow-hidden pr-2">
@@ -306,7 +290,7 @@ export default function Zonas() {
                     ))}
                     
                     {zonas.length === 0 && (
-                        <div className="col-span-1 sm:col-span-2 text-center p-12 bg-white dark:bg-[#12141a] border border-dashed border-slate-300 dark:border-slate-800 rounded-[1.5rem]">
+                        <div className="col-span-1 sm:col-span-2 text-center p-12 bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-800 rounded-[1.5rem]">
                             <MapPinIcon className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
                             <p className="text-slate-500 dark:text-slate-400 font-bold text-sm">No hay zonas registradas aún.</p>
                             <p className="text-[11px] text-slate-400 mt-1">Usa el formulario para crear tu primera zona de cobertura.</p>

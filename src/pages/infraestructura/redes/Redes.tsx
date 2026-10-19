@@ -1,19 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
-import {
-    PlusIcon,
-    ArrowPathIcon,
-    ServerIcon,
-    TrashIcon,
-    MagnifyingGlassIcon,
-    PencilSquareIcon,
-    CpuChipIcon,
-    FunnelIcon
-} from '@heroicons/react/24/outline';
+import { PlusIcon, ArrowPathIcon, ServerIcon, TrashIcon, MagnifyingGlassIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import CreateRedModal from './components/CreateRedModal';
 import type { RedRecord, RouterOption } from './types';
 import { apiErrorMessage } from '@/utils/apiError';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { BOTON_ACCION_PRIMARIO } from '@/components/ui/estilo';
 
 const getErrorMessage = (error: unknown, fallback: string) => {
     return apiErrorMessage(error, fallback);
@@ -88,45 +81,23 @@ export default function RedesIP() {
     }, [fetchData]);
 
     return (
-        /* ✅ ADAPTADO: Colores base adaptativos desde la raíz del componente */
-        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col gap-4 md:gap-6 font-sans text-slate-700 dark:text-slate-200 pb-12 transition-colors duration-300">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4">
 
-            {/* =========================================================
-                HEADER RESPONSIVO Y FILTROS COMPACTOS INLINE
-               ========================================================= */}
-            <div className="flex justify-between items-center px-1 md:px-0 flex-none gap-2 pb-2">
-                <div>
-                    {/* ✅ ADAPTADO: Textos claros en modo oscuro, oscuros en modo claro */}
-                    <h2 className="text-sm sm:text-base md:text-2xl font-black text-slate-800 dark:text-white tracking-tight whitespace-nowrap transition-colors">
-                        Gestión de Redes <span className="hidden md:inline">(IPAM)</span>
-                    </h2>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-xs hidden sm:block">Segmentos de red y pools de IPs para clientes.</p>
-                </div>
-
-                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                    {/* Selector de Router Estilizado y Adaptativo */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-1.5 flex items-center gap-1 shadow-sm transition-colors">
-                        <FunnelIcon className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0 md:hidden" />
-                        <CpuChipIcon className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0 hidden md:block" />
-                        <select
-                            value={selectedRouter}
-                            onChange={(e) => setSelectedRouter(e.target.value)}
-                            className="bg-transparent text-slate-700 dark:text-slate-300 font-extrabold outline-none text-[10px] md:text-xs cursor-pointer appearance-none pr-0.5"
-                        >
-                            <option value="all" className="bg-white dark:bg-slate-950 text-slate-800 dark:text-white">Todo</option>
-                            {routers.map(r => <option key={r.id} value={r.id} className="bg-white dark:bg-slate-950 text-slate-800 dark:text-white">{r.nombre}</option>)}
+            <EncabezadoPagina
+                titulo="Gestión de Redes (IPAM)"
+                descripcion="Segmentos de red y pools de IPs para clientes."
+                acciones={(
+                    <>
+                        <select aria-label="Router" value={selectedRouter} onChange={(e) => setSelectedRouter(e.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                            <option value="all">Todos los routers</option>
+                            {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
                         </select>
-                    </div>
-
-                    <button
-                        onClick={() => setModalConfig({ isOpen: true })}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1.5 md:px-4 md:py-2.5 rounded-xl font-black shadow-md active:scale-95 transition flex items-center justify-center gap-1 text-[10px] md:text-sm tracking-wide uppercase md:normal-case"
-                    >
-                        <PlusIcon className="w-3.5 h-3.5 md:w-5 md:h-5" />
-                        <span>Nueva Red</span>
-                    </button>
-                </div>
-            </div>
+                        <button type="button" onClick={() => setModalConfig({ isOpen: true })} className={BOTON_ACCION_PRIMARIO}>
+                            <PlusIcon className="h-5 w-5" /> Nueva Red
+                        </button>
+                    </>
+                )}
+            />
 
             {/* =========================================================
                 ZONA DE RENDERIZADO PRINCIPAL (TABLA VS CARDS DE RED)

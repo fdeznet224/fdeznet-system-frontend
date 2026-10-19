@@ -104,115 +104,99 @@ export default function Login() {
 
     if (rolInicial) return <Navigate to={defaultPathForRole(rolInicial)} replace />;
 
+    const logo = (tamano: string) => (
+        <span className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl ${tamano}`} style={{ background: `linear-gradient(135deg, ${brand.color_primario}, ${brand.color_secundario})` }}>
+            {brand.logo_url ? <img src={brand.logo_url} alt="" className="h-full w-full object-contain" /> : <SignalIcon className="h-1/2 w-1/2 text-white" />}
+        </span>
+    );
+
     return (
-        /* ✅ ADAPTADO: Fondo y texto transicionan suavemente entre temas */
-        <div className="relative min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 sm:px-6 lg:px-8 overflow-hidden font-sans transition-colors duration-300">
-            
-            {/* EFECTOS DE FONDO AMBIENTALES */}
-            <div className="absolute top-0 left-1/2 w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 opacity-20 dark:opacity-30">
-                <div className="aspect-[2/1] bg-gradient-to-b from-blue-600 to-transparent blur-3xl rounded-full"></div>
-            </div>
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-600/5 dark:bg-indigo-600/10 blur-[100px] rounded-full"></div>
-
-            {/* CONTENEDOR PRINCIPAL */}
-            <div className="relative z-10 w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
-                
-                {/* LOGO Y TÍTULO */}
-                <div className="text-center mb-8">
-                    <div className="mx-auto h-16 w-16 rounded-2xl flex items-center justify-center overflow-hidden shadow-lg shadow-blue-500/20 dark:shadow-blue-500/30 mb-6 transform rotate-3 hover:rotate-0 transition-transform duration-300" style={{ background: `linear-gradient(135deg, ${brand.color_primario}, ${brand.color_secundario})` }}>
-                        {brand.logo_url ? <img src={brand.logo_url} alt={brand.empresa_nombre} className="h-full w-full object-contain" /> : <SignalIcon className="h-8 w-8 text-white" />}
-                    </div>
-                    <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white mb-2 transition-colors">
-                        {brand.empresa_nombre}
-                    </h2>
-                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest transition-colors">
-                        Portal de Administración
-                    </p>
+        <div className="flex min-h-[100dvh] bg-white font-sans dark:bg-slate-950">
+            {/* LADO DE LA MARCA (computadora) */}
+            <aside className="relative hidden w-[46%] max-w-2xl flex-col justify-between overflow-hidden bg-[#0b1020] p-12 text-white lg:flex">
+                <div className="pointer-events-none absolute inset-0 opacity-90" style={{ background: `radial-gradient(60% 50% at 20% 10%, ${brand.color_primario}55, transparent 70%), radial-gradient(50% 40% at 90% 90%, ${brand.color_secundario}44, transparent 70%)` }} />
+                {/* Hilos de fibra: solo decoración */}
+                <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.18]" viewBox="0 0 600 800" preserveAspectRatio="none" aria-hidden="true">
+                    {[0, 1, 2, 3, 4, 5, 6].map((n) => (
+                        <path key={n} d={`M -20 ${120 + n * 90} C 180 ${60 + n * 95}, 380 ${260 + n * 70}, 640 ${160 + n * 85}`} fill="none" stroke="white" strokeWidth="1.2" />
+                    ))}
+                    {[0, 1, 2, 3, 4, 5, 6].map((n) => (
+                        <circle key={`p${n}`} cx={90 + n * 75} cy={170 + ((n * 137) % 420)} r="3" fill="white" />
+                    ))}
+                </svg>
+                <div className="relative flex items-center gap-3">
+                    {logo('h-11 w-11')}
+                    <span className="text-lg font-bold">{brand.empresa_nombre}</span>
                 </div>
-                
-                {/* TARJETA DE FORMULARIO */}
-                {/* ✅ ADAPTADO: Tarjeta blanca pulcra en claro, cristalina oscura en dark mode */}
-                <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl p-8 sm:p-10 rounded-3xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 transition-colors duration-300">
-                    <form className="space-y-6" onSubmit={handleLogin}>
-                        
-                        <div className="space-y-4">
-                            {/* INPUT USUARIO */}
-                            <div>
-                                <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 ml-1 transition-colors">
-                                    Usuario
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <UserIcon className="h-5 w-5 text-slate-400 dark:text-slate-500" />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        required
-                                        autoComplete="username"
-                                        /* ✅ ADAPTADO: Inputs legibles en ambos modos con bordes sutiles */
-                                        className="block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 py-3.5 pl-11 pr-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm transition-all outline-none"
-                                        placeholder="admin"
-                                        value={username}
-                                        onChange={(e) => setUsername(e.target.value)}
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                            </div>
+                <div className="relative max-w-md">
+                    <h1 className="text-4xl font-bold leading-tight tracking-tight">Tu red, tus clientes y tu cobranza en un solo lugar.</h1>
+                    <ul className="mt-8 space-y-3 text-sm text-slate-300">
+                        <li className="flex items-center gap-3"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />Clientes en línea y señal de cada ONU</li>
+                        <li className="flex items-center gap-3"><span className="h-1.5 w-1.5 rounded-full bg-blue-400" />Órdenes y técnicos en campo</li>
+                        <li className="flex items-center gap-3"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" />Cobros, cortes y avisos por WhatsApp</li>
+                    </ul>
+                </div>
+                <p className="relative text-xs text-slate-400">© {new Date().getFullYear()} {brand.empresa_nombre}</p>
+            </aside>
 
-                            {/* INPUT CONTRASEÑA */}
-                            <div>
-                                <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 ml-1 transition-colors">
-                                    Contraseña
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <LockClosedIcon className="h-5 w-5 text-slate-400 dark:text-slate-500" />
-                                    </div>
-                                    <input
-                                        type={showPassword ? 'text' : 'password'}
-                                        required
-                                        autoComplete="current-password"
-                                        className="block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 py-3.5 pl-11 pr-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm transition-all outline-none"
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        disabled={isLoading}
-                                    />
-                                    <button type="button" onClick={() => setShowPassword(value => !value)} className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400 hover:text-blue-600" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
-                                        {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                                    </button>
-                                </div>
+            {/* FORMULARIO */}
+            <main className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-12">
+                <div className="mx-auto w-full max-w-sm">
+                    <div className="mb-8 lg:hidden">{logo('h-14 w-14')}</div>
+                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">Portal de Administración</p>
+                    <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Inicia sesión en {brand.empresa_nombre}</h2>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Administración, técnicos y cobradores entran aquí.</p>
+
+                    <form className="mt-8 space-y-4" onSubmit={handleLogin}>
+                        <div>
+                            <label htmlFor="login-usuario" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Usuario</label>
+                            <div className="relative">
+                                <UserIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    id="login-usuario"
+                                    type="text"
+                                    required
+                                    autoComplete="username"
+                                    autoCapitalize="none"
+                                    className="block h-12 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                    placeholder="admin"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    disabled={isLoading}
+                                />
                             </div>
                         </div>
-
-                        {/* BOTÓN SUBMIT */}
-                        <div className="pt-2">
-                            <button
-                                type="submit"
-                                disabled={isLoading}
-                                className="group relative flex w-full justify-center items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3.5 text-sm font-black tracking-wider uppercase text-white shadow-lg hover:shadow-blue-500/40 transition-all duration-200 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <ArrowPathIcon className="h-5 w-5 animate-spin" />
-                                        <span>Autenticando...</span>
-                                    </>
-                                ) : (
-                                    <span>Iniciar Sesión</span>
-                                )}
-                            </button>
+                        <div>
+                            <label htmlFor="login-clave" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Contraseña</label>
+                            <div className="relative">
+                                <LockClosedIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    id="login-clave"
+                                    type={showPassword ? 'text' : 'password'}
+                                    required
+                                    autoComplete="current-password"
+                                    className="block h-12 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-12 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                    placeholder="••••••••"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    disabled={isLoading}
+                                />
+                                <button type="button" onClick={() => setShowPassword(value => !value)} className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400 hover:text-blue-600" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+                                    {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                                </button>
+                            </div>
                         </div>
-                        
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                            {isLoading ? <><ArrowPathIcon className="h-5 w-5 animate-spin" />Entrando...</> : 'Iniciar Sesión'}
+                        </button>
                     </form>
-
-                    {/* FOOTER OPCIONAL */}
-                    <div className="mt-8 text-center">
-                        <p className="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black transition-colors">
-                            ISP Management System v2.2
-                        </p>
-                    </div>
+                    <p className="mt-10 text-center text-xs text-slate-400 lg:hidden">© {new Date().getFullYear()} {brand.empresa_nombre}</p>
                 </div>
-            </div>
+            </main>
         </div>
     );
 }
