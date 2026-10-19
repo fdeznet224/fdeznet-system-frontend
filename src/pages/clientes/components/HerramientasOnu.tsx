@@ -3,6 +3,7 @@ import { ArrowPathIcon, CheckCircleIcon, NoSymbolIcon } from '@heroicons/react/2
 import { toast } from 'react-hot-toast';
 
 import client from '@/api/axios';
+import { abrirAntena } from '@/utils/accesoRemoto';
 import { apiErrorMessage } from '@/utils/apiError';
 
 interface EstadoOnuData {
@@ -203,6 +204,11 @@ export function EstadoAntena({ clienteId }: { clienteId: number }) {
                 <div className={fila}><span className={etiqueta}>Latencia</span><span className={valor}>{estado.latencia_ms != null ? `${estado.latencia_ms} ms` : '--'}</span></div>
                 <div className={fila}><span className={etiqueta}>Pérdida</span><span className={valor}>{estado.perdida != null ? `${estado.perdida}%` : '--'}</span></div>
             </div>
+            {estado.ip && (
+                <button type="button" onClick={() => void abrirAntena(clienteId)} className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-black text-slate-700 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                    Abrir la página de la antena
+                </button>
+            )}
             {!responde && <p className="text-xs text-slate-500">Revisa que la antena tenga energía y que esté apuntando a su sector. Si el PPPoE está en línea pero la antena no responde, puede ser que cambió su IP.</p>}
         </div>
     );

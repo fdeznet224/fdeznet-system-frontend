@@ -2375,7 +2375,7 @@ test('clientes por radioenlace: ícono de antena, estado de la antena y revisarl
   expect(revisiones).toBe(1)
 })
 
-test('la IP de un cliente de radio abre su router en el puerto configurado', async ({ page, context }) => {
+test('la IP de un cliente de radio abre su router en el puerto que contesta', async ({ page, context }) => {
   await authenticateAs(page)
   await mockApi(page)
   const base = {
@@ -2387,19 +2387,26 @@ test('la IP de un cliente de radio abre su router en el puerto configurado', asy
     { ...base, id: 291, nombre: 'Concepcion Radio', tipo_conexion: 'radio', servicio: servicio('10.10.10.41') },
     { ...base, id: 165, nombre: 'Teresa Fibra', tipo_conexion: 'fibra', servicio: servicio('10.10.10.42') },
   ] }))
-  await page.route('**/api/configuracion/acceso-onu', (route) => route.fulfill({ json: {
-    huawei: { url: '', cuentas: '' }, zte: { url: '', cuentas: '' }, radio: { puerto: '8080' },
-  } }))
+  // El servidor prueba los puertos: el router de radio contesta en el 8080; la ONU no contesta y se abre en el de su marca.
+  await page.route(/\/api\/clientes\/acceso-web/, (route) => {
+    const ip = new URL(route.request().url()).searchParams.get('ip')
+    return route.fulfill({ json: ip === '10.10.10.41'
+      ? { ip, marca: 'radio', puerto: '8080', responde: true, probados: ['8080', '80', '8090'], url: 'http://10.10.10.41:8080' }
+      : { ip, marca: 'huawei', puerto: '80', responde: false, probados: ['80', '8090', '8080'], url: 'http://10.10.10.42' } })
+  })
   await context.route('http://10.10.10.*/**', (route) => route.fulfill({ body: 'router' }))
   await page.goto('/admin/clientes')
 
   const radio = context.waitForEvent('page')
   await page.getByRole('button', { name: '10.10.10.41' }).filter({ visible: true }).click()
-  expect((await radio).url()).toBe('http://10.10.10.41:8080/')
+  const routerRadio = await radio
+  await expect.poll(() => routerRadio.url()).toBe('http://10.10.10.41:8080/')
 
   const fibra = context.waitForEvent('page')
   await page.getByRole('button', { name: '10.10.10.42' }).filter({ visible: true }).click()
-  expect((await fibra).url()).toBe('http://10.10.10.42/')
+  const onu = await fibra
+  await expect.poll(() => onu.url()).toBe('http://10.10.10.42/')
+  await expect(page.getByText('El equipo no contestó en 80, 8090, 8080; se abre en el 80')).toBeVisible()
 })
 
 const ATENUACION_E2E = {
@@ -2427,4 +2434,42 @@ test('la señal que bajó contra su normal se ve en Clientes y en el mapa con la
   await expect(page.getByText('Bajaron juntos')).toBeVisible()
   await page.getByRole('button', { name: /Caja P1-M-CN-3-A/ }).click()
   await expect(page.getByText('Caja NAP · bajaron 2 de 2')).toBeVisible()
+})
+
+test('al tocar la IP se abre el equipo en el puerto que contesta y la antena por el puente del MikroTik', async ({ page, context }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  let ipConsultada = ''
+  await page.route(/\/api\/clientes\/acceso-web/, async (route) => {
+    ipConsultada = new URL(route.request().url()).searchParams.get('ip') || ''
+    await route.fulfill({ json: { ip: ipConsultada, marca: 'zte', puerto: '8090', responde: true, probados: ['8090', '80', '8080'], url: `http://${ipConsultada}:8090` } })
+  })
+  await context.route(/^https?:\/\/(10\.0\.0\.\d+:8090|10\.8\.0\.4:18001)\//, (route) => route.fulfill({ body: '<title>Equipo</title>', contentType: 'text/html' }))
+  await page.goto('/admin/clientes')
+
+  const ventana = context.waitForEvent('page')
+  await page.getByRole('button', { name: /^10\.0\.0\.\d+$/ }).first().click()
+  const equipo = await ventana
+  await expect.poll(() => equipo.url()).toMatch(/^http:\/\/10\.0\.0\.\d+:8090\/$/)
+  expect(ipConsultada).toMatch(/^10\.0\.0\.\d+$/)
+  await equipo.close()
+
+  // Antena en la VLAN: el puente del MikroTik da la dirección a abrir.
+  let puentes = 0
+  await page.route('**/api/clientes/1', (route) => route.fulfill({ json: {
+    id: 1, nombre: 'Cliente Radio', telefono: '5550000000', direccion: 'Sagrado Corazón', ip_asignada: '10.0.0.2',
+    estado: 'activo', tipo_conexion: 'radio', ip_antena: '192.168.1.20',
+  } }))
+  await page.route('**/api/clientes/1/acceso-antena', async (route) => {
+    puentes += 1
+    await route.fulfill({ json: { status: 'success', data: { ip: '192.168.1.20', router: 'MK Sagrado', puerto: 18001, url: 'http://10.8.0.4:18001', expira: '2026-10-19T15:30' } } })
+  })
+  if ((page.viewportSize()?.width ?? 1024) < 640) await page.locator('article').first().click()
+  else await page.locator('tbody tr').first().click()
+  const antena = context.waitForEvent('page')
+  await page.getByText('192.168.1.20').click()
+  const pagina = await antena
+  await expect.poll(() => pagina.url()).toBe('http://10.8.0.4:18001/')
+  expect(puentes).toBe(1)
+  await expect(page.getByText(/Antena abierta por MK Sagrado hasta las/)).toBeVisible()
 })

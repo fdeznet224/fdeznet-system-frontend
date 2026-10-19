@@ -6,17 +6,18 @@ import client from '../../api/axios';
 import { apiErrorMessage } from '@/utils/apiError';
 
 type Marca = 'huawei' | 'zte';
-type Config = Record<Marca, { url: string; cuentas: string }> & { radio: { puerto: string } };
+type Config = Record<Marca, { url: string; cuentas: string; puerto: string }> & { radio: { puerto: string }; antena: { puerto: string } };
 
-const MARCAS: { id: Marca; nombre: string }[] = [
-  { id: 'huawei', nombre: 'Huawei' },
-  { id: 'zte', nombre: 'ZTE' },
+const MARCAS: { id: Marca; nombre: string; puerto: string }[] = [
+  { id: 'huawei', nombre: 'Huawei', puerto: '80' },
+  { id: 'zte', nombre: 'ZTE', puerto: '8090' },
 ];
+const soloNumeros = (valor: string) => valor.replace(/\D/g, '');
 const CAMPO = 'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
 
 /** Dirección y cuentas de la ONU que ve el técnico en una reparación (conectado al WiFi del cliente). */
 export default function AccesoOnu() {
-  const [config, setConfig] = useState<Config>({ huawei: { url: '', cuentas: '' }, zte: { url: '', cuentas: '' }, radio: { puerto: '8080' } });
+  const [config, setConfig] = useState<Config>({ huawei: { url: '', cuentas: '', puerto: '80' }, zte: { url: '', cuentas: '', puerto: '8090' }, radio: { puerto: '8080' }, antena: { puerto: '443' } });
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
@@ -25,11 +26,12 @@ export default function AccesoOnu() {
         huawei: { ...actual.huawei, ...data?.huawei },
         zte: { ...actual.zte, ...data?.zte },
         radio: { ...actual.radio, ...data?.radio },
+        antena: { ...actual.antena, ...data?.antena },
       })))
       .catch(() => toast.error('No se pudo cargar el acceso a la ONU'));
   }, []);
 
-  const cambiar = (marca: Marca, campo: 'url' | 'cuentas', valor: string) => {
+  const cambiar = (marca: Marca, campo: 'url' | 'cuentas' | 'puerto', valor: string) => {
     setConfig((actual) => ({ ...actual, [marca]: { ...actual[marca], [campo]: valor } }));
   };
 
@@ -60,14 +62,18 @@ export default function AccesoOnu() {
         </div>
       </div>
 
-      {MARCAS.map(({ id, nombre }) => (
+      {MARCAS.map(({ id, nombre, puerto }) => (
         <fieldset key={id} className="mb-5 space-y-2">
           <legend className="mb-2 text-sm font-black text-slate-600 dark:text-slate-300">{nombre}</legend>
           <input aria-label={`Dirección de la ONU ${nombre}`} value={config[id].url} onChange={(e) => cambiar(id, 'url', e.target.value)} placeholder="http://192.168.100.1" className={CAMPO} />
           <input aria-label={`Cuentas de la ONU ${nombre}`} value={config[id].cuentas} onChange={(e) => cambiar(id, 'cuentas', e.target.value)} placeholder="usuario:contraseña, usuario2:contraseña2" className={`${CAMPO} font-mono`} />
+          <label className="flex items-center gap-3 text-xs font-bold text-slate-500">
+            <span className="shrink-0">Puerto web por su IP</span>
+            <input aria-label={`Puerto web de la ONU ${nombre}`} inputMode="numeric" value={config[id].puerto} onChange={(e) => cambiar(id, 'puerto', soloNumeros(e.target.value))} placeholder={puerto} className={`${CAMPO} font-mono`} />
+          </label>
         </fieldset>
       ))}
-      <p className="mb-5 text-xs text-slate-500">Varias cuentas separadas por coma, cada una como usuario:contraseña. Deja la dirección vacía para no mostrar esa marca.</p>
+      <p className="mb-5 text-xs text-slate-500">Varias cuentas separadas por coma, cada una como usuario:contraseña. Deja la dirección vacía para no mostrar esa marca. Al tocar la IP de un cliente en Clientes se abre su ONU en el puerto de su marca; si no contesta, se prueban los demás puertos.</p>
 
       <fieldset className="mb-5 space-y-2">
         <legend className="mb-2 text-sm font-black text-slate-600 dark:text-slate-300">Router de clientes por radio</legend>
@@ -75,11 +81,24 @@ export default function AccesoOnu() {
           aria-label="Puerto web del router de clientes por radio"
           inputMode="numeric"
           value={config.radio.puerto}
-          onChange={(e) => setConfig((actual) => ({ ...actual, radio: { puerto: e.target.value.replace(/\D/g, '') } }))}
+          onChange={(e) => setConfig((actual) => ({ ...actual, radio: { puerto: soloNumeros(e.target.value) } }))}
           placeholder="8080"
           className={`${CAMPO} font-mono`}
         />
         <p className="text-xs text-slate-500">Al tocar la IP de un cliente de radio en Clientes se abre su router en este puerto (administración remota del Mercusys). Vacío abre el puerto 80.</p>
+      </fieldset>
+
+      <fieldset className="mb-5 space-y-2">
+        <legend className="mb-2 text-sm font-black text-slate-600 dark:text-slate-300">Antena del radioenlace</legend>
+        <input
+          aria-label="Puerto web de la antena"
+          inputMode="numeric"
+          value={config.antena.puerto}
+          onChange={(e) => setConfig((actual) => ({ ...actual, antena: { puerto: soloNumeros(e.target.value) } }))}
+          placeholder="443"
+          className={`${CAMPO} font-mono`}
+        />
+        <p className="text-xs text-slate-500">La antena está en la VLAN de su MikroTik: al abrirla, el MikroTik abre un puente por 30 minutos y se cierra solo. Ubiquiti usa el 443 (HTTPS); acepta el aviso del certificado.</p>
       </fieldset>
 
       <button

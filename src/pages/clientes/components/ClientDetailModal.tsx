@@ -5,7 +5,7 @@ import {
     type ComponentType,
     type ReactNode,
 } from 'react';
-import { abrirIpHttp, usePuertoRouterRadio } from '@/hooks/usePuertoRouterRadio';
+import { abrirAntena, abrirEquipo } from '@/utils/accesoRemoto';
 import { Dialog, Transition } from '@headlessui/react';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
@@ -167,7 +167,6 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [addingSaldo, setAddingSaldo] = useState(false);
     const [montoSaldo, setMontoSaldo] = useState('');
     const [facturas, setFacturas] = useState<ClientInvoice[]>([]);
-    const puertoRadio = usePuertoRouterRadio();
     const [servicios, setServicios] = useState<ClientService[]>([]);
     const [ipService, setIpService] = useState<ClientService | null>(null);
     const [serviciosAdicionales, setServiciosAdicionales] = useState<Array<{id:number; nombre:string; precio_mensual:number; periodicidad:'mensual'|'unico'; activo:boolean; servicio_id?:number}>>([]);
@@ -747,10 +746,10 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         <DetailTile label="Teléfono" value={cliente?.telefono || 'N/A'} copy />
                                         <DetailTile label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
                                         <DetailTile label="Plan" value={servicioActual?.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
-                                        <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight copy onClick={cliente?.ip_asignada ? () => abrirIpHttp(cliente.ip_asignada || '', cliente.tipo_conexion === 'radio' ? puertoRadio : undefined) : undefined} />
+                                        <DetailTile label="IP asignada" value={cliente?.ip_asignada || 'DHCP'} highlight copy onClick={cliente?.ip_asignada ? () => void abrirEquipo(cliente.ip_asignada || '') : undefined} />
                                         <DetailTile label="Conexión" value={cliente?.tipo_conexion === 'radio' ? '📡 Radioenlace' : '⚡ Fibra óptica'} />
                                         {cliente?.tipo_conexion === 'radio'
-                                            ? <DetailTile label="IP de la antena" value={cliente?.ip_antena || 'Sin IP'} copy />
+                                            ? <DetailTile label="IP de la antena" value={cliente?.ip_antena || 'Sin IP'} copy onClick={cliente?.ip_antena ? () => void abrirAntena(cliente.id) : undefined} />
                                             : <DetailTile label="ONU serial" value={cliente?.onu_asignada?.identificador || 'Sin equipo'} copy />}
                                         <DetailTile label="Dirección" value={cliente?.direccion || 'N/A'} />
                                     </div>
