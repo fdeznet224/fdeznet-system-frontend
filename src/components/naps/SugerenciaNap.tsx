@@ -80,7 +80,7 @@ export default function SugerenciaNap({ latitud, longitud, zonaId, oltId, permit
 
     return (
         <div className="space-y-1.5">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Cajas NAP más cercanas</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Cajas NAP más cercanas</p>
             {lista.map((nap, i) => {
                 const elegida = String(nap.id) === String(elegidaId ?? '');
                 const llena = nap.puertos_libres <= 0;
@@ -112,7 +112,7 @@ export default function SugerenciaNap({ latitud, longitud, zonaId, oltId, permit
                         </span>
                         {elegida
                             ? <CheckCircleIcon className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                            : !llena && <span className="shrink-0 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Usar</span>}
+                            : !llena && <span className="shrink-0 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Usar</span>}
                     </button>
                 );
             })}

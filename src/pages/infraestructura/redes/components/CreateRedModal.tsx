@@ -93,7 +93,7 @@ export default function CreateRedModal({ isOpen, onClose, onSuccess, routers, re
                     
                     {/* Router Select */}
                     <div>
-                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-2">
                             <ServerIcon className="w-3.5 h-3.5" /> Router Asignado
                         </label>
                         <select 
@@ -109,7 +109,7 @@ export default function CreateRedModal({ isOpen, onClose, onSuccess, routers, re
 
                     {/* Nombre */}
                     <div>
-                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 block">Nombre Identificador</label>
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Nombre Identificador</label>
                         <input type="text" 
                             className="w-full bg-slate-50 dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white focus:border-emerald-500 outline-none transition-colors" 
                             placeholder="Ej: Pool Clientes Norte" required

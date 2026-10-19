@@ -226,7 +226,7 @@ export default function RetirosPanel() {
           <article key={termination.id} className="min-w-0 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Baja #{termination.id}</p>
+                <p className="text-xs font-semibold text-slate-400">Baja #{termination.id}</p>
                 <h2 className="truncate text-base font-black text-slate-900 dark:text-white sm:text-lg">{termination.cliente?.nombre || `Cliente #${termination.cliente_id}`}</h2>
                 <p className="flex items-start gap-1 text-xs text-slate-500">
                   <MapPinIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -240,11 +240,11 @@ export default function RetirosPanel() {
 
             <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
               <div className="min-w-0 rounded-xl bg-slate-50 p-3 dark:bg-slate-950">
-                <p className="text-[10px] font-black uppercase text-slate-400">ONU</p>
+                <p className="text-xs font-semibold text-slate-400">ONU</p>
                 <p className="truncate font-mono text-xs font-black sm:text-sm">{termination.onu?.identificador || 'Sin equipo'}</p>
               </div>
               <div className="min-w-0 rounded-xl bg-slate-50 p-3 dark:bg-slate-950">
-                <p className="text-[10px] font-black uppercase text-slate-400">Técnico</p>
+                <p className="text-xs font-semibold text-slate-400">Técnico</p>
                 <p className="truncate text-xs font-black sm:text-sm">{termination.tecnico ? (termination.tecnico.nombre_completo || termination.tecnico.usuario) : 'Sin asignar'}</p>
               </div>
             </div>
@@ -267,7 +267,7 @@ export default function RetirosPanel() {
             {termination.estado === 'pendiente_retiro' && (
               <div className="mt-4 space-y-3 border-t border-slate-100 pt-4 dark:border-slate-800">
                 <div>
-                  <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400">Quién lo recoge</span>
+                  <span className="mb-1 block text-xs font-semibold text-slate-400">Quién lo recoge</span>
                   <div className="flex gap-2">
                     <select
                       aria-label={`Técnico para la baja ${termination.id}`}
@@ -286,7 +286,7 @@ export default function RetirosPanel() {
 
                 {termination.onu && (
                   <div>
-                    <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400">Recibir en bodega</span>
+                    <span className="mb-1 block text-xs font-semibold text-slate-400">Recibir en bodega</span>
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <select
                         aria-label={`Cómo llegó el equipo de la baja ${termination.id}`}
@@ -297,7 +297,7 @@ export default function RetirosPanel() {
                         <option value="">¿Cómo llegó el equipo?</option>
                         {CONDICIONES.map((c) => <option key={c.valor} value={c.valor}>{c.texto}</option>)}
                       </select>
-                      <button type="button" onClick={() => void receive(termination)} className="flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-xs font-black uppercase tracking-wide text-white">
+                      <button type="button" onClick={() => void receive(termination)} className="flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white">
                         <CheckBadgeIcon className="h-5 w-5" /> Recibir
                       </button>
                     </div>

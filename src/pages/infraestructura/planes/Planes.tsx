@@ -83,7 +83,7 @@ export default function Planes() {
             {loading ? (
                 <div className="py-32 text-center flex flex-col items-center justify-center bg-white dark:bg-slate-800/30 rounded-3xl border border-slate-200 dark:border-slate-700/30 backdrop-blur-sm shadow-sm flex-1">
                     <ArrowPathIcon className="w-12 h-12 animate-spin text-blue-500 mb-4" />
-                    <span className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-xs font-mono">Sincronizando con MikroTik...</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-bold text-xs font-mono">Sincronizando con MikroTik...</span>
                 </div>
             ) : planes.length === 0 ? (
                 <div className="py-32 text-center flex flex-col items-center justify-center bg-white dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700/30 backdrop-blur-sm flex-1 shadow-sm">
@@ -107,7 +107,7 @@ export default function Planes() {
                                             <SignalIcon className="w-5 h-5" />
                                         </div>
                                         <div className="text-right">
-                                            <span className="text-[8px] text-slate-400 dark:text-slate-500 block uppercase font-black tracking-widest">Mensualidad</span>
+                                            <span className="text-xs text-slate-400 dark:text-slate-500 block font-semibold">Mensualidad</span>
                                             <span className="text-emerald-600 dark:text-emerald-400 font-black text-xl">${plan.precio}</span>
                                         </div>
                                     </div>
@@ -118,7 +118,7 @@ export default function Planes() {
                                     <div className="grid grid-cols-2 gap-2 my-3">
                                         {/* Bajada */}
                                         <div className="bg-slate-50 dark:bg-slate-950/40 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center shadow-inner">
-                                            <div className="flex items-center justify-center gap-1 text-[8px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-wider mb-1">
+                                            <div className="flex items-center justify-center gap-1 text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">
                                                 <ArrowDownIcon className="w-3 h-3 text-emerald-500 dark:text-emerald-400" /> DOWN
                                             </div>
                                             <p className="text-slate-900 dark:text-white font-black text-xl tracking-tight">
@@ -127,7 +127,7 @@ export default function Planes() {
                                         </div>
                                         {/* Subida */}
                                         <div className="bg-slate-50 dark:bg-slate-950/40 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center shadow-inner">
-                                            <div className="flex items-center justify-center gap-1 text-[8px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-wider mb-1">
+                                            <div className="flex items-center justify-center gap-1 text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">
                                                 <ArrowUpIcon className="w-3 h-3 text-blue-500 dark:text-blue-400" /> UP
                                             </div>
                                             <p className="text-slate-900 dark:text-white font-black text-xl tracking-tight">
@@ -138,7 +138,7 @@ export default function Planes() {
 
                                     <div className="flex items-center gap-1.5 mt-auto bg-slate-100 dark:bg-slate-950/60 p-2 rounded-lg border border-slate-200 dark:border-slate-800/80 w-fit">
                                         <ServerIcon className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                                        <span className="text-[9px] text-slate-600 dark:text-slate-400 font-black uppercase tracking-widest truncate max-w-[120px]">
+                                        <span className="text-xs text-slate-600 dark:text-slate-400 font-semibold truncate max-w-[120px]">
                                             {routerAsignado?.nombre || 'S/A'}
                                         </span>
                                     </div>

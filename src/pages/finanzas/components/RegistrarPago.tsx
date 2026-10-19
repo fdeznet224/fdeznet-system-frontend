@@ -290,8 +290,8 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                                             <div className="overflow-hidden pr-2">
                                                                 <p className="font-black text-slate-800 dark:text-white text-sm sm:text-base truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{c.nombre}</p>
                                                                 <div className="flex flex-wrap items-center gap-1.5 mt-1 text-slate-500">
-                                                                    {c.cedula && <span className="bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase">Contrato: {c.cedula}</span>}
-                                                                    <span className="bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-500/20 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 flex items-center gap-1"><MapPinIcon className="w-3 h-3"/> {c.zona?.nombre || 'General'}</span>
+                                                                    {c.cedula && <span className="bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-800 text-xs font-semibold">Contrato: {c.cedula}</span>}
+                                                                    <span className="bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-500/20 text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1"><MapPinIcon className="w-3 h-3"/> {c.zona?.nombre || 'General'}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -323,7 +323,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                     {selectedCliente.nombre.charAt(0)}
                                 </div>
                                 <div className="overflow-hidden pr-2">
-                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest mb-0.5 flex items-center gap-1">
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold mb-0.5 flex items-center gap-1">
                                         <IdentificationIcon className="w-3 h-3"/> {selectedCliente.cedula || 'SIN NÚMERO DE CONTRATO'}
                                     </p>
                                     <h3 className="break-words font-black text-slate-800 dark:text-white text-base sm:text-lg leading-tight">{selectedCliente.nombre}</h3>
@@ -347,7 +347,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                 {/* Total a pagar: un solo cobro con todo incluido */}
                                 {estadoCuenta && totalPendiente > 0 ? (
                                     <div className="mb-5 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Se está cobrando</p>
+                                        <p className="mb-2 text-xs font-semibold text-slate-500">Se está cobrando</p>
                                         <ul className="space-y-1.5 text-left">
                                             {estadoCuenta.detalle.map((item, index) => (
                                                 <li key={index} className={item.actual
@@ -355,7 +355,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                                     : 'flex items-center justify-between gap-2 px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-200'}>
                                                     <span className="min-w-0 flex-1 break-words">
                                                         {item.actual ? '' : '• '}{item.texto}
-                                                        {item.actual && <span className="ml-2 inline-block rounded-md bg-emerald-600 px-2 py-0.5 align-middle text-[9px] font-black uppercase tracking-wider text-white">Mes actual</span>}
+                                                        {item.actual && <span className="ml-2 inline-block rounded-md bg-emerald-600 px-2 py-0.5 align-middle text-xs font-semibold text-white">Mes actual</span>}
                                                     </span>
                                                     {item.monto != null && <span className="shrink-0 font-black tabular-nums">${Number(item.monto).toFixed(2)}</span>}
                                                 </li>
@@ -386,7 +386,7 @@ export default function RegistrarPago({ onCancel, onSuccess }: Props) {
                                         {modo === 'pagar' ? (
                                             <form onSubmit={handleCobrar} className="flex flex-col flex-1">
                                                 <div className="mb-6 rounded-[1.5rem] border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                                                    <label className="mb-3 block text-[10px] font-black uppercase tracking-widest text-slate-500">Total a pagar</label>
+                                                    <label className="mb-3 block text-xs font-semibold text-slate-500">Total a pagar</label>
                                                     <div className="relative mx-auto w-full max-w-[260px]">
                                                         <span className="absolute left-0 top-1/2 -translate-y-1/2 text-4xl font-black text-emerald-500">$</span>
                                                         <input

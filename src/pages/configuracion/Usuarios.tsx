@@ -180,7 +180,7 @@ export default function Usuarios() {
                             
                             {/* Input Nombre */}
                             <div>
-                                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider ml-1">Nombre Completo</label>
+                                <label className="text-xs text-slate-500 dark:text-slate-400 font-semibold ml-1">Nombre Completo</label>
                                 <div className="relative mt-1.5">
                                     <UserCircleIcon className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                                     <input 
@@ -194,7 +194,7 @@ export default function Usuarios() {
 
                             {/* Input Usuario */}
                             <div>
-                                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider ml-1">Usuario (Login)</label>
+                                <label className="text-xs text-slate-500 dark:text-slate-400 font-semibold ml-1">Usuario (Login)</label>
                                 <div className="relative mt-1.5">
                                     <IdentificationIcon className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                                     <input 
@@ -208,7 +208,7 @@ export default function Usuarios() {
 
                             {/* Input Password */}
                             <div>
-                                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider ml-1">
+                                <label className="text-xs text-slate-500 dark:text-slate-400 font-semibold ml-1">
                                     {editingId ? 'Nueva Contraseña' : 'Contraseña'}
                                 </label>
                                 <div className="relative mt-1.5">
@@ -227,7 +227,7 @@ export default function Usuarios() {
 
                             {/* Select Rol */}
                             <div>
-                                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider ml-1">Rol del Sistema</label>
+                                <label className="text-xs text-slate-500 dark:text-slate-400 font-semibold ml-1">Rol del Sistema</label>
                                 <select 
                                     className="w-full mt-1.5 bg-slate-50 dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 text-slate-800 dark:text-white text-sm focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer"
                                     value={form.rol} onChange={e => setForm({...form, rol: e.target.value})}
@@ -239,7 +239,7 @@ export default function Usuarios() {
                             </div>
 
                             <div>
-                                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider ml-1">WhatsApp del personal</label>
+                                <label className="text-xs text-slate-500 dark:text-slate-400 font-semibold ml-1">WhatsApp del personal</label>
                                 <input
                                     type="tel"
                                     placeholder="Ej. 5215512345678"
@@ -253,7 +253,7 @@ export default function Usuarios() {
 
                         {/* SELECCIÓN DE ZONAS */}
                         <div>
-                            <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider mb-3 ml-1 block">
+                            <label className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-3 ml-1 block">
                                 Zonas de cobranza permitidas
                             </label>
                             <div className="bg-slate-50 dark:bg-[#0b0d14] p-4 rounded-xl border border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto space-y-2.5 custom-scrollbar">
@@ -271,7 +271,7 @@ export default function Usuarios() {
 
                         {/* SELECCIÓN DE ROUTERS */}
                         <div>
-                            <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider flex items-center gap-1.5 mb-3 ml-1">
+                            <label className="text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1.5 mb-3 ml-1">
                                 <ServerStackIcon className="w-4 h-4 text-blue-500" /> Routers Permitidos
                             </label>
                             <div className="bg-slate-50 dark:bg-[#0b0d14] p-4 rounded-xl border border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto space-y-2.5 custom-scrollbar transition-colors">
@@ -322,7 +322,7 @@ export default function Usuarios() {
                 <div className="lg:col-span-2 bg-white dark:bg-[#11131a] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-xl transition-colors">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm text-slate-700 dark:text-slate-400">
-                            <thead className="bg-slate-100 dark:bg-[#0b0d14] text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest border-b border-slate-200 dark:border-slate-800 transition-colors">
+                            <thead className="bg-slate-100 dark:bg-[#0b0d14] text-slate-600 dark:text-slate-300 font-semibold text-xs border-b border-slate-200 dark:border-slate-800 transition-colors">
                                 <tr>
                                     <th className="p-5">Usuario / Login</th>
                                     <th className="p-5 text-center">Rol</th>

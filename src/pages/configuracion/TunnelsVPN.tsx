@@ -200,9 +200,9 @@ export default function TunnelsVPN() {
                                 <div className="flex justify-between items-center mb-4">
                                     <div className="flex items-center gap-2">
                                         <div className={`w-3 h-3 rounded-full ${tunnel.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-                                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Estado</span>
+                                        <span className="text-xs font-semibold text-slate-500">Estado</span>
                                     </div>
-                                    <span className="text-[9px] text-slate-400 font-black tracking-widest bg-slate-100 dark:bg-slate-950 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-800 uppercase">
+                                    <span className="text-xs text-slate-400 font-semibold bg-slate-100 dark:bg-slate-950 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-800">
                                         {new Date(tunnel.created_at).toLocaleDateString()}
                                     </span>
                                 </div>
@@ -220,7 +220,7 @@ export default function TunnelsVPN() {
                                 </div>
 
                                 <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 mb-6 mt-auto">
-                                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1 flex items-center gap-1"><KeyIcon className="w-3 h-3"/> Public Key (Peer)</p>
+                                    <p className="text-xs text-slate-400 font-semibold mb-1 flex items-center gap-1"><KeyIcon className="w-3 h-3"/> Public Key (Peer)</p>
                                     <p className="text-xs text-slate-600 dark:text-slate-300 font-mono truncate">{tunnel.public_key}</p>
                                 </div>
 
@@ -228,10 +228,10 @@ export default function TunnelsVPN() {
                                 {scriptVisibleId === tunnel.id && !isMobile && (
                                     <div className="mb-4 bg-[#0d1117] rounded-2xl overflow-hidden border border-slate-800 shadow-inner animate-in slide-in-from-top-2">
                                         <div className="flex justify-between items-center bg-[#161b22] px-4 py-2 border-b border-slate-800">
-                                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                            <span className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
                                                 <BoltIcon className="w-3.5 h-3.5 text-amber-400"/> Terminal MikroTik
                                             </span>
-                                            <button onClick={() => copiarAlPortapapeles(tunnel.script_mikrotik)} className="text-slate-400 hover:text-white bg-slate-800 hover:bg-emerald-600 px-3 py-1 rounded text-[10px] font-black uppercase transition-colors flex items-center gap-1">
+                                            <button onClick={() => copiarAlPortapapeles(tunnel.script_mikrotik)} className="text-slate-400 hover:text-white bg-slate-800 hover:bg-emerald-600 px-3 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1">
                                                 <DocumentDuplicateIcon className="w-3.5 h-3.5" /> Copiar
                                             </button>
                                         </div>
@@ -269,19 +269,19 @@ export default function TunnelsVPN() {
                             <div className="grid grid-cols-2 gap-3">
                                 <button type="button" onClick={() => setTipoTunnel('mikrotik')} className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${tipoTunnel === 'mikrotik' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}>
                                     <ServerStackIcon className="w-6 h-6" />
-                                    <span className="text-[10px] font-black uppercase">Nodo / Router</span>
+                                    <span className="text-xs font-semibold">Nodo / Router</span>
                                 </button>
                                 <button type="button" onClick={() => setTipoTunnel('tecnico')} className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${tipoTunnel === 'tecnico' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}>
                                     <DevicePhoneMobileIcon className="w-6 h-6" />
-                                    <span className="text-[10px] font-black uppercase">App Móvil</span>
+                                    <span className="text-xs font-semibold">App Móvil</span>
                                 </button>
                             </div>
                             <div>
-                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 block">Identificador</label>
+                                <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1.5 block">Identificador</label>
                                 <input type="text" value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Ej: Router-Principal o Tec-Juan..." className="w-full p-4 text-sm font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-emerald-500 text-slate-900 dark:text-white transition-colors" required autoFocus />
                             </div>
                             <div>
-                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 block">
+                                <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1.5 block">
                                     {tipoTunnel === 'mikrotik' ? 'Subredes detrás del MikroTik' : 'Subredes que podrá alcanzar'}
                                 </label>
                                 <textarea
@@ -299,8 +299,8 @@ export default function TunnelsVPN() {
                                 {tipoTunnel === 'tecnico' && routedSubnets.length > 0 && (
                                     <div className="mt-3 space-y-2">
                                         <div className="flex items-center justify-between gap-2">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Rutas disponibles por MikroTik</p>
-                                            <button type="button" onClick={toggleAllSubnets} className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wide text-white">
+                                            <p className="text-xs font-semibold text-slate-400">Rutas disponibles por MikroTik</p>
+                                            <button type="button" onClick={toggleAllSubnets} className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white">
                                                 {routedSubnets.every(item => selectedSubnetSet().has(item.subred)) ? 'Quitar todas' : 'Acceso global'}
                                             </button>
                                         </div>
@@ -341,8 +341,8 @@ export default function TunnelsVPN() {
                                 )}
                             </div>
                             <div className="flex gap-3">
-                                <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
-                                <button type="submit" disabled={isCreating} className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                                <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-semibold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
+                                <button type="submit" disabled={isCreating} className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl font-semibold text-xs shadow-lg hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                                     {isCreating ? <ArrowPathIcon className="w-4 h-4 animate-spin"/> : 'Generar Llaves'}
                                 </button>
                             </div>
@@ -374,10 +374,10 @@ export default function TunnelsVPN() {
                             </div>
                             
                             <div className="mt-6 flex flex-col gap-3 w-full">
-                                <button onClick={() => copiarAlPortapapeles(qrModalData.script_text)} className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-black text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2">
+                                <button onClick={() => copiarAlPortapapeles(qrModalData.script_text)} className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-xs transition-colors flex items-center justify-center gap-2">
                                     <DocumentDuplicateIcon className="w-4 h-4"/> Copiar Texto Plano
                                 </button>
-                                <button onClick={descargarArchivoConf} className="w-full py-3 bg-slate-900 dark:bg-slate-50 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-md">
+                                <button onClick={descargarArchivoConf} className="w-full py-3 bg-slate-900 dark:bg-slate-50 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-xl font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-md">
                                     <ArrowDownTrayIcon className="w-4 h-4"/> Descargar .conf
                                 </button>
                             </div>

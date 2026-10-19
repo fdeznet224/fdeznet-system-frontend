@@ -72,7 +72,7 @@ export default function ConnectivityBanner() {
           <button
             type="button"
             onClick={() => setShowDetails(true)}
-            className="ml-1 rounded-xl bg-white/20 px-2 py-2 text-[10px] font-black uppercase"
+            className="ml-1 rounded-xl bg-white/20 px-2 py-2 text-xs font-semibold"
           >
             Revisar
           </button>

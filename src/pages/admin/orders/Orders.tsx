@@ -444,7 +444,7 @@ export default function Orders() {
                                         <div className="rounded-xl bg-rose-50 p-2.5 text-xs text-rose-800 dark:bg-rose-500/10 dark:text-rose-200">
                                             <p className="font-semibold">
                                                 🔧 {orden.tipo === 'cambio_domicilio' ? 'Cambio de domicilio' : (CATEGORIAS_FALLA[orden.falla || ''] || 'Reparación')}
-                                                {PRIORIDAD_ALTA.has(orden.prioridad || '') && <span className="ml-1.5 rounded bg-rose-600 px-1.5 py-0.5 text-[10px] uppercase text-white">{orden.prioridad}</span>}
+                                                {PRIORIDAD_ALTA.has(orden.prioridad || '') && <span className="ml-1.5 rounded bg-rose-600 px-1.5 py-0.5 text-xs text-white">{orden.prioridad}</span>}
                                             </p>
                                             {orden.descripcion && <p className="mt-1 line-clamp-3 font-medium">{orden.descripcion}</p>}
                                         </div>

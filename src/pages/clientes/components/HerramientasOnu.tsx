@@ -52,7 +52,7 @@ export function EstadoOnu({ clienteId }: { clienteId: number }) {
         return (
             <div className="flex flex-col items-center py-12 text-slate-500">
                 <ArrowPathIcon className="mb-3 h-10 w-10 animate-spin text-indigo-600 dark:text-indigo-500" />
-                <p className="text-[10px] font-black uppercase tracking-widest">Consultando la OLT…</p>
+                <p className="text-xs font-semibold">Consultando la OLT…</p>
             </div>
         );
     }
@@ -178,7 +178,7 @@ export function EstadoAntena({ clienteId }: { clienteId: number }) {
         return (
             <div className="flex flex-col items-center py-12 text-slate-500">
                 <ArrowPathIcon className="mb-3 h-10 w-10 animate-spin text-indigo-600 dark:text-indigo-500" />
-                <p className="text-[10px] font-black uppercase tracking-widest">Haciendo ping a la antena…</p>
+                <p className="text-xs font-semibold">Haciendo ping a la antena…</p>
             </div>
         );
     }

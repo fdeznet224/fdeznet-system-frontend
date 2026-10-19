@@ -349,7 +349,7 @@ export default function WhatsAppOutbox() {
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:bg-slate-950">
+            <thead className="bg-slate-100 text-xs font-semibold text-slate-500 dark:bg-slate-950">
               <tr>
                 <th className="p-4">Fecha / ID</th>
                 <th className="p-4">Destinatario</th>
@@ -396,7 +396,7 @@ function SummaryCard({ label, value, icon: Icon, danger = false, warning = false
     <div className={`rounded-2xl border p-4 ${danger ? 'border-rose-200 bg-rose-50 dark:border-rose-500/20 dark:bg-rose-950/20' : warning ? 'border-orange-200 bg-orange-50 dark:border-orange-500/20 dark:bg-orange-950/20' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'}`}>
       <Icon className={`h-5 w-5 ${danger ? 'text-rose-500' : warning ? 'text-orange-500' : 'text-blue-500'}`} />
       <p className="mt-3 text-2xl font-black">{value}</p>
-      <p className="text-[10px] font-black uppercase text-slate-500">{label}</p>
+      <p className="text-xs font-semibold text-slate-500">{label}</p>
     </div>
   );
 }

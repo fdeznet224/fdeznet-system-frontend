@@ -778,7 +778,7 @@ export default function CreateClientModal({
               <Dialog.Panel className={`flex h-[100dvh] w-full max-w-5xl flex-col sm:h-auto sm:max-h-[92dvh] ${cardClass}`}>
                 <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] dark:border-slate-800 sm:px-8 sm:py-5">
                   <div>
-                    <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Nuevo servicio</p>
+                    <p className="mb-1 text-xs font-semibold text-blue-600 dark:text-blue-400">Nuevo servicio</p>
                     <Dialog.Title className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
                       {step === 4 ? 'Cliente creado' : 'Alta de Cliente'}
                     </Dialog.Title>
@@ -1077,7 +1077,7 @@ export default function CreateClientModal({
                       </div>
 
                       <div className="md:col-span-2 bg-blue-50 dark:bg-blue-950/30 rounded-3xl p-5 border border-blue-100 dark:border-blue-900">
-                        <p className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-300 mb-3">
+                        <p className="text-xs font-semibold text-blue-600 dark:text-blue-300 mb-3">
                           Vista previa de facturación
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
@@ -1308,7 +1308,7 @@ export default function CreateClientModal({
                           className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                         >
                           <QrCodeIcon className="w-6 h-6 text-blue-600 mb-3" />
-                          <p className="text-xs text-slate-500 uppercase font-bold">Número de contrato</p>
+                          <p className="text-xs text-slate-500 font-bold">Número de contrato</p>
                           <p className="font-black text-slate-900 dark:text-white break-all">
                             {createdClient.cedula}
                           </p>
@@ -1320,7 +1320,7 @@ export default function CreateClientModal({
                           className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                         >
                           <UserIcon className="w-6 h-6 text-blue-600 mb-3" />
-                          <p className="text-xs text-slate-500 uppercase font-bold">Usuario</p>
+                          <p className="text-xs text-slate-500 font-bold">Usuario</p>
                           <p className="font-black text-slate-900 dark:text-white break-all">
                             {createdClient.user_pppoe || '-'}
                           </p>
@@ -1332,7 +1332,7 @@ export default function CreateClientModal({
                             className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                           >
                             <WifiIcon className="w-6 h-6 text-blue-600 mb-3" />
-                            <p className="text-xs text-slate-500 uppercase font-bold">MAC WAN/CPE</p>
+                            <p className="text-xs text-slate-500 font-bold">MAC WAN/CPE</p>
                             <p className="font-black text-slate-900 dark:text-white break-all">{createdClient.mac_address}</p>
                           </button>
                         )}
@@ -1343,7 +1343,7 @@ export default function CreateClientModal({
                           className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                         >
                           <ClipboardDocumentIcon className="w-6 h-6 text-blue-600 mb-3" />
-                          <p className="text-xs text-slate-500 uppercase font-bold">Contraseña</p>
+                          <p className="text-xs text-slate-500 font-bold">Contraseña</p>
                           <p className="font-black text-slate-900 dark:text-white break-all">
                             {createdClient.pass_pppoe || '-'}
                           </p>

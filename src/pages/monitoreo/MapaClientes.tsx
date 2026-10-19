@@ -200,7 +200,7 @@ export default function MapaClientes() {
             {/* INDICADOR DE REFRESCO AUTOMÁTICO */}
             <div className="absolute bottom-6 left-6 z-[400] flex items-center gap-2 bg-slate-900/80 backdrop-blur-md px-3 py-2 rounded-full border border-slate-700">
                 <div className={`w-2 h-2 rounded-full ${isRefreshing ? 'bg-blue-500 animate-ping' : 'bg-emerald-500'}`}></div>
-                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                <span className="text-xs font-bold text-slate-300">
                     {isRefreshing ? 'Actualizando Estados...' : 'Monitoreo en Vivo (30s)'}
                 </span>
             </div>
@@ -222,7 +222,7 @@ export default function MapaClientes() {
 
             {modo === 'conexion' ? (
                 <div className="absolute right-3 top-16 z-[400] w-56 rounded-xl border border-slate-700 bg-slate-950/90 p-4 shadow-xl backdrop-blur-md sm:right-4 sm:top-4 sm:w-60">
-                    <h3 className="text-white font-bold text-xs mb-3 flex items-center gap-2 uppercase tracking-tight">
+                    <h3 className="text-white font-bold text-xs mb-3 flex items-center gap-2 tracking-tight">
                         <SignalIcon className="w-4 h-4 text-blue-400" /> Estado de Conexión
                     </h3>
                     <div className="space-y-2 text-[11px]">

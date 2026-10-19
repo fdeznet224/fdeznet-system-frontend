@@ -283,24 +283,24 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                 
                 <div className="flex max-h-[88dvh] w-full max-w-md animate-in flex-col overflow-hidden rounded-t-[2rem] border border-slate-200 bg-white shadow-2xl slide-in-from-bottom-8 transition-colors dark:border-slate-800 dark:bg-slate-900 sm:max-h-[90vh] sm:rounded-2xl sm:zoom-in-95">
 
-                    <div className="flex justify-center bg-slate-50 pt-3 dark:bg-slate-950 sm:hidden">
+                    <div className="flex justify-center bg-white pt-3 dark:bg-slate-900 sm:hidden">
                         <span className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-700" />
                     </div>
 
                     {/* HEADER */}
-                    <div className="bg-slate-50 dark:bg-slate-950 p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center transition-colors">
+                    <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-indigo-100 dark:bg-indigo-500/10 rounded-lg border border-indigo-200 dark:border-indigo-500/20 transition-colors">
-                                <WrenchScrewdriverIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+                                <WrenchScrewdriverIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <div>
-                                <h3 className="text-slate-900 dark:text-white font-black text-base leading-tight transition-colors">Herramientas</h3>
+                            <div className="min-w-0">
+                                <h3 className="truncate text-base font-semibold leading-tight text-slate-900 dark:text-white">Herramientas{clienteActual.nombre ? ` · ${clienteActual.nombre}` : ''}</h3>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                    <p className="text-slate-500 text-[11px] font-mono font-bold tracking-wider">{currentIp}</p>
+                                    <p className="font-mono text-xs text-slate-500">{currentIp}</p>
                                     {isSuspended ? (
-                                        <span className="text-[9px] bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-500/30 font-black uppercase tracking-widest">Suspendido</span>
+                                        <span className="text-xs bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-500/30 font-semibold">Suspendido</span>
                                     ) : (
-                                        <span className="text-[9px] bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/30 font-black uppercase tracking-widest">Activo</span>
+                                        <span className="text-xs bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/30 font-semibold">Activo</span>
                                     )}
                                 </div>
                             </div>
@@ -311,8 +311,8 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                     {/* BODY */}
                     <div className="overflow-y-auto bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] transition-colors custom-scrollbar dark:bg-slate-900 sm:p-6">
                         {servicios.length > 0 && (
-                            <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
-                                <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <div className="mb-4">
+                                <label className="mb-2 block text-xs font-semibold text-slate-400">
                                     Servicio sobre el que vas a trabajar
                                 </label>
                                 <select
@@ -335,7 +335,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                         )}
 
                         {mode === 'menu' && (
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 <MenuButton icon={ServerIcon} label="Estado" desc="Ping" variant="blue" onClick={() => { setDataEstado(null); setMode('estado_real'); }} />
                                 <MenuButton icon={PresentationChartLineIcon} label="Tráfico" desc="En vivo" variant="purple" onClick={() => { setDataConsumo(null); setMode('consumo_vivo'); }} />
 
@@ -451,7 +451,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                                                 {dataEstado.online ? <CheckCircleIcon className="w-12 h-12 text-emerald-600 dark:text-emerald-500" /> : <NoSymbolIcon className="w-12 h-12 text-rose-600 dark:text-rose-500" />}
                                             </div>
                                             <h3 className={`text-2xl font-black mb-1 ${dataEstado.online ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{dataEstado.online ? 'ONLINE' : 'OFFLINE'}</h3>
-                                            <p className="text-slate-500 text-xs font-black mb-6 uppercase tracking-widest">{dataEstado.metodo || 'Scan'}</p>
+                                            <p className="text-slate-500 text-xs font-semibold mb-6">{dataEstado.metodo || 'Scan'}</p>
                                             
                                             <div className="w-full bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-3 transition-colors">
                                                 <DetailRow label="IP Actual" value={dataEstado.datos?.ip_actual || currentIp} icon={GlobeAmericasIcon} />
@@ -462,7 +462,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                                     ) : (
                                         <div className="py-12 flex flex-col items-center text-slate-500">
                                             <ArrowPathIcon className="w-10 h-10 animate-spin mb-3 text-indigo-600 dark:text-indigo-500" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest">Diagnosticando red...</p>
+                                            <p className="text-xs font-semibold">Diagnosticando red...</p>
                                         </div>
                                     )}
                                 </div>
@@ -536,8 +536,8 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                                     <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 px-4 font-medium">Esta acción elimina definitivamente al cliente, sus facturas, pagos, bajas y demás historial. Si solo cambió de compañía y podría regresar, usa <strong>Dar de Baja</strong>.</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 mt-4">
-                                    <button onClick={() => setMode('menu')} className="py-4 rounded-xl font-black uppercase tracking-widest text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
-                                    <button onClick={handleEliminarCliente} className="py-4 rounded-xl font-black uppercase tracking-widest text-xs text-white bg-rose-600 hover:bg-rose-500 transition-colors shadow-md">Eliminar</button>
+                                    <button onClick={() => setMode('menu')} className="py-4 rounded-xl font-semibold text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
+                                    <button onClick={handleEliminarCliente} className="py-4 rounded-xl font-semibold text-xs text-white bg-rose-600 hover:bg-rose-500 transition-colors shadow-md">Eliminar</button>
                                 </div>
                             </div>
                         )}
@@ -552,41 +552,44 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
 
 // Componentes Auxiliares
 const MenuButton = ({ icon: Icon, label, desc, variant = 'blue', badge = 0, onClick }: MenuButtonProps) => {
-    const colorClasses: Record<MenuVariant, { btn: string; iconBg: string; icon: string }> = {
-        blue: { btn: 'hover:border-blue-400 dark:hover:border-blue-500/50', iconBg: 'bg-blue-100 dark:bg-blue-500/10', icon: 'text-blue-600 dark:text-blue-400' },
-        purple: { btn: 'hover:border-purple-400 dark:hover:border-purple-500/50', iconBg: 'bg-purple-100 dark:bg-purple-500/10', icon: 'text-purple-600 dark:text-purple-400' },
-        emerald: { btn: 'border-emerald-200 dark:border-emerald-500/10 hover:border-emerald-400 dark:hover:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-500/5', iconBg: 'bg-emerald-100 dark:bg-emerald-500/10', icon: 'text-emerald-600 dark:text-emerald-400' },
-        success: { btn: 'border-emerald-200 dark:border-emerald-500/20 hover:border-emerald-400 dark:hover:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-500/5', iconBg: 'bg-emerald-100 dark:bg-emerald-500/10', icon: 'text-emerald-600 dark:text-emerald-400' },
-        warning: { btn: 'border-amber-200 dark:border-amber-500/20 hover:border-amber-400 dark:hover:border-amber-500/50 bg-amber-50 dark:bg-amber-500/5', iconBg: 'bg-amber-100 dark:bg-amber-500/10', icon: 'text-amber-600 dark:text-amber-400' },
-        orange: { btn: 'border-orange-200 dark:border-orange-500/20 hover:border-orange-400 dark:hover:border-orange-500/50 bg-orange-50 dark:bg-orange-500/5', iconBg: 'bg-orange-100 dark:bg-orange-500/10', icon: 'text-orange-600 dark:text-orange-400' },
-        danger: { btn: 'border-rose-200 dark:border-rose-500/20 hover:border-rose-400 dark:hover:border-rose-500/50 bg-rose-50 dark:bg-rose-500/5', iconBg: 'bg-rose-100 dark:bg-rose-500/10', icon: 'text-rose-600 dark:text-rose-400' },
+    const iconos: Record<MenuVariant, string> = {
+        blue: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400',
+        purple: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400',
+        emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+        success: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+        warning: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400',
+        orange: 'bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400',
+        danger: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400',
     };
-    const colors = colorClasses[variant] || colorClasses.blue;
     return (
-        <button onClick={onClick} className={`relative flex h-[108px] w-full flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-left transition-all group hover:bg-slate-100 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800 sm:h-[120px] sm:p-4 ${colors.btn}`}>
+        <button
+            type="button"
+            onClick={onClick}
+            className={`relative flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left transition hover:border-slate-300 active:scale-[0.99] dark:bg-slate-900 dark:hover:border-slate-700 ${variant === 'danger' ? 'border-rose-200 dark:border-rose-500/30' : 'border-slate-200 dark:border-slate-800'}`}
+        >
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconos[variant] || iconos.blue}`}>
+                <Icon className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+                <span className={`block text-sm font-semibold ${variant === 'danger' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>{label}</span>
+                <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{desc}</span>
+            </span>
             {badge > 0 && (
-                <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-[10px] font-black text-white shadow-md animate-pulse ring-4 ring-white dark:ring-slate-900 z-10">
-                    {badge}
-                </span>
+                <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-rose-600 px-1.5 text-xs font-semibold text-white">{badge}</span>
             )}
-            <div className={`p-2 rounded-lg mb-2 group-hover:scale-110 transition-transform duration-300 ${colors.iconBg}`}>
-                <Icon className={`w-6 h-6 ${colors.icon}`} />
-            </div>
-            <span className="text-slate-900 dark:text-slate-200 font-black text-sm transition-colors">{label}</span>
-            <span className="text-slate-500 dark:text-slate-400 text-[10px] font-bold mt-0.5 leading-tight transition-colors">{desc}</span>
         </button>
     );
 };
 
 const BackButton = ({ onClick }: BackButtonProps) => (
-    <button onClick={onClick} className="flex items-center text-[10px] text-slate-500 hover:text-slate-900 dark:hover:text-white mb-4 gap-2 font-black transition-colors uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg w-fit">
+    <button onClick={onClick} className="flex items-center text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white mb-4 gap-2 font-semibold transition-colors bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg w-fit">
         <ArrowLeftIcon className="w-3.5 h-3.5" /> Volver
     </button>
 );
 
 const DetailRow = ({ label, value, icon: Icon, monospace }: DetailRowProps) => (
     <div className="flex justify-between items-center py-2 border-b border-slate-200 dark:border-slate-800/50 last:border-0 transition-colors">
-        <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider">
+        <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
             <Icon className="w-4 h-4 text-slate-400" /> {label}
         </div>
         <span className={`text-slate-900 dark:text-slate-200 transition-colors ${monospace ? 'font-mono font-bold text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded' : 'text-sm font-black'}`}>
@@ -606,7 +609,7 @@ const TrafficBar = ({ label, value, raw, color, icon: Icon }: TrafficBarProps) =
             <div className="relative z-10 text-center">
                 <Icon className={`w-6 h-6 mx-auto mb-2 ${textColor}`} />
                 <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter transition-colors">{value}</div>
-                <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1">{label}</div>
+                <div className="text-xs text-slate-500 font-semibold mt-1">{label}</div>
             </div>
         </div>
     ); 

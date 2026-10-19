@@ -350,7 +350,7 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
                       <button
                         type="button"
                         onClick={() => void openPlanChange(service)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-blue-100 px-3 py-2 text-[10px] font-black uppercase text-blue-700 transition hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300"
+                        className="inline-flex items-center gap-2 rounded-xl bg-blue-100 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300"
                       >
                         <PencilSquareIcon className="h-4 w-4" />
                         Cambiar plan
@@ -360,7 +360,7 @@ export default function ClientServicesPanel({ clientId, onChanged }: Props) {
                       <button
                         type="button"
                         onClick={() => setIpService(service)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-200 px-3 py-2 text-[10px] font-black uppercase text-slate-700 transition hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200"
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200"
                       >
                         <PencilSquareIcon className="h-4 w-4" />
                         Cambiar IP

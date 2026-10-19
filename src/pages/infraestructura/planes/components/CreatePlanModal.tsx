@@ -135,21 +135,21 @@ export default function PlanModal({ isOpen, plan, onClose, onSuccess, routers }:
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className="md:col-span-2">
-                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Nombre del Perfil</label>
+                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1 mb-1.5 block">Nombre del Perfil</label>
                             <input type="text" className="w-full bg-slate-50 dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 transition-colors" 
                                 placeholder="Ej: Fibra 50MB Residencial" required value={formData.nombre} 
                                 onChange={e => setFormData({...formData, nombre: e.target.value})}/>
                         </div>
 
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Precio (MXN)</label>
+                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1 mb-1.5 block">Precio (MXN)</label>
                             <input type="number" step="0.01" className="w-full bg-slate-50 dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-emerald-600 dark:text-emerald-400 font-black text-lg outline-none focus:border-emerald-500 transition-colors" 
                                 placeholder="0.00" required value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})}/>
                         </div>
 
                         {!plan && (
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Router Destino</label>
+                                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1 mb-1.5 block">Router Destino</label>
                                 <select className="w-full bg-slate-50 dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 transition-colors"
                                     value={formData.router_id} onChange={(e) => setFormData({...formData, router_id: e.target.value})} required>
                                     <option value="">Seleccionar...</option>
@@ -160,7 +160,7 @@ export default function PlanModal({ isOpen, plan, onClose, onSuccess, routers }:
                     </div>
 
                     <div className="border-t border-slate-100 dark:border-slate-800 pt-6">
-                        <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-2">
                             <AdjustmentsHorizontalIcon className="w-4 h-4"/> Parámetros de Red
                         </h4>
                         
@@ -171,7 +171,7 @@ export default function PlanModal({ isOpen, plan, onClose, onSuccess, routers }:
                     </div>
 
                     <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-2xl border border-orange-100 dark:border-orange-500/20 transition-colors">
-                        <div className="text-[10px] text-orange-600 dark:text-orange-400 font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <div className="text-xs text-orange-600 dark:text-orange-400 font-semibold mb-4 flex items-center gap-2">
                             <RocketLaunchIcon className="w-4 h-4"/> Ráfagas (Burst)
                         </div>
                         <div className="grid grid-cols-3 gap-3">
@@ -192,7 +192,7 @@ export default function PlanModal({ isOpen, plan, onClose, onSuccess, routers }:
 
 const InputGroup = ({ label, value, onChange }: InputGroupProps) => (
     <div>
-        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 block">{label}</label>
+        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">{label}</label>
         <input type="number" step="any" className="w-full bg-slate-50 dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-slate-900 dark:text-white font-black text-lg outline-none focus:border-blue-500 transition-colors" 
             required value={value} onChange={e => onChange(e.target.value)}/>
     </div>
@@ -200,7 +200,7 @@ const InputGroup = ({ label, value, onChange }: InputGroupProps) => (
 
 const InputSimple = ({ label, val, set }: InputSimpleProps) => (
     <div>
-        <label className="text-[9px] text-slate-500 dark:text-slate-400 block uppercase font-black">{label}</label>
+        <label className="text-xs text-slate-500 dark:text-slate-400 block font-semibold">{label}</label>
         <input type="number" className="w-full bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-center font-black text-sm outline-none transition-colors" 
             value={val} onChange={e => set(e.target.value)}/>
     </div>

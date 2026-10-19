@@ -147,7 +147,7 @@ export default function ImportClientsModal({ isOpen, onClose, routerId }: Props)
 
                 <div className="p-6">
                     {!result && (
-                        <div className="flex items-center gap-2 mb-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <div className="flex items-center gap-2 mb-6 text-xs font-semibold text-slate-400">
                             <span className={step === 1 ? "text-blue-600 dark:text-blue-400" : (step > 1 ? "text-emerald-600 dark:text-emerald-500" : "")}>1. Configuración</span>
                             <span className="text-slate-300 dark:text-slate-700">→</span>
                             <span className={step === 2 ? "text-blue-600 dark:text-blue-400" : ""}>2. Carga</span>
@@ -168,7 +168,7 @@ export default function ImportClientsModal({ isOpen, onClose, routerId }: Props)
 
                             {result.errores && result.errores.length > 0 && (
                                 <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-4 text-left max-h-40 overflow-y-auto custom-scrollbar transition-colors">
-                                    <p className="text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <p className="text-amber-700 dark:text-amber-400 text-xs font-semibold mb-2 flex items-center gap-2">
                                         <ExclamationTriangleIcon className="w-4 h-4" /> Advertencias ({result.errores.length}):
                                     </p>
                                     <ul className="text-[11px] text-amber-800 dark:text-amber-200/70 space-y-1 list-disc pl-4 font-mono">
@@ -177,7 +177,7 @@ export default function ImportClientsModal({ isOpen, onClose, routerId }: Props)
                                 </div>
                             )}
 
-                            <button onClick={() => { onClose(); window.location.reload(); }} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl transition shadow-md active:scale-95 uppercase tracking-widest text-xs">
+                            <button onClick={() => { onClose(); window.location.reload(); }} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition shadow-md active:scale-95 text-xs">
                                 Cerrar y Refrescar
                             </button>
                         </div>
@@ -192,7 +192,7 @@ export default function ImportClientsModal({ isOpen, onClose, routerId }: Props)
                                     </div>
 
                                     {isLoadingData ? (
-                                        <div className="py-10 text-center text-slate-500 font-black uppercase tracking-widest text-[10px] animate-pulse">Cargando módulos...</div>
+                                        <div className="py-10 text-center text-slate-500 font-semibold text-xs animate-pulse">Cargando módulos...</div>
                                     ) : (
                                         <>
                                             {[
@@ -202,7 +202,7 @@ export default function ImportClientsModal({ isOpen, onClose, routerId }: Props)
                                                 { label: '4. Plan Internet', val: config.plan_id, key: 'plan_id', options: planes }
                                             ].map((input, idx) => (
                                                 <div key={idx}>
-                                                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-1 block tracking-widest">{input.label} *</label>
+                                                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">{input.label} *</label>
                                                     <select className="w-full bg-slate-50 dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
                                                         value={input.val} onChange={e => setConfig({...config, [input.key]: e.target.value})}>
                                                         <option value="">-- Selecciona --</option>
@@ -212,7 +212,7 @@ export default function ImportClientsModal({ isOpen, onClose, routerId }: Props)
                                             ))}
 
                                             <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-500/20 p-3 rounded-xl mt-4 transition-colors">
-                                                <label className="text-[10px] font-black text-emerald-700 dark:text-emerald-500 uppercase mb-1 block tracking-widest">5. OLT (Opcional)</label>
+                                                <label className="text-xs font-semibold text-emerald-700 dark:text-emerald-500 mb-1 block">5. OLT (Opcional)</label>
                                                 <select className="w-full bg-white dark:bg-[#0b0c10] border border-emerald-200 dark:border-emerald-500/30 rounded-lg p-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-colors"
                                                     value={config.olt_id} onChange={e => setConfig({...config, olt_id: e.target.value})}>
                                                     <option value="">-- Sin asignar --</option>
@@ -220,7 +220,7 @@ export default function ImportClientsModal({ isOpen, onClose, routerId }: Props)
                                                 </select>
                                             </div>
 
-                                            <button onClick={handleDownload} className="w-full mt-6 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm uppercase tracking-widest text-xs">
+                                            <button onClick={handleDownload} className="w-full mt-6 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm text-xs">
                                                 <CloudArrowDownIcon className="w-5 h-5" /> Descargar Plantilla
                                             </button>
                                         </>
@@ -236,11 +236,11 @@ export default function ImportClientsModal({ isOpen, onClose, routerId }: Props)
                                     <label className={`block w-full border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all ${file ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/5' : 'border-slate-200 dark:border-slate-700 hover:border-blue-500'}`}>
                                         <input type="file" accept=".xlsx, .xls" onChange={e => { if (e.target.files) setFile(e.target.files[0]); }} className="hidden" />
                                         <CloudArrowUpIcon className={`w-8 h-8 mx-auto mb-2 ${file ? 'text-emerald-600' : 'text-slate-400'}`} />
-                                        <span className="font-black text-xs text-slate-600 dark:text-slate-300 uppercase tracking-widest">{file ? file.name : "Subir archivo lleno"}</span>
+                                        <span className="font-semibold text-xs text-slate-600 dark:text-slate-300">{file ? file.name : "Subir archivo lleno"}</span>
                                     </label>
                                     <div className="flex gap-3">
-                                        <button onClick={() => setStep(1)} className="flex-1 py-3 text-slate-500 dark:text-slate-400 font-black text-xs uppercase tracking-widest transition">Atrás</button>
-                                        <button onClick={handleUpload} disabled={!file || uploading} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl shadow-md uppercase tracking-widest text-xs transition active:scale-95 disabled:opacity-50">
+                                        <button onClick={() => setStep(1)} className="flex-1 py-3 text-slate-500 dark:text-slate-400 font-semibold text-xs transition">Atrás</button>
+                                        <button onClick={handleUpload} disabled={!file || uploading} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl shadow-md text-xs transition active:scale-95 disabled:opacity-50">
                                             {uploading ? 'Procesando...' : 'Importar'}
                                         </button>
                                     </div>

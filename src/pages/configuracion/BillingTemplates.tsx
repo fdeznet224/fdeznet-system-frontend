@@ -137,21 +137,21 @@ export default function BillingTemplates() {
                                         
                                         <div className="relative">
                                             <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-pink-500 border-2 border-white dark:border-[#0f172a] shadow-sm"></div>
-                                            <p className="text-[10px] text-pink-600 dark:text-pink-400 uppercase font-black tracking-widest mb-0.5">Generación</p>
+                                            <p className="text-xs text-pink-600 dark:text-pink-400 font-semibold mb-0.5">Generación</p>
                                             <p className="text-lg font-black text-slate-900 dark:text-white transition-colors">{porInstalacion ? `${p.dias_antes_emision} días antes del pago` : `Día ${fechaGeneracion}`}</p>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">{p.dias_antes_emision} días de anticipación</p>
                                         </div>
 
                                         <div className="relative">
                                             <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-indigo-500 border-2 border-white dark:border-[#0f172a] shadow-sm"></div>
-                                            <p className="text-[10px] text-indigo-600 dark:text-indigo-400 uppercase font-black tracking-widest mb-0.5">Pago</p>
+                                            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mb-0.5">Pago</p>
                                             <p className="text-lg font-black text-slate-900 dark:text-white transition-colors">{porInstalacion ? 'Día de instalación' : `Día ${p.dia_pago}`}</p>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">Vencimiento</p>
                                         </div>
 
                                         <div className="relative">
                                             <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white dark:border-slate-950 shadow-sm"></div>
-                                            <p className="text-[10px] text-rose-600 dark:text-rose-400 uppercase font-black tracking-widest mb-0.5">Corte</p>
+                                            <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mb-0.5">Corte</p>
                                             <p className="text-lg font-black text-slate-900 dark:text-white transition-colors">{porInstalacion ? `${p.dias_tolerancia} días después del pago` : `Día ${fechaCorte}`}</p>
                                             <p className="text-xs text-slate-500 bg-slate-200 dark:bg-slate-800/50 inline-block px-1.5 py-0.5 rounded mt-1 font-bold transition-colors">
                                                 +{p.dias_tolerancia} días gracia

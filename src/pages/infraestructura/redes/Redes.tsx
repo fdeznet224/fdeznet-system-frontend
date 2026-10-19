@@ -123,7 +123,7 @@ export default function RedesIP() {
                                     <td colSpan={6} className="py-20 text-center">
                                         <div className="flex flex-col items-center gap-2">
                                             <ArrowPathIcon className="w-6 h-6 animate-spin text-emerald-500" />
-                                            <span className="text-slate-500 dark:text-slate-400 text-xs uppercase font-black tracking-wider">Escaneando topología...</span>
+                                            <span className="text-slate-500 dark:text-slate-400 text-xs font-semibold">Escaneando topología...</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -193,7 +193,7 @@ export default function RedesIP() {
                                         <div className="flex justify-between items-start gap-2">
                                             <div>
                                                 <h3 className="font-bold text-slate-800 dark:text-white text-sm leading-tight truncate max-w-[160px]">{red.nombre}</h3>
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5 uppercase">Nodo: {routerAsignado?.nombre || 'Desconocido'}</p>
+                                                <p className="text-xs text-slate-400 dark:text-slate-500 font-bold mt-0.5">Nodo: {routerAsignado?.nombre || 'Desconocido'}</p>
                                             </div>
                                             <span className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-500/20 dark:border-emerald-400/20 shrink-0">
                                                 {red.cidr}
@@ -203,13 +203,13 @@ export default function RedesIP() {
                                         {/* Fila Media: Gateway / Puerta de Enlace */}
                                         <div className="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 text-[11px] flex justify-between items-center transition-colors">
                                             <div>
-                                                <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase font-black block tracking-wider">Gateway Local</span>
+                                                <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold block">Gateway Local</span>
                                                 <p className="text-slate-700 dark:text-slate-300 font-mono font-bold mt-0.5 flex items-center gap-1">
                                                     <ServerIcon className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" /> {red.gateway || '0.0.0.0'}
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <span className="text-[8px] text-slate-400 dark:text-slate-500 uppercase font-black block tracking-wider">Router State</span>
+                                                <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold block">Router State</span>
                                                 <div className="flex items-center justify-end gap-1.5 mt-1">
                                                     <div className={`w-2 h-2 rounded-full ${routerAsignado ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
                                                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{routerAsignado ? 'Activo' : 'Vacio'}</span>

@@ -239,7 +239,7 @@ _Por favor gestionar en la App._`;
 
                             {/* Asignación */}
                             <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 mt-4">
-                                <label className="text-orange-400 text-xs font-bold uppercase mb-2 flex items-center gap-2">
+                                <label className="text-orange-400 text-xs font-bold mb-2 flex items-center gap-2">
                                     <WrenchScrewdriverIcon className="w-4 h-4"/> Asignar Técnico Responsable
                                 </label>
                                 <select 

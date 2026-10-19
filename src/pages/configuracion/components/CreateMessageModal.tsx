@@ -178,7 +178,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
                                     {/* Zona que hace scroll (Inputs) */}
                                     <div className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-6 space-y-5">
                                         <div>
-                                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 block">Evento del Sistema</label>
+                                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 block">Evento del Sistema</label>
                                             <select 
                                                 value={formData.tipo}
                                                 onChange={e => setFormData({...formData, tipo: e.target.value})}
@@ -190,7 +190,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
                                         </div>
 
                                         <div className="flex flex-col h-full min-h-[200px]">
-                                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 flex items-center justify-between">
+                                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-between">
                                                 Cuerpo del Mensaje (WhatsApp)
                                                 <span className="hidden sm:flex text-emerald-600 dark:text-emerald-500 font-bold normal-case text-xs items-center gap-1"><InformationCircleIcon className="w-4 h-4"/> Variables a la derecha 👉</span>
                                             </label>
@@ -234,7 +234,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
                                 <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#111218] flex justify-between items-center shrink-0">
                                     <div>
                                         <h3 className="font-black text-sm sm:text-base text-slate-800 dark:text-white leading-tight">Diccionario Inteligente</h3>
-                                        <p className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-black mt-0.5">Toca el botón para inyectar</p>
+                                        <p className="text-xs sm:text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">Toca el botón para inyectar</p>
                                     </div>
                                     <button onClick={onClose} className="hidden md:block text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg transition-colors"><XMarkIcon className="w-5 h-5" /></button>
                                 </div>
@@ -242,7 +242,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
                                 <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar space-y-6 flex-1 pb-10">
                                     {categoriasVariables.map((cat, idx) => (
                                         <div key={idx} className="space-y-2.5">
-                                            <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">{cat.titulo}</h4>
+                                            <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300">{cat.titulo}</h4>
                                             <div className="grid grid-cols-1 gap-2">
                                                 {cat.variables.map(v => (
                                                     <button 

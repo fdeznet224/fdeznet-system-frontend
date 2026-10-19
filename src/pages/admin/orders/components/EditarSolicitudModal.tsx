@@ -138,7 +138,7 @@ export default function EditarSolicitudModal({ solicitud, zonas, tecnicos, onClo
             <form onSubmit={guardar} className="flex max-h-[92dvh] w-full flex-col rounded-t-3xl bg-white shadow-2xl dark:bg-slate-900 sm:max-w-lg sm:rounded-3xl">
                 <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Solicitud #{solicitud.id}</p>
+                        <p className="text-xs font-semibold text-blue-600">Solicitud #{solicitud.id}</p>
                         <h2 className="text-lg font-black text-slate-900 dark:text-white">Editar y agendar</h2>
                     </div>
                     <button type="button" aria-label="Cerrar" onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">

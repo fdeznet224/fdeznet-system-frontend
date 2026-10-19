@@ -479,7 +479,7 @@ export default function LicenciasVersiones() {
                     {maintenance.recuperacion_estado.replaceAll("_", " ")} ·{" "}
                     {formatDate(maintenance.recuperacion_fecha)}
                   </p>
-                  <p className="mt-1 text-[10px] font-bold uppercase text-slate-400">
+                  <p className="mt-1 text-xs font-bold text-slate-400">
                     Respaldo diario{" "}
                     {maintenance.respaldo_automatico ? "activo" : "inactivo"} ·
                     Copia externa{" "}
@@ -550,7 +550,7 @@ export default function LicenciasVersiones() {
         <section className={`${card} overflow-hidden`}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[.18em] text-blue-500">
+              <p className="text-xs font-semibold text-blue-500">
                 Liberaciones del sistema
               </p>
               <h2 className="mt-1 flex items-center gap-2 text-xl font-black text-slate-900 dark:text-white">
@@ -672,7 +672,7 @@ export default function LicenciasVersiones() {
                       <h3 className="font-black text-slate-900 dark:text-white">
                         {plan.nombre}
                       </h3>
-                      <p className="text-[10px] font-black uppercase text-blue-500">
+                      <p className="text-xs font-semibold text-blue-500">
                         {plan.tipo} · {plan.activo ? "activo" : "inactivo"}
                       </p>
                     </div>
@@ -1824,7 +1824,7 @@ function Credential({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+      <p className="text-xs font-semibold text-slate-400">
         {label}
       </p>
       <p className="mt-0.5 text-xs font-bold text-slate-700 dark:text-slate-200">

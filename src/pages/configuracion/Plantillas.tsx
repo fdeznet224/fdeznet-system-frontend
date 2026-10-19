@@ -94,7 +94,7 @@ export default function Plantillas() {
                     <div className="col-span-1 md:col-span-2 xl:col-span-3 text-center py-16 bg-white dark:bg-slate-800/30 rounded-3xl border border-slate-200 dark:border-slate-800 border-dashed transition-colors">
                         <ChatBubbleLeftRightIcon className="w-16 h-16 mx-auto text-slate-400 dark:text-slate-600 mb-4 opacity-50"/>
                         <p className="text-slate-600 dark:text-slate-400 text-lg font-medium">No hay mensajes configurados.</p>
-                        <button onClick={handleCreate} className="text-emerald-600 dark:text-emerald-400 font-black hover:text-emerald-700 transition mt-2 uppercase tracking-widest text-xs">
+                        <button onClick={handleCreate} className="text-emerald-600 dark:text-emerald-400 font-semibold hover:text-emerald-700 transition mt-2 text-xs">
                             + Crear Plantilla Ahora
                         </button>
                     </div>
@@ -109,11 +109,11 @@ export default function Plantillas() {
                                         </h3>
                                         <div className="flex items-center gap-2 mt-1.5">
                                             {p.activo ? (
-                                                <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20">
+                                                <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"/> Activo
                                                 </span>
                                             ) : (
-                                                <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                                                <span className="flex items-center gap-1 text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                                                     <XCircleIcon className="w-3 h-3"/> Inactivo
                                                 </span>
                                             )}
@@ -157,7 +157,7 @@ export default function Plantillas() {
                         <div key={v.tag} className="px-3 py-1.5 bg-slate-800/50 dark:bg-slate-900/50 border border-slate-700 dark:border-slate-800 rounded-xl flex items-center gap-2 group cursor-help transition-colors hover:border-emerald-500/50" title={v.desc}>
                             <span className="text-[11px] font-mono font-black text-emerald-400 group-hover:text-emerald-300 transition-colors">{v.tag}</span>
                             <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{v.desc}</span>
+                            <span className="text-xs text-slate-400 font-bold">{v.desc}</span>
                         </div>
                     ))}
                 </div>

@@ -197,7 +197,7 @@ export default function BackupManagement() {
         ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2">Fecha</th><th>Archivo</th><th>Tamaño</th><th>Integridad</th><th className="text-right">Acciones</th></tr></thead>
+              <thead className="text-xs text-slate-500"><tr><th className="py-2">Fecha</th><th>Archivo</th><th>Tamaño</th><th>Integridad</th><th className="text-right">Acciones</th></tr></thead>
               <tbody>{data.respaldos.map((item) => (
                 <tr key={item.archivo} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="py-3 font-bold">{formatDate(item.creado_en)}</td>
@@ -218,5 +218,5 @@ export default function BackupManagement() {
 }
 
 function InfoCard({ icon: Icon, label, value }: { icon: typeof ClockIcon; label: string; value: string }) {
-  return <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><Icon className="mb-3 h-7 w-7 text-violet-500" /><p className="text-xs font-black uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 break-words text-lg font-black text-slate-900 dark:text-white">{value}</p></div>;
+  return <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><Icon className="mb-3 h-7 w-7 text-violet-500" /><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-1 break-words text-lg font-black text-slate-900 dark:text-white">{value}</p></div>;
 }

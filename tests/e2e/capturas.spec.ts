@@ -51,3 +51,27 @@ test('modo oscuro', async ({ page }, info) => {
     await page.screenshot({ path: `${DESTINO}/${info.project.name}-oscuro${ruta.replace(/\W+/g, '_')}.png` })
   }
 })
+
+test('ficha y herramientas del cliente', async ({ page }, info) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.goto('/admin/clientes')
+  await page.waitForTimeout(800)
+  if (info.project.name === 'mobile-chrome') await page.locator('article').first().click()
+  else await page.locator('tbody tr').first().click()
+  await page.waitForTimeout(1200)
+  await page.screenshot({ path: `${DESTINO}/${info.project.name}-ficha.png` })
+  for (const pestana of ['Servicios', 'Red', 'Finanzas']) {
+    const boton = page.getByRole('button', { name: pestana, exact: true }).last()
+    if (await boton.count()) {
+      await boton.click()
+      await page.waitForTimeout(700)
+      await page.screenshot({ path: `${DESTINO}/${info.project.name}-ficha-${pestana}.png` })
+    }
+  }
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(400)
+  await page.getByRole('button', { name: 'Herramientas de Cliente E2E' }).filter({ visible: true }).first().click()
+  await page.waitForTimeout(900)
+  await page.screenshot({ path: `${DESTINO}/${info.project.name}-herramientas.png` })
+})

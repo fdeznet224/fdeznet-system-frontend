@@ -52,7 +52,7 @@ export default function BotWhatsapp() {
       <EncabezadoPagina volver={{ a: '/admin/configuracion', texto: 'Configuración' }} titulo="Bot de WhatsApp" descripcion="Elige quién contesta a los clientes y configúralo." />
 
       <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-xs font-black uppercase tracking-wide text-slate-500">¿Quién contesta a los clientes?</h2>
+        <h2 className="text-xs font-semibold text-slate-500">¿Quién contesta a los clientes?</h2>
         <div className="grid gap-3 md:grid-cols-3">
           {OPCIONES.map((opcion) => {
             const activo = modo === opcion.valor;

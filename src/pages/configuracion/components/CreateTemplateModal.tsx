@@ -168,7 +168,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
 
                                     <form onSubmit={handleSubmit} className="space-y-6">
                                         <div>
-                                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Nombre del Ciclo</label>
+                                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1 mb-2 block">Nombre del Ciclo</label>
                                             <input 
                                                 type="text" 
                                                 className="w-full bg-slate-50 dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-slate-900 dark:text-white text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-400" 
@@ -180,7 +180,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                                         </div>
 
                                         <div>
-                                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-2 block">¿Qué día paga el cliente?</label>
+                                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1 mb-2 block">¿Qué día paga el cliente?</label>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 {(Object.keys(FORMAS_COBRO) as FormaCobro[]).map((forma) => {
                                                     const activa = formData.ciclo_facturacion === forma;
@@ -207,7 +207,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                                             <InputNumber label="Anticipación" sub="DÍAS ANTES" value={formData.dias_antes_emision} onChange={(v: string) => handleNumberChange('dias_antes_emision', v)} color="pink" />
                                             {porInstalacion ? (
                                                 <div className="bg-slate-50 dark:bg-[#1a1f2e] p-4 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors">
-                                                    <label className="text-[10px] font-black uppercase mb-2 block text-indigo-600 dark:text-indigo-400">Día de Pago</label>
+                                                    <label className="text-xs font-semibold mb-2 block text-indigo-600 dark:text-indigo-400">Día de Pago</label>
                                                     <p className="text-sm font-black text-slate-900 dark:text-white">El de la instalación de cada cliente</p>
                                                 </div>
                                             ) : (
@@ -218,14 +218,14 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
                                         <div className="grid grid-cols-2 gap-5">
                                             <div className="bg-slate-50 dark:bg-[#1a1f2e] p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 transition-colors">
                                                 <div>
-                                                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase block">Gracia</label>
+                                                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Gracia</label>
                                                     <input type="number" className="bg-transparent text-lg font-black text-slate-900 dark:text-white w-16 focus:outline-none mt-1" value={formData.dias_tolerancia} onChange={e => handleNumberChange('dias_tolerancia', e.target.value)}/>
                                                 </div>
                                                 <span className="text-xs font-black text-slate-400">DÍAS</span>
                                             </div>
                                             <div className="bg-slate-50 dark:bg-[#1a1f2e] p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 transition-colors">
                                                 <div>
-                                                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase block">IVA %</label>
+                                                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">IVA %</label>
                                                     <input type="number" className="bg-transparent text-lg font-black text-slate-900 dark:text-white w-16 focus:outline-none mt-1" value={formData.impuesto} onChange={e => handleNumberChange('impuesto', e.target.value)}/>
                                                 </div>
                                                 <span className="text-xs font-black text-slate-400">%</span>
@@ -234,7 +234,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
 
                                         <div className="bg-amber-50 dark:bg-amber-500/10 p-4 rounded-xl border border-amber-200 dark:border-amber-500/20 flex items-center justify-between transition-colors">
                                             <div>
-                                                <label className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase block">Cargo de reconexión</label>
+                                                <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 block">Cargo de reconexión</label>
                                                 <input type="number" min="0" step="0.01" className="bg-transparent text-lg font-black text-slate-900 dark:text-white w-28 focus:outline-none mt-1" value={formData.cargo_reconexion} onChange={e => setFormData({...formData, cargo_reconexion: e.target.value})}/>
                                             </div>
                                             <span className="text-xs font-black text-amber-700 dark:text-amber-400">MXN</span>
@@ -253,7 +253,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onSuccess, initia
 
                                 {/* SIMULATION */}
                                 <div className="hidden md:flex w-[350px] bg-slate-50 dark:bg-[#0b0e14] border-l border-slate-200 dark:border-slate-800 p-8 flex-col justify-center relative transition-colors">
-                                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-10 border-b border-slate-200 dark:border-slate-800 pb-4 transition-colors">Simulación Mensual</h4>
+                                    <h4 className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-10 border-b border-slate-200 dark:border-slate-800 pb-4 transition-colors">Simulación Mensual</h4>
                                     
                                     <div className="relative pl-8 space-y-12">
                                         <div className="absolute left-[11px] top-2 bottom-2 w-[2px] bg-slate-200 dark:bg-slate-800 transition-colors"></div>
@@ -288,7 +288,7 @@ const InputNumber = ({ label, sub, value, onChange, color }: InputNumberProps) =
         </label>
         <div className="flex items-baseline justify-between">
             <input type="number" className="w-16 bg-transparent text-2xl font-black text-slate-900 dark:text-white outline-none" value={value} onChange={e => onChange(e.target.value)} />
-            <span className="text-[10px] font-black text-slate-500 uppercase">{sub}</span>
+            <span className="text-xs font-semibold text-slate-500">{sub}</span>
         </div>
     </div>
 );
@@ -296,7 +296,7 @@ const InputNumber = ({ label, sub, value, onChange, color }: InputNumberProps) =
 const Step = ({ label, value, color }: StepProps) => (
     <div className="relative">
         <div className={`absolute -left-[30px] top-0 w-6 h-6 rounded-full border-4 border-slate-50 dark:border-[#0b0e14] ${STEP_COLOR_CLASSES[color]} transition-colors`}></div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 transition-colors">{label}</p>
+        <p className="text-xs font-semibold text-slate-400 transition-colors">{label}</p>
         <p className="text-2xl font-black text-slate-900 dark:text-white transition-colors">{value}</p>
     </div>
 );

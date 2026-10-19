@@ -105,7 +105,7 @@ export default function QrScanner() {
                     <UserIcon className="w-6 h-6 text-emerald-400" />
                     <div>
                         <h2 className="text-base md:text-lg font-black text-white tracking-tight">Buscar Cliente</h2>
-                        <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest -mt-0.5">{brand.empresa_nombre} Tech</p>
+                        <p className="text-xs font-bold text-gray-300 -mt-0.5">{brand.empresa_nombre} Tech</p>
                     </div>
                 </div>
 
@@ -161,7 +161,7 @@ export default function QrScanner() {
                                 <p className="text-sm font-black text-white leading-tight">
                                     Escanea el código QR del cliente
                                 </p>
-                                <p className="text-[10px] text-emerald-300/80 uppercase tracking-widest font-bold">
+                                <p className="text-xs text-emerald-300/80 font-bold">
                                     Ubícalo en el centro
                                 </p>
                             </div>

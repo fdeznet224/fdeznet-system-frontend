@@ -120,17 +120,17 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Grupo: Conexión */}
                         <div className="space-y-4">
-                            <h4 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                            <h4 className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-2">
                                 <GlobeAltIcon className="w-4 h-4" /> Red y Acceso
                             </h4>
                             <div className="space-y-5 bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm dark:shadow-inner transition-colors">
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Nombre del Nodo</label>
+                                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Nombre del Nodo</label>
                                     <input type="text" className="w-full bg-white dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-medium focus:border-blue-500 outline-none transition-colors" placeholder="Ej: Torre Principal" required 
                                         value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})}/>
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Dirección IP (VPN/Local)</label>
+                                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Dirección IP (VPN/Local)</label>
                                     <input type="text" className="w-full bg-white dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-mono focus:border-blue-500 outline-none transition-colors" placeholder="10.x.x.x" required 
                                         value={formData.ip_vpn} onChange={e => setFormData({...formData, ip_vpn: e.target.value})}/>
                                 </div>
@@ -139,24 +139,24 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
 
                         {/* Grupo: Credenciales */}
                         <div className="space-y-4">
-                            <h4 className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                            <h4 className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
                                 <ShieldCheckIcon className="w-4 h-4" /> Seguridad API
                             </h4>
                             <div className="space-y-5 bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm dark:shadow-inner transition-colors">
                                 <div className="grid grid-cols-3 gap-3">
                                     <div className="col-span-2">
-                                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Usuario</label>
+                                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Usuario</label>
                                         <input type="text" className="w-full bg-white dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-medium focus:border-emerald-500 outline-none transition-colors" required 
                                             value={formData.user_api} onChange={e => setFormData({...formData, user_api: e.target.value})}/>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Puerto</label>
+                                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Puerto</label>
                                         <input type="number" className="w-full bg-white dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-mono focus:border-emerald-500 outline-none transition-colors text-center" required 
                                             value={formData.port_api} onChange={e => setFormData({...formData, port_api: Number(e.target.value)})}/>
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Contraseña</label>
+                                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Contraseña</label>
                                     <input type="password" className="w-full bg-white dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-mono focus:border-emerald-500 outline-none transition-colors" placeholder="••••••••" required={!routerToEdit}
                                         value={formData.pass_api} onChange={e => setFormData({...formData, pass_api: e.target.value})}/>
                                 </div>
@@ -167,13 +167,13 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                     {/* Gestión de Tráfico */}
                     <div className="pt-2">
                         <div className="flex items-center gap-3 mb-4">
-                            <h4 className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest flex items-center gap-2">
+                            <h4 className="text-xs font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-2">
                                 <AdjustmentsHorizontalIcon className="w-4 h-4" /> Gestión de Tráfico
                             </h4>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm dark:shadow-inner transition-colors">
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Modo</label>
+                                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Modo</label>
                                 <select
                                     value={formData.tipo_seguridad}
                                     onChange={e => setFormData({
@@ -188,7 +188,7 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                                 </select>
                             </div>
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">Control</label>
+                                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Control</label>
                                 <div className="w-full bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex items-center justify-between opacity-70">
                                     <span className="text-slate-800 dark:text-slate-300 font-black text-sm">
                                         {formData.tipo_seguridad === 'dhcp'

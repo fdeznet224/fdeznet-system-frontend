@@ -138,7 +138,7 @@ export default function PaymentModal({ isOpen, onClose, factura, onSuccess }: Pr
                 <div className="p-6 space-y-6">
                     {/* Visualización del Monto */}
                     <div className="text-center py-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800 transition-colors">
-                        <p className="text-[10px] uppercase font-black text-slate-500 dark:text-slate-400 tracking-widest mb-1">Total a recibir</p>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Total a recibir</p>
                         <h2 className="text-4xl font-black text-slate-900 dark:text-white transition-colors">
                             {quoteLoading ? 'Calculando…' : `$${quote?.saldo_pendiente ?? factura.saldo_pendiente ?? factura.total}`}
                         </h2>
@@ -171,20 +171,20 @@ export default function PaymentModal({ isOpen, onClose, factura, onSuccess }: Pr
                             onClick={() => setMetodo('efectivo')}
                             className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all active:scale-95 ${metodo === 'efectivo' ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500'}`}
                         >
-                            <BanknotesIcon className="w-7 h-7" /> <span className="text-xs font-black uppercase tracking-widest">Efectivo</span>
+                            <BanknotesIcon className="w-7 h-7" /> <span className="text-xs font-semibold">Efectivo</span>
                         </button>
                         <button 
                             onClick={() => setMetodo('transferencia')}
                             className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all active:scale-95 ${metodo === 'transferencia' ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-500 text-blue-600 dark:text-blue-400 shadow-sm' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500'}`}
                         >
-                            <CreditCardIcon className="w-7 h-7" /> <span className="text-xs font-black uppercase tracking-widest">Transf.</span>
+                            <CreditCardIcon className="w-7 h-7" /> <span className="text-xs font-semibold">Transf.</span>
                         </button>
                     </div>
 
                     {/* Input de Referencia */}
                     {metodo !== 'efectivo' && (
                         <div className="animate-in fade-in slide-in-from-top-2">
-                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase ml-1 mb-1 block tracking-widest">Referencia / Folio</label>
+                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1 mb-1 block">Referencia / Folio</label>
                             <input 
                                 type="text" 
                                 placeholder="Ej: BANAMEX 4502..."
@@ -223,7 +223,7 @@ export default function PaymentModal({ isOpen, onClose, factura, onSuccess }: Pr
 function Breakdown({ label, value }: { label: string; value: string | number }) {
     return (
         <div>
-            <p className="text-[9px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</p>
             <p className="font-black text-slate-900 dark:text-white">{value}</p>
         </div>
     );

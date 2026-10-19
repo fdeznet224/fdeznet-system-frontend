@@ -740,7 +740,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
                             {!loadingData && !isEditing && cliente && activeTab === 'resumen' && (
                                 <SectionCard title="Resumen del cliente" icon={CheckCircleIcon}>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-8">
                                         <DetailTile label="Fecha instalación" value={formatDate(servicioActual?.fecha_instalacion || cliente?.created_at)} highlight />
                                         <DetailTile label="Número de contrato" value={cliente?.cedula || 'N/A'} copy />
                                         <DetailTile label="Teléfono" value={cliente?.telefono || 'N/A'} copy />
@@ -770,7 +770,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
                             {!loadingData && !isEditing && cliente && activeTab === 'facturas' && (
                                 <SectionCard title="Resumen de facturación" icon={DocumentTextIcon}>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-8">
                                         <DetailTile label="Saldo pendiente" value={formatMoney(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente)} danger={Number(resumenDeuda?.saldo_pendiente_total || facturaActual?.saldo_pendiente || 0) > 0} />
                                         <DetailTile label="Saldo a favor" value={formatMoney(cliente?.saldo_a_favor || 0)} />
                                         <DetailTile label="Estado factura" value={facturaActual?.estado || 'N/A'} danger={facturaActual?.estado === 'vencida'} />
@@ -810,7 +810,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             type="button"
                                             disabled={activando}
                                             onClick={() => void handleActivar()}
-                                            className="shrink-0 rounded-2xl bg-emerald-600 px-5 py-3 text-xs font-black uppercase text-white disabled:opacity-50"
+                                            className="shrink-0 rounded-2xl bg-emerald-600 px-5 py-3 text-xs font-semibold text-white disabled:opacity-50"
                                         >
                                             {activando ? 'Activando...' : 'Activar'}
                                         </button>
@@ -998,26 +998,17 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-1 gap-y-4">
-                                        <div className="flex gap-4">
-                                            <div className="flex-1 bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl">
-                                                <p className="text-[10px] font-bold text-slate-400 mb-1">OLT</p>
-                                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{cliente?.olt?.nombre || 'N/A'}</p>
-                                            </div>
-                                            <div className="flex-1 bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl">
-                                                <p className="text-[10px] font-bold text-slate-400 mb-1">Caja NAP</p>
-                                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{cliente?.caja_nap?.nombre || 'N/A'} {cliente?.puerto_nap ? `(Pto. ${cliente.puerto_nap})` : ''}</p>
-                                            </div>
+                                    <div className="grid grid-cols-1 gap-y-3">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-8">
+                                            <DetailTile label="OLT" value={cliente?.olt?.nombre || 'N/A'} />
+                                            <DetailTile label="Caja NAP" value={`${cliente?.caja_nap?.nombre || 'N/A'}${cliente?.puerto_nap ? ` (Pto. ${cliente.puerto_nap})` : ''}`} />
+                                            <DetailTile label="Concentrador" value={cliente?.router?.nombre || 'N/A'} />
                                         </div>
                                         {cliente?.id && cliente?.olt && cliente?.onu_asignada && (
                                             <PotenciaEnVivo clienteId={cliente.id} />
                                         )}
-                                        <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl">
-                                            <p className="text-[10px] font-bold text-slate-400 mb-1">Concentrador</p>
-                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{cliente?.router?.nombre || 'N/A'}</p>
-                                        </div>
                                         {isPPPoE && (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-8">
                                                 <DetailTile label="Usuario PPPoE" value={cliente?.user_pppoe || 'N/A'} copy />
                                                 <DetailTile label="Contraseña PPPoE" value={cliente?.pass_pppoe || 'N/A'} copy />
                                             </div>
@@ -1045,7 +1036,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                 <StatusPill label="Paga" value={nombreFormaCobro(servicioActual.ciclo_facturacion)} className="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300" />
                                             </div>
 
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-8">
                                                 <DetailTile label="Plan" value={servicioActual.plan_nombre || cliente?.plan?.nombre || 'N/A'} />
                                                 <DetailTile label="Plantilla" value={servicioActual.plantilla_nombre || cliente?.plantilla?.nombre || 'N/A'} />
                                                 <DetailTile label="Instalación" value={formatDate(servicioActual.fecha_instalacion)} />
@@ -1082,7 +1073,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                 )}
                                             </div>
 
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-8">
                                                 <DetailTile label="Periodo" value={`${formatDate(facturaActual.periodo_desde)} - ${formatDate(facturaActual.periodo_hasta)}`} highlight />
                                                 <DetailTile label="Días facturados" value={`${facturaActual.dias_facturados || 0} de ${facturaActual.dias_periodo || 0}`} />
                                                 <DetailTile label="Días con servicio" value={String(facturaActual.dias_con_servicio ?? facturaActual.dias_facturados ?? 0)} />
@@ -1098,7 +1089,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
                                             {Number(resumenDeuda?.saldo_pendiente_total || 0) > 0 && (
                                                 <div className="rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/20 p-4">
-                                                    <p className="text-[10px] uppercase font-black text-amber-600 dark:text-amber-300">Resumen de deuda</p>
+                                                    <p className="text-xs font-semibold text-amber-600 dark:text-amber-300">Resumen de deuda</p>
                                                     <p className="text-sm font-black text-amber-700 dark:text-amber-200">
                                                         {resumenDeuda.facturas_abiertas || 0} factura(s) abierta(s) · {formatMoney(resumenDeuda.saldo_pendiente_total)}
                                                     </p>
@@ -1118,7 +1109,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         <button
                                             type="button"
                                             onClick={() => setIsManualInvoiceOpen(true)}
-                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-wider shadow-sm active:scale-95 transition"
+                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold shadow-sm active:scale-95 transition"
                                         >
                                             <PlusIcon className="w-4 h-4" />
                                             Servicios adicionales
@@ -1135,12 +1126,12 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                         <div className="flex flex-wrap items-center gap-2 mb-1">
                                                             <p className="text-[13px] font-black text-slate-800 dark:text-slate-200 break-words">{getFacturaTitulo(f)}</p>
                                                             {f.tipo_factura === 'manual' && (
-                                                                <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-md bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
+                                                                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
                                                                     Cargo manual
                                                                 </span>
                                                             )}
                                                             {f.es_promesa_activa && (
-                                                                <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-md bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                                                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
                                                                     Promesa hasta {formatDate(f.fecha_promesa_pago)}
                                                                 </span>
                                                             )}
@@ -1180,10 +1171,10 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                         {!loadingData && isEditing && (
                             <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-auto z-40 flex gap-2">
                                 <div className="flex w-full gap-2 bg-slate-900/80 dark:bg-white/10 backdrop-blur-xl p-2 rounded-full shadow-2xl">
-                                    <button onClick={toggleEditMode} className="flex-1 sm:w-32 bg-slate-700 dark:bg-slate-800 text-white py-3.5 rounded-full text-[11px] font-bold uppercase">
+                                    <button onClick={toggleEditMode} className="flex-1 sm:w-32 bg-slate-700 dark:bg-slate-800 text-white py-3.5 rounded-full text-[11px] font-bold">
                                         Cancelar
                                     </button>
-                                    <button onClick={handleGuardar} className="flex-1 sm:w-40 bg-blue-600 text-white py-3.5 rounded-full text-[11px] font-bold uppercase shadow-lg">
+                                    <button onClick={handleGuardar} className="flex-1 sm:w-40 bg-blue-600 text-white py-3.5 rounded-full text-[11px] font-bold shadow-lg">
                                         Guardar Datos
                                     </button>
                                 </div>
@@ -1335,7 +1326,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         className="mt-1"
                                     />
                                     <span>
-                                        <span className="block text-xs font-black text-amber-700 dark:text-amber-300 uppercase">Afecta corte del servicio</span>
+                                        <span className="block text-xs font-semibold text-amber-700 dark:text-amber-300">Afecta corte del servicio</span>
                                         <span className="block text-[11px] text-amber-700/70 dark:text-amber-200/70 font-bold mt-1">
                                             Por defecto los adicionales no suspenden Internet.
                                         </span>
@@ -1400,52 +1391,49 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 // ================= SUBCOMPONENTES VISUALES =================
 
 
+/** Un dato de la ficha: etiqueta a la izquierda y valor a la derecha, como lista. */
 const DetailTile = ({ label, value, highlight, danger, copy, onClick }: DetailTileProps) => (
-    <div
-        className={classNames(
-        "bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border group",
-        highlight ? "border-blue-200 dark:border-blue-500/30" : "border-transparent",
-        danger ? "border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-900/10" : "",
-        onClick ? "cursor-pointer hover:border-blue-400 active:scale-[0.99] transition" : ""
-        )}
-        onClick={onClick}
-        role={onClick ? 'button' : undefined}
-        tabIndex={onClick ? 0 : undefined}
-        onKeyDown={onClick ? (event) => {
-            if (event.key === 'Enter' || event.key === ' ') onClick();
-        } : undefined}
-    >
-        <p className="text-[10px] uppercase font-black text-slate-400 mb-1">{label}</p>
-        <div className="flex items-start justify-between gap-2">
-            <p className={classNames(
-                "text-sm font-black break-words min-w-0",
-                danger ? "text-rose-700 dark:text-rose-300" : "text-slate-800 dark:text-slate-200"
-            )}>{value || 'N/A'}</p>
-
+    <div className="flex min-h-12 items-center justify-between gap-3 border-b border-slate-100 py-2.5 last:border-b-0 dark:border-slate-800 sm:[&:nth-last-child(2):nth-child(odd)]:border-b-0">
+        <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
+        <span className="flex min-w-0 items-center gap-1">
+            {onClick ? (
+                <button
+                    type="button"
+                    onClick={onClick}
+                    className="min-w-0 break-words text-right text-sm font-semibold text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-500 dark:text-blue-400"
+                >
+                    {value || 'N/A'}
+                </button>
+            ) : (
+                <span className={classNames(
+                    'min-w-0 break-words text-right text-sm font-semibold',
+                    danger ? 'text-rose-600 dark:text-rose-400' : highlight ? 'text-slate-900 dark:text-white' : 'text-slate-800 dark:text-slate-200',
+                )}>{value || 'N/A'}</span>
+            )}
             {copy && value && value !== 'N/A' && value !== 'DHCP' && value !== 'Sin equipo' && (
                 <button
                     type="button"
                     onClick={(event) => { event.stopPropagation(); navigator.clipboard.writeText(String(value)); toast.success("Copiado"); }}
-                    className="shrink-0 p-1.5 text-slate-300 hover:text-blue-500 rounded-md active:bg-slate-100 dark:active:bg-slate-800 transition"
+                    className="shrink-0 rounded-md p-1.5 text-slate-300 transition hover:text-blue-500 active:bg-slate-100 dark:text-slate-600 dark:active:bg-slate-800"
                     title={`Copiar ${label}`}
                 >
-                    <ClipboardDocumentIcon className="w-4 h-4" />
+                    <ClipboardDocumentIcon className="h-4 w-4" />
                 </button>
             )}
-        </div>
+        </span>
     </div>
 );
 
 const StatusPill = ({ label, value, className }: StatusPillProps) => (
-    <span className={classNames("inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-black uppercase", className)}>
+    <span className={classNames("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold", className)}>
         <span className="opacity-70">{label}:</span> {value || 'N/A'}
     </span>
 );
 
 const SectionCard = ({ title, icon: Icon, children }: SectionCardProps) => (
-    <div className="bg-white dark:bg-[#0f1115] p-5 sm:p-6 rounded-[2rem] shadow-sm">
-        <h3 className="flex items-center gap-2 font-black text-sm text-slate-800 dark:text-slate-200 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/60">
-            <Icon className="w-5 h-5 text-slate-400" /> {title}
+    <div className="rounded-2xl border border-slate-200 bg-white px-4 pb-2 pt-4 dark:border-slate-800 dark:bg-slate-900">
+        <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+            <Icon className="h-4 w-4 text-slate-400" /> {title}
         </h3>
         {children}
     </div>
@@ -1453,9 +1441,9 @@ const SectionCard = ({ title, icon: Icon, children }: SectionCardProps) => (
 
 const InfoRow = ({ label, value, copy }: InfoRowProps) => (
     <div className="py-3 flex justify-between items-center group">
-        <span className="text-xs font-bold text-slate-500">{label}</span>
+        <span className="text-xs font-medium text-slate-500">{label}</span>
         <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-slate-800 dark:text-slate-200 text-right">{value}</span>
+            <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 text-right">{value}</span>
             {copy && value && value !== 'N/A' && (
                 <button onClick={() => { navigator.clipboard.writeText(value); toast.success("Copiado"); }} className="p-1.5 text-slate-300 hover:text-blue-500 rounded-md active:bg-slate-100 dark:active:bg-slate-800">
                     <ClipboardDocumentIcon className="w-4 h-4" />

@@ -113,7 +113,7 @@ export default function NapDetailsModal({ isOpen, onClose, napId, napNombre, cap
                                             className={`aspect-square rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all duration-200 active:scale-95 ${statusStyle}`}
                                         >
                                             <span className="text-xl md:text-2xl font-black">{numPuerto}</span>
-                                            <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-80">
+                                            <span className="text-xs md:text-[9px] font-semibold opacity-80">
                                                 {ocupante ? 'OCUPADO' : 'LIBRE'}
                                             </span>
                                         </button>
@@ -125,7 +125,7 @@ export default function NapDetailsModal({ isOpen, onClose, napId, napNombre, cap
                 </div>
 
                 {/* Footer Legend */}
-                <div className="p-4 bg-slate-50 dark:bg-[#12121a] border-t border-slate-100 dark:border-white/5 flex justify-center gap-6 text-[10px] font-black uppercase tracking-widest text-slate-500 transition-colors">
+                <div className="p-4 bg-slate-50 dark:bg-[#12121a] border-t border-slate-100 dark:border-white/5 flex justify-center gap-6 text-xs font-semibold text-slate-500 transition-colors">
                     <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Libre</span>
                     <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Ocupado</span>
                 </div>
@@ -148,7 +148,7 @@ export default function NapDetailsModal({ isOpen, onClose, napId, napNombre, cap
                                 {selectedPortInfo.port}
                             </div>
                             <div>
-                                <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Estado</h4>
+                                <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400">Estado</h4>
                                 <h3 className={`text-xl font-black ${selectedPortInfo.client ? 'text-slate-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                     {selectedPortInfo.client ? 'OCUPADO' : 'DISPONIBLE'}
                                 </h3>
@@ -160,7 +160,7 @@ export default function NapDetailsModal({ isOpen, onClose, napId, napNombre, cap
                                 <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-xl border border-slate-100 dark:border-white/5">
                                     <div className="flex items-center gap-2 mb-1">
                                         <UserIcon className="w-4 h-4 text-slate-400"/>
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Abonado</span>
+                                        <span className="text-xs font-semibold text-slate-500">Abonado</span>
                                     </div>
                                     <p className="text-lg font-black text-slate-900 dark:text-white leading-tight">{selectedPortInfo.client.nombre}</p>
                                 </div>
@@ -168,7 +168,7 @@ export default function NapDetailsModal({ isOpen, onClose, napId, napNombre, cap
                                     <div className="flex justify-between items-center mb-1">
                                         <div className="flex items-center gap-2">
                                             <LinkIcon className="w-4 h-4 text-slate-400"/>
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Serial ONU</span>
+                                            <span className="text-xs font-semibold text-slate-500">Serial ONU</span>
                                         </div>
                                         <Square2StackIcon className="w-4 h-4 text-slate-500"/>
                                     </div>
@@ -179,7 +179,7 @@ export default function NapDetailsModal({ isOpen, onClose, napId, napNombre, cap
                             <div className="text-center py-4">
                                 <WifiIcon className="w-12 h-12 text-emerald-500/50 mx-auto mb-3"/>
                                 <p className="text-sm text-slate-600 dark:text-slate-300">Este puerto está libre físicamente.</p>
-                                <button onClick={() => setSelectedPortInfo(null)} className="mt-6 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition uppercase tracking-widest text-xs">Entendido</button>
+                                <button onClick={() => setSelectedPortInfo(null)} className="mt-6 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition text-xs">Entendido</button>
                             </div>
                         )}
                     </div>

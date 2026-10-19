@@ -53,7 +53,7 @@ export default function MarcaBlanca() {
         </div>
       </div>
       <div className="h-fit rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <p className="mb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Vista previa</p>
+        <p className="mb-4 text-xs font-semibold text-slate-400">Vista previa</p>
         <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${form.color_primario}, ${form.color_secundario})` }}>
           {form.logo_url ? <img src={form.logo_url} alt="Logotipo" className="h-full w-full object-contain" /> : <PhotoIcon className="h-9 w-9" />}
         </div>
@@ -67,7 +67,7 @@ export default function MarcaBlanca() {
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <label className="block"><span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>{children}</label>;
+  return <label className="block"><span className="mb-2 block text-xs font-semibold text-slate-500">{label}</span>{children}</label>;
 }
 
 function ColorField({ value, onChange }: { value: string; onChange: (value: string) => void }) {

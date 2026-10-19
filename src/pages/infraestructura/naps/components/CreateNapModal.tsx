@@ -118,7 +118,7 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, olts
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     {/* Zona */}
                     <div>
-                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-2">
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-2">
                             <MapIcon className="w-3 h-3"/> Zona / Colonia
                         </label>
                         <select 
@@ -134,7 +134,7 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, olts
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="mb-2 block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">
+                            <label className="mb-2 block text-xs font-semibold text-slate-500 dark:text-slate-400">
                                 OLT / MikroTik
                             </label>
                             <select
@@ -152,7 +152,7 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, olts
                             </select>
                         </div>
                         <div>
-                            <label className="mb-2 block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">
+                            <label className="mb-2 block text-xs font-semibold text-slate-500 dark:text-slate-400">
                                 Puerto PON
                             </label>
                             <input
@@ -168,7 +168,7 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, olts
 
                     {/* Nombre */}
                     <div>
-                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-2 block">Identificador de Caja</label>
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 block">Identificador de Caja</label>
                         <input type="text" className="w-full bg-slate-50 dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-colors" 
                             placeholder="Ej: NAP-05-VicenteG" required
                             value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})}
@@ -177,7 +177,7 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, olts
 
                     {/* Ubicación */}
                     <div>
-                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-2">
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-2">
                             <MapPinIcon className="w-3 h-3"/> Referencia Física
                         </label>
                         <input type="text" className="w-full bg-slate-50 dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-colors" 
@@ -188,7 +188,7 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, olts
 
                     {/* Capacidad */}
                     <div>
-                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-2">
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-2">
                             <MapPinIcon className="w-3 h-3"/> Coordenadas GPS (latitud, longitud)
                         </label>
                         <input type="text" className="w-full bg-slate-50 dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-colors"
@@ -199,7 +199,7 @@ export default function CreateNapModal({ isOpen, onClose, onSuccess, zonas, olts
 
                     {/* Capacidad */}
                     <div>
-                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-2 block">Puertos Totales (Splitter)</label>
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 block">Puertos Totales (Splitter)</label>
                         <div className="grid grid-cols-2 gap-3">
                             {['8', '16'].map((cap) => (
                                 <button key={cap} type="button" 

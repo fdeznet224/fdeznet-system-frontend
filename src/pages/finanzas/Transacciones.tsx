@@ -431,7 +431,7 @@ export default function Transacciones() {
                         </div>
                         <div className="p-4 space-y-4">
                             <div>
-                                <label className="text-[10px] uppercase font-black text-slate-500">Contrato correcto</label>
+                                <label className="text-xs font-semibold text-slate-500">Contrato correcto</label>
                                 <div className="flex gap-2 mt-1">
                                     <input value={contractSearch} onChange={event => setContractSearch(event.target.value)} placeholder="Ej. 329B" className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500" />
                                     <button type="button" onClick={searchCorrectionDestination} className="px-4 rounded-lg bg-blue-600 text-white text-xs font-black">Buscar</button>
@@ -439,7 +439,7 @@ export default function Transacciones() {
                             </div>
                             {correctionInvoices.length > 0 && (
                                 <div>
-                                    <label className="text-[10px] uppercase font-black text-slate-500">Factura destino</label>
+                                    <label className="text-xs font-semibold text-slate-500">Factura destino</label>
                                     <select value={destinationInvoiceId} onChange={event => setDestinationInvoiceId(event.target.value)} className="mt-1 w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm">
                                         <option value="">Selecciona una factura</option>
                                         {correctionInvoices.map(invoice => (
@@ -451,7 +451,7 @@ export default function Transacciones() {
                                 </div>
                             )}
                             <div>
-                                <label className="text-[10px] uppercase font-black text-slate-500">Motivo obligatorio</label>
+                                <label className="text-xs font-semibold text-slate-500">Motivo obligatorio</label>
                                 <textarea value={correctionReason} onChange={event => setCorrectionReason(event.target.value)} rows={3} placeholder="Ej. La cobradora seleccionó a un cliente con nombre similar" className="mt-1 w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm resize-none outline-none focus:border-blue-500" />
                             </div>
                             <p className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg p-3">

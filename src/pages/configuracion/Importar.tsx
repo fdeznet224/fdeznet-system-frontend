@@ -177,7 +177,7 @@ export default function Importar() {
                             {/* Inputs */}
                             {catalogInputs.map((input) => (
                                 <div key={input.label} className={`transition-all duration-300 ${input.disabled ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 mb-1.5 block uppercase tracking-wider">{input.label}</label>
+                                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">{input.label}</label>
                                     <select className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-800 dark:text-white text-sm outline-none focus:border-blue-500 transition-colors" 
                                         value={input.value} onChange={event => input.setValue(event.target.value)}>
                                         <option value="">-- Seleccionar --</option>
@@ -233,17 +233,17 @@ export default function Importar() {
                             <div className="flex gap-4 mb-6">
                                 <div className="flex-1 bg-white dark:bg-slate-950 p-4 rounded-xl text-center border border-slate-200 dark:border-slate-800 transition-colors">
                                     <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{resultado.importados || 0}</div>
-                                    <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest transition-colors">Éxito</div>
+                                    <div className="text-xs text-slate-500 font-semibold transition-colors">Éxito</div>
                                 </div>
                                 <div className="flex-1 bg-white dark:bg-slate-950 p-4 rounded-xl text-center border border-slate-200 dark:border-slate-800 transition-colors">
                                     <div className="text-3xl font-black text-rose-600 dark:text-rose-400">{Array.isArray(resultado.errores) ? resultado.errores.length : (resultado.errores ? 1 : 0)}</div>
-                                    <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest transition-colors">Errores</div>
+                                    <div className="text-xs text-slate-500 font-semibold transition-colors">Errores</div>
                                 </div>
                             </div>
 
                             {resultado.errores && (
                                 <div className="bg-slate-100 dark:bg-slate-950 p-4 rounded-xl max-h-60 overflow-y-auto border border-slate-200 dark:border-slate-800 transition-colors">
-                                    <p className="text-xs font-black text-rose-600 dark:text-rose-400 mb-3 uppercase tracking-widest">Detalles:</p>
+                                    <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mb-3">Detalles:</p>
                                     <ul className="space-y-2">
                                         {Array.isArray(resultado.errores) ? (
                                             resultado.errores.map((error, index) => (

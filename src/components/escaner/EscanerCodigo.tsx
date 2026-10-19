@@ -161,7 +161,7 @@ export function CamaraCodigo({ onLeido, onError, formats = FORMATOS, className =
                 <button
                     type="button"
                     onClick={() => { setNivel(0); setElegida((i) => (i + 1) % camaras.length); }}
-                    className="flex items-center gap-2 rounded-full bg-slate-900/80 px-4 py-2 text-xs font-black uppercase tracking-widest text-white"
+                    className="flex items-center gap-2 rounded-full bg-slate-900/80 px-4 py-2 text-xs font-semibold text-white"
                 >
                     <ArrowPathIcon className="h-4 w-4" /> Cambiar cámara ({(elegida % camaras.length) + 1}/{camaras.length})
                 </button>

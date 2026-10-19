@@ -125,7 +125,7 @@ export default function WhatsappConfig() {
                         </div>
                         <div>
                             <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">Motor WhatsApp</h2>
-                            <p className="text-[10px] sm:text-sm font-bold text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-widest">{status.active ? 'Servicio en Ejecución' : 'Servicio en Reposo'}</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 mt-0.5">{status.active ? 'Servicio en Ejecución' : 'Servicio en Reposo'}</p>
                         </div>
                     </div>
 
@@ -152,7 +152,7 @@ export default function WhatsappConfig() {
                                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
                                     <div className="absolute top-4 right-4 flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-emerald-500/10 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border border-slate-200 dark:border-emerald-500/20 shadow-sm">
                                         <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-emerald-500"></span></span>
-                                        <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">En Línea</span>
+                                        <span className="text-xs sm:text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">En Línea</span>
                                     </div>
                                     
                                     <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto bg-emerald-500 rounded-full flex items-center justify-center mb-4 sm:mb-6 shadow-[0_0_30px_rgba(16,185,129,0.3)] border-4 border-white dark:border-[#151b2b]">
@@ -222,7 +222,7 @@ export default function WhatsappConfig() {
                                                 <h4 className={`font-black text-sm transition-colors ${isSelected ? activeStyles.text : 'text-slate-900 dark:text-white'}`}>
                                                     {item.label}
                                                 </h4>
-                                                <p className="text-[9px] sm:text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1 mb-1 sm:mb-1.5">{item.sub} / Mensaje</p>
+                                                <p className="text-xs sm:text-[10px] text-slate-500 font-semibold mt-1 mb-1 sm:mb-1.5">{item.sub} / Mensaje</p>
                                                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium leading-tight pr-2">{item.desc}</p>
                                             </div>
                                         </div>

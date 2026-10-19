@@ -117,7 +117,7 @@ export default function Routers() {
                             {/* Ping & OS Bar */}
                             <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-t-2xl border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center h-14 relative z-10 transition-colors">
                                 <RouterPingButton routerId={router.id} />
-                                <span className="text-[9px] text-slate-500 dark:text-slate-400 font-black tracking-widest bg-slate-100 dark:bg-slate-950 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 uppercase">
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold bg-slate-100 dark:bg-slate-950 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800">
                                     {router.version_os} API
                                 </span>
                             </div>
@@ -129,7 +129,7 @@ export default function Routers() {
                                             {router.nombre}
                                         </h3>
                                         <div className="flex items-center gap-2 mt-1 text-slate-600 dark:text-slate-300">
-                                            <span className="bg-slate-50 dark:bg-slate-950/50 px-2 py-0.5 rounded text-xs font-mono border border-slate-200 dark:border-slate-700/50 uppercase tracking-tighter">
+                                            <span className="bg-slate-50 dark:bg-slate-950/50 px-2 py-0.5 rounded text-xs font-mono border border-slate-200 dark:border-slate-700/50 tracking-tighter">
                                                 {router.ip_vpn || 'SIN IP VPN'}
                                             </span>
                                         </div>
@@ -141,17 +141,17 @@ export default function Routers() {
 
                                 <div className="grid grid-cols-2 gap-3 mb-6 mt-auto">
                                     <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 text-center shadow-inner transition-colors">
-                                        <p className="text-[9px] text-slate-400 dark:text-slate-400 uppercase font-black tracking-wider mb-1">Protocolo</p>
+                                        <p className="text-xs text-slate-400 dark:text-slate-400 font-semibold mb-1">Protocolo</p>
                                         <div className="flex items-center justify-center gap-1">
                                             <ShieldCheckIcon className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                                             <span className="text-emerald-600 dark:text-emerald-400 font-black text-sm tracking-widest uppercase">PPPoE</span>
                                         </div>
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 text-center shadow-inner transition-colors">
-                                        <p className="text-[9px] text-slate-400 dark:text-slate-400 uppercase font-black tracking-wider mb-1">Control QoS</p>
+                                        <p className="text-xs text-slate-400 dark:text-slate-400 font-semibold mb-1">Control QoS</p>
                                         <div className="flex items-center justify-center gap-1 text-blue-600 dark:text-blue-400">
                                             <BoltIcon className="w-4 h-4" />
-                                            <span className="font-black text-[11px] tracking-widest uppercase">QUEUES</span>
+                                            <span className="font-semibold text-[11px]">QUEUES</span>
                                         </div>
                                     </div>
                                 </div>
@@ -173,7 +173,7 @@ export default function Routers() {
                             <div className="flex gap-2 p-2 pt-0 relative z-10">
                                 <button
                                     onClick={() => handleEdit(router)}
-                                    className="flex-1 bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-600 text-slate-500 dark:text-slate-300 hover:text-white py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-[10px] font-black border border-slate-200 dark:border-slate-700 shadow-sm uppercase tracking-wider active:scale-95"
+                                    className="flex-1 bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-600 text-slate-500 dark:text-slate-300 hover:text-white py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-xs font-semibold border border-slate-200 dark:border-slate-700 shadow-sm active:scale-95"
                                 >
                                     <PencilSquareIcon className="w-4 h-4" /> EDITAR
                                 </button>

@@ -186,7 +186,7 @@ export default function Zonas() {
 
                         <form onSubmit={handleGuardar} className="space-y-5">
                             <div>
-                                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black ml-1 uppercase tracking-wider">Nombre de la Zona</label>
+                                <label className="text-xs text-slate-500 dark:text-slate-400 font-semibold ml-1">Nombre de la Zona</label>
                                 <input 
                                     type="text" 
                                     placeholder="Ej: Zona Norte" 
@@ -198,7 +198,7 @@ export default function Zonas() {
                             </div>
 
                             <label className="block">
-                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black ml-1 uppercase tracking-wider">MikroTik que la atiende</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold ml-1">MikroTik que la atiende</span>
                                 <select className={campoClase} value={form.router_id} onChange={e => elegirRouter(e.target.value)}>
                                     <option value="">Sin asignar</option>
                                     {routers.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
@@ -206,7 +206,7 @@ export default function Zonas() {
                             </label>
 
                             <label className="block">
-                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black ml-1 uppercase tracking-wider">OLT</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold ml-1">OLT</span>
                                 <select className={campoClase} value={form.olt_id} onChange={e => elegirOlt(e.target.value)}>
                                     <option value="">Sin OLT (radioenlace)</option>
                                     {oltsDelRouter.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
@@ -214,7 +214,7 @@ export default function Zonas() {
                             </label>
 
                             <label className="block">
-                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black ml-1 uppercase tracking-wider">Plantilla de cobro</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold ml-1">Plantilla de cobro</span>
                                 <select className={campoClase} value={form.plantilla_id} onChange={e => setForm({ ...form, plantilla_id: e.target.value })}>
                                     <option value="">Sin asignar</option>
                                     {plantillas.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
@@ -222,7 +222,7 @@ export default function Zonas() {
                             </label>
 
                             <label className="block">
-                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black ml-1 uppercase tracking-wider">Colonias que cubre</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold ml-1">Colonias que cubre</span>
                                 <textarea
                                     rows={3}
                                     className={`${campoClase} py-2`}

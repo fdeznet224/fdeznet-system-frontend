@@ -134,7 +134,7 @@ export default function CronjobLogs() {
             <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-2xl overflow-hidden min-h-[500px] flex flex-col transition-colors">
                 
                 {/* Cabecera de Tabla */}
-                <div className="grid grid-cols-12 gap-4 p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-500 uppercase tracking-widest transition-colors">
+                <div className="grid grid-cols-12 gap-4 p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-500 transition-colors">
                     <div className="col-span-1 text-center">Estado</div>
                     <div className="col-span-3">Fecha / Hora</div>
                     <div className="col-span-2">Origen</div>
@@ -150,7 +150,7 @@ export default function CronjobLogs() {
                     ) : logs.length === 0 ? (
                         <div className="text-center py-20 text-slate-400 dark:text-slate-600">
                             <ClockIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                            <p className="font-bold uppercase tracking-widest text-xs">No hay registros de eventos.</p>
+                            <p className="font-bold text-xs">No hay registros de eventos.</p>
                         </div>
                     ) : (
                         logs.map((log) => (
@@ -189,7 +189,7 @@ export default function CronjobLogs() {
             </div>
 
             {/* Footer Informativo */}
-            <div className="mt-4 flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600 px-2 transition-colors">
+            <div className="mt-4 flex justify-between text-xs font-semibold text-slate-400 dark:text-slate-600 px-2 transition-colors">
                 <p>Mostrando últimos 100 eventos</p>
                 <p>Servidor: Online</p>
             </div>

@@ -123,7 +123,7 @@ export default function Sistema() {
                                     <Toggle checked={config.corte_solo_whatsapp} onChange={(value) => handleChange('corte_solo_whatsapp', value)} color="emerald" />
                                 </div>
                                 <div className={`transition-all ${!config.corte_solo_whatsapp ? 'opacity-50 pointer-events-none' : ''}`}>
-                                    <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">Velocidad por cliente suspendido</label>
+                                    <label className="block text-xs font-semibold text-slate-500 mb-2">Velocidad por cliente suspendido</label>
                                     <select className="w-full bg-slate-100 dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white font-black outline-none focus:border-emerald-500 transition"
                                         value={config.corte_whatsapp_kbps} onChange={e => handleChange('corte_whatsapp_kbps', Number(e.target.value))}>
                                         <option value={64}>64 kbps · solo texto</option>
@@ -249,8 +249,8 @@ export default function Sistema() {
             {/* Footer Flotante */}
             <div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none p-4">
                 <div className="pointer-events-auto bg-white/90 dark:bg-slate-950/90 backdrop-blur-md p-2 pl-4 sm:pl-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl flex gap-4 sm:gap-6 items-center transition-colors">
-                    <span className="text-[10px] sm:text-xs font-black text-slate-500 hidden sm:block uppercase">Cambios pendientes</span>
-                    <button onClick={guardarCambios} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white font-black py-3 px-6 sm:px-8 rounded-xl shadow-md active:scale-95 transition flex items-center gap-2 text-xs sm:text-sm uppercase tracking-widest w-full sm:w-auto justify-center">
+                    <span className="text-xs sm:text-xs font-semibold text-slate-500 hidden sm:block">Cambios pendientes</span>
+                    <button onClick={guardarCambios} disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-6 sm:px-8 rounded-xl shadow-md active:scale-95 transition flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto justify-center">
                         {saving ? 'Guardando...' : <><CheckCircleIcon className="w-5 h-5"/> Guardar</>}
                     </button>
                 </div>
@@ -288,7 +288,7 @@ const CardInputRight = ({ label, sub, value, onChange, textColor }: CardInputRig
     <div className="bg-slate-50 dark:bg-[#151b2b] p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between transition-colors">
         <div className="pr-2">
             <label className={`text-xs sm:text-sm font-black block ${textColor || 'text-slate-900 dark:text-white'}`}>{label}</label>
-            <p className="text-[9px] sm:text-[10px] text-slate-500 mt-1 uppercase tracking-widest font-black leading-tight">{sub}</p>
+            <p className="text-xs sm:text-[10px] text-slate-500 mt-1 font-semibold leading-tight">{sub}</p>
         </div>
         <div className="relative flex items-center shrink-0">
             <input type="number" className="w-14 sm:w-16 bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 text-slate-900 dark:text-white font-mono text-center text-base sm:text-lg font-black outline-none focus:border-blue-500 transition-colors" value={value || 0} onChange={event => onChange(Number(event.target.value))} />

@@ -1,26 +1,19 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { AdjustmentsHorizontalIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 /** Piezas comunes de Facturas, Corte de cobranza y Estadísticas. */
 
 export function PaginaFinanzas({ children }: { children: ReactNode }) {
     return (
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 pb-24 text-slate-700 md:p-6 dark:text-slate-200">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 text-slate-700 dark:text-slate-200">
             {children}
         </div>
     );
 }
 
 export function Encabezado({ titulo, subtitulo, accion }: { titulo: string; subtitulo?: string; accion?: ReactNode }) {
-    return (
-        <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl dark:text-white">{titulo}</h2>
-                {subtitulo && <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{subtitulo}</p>}
-            </div>
-            {accion}
-        </div>
-    );
+    return <div className="-mb-1"><EncabezadoPagina titulo={titulo} descripcion={subtitulo} acciones={accion} /></div>;
 }
 
 type Tono = 'emerald' | 'amber' | 'rose' | 'slate' | 'blue';
