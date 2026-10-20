@@ -2044,3 +2044,41 @@ test('al tocar la IP se abre el equipo en el puerto que contesta y la antena por
   expect(puentes).toBe(1)
   await expect(page.getByText(/Antena abierta por MK Sagrado hasta las/)).toBeVisible()
 })
+
+test('la ficha muestra el consumo por día y avisa cuando el mes no tiene registro', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/clientes/1', (route) => route.fulfill({ json: {
+    id: 1, nombre: 'Francisca De la Cruz', telefono: '5550000000', direccion: 'Paraíso', ip_asignada: '10.10.9.13', estado: 'activo',
+  } }))
+  const hoy = new Date()
+  const esteMes = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
+  await page.route('**/api/clientes/1/consumo?**', (route) => {
+    const mes = new URL(route.request().url()).searchParams.get('mes')!
+    const [anio, numero] = mes.split('-').map(Number)
+    const dias = Array.from({ length: new Date(anio, numero, 0).getDate() }, (_, n) => ({
+      fecha: `${mes}-${String(n + 1).padStart(2, '0')}`,
+      bajada: mes === esteMes && n === 0 ? 1_500_000_000 : 0,
+      subida: mes === esteMes && n === 0 ? 120_000_000 : 0,
+      minutos: mes === esteMes && n === 0 ? 600 : 0,
+    }))
+    return route.fulfill({ json: {
+      mes, dias, total_bajada: mes === esteMes ? 1_500_000_000 : 0, total_subida: mes === esteMes ? 120_000_000 : 0,
+      dias_con_uso: mes === esteMes ? 1 : 0, registro_desde: `${esteMes}-01`,
+    } })
+  })
+  await page.goto('/admin/clientes')
+  if ((page.viewportSize()?.width ?? 1024) < 640) await page.locator('article').first().click()
+  else await page.locator('tbody tr').first().click()
+  await page.getByRole('button', { name: 'Consumo', exact: true }).click()
+
+  const calendario = page.getByTestId('calendario-consumo')
+  await expect(calendario).toBeVisible()
+  await expect(page.getByText('1.6 GB').first()).toBeVisible()
+  await calendario.getByRole('button', { name: /^1(\D|$)/ }).first().click()
+  await expect(page.getByText('bajó 1.5 GB y subió 120 MB; en línea 10 h.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Mandar imagen al cliente' })).toBeEnabled()
+
+  await page.getByRole('button', { name: 'Mes anterior' }).click()
+  await expect(page.getByText(/Este mes no tiene registro: el sistema guarda el consumo desde el 1 de/)).toBeVisible()
+})

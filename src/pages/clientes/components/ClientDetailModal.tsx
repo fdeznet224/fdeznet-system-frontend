@@ -24,6 +24,7 @@ import { nombreFormaCobro } from '@/utils/formaCobro';
 import './client-detail-sheet.css';
 import { apiErrorMessage } from '@/utils/apiError';
 import PotenciaEnVivo from './PotenciaEnVivo';
+import ConsumoCliente from './ConsumoCliente';
 
 interface Props {
     isOpen: boolean;
@@ -171,7 +172,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [ipService, setIpService] = useState<ClientService | null>(null);
     const [serviciosAdicionales, setServiciosAdicionales] = useState<Array<{id:number; nombre:string; precio_mensual:number; periodicidad:'mensual'|'unico'; activo:boolean; servicio_id?:number}>>([]);
     const [resumenComercial, setResumenComercial] = useState<CommercialSummary | null>(null);
-    const [activeTab, setActiveTab] = useState<'resumen' | 'servicios' | 'red' | 'facturas' | 'instalacion'>('resumen'); // FACTURACION_ISP_V2_CLIENT_DETAIL_TABS_FRONTEND // FACTURACION_ISP_V2_CLIENT_DETAIL_FRONTEND
+    const [activeTab, setActiveTab] = useState<'resumen' | 'servicios' | 'red' | 'facturas' | 'consumo' | 'instalacion'>('resumen'); // FACTURACION_ISP_V2_CLIENT_DETAIL_TABS_FRONTEND // FACTURACION_ISP_V2_CLIENT_DETAIL_FRONTEND
     const [loadingData, setLoadingData] = useState(false);
     const [isManualInvoiceOpen, setIsManualInvoiceOpen] = useState(false);
     const [manualInvoiceData, setManualInvoiceData] = useState({
@@ -601,6 +602,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         { id: 'servicios', label: `Servicios (${servicios.length})` },
         { id: 'red', label: 'Red' },
         { id: 'facturas', label: 'Facturas' },
+        { id: 'consumo', label: 'Consumo' },
     ] as const;
 
     return (
@@ -754,6 +756,10 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                         <DetailTile label="Dirección" value={cliente?.direccion || 'N/A'} />
                                     </div>
                                 </SectionCard>
+                            )}
+
+                            {!loadingData && !isEditing && cliente && activeTab === 'consumo' && (
+                                <ConsumoCliente clienteId={cliente.id} nombre={cliente.nombre} />
                             )}
 
                             {!loadingData && !isEditing && cliente && activeTab === 'servicios' && (
