@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { ArrowPathIcon, NoSymbolIcon, WifiIcon, ComputerDesktopIcon, LockClosedIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, NoSymbolIcon, WifiIcon, ComputerDesktopIcon, LockClosedIcon, PowerIcon, KeyIcon } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
+import portalClient from '@/api/portal';
 import {
     BOTON_ACCION_PRIMARIO, BOTON_ACCION_SECUNDARIO, BOTON_ICONO, CAMPO, PILDORA, TARJETA, TITULO_SECCION,
 } from '@/components/ui/estilo';
 import { apiErrorMessage } from '@/utils/apiError';
-import { redesPorNombre, type EquipoRed, type EstadoRed } from './miRed';
+import { redesPorNombre, type AccesoPortal, type EquipoRed, type EstadoRed } from './miRed';
 
 function hace(fecha: string | null) {
     if (!fecha) return 'nunca';
@@ -20,9 +21,13 @@ function hace(fecha: string | null) {
 /**
  * La red de la casa del cliente vista desde su ONU: qué equipos tiene, cuáles
  * bloquear y la contraseña del WiFi. El nombre de la red no se cambia (va en
- * el contrato).
+ * el contrato). Lo usan el personal en la ficha y el cliente en su portal
+ * (portal: sus propias rutas, textos para él y el botón de reiniciar).
  */
-export default function MiRedCliente({ clienteId }: { clienteId: number }) {
+export default function MiRedCliente({ clienteId, portal = false }: { clienteId?: number; portal?: boolean }) {
+    const http = portal ? portalClient : client;
+    const base = portal ? '/portal/red' : `/clientes/${clienteId}/red`;
+    const [acceso, setAcceso] = useState<AccesoPortal | null>(null);
     const [estado, setEstado] = useState<EstadoRed | null>(null);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -34,14 +39,44 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
         setCargando(true);
         setError(null);
         try {
-            const { data } = await client.get<EstadoRed>(`/clientes/${clienteId}/red`);
+            const { data } = await http.get<EstadoRed>(base);
             setEstado(data);
         } catch (e) {
-            setError(apiErrorMessage(e, 'No se pudo leer la red del cliente'));
+            setError(apiErrorMessage(e, portal ? 'No se pudo leer tu módem' : 'No se pudo leer la red del cliente'));
         } finally {
             setCargando(false);
         }
-    }, [clienteId]);
+    }, [http, base, portal]);
+
+    useEffect(() => {
+        if (portal || !clienteId) return;
+        client.get<AccesoPortal>(`/clientes/${clienteId}/portal-acceso`).then(({ data }) => setAcceso(data)).catch(() => setAcceso(null));
+    }, [portal, clienteId]);
+
+    const restablecerPortal = async () => {
+        setOcupado('portal');
+        try {
+            const { data } = await client.post<AccesoPortal>(`/clientes/${clienteId}/portal-acceso/restablecer`);
+            setAcceso(data);
+            toast.success(`Listo: entra con su contrato ${data.contrato} y pone una contraseña nueva.`);
+        } catch (e) {
+            toast.error(apiErrorMessage(e, 'No se pudo restablecer'));
+        } finally {
+            setOcupado(null);
+        }
+    };
+
+    const reiniciar = async () => {
+        setOcupado('reinicio');
+        try {
+            await portalClient.post('/portal/reiniciar');
+            toast.success('Tu módem se está reiniciando. Vuelve en unos 2 minutos.', { duration: 8000 });
+        } catch (e) {
+            toast.error(apiErrorMessage(e, 'No se pudo reiniciar tu módem'));
+        } finally {
+            setOcupado(null);
+        }
+    };
 
     useEffect(() => {
         const t = window.setTimeout(() => void leer(), 0);
@@ -52,7 +87,7 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
         const bloquearlo = !equipo.bloqueado;
         setOcupado(equipo.mac);
         try {
-            const { data } = await client.post<{ bloqueados: string[] }>(`/clientes/${clienteId}/red/bloqueo`, { mac: equipo.mac, bloquear: bloquearlo });
+            const { data } = await http.post<{ bloqueados: string[] }>(`${base}/bloqueo`, { mac: equipo.mac, bloquear: bloquearlo });
             const bloqueados = new Set(data.bloqueados);
             setEstado((actual) => actual && {
                 ...actual,
@@ -60,7 +95,7 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
             });
             toast.success(bloquearlo ? `${equipo.nombre || equipo.mac} quedó sin internet` : `${equipo.nombre || equipo.mac} tiene internet otra vez`);
         } catch (e) {
-            toast.error(apiErrorMessage(e, 'La ONU no aceptó el cambio'));
+            toast.error(apiErrorMessage(e, portal ? 'Tu módem no aceptó el cambio' : 'La ONU no aceptó el cambio'));
         } finally {
             setOcupado(null);
         }
@@ -69,10 +104,10 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
     const guardarClave = async (ssid: string) => {
         setOcupado(ssid);
         try {
-            const { data } = await client.post<{ aplicado: boolean; bandas: number }>(`/clientes/${clienteId}/red/clave-wifi`, { ssid, clave });
+            const { data } = await http.post<{ aplicado: boolean; bandas: number }>(`${base}/clave-wifi`, { ssid, clave });
             toast.success(data.aplicado
                 ? `Contraseña de ${ssid} cambiada. Los equipos se reconectan con la nueva.`
-                : `La ONU no contestó: el cambio se aplica cuando se reporte (máx. 5 min).`);
+                : `${portal ? 'Tu módem' : 'La ONU'} no contestó: el cambio se aplica en unos minutos.`);
             setEditando(null);
             setClave('');
         } catch (e) {
@@ -89,9 +124,11 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
         <div className="space-y-4">
             <div className={`${TARJETA} flex items-center justify-between gap-3 p-4`}>
                 <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Red de la casa</h3>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">{portal ? 'Tu módem' : 'Red de la casa'}</h3>
                     <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                        {estado ? `${estado.modelo || 'ONU'} · ${estado.ip || 'sin IP'} · reporte ${hace(estado.ultimo_reporte)}` : 'Leyendo la ONU del cliente...'}
+                        {!estado ? (portal ? 'Consultando tu módem...' : 'Leyendo la ONU del cliente...')
+                            : portal ? `Actualizado ${hace(estado.ultimo_reporte)}`
+                                : `${estado.modelo || 'ONU'} · ${estado.ip || 'sin IP'} · reporte ${hace(estado.ultimo_reporte)}`}
                     </p>
                 </div>
                 <button type="button" onClick={() => void leer()} disabled={cargando} aria-label="Actualizar" className={BOTON_ICONO}>
@@ -103,15 +140,17 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
 
             {estado && !estado.tr069 && (
                 <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
-                    Esta ONU todavía no se reporta por TR-069: hay que activarle el ACS y la WAN TR069_INTERNET.
+                    {portal
+                        ? 'Tu módem todavía no está conectado a este portal. Pronto podrás ver y controlar tus equipos aquí.'
+                        : 'Esta ONU todavía no se reporta por TR-069: hay que activarle el ACS y la WAN TR069_INTERNET.'}
                 </p>
             )}
             {estado?.tr069 && !estado.al_dia && (
                 <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
-                    La ONU no contestó ahora; se muestra lo último que reportó.
+                    {portal ? 'Tu módem no contestó ahora; ves lo último que reportó.' : 'La ONU no contestó ahora; se muestra lo último que reportó.'}
                 </p>
             )}
-            {estado?.error_bloqueo && (
+            {estado?.error_bloqueo && !portal && (
                 <p className="rounded-xl bg-slate-100 p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                     Bloqueo no disponible: {estado.error_bloqueo}
                 </p>
@@ -190,6 +229,38 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
                         ))}
                     </div>
                 </section>
+            )}
+            {portal && (
+                <div className={`${TARJETA} flex items-center gap-3 p-4`}>
+                    <PowerIcon className="h-5 w-5 shrink-0 text-slate-400" />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">Reiniciar mi módem</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Si el internet anda lento o se traba. Tarda unos 2 minutos.</p>
+                    </div>
+                    <button type="button" onClick={() => void reiniciar()} disabled={ocupado === 'reinicio'} className={BOTON_ACCION_SECUNDARIO}>
+                        {ocupado === 'reinicio' ? 'Reiniciando...' : 'Reiniciar'}
+                    </button>
+                </div>
+            )}
+
+            {!portal && acceso && (
+                <div className={`${TARJETA} flex items-center gap-3 p-4`}>
+                    <KeyIcon className="h-5 w-5 shrink-0 text-slate-400" />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">Portal del cliente</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {!acceso.contrato ? 'Sin contrato: no puede entrar al portal.'
+                                : acceso.activado
+                                    ? `Entra en /cliente con el contrato ${acceso.contrato} y su contraseña · último acceso ${hace(acceso.ultimo_acceso)}`
+                                    : `Aún no entra. La primera vez usa su contrato ${acceso.contrato} como contraseña y pone una suya.`}
+                        </p>
+                    </div>
+                    {acceso.activado && (
+                        <button type="button" onClick={() => void restablecerPortal()} disabled={ocupado === 'portal'} className={BOTON_ACCION_SECUNDARIO}>
+                            {ocupado === 'portal' ? '...' : 'Restablecer'}
+                        </button>
+                    )}
+                </div>
             )}
         </div>
     );

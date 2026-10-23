@@ -44,3 +44,9 @@ export function redesPorNombre(redes: RedWifi[]) {
     }
     return [...grupos.values()];
 }
+
+export interface AccesoPortal {
+    contrato: string | null;
+    activado: boolean;
+    ultimo_acceso: string | null;
+}

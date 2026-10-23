@@ -2129,3 +2129,57 @@ test('Mi red muestra los equipos de la ONU, bloquea uno y cambia solo la contras
   await expect(page.getByText('Contraseña de FdezNet-Casa cambiada. Los equipos se reconectan con la nueva.')).toBeVisible()
   expect(claves).toEqual([{ ssid: 'FdezNet-Casa', clave: 'nueva-clave-2026' }])
 })
+
+test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuenta y reporta una falla', async ({ page }) => {
+  await mockApi(page)
+  let debeCambiar = true
+  const enviados: Record<string, unknown[]> = { entrar: [], clave: [], falla: [] }
+  await page.route('**/api/portal/entrar', (route) => {
+    enviados.entrar.push(route.request().postDataJSON())
+    return route.fulfill({ json: { debe_cambiar: debeCambiar } })
+  })
+  await page.route('**/api/portal/clave', (route) => {
+    enviados.clave.push(route.request().postDataJSON())
+    debeCambiar = false
+    return route.fulfill({ json: { debe_cambiar: false } })
+  })
+  await page.route('**/api/portal/resumen', (route) => route.fulfill(debeCambiar
+    ? { status: 403, json: { detail: 'Primero cambia tu contraseña.' } }
+    : { json: {
+      nombre: 'Francisca De la Cruz', contrato: 'F1C8', direccion: 'Paraíso', conectado: true,
+      plan: { nombre: 'Hogar 20', bajada_kbps: 20480, subida_kbps: 5120, precio: 350 },
+      saldo_a_favor: 0,
+      cuenta: { estado_servicio: 'activo', explicacion: 'Al corriente. Próximo pago de $350.00 vence el 01/11/2026.',
+        adeudos: [{ concepto: 'Noviembre 2026', monto: 350, vence: '01/11/2026', vencido: false }], promesa: null },
+      pagos: [{ fecha: '2026-10-01', monto: 350, metodo: 'transferencia' }],
+      datos_pago: 'Transferencia a *BBVA* con concepto F1C8', tiene_onu: true,
+    } }))
+  await page.route('**/api/portal/falla', (route) => {
+    enviados.falla.push(route.request().postDataJSON())
+    return route.fulfill({ status: 201, json: { id: 88 } })
+  })
+
+  await page.goto('/cliente')
+  await page.getByLabel('Número de contrato').fill('f1c8')
+  await page.getByLabel('Contraseña', { exact: true }).fill('F1C8')
+  await page.getByRole('button', { name: 'Entrar' }).click()
+  await expect(page.getByRole('heading', { name: 'Crea tu contraseña' })).toBeVisible()
+  await page.getByLabel('Contraseña nueva (mínimo 8)').fill('mi-clave-segura')
+  await page.getByLabel('Repite la contraseña').fill('mi-clave-segura')
+  await page.getByRole('button', { name: 'Guardar contraseña' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Hola, Francisca' })).toBeVisible()
+  await expect(page.getByTestId('plan-portal')).toContainText('20 Mbps')
+  await expect(page.getByText('Al corriente. Próximo pago de $350.00 vence el 01/11/2026.')).toBeVisible()
+  await page.getByText('¿Cómo pago?').click()
+  await expect(page.getByText('Transferencia a BBVA con concepto F1C8')).toBeVisible()
+  expect(enviados.entrar).toEqual([{ contrato: 'F1C8', clave: 'F1C8' }])
+  expect(enviados.clave).toEqual([{ actual: 'F1C8', nueva: 'mi-clave-segura' }])
+
+  await page.getByRole('button', { name: 'Ayuda' }).click()
+  await page.getByLabel('¿Qué pasa?').selectOption('lentitud')
+  await page.getByLabel('Cuéntanos más').fill('Desde ayer en la noche va lento')
+  await page.getByRole('button', { name: 'Enviar reporte' }).click()
+  await expect(page.getByText('Recibimos tu reporte #88. Un técnico te contactará.')).toBeVisible()
+  expect(enviados.falla).toEqual([{ categoria: 'lentitud', descripcion: 'Desde ayer en la noche va lento' }])
+})

@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { ChevronLeftIcon, ChevronRightIcon, PhotoIcon } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
+import portalClient from '@/api/portal';
 import { useBrand } from '@/context/brand/useBrand';
 import { BOTON_ACCION_PRIMARIO, BOTON_ICONO, TARJETA } from '@/components/ui/estilo';
 import { apiErrorMessage } from '@/utils/apiError';
@@ -21,9 +22,10 @@ const CELDA: Record<EstadoDia, string> = {
 
 /**
  * Los datos que usó el cliente cada día del mes, sacados del MikroTik. Sirve
- * para mostrarle qué días sí tuvo internet cuando reclama un cobro.
+ * para mostrarle qué días sí tuvo internet cuando reclama un cobro. En el
+ * portal el cliente ve el mismo calendario, sin el botón de la imagen.
  */
-export default function ConsumoCliente({ clienteId, nombre }: { clienteId: number; nombre: string }) {
+export default function ConsumoCliente({ clienteId, nombre, portal = false }: { clienteId: number; nombre: string; portal?: boolean }) {
     const { brand } = useBrand();
     const [mes, setMes] = useState(() => hoyIso().slice(0, 7));
     const [consumo, setConsumo] = useState<ConsumoMes | null>(null);
@@ -35,12 +37,12 @@ export default function ConsumoCliente({ clienteId, nombre }: { clienteId: numbe
         let vigente = true;
         setCargando(true);
         setElegido(null);
-        client.get<ConsumoMes>(`/clientes/${clienteId}/consumo`, { params: { mes } })
+        (portal ? portalClient : client).get<ConsumoMes>(portal ? '/portal/consumo' : `/clientes/${clienteId}/consumo`, { params: { mes } })
             .then(({ data }) => { if (vigente) setConsumo(data); })
             .catch((error) => { if (vigente) { setConsumo(null); toast.error(apiErrorMessage(error, 'No se pudo leer el consumo')); } })
             .finally(() => { if (vigente) setCargando(false); });
         return () => { vigente = false; };
-    }, [clienteId, mes]);
+    }, [clienteId, mes, portal]);
 
     const enviarImagen = async () => {
         if (!consumo) return;
@@ -75,7 +77,7 @@ export default function ConsumoCliente({ clienteId, nombre }: { clienteId: numbe
                 </button>
                 <div className="text-center">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white">Consumo de {nombreMes(mes).toLowerCase()}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Datos tomados del MikroTik cada 5 minutos</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{portal ? 'Toca un día para ver cuánto usaste' : 'Datos tomados del MikroTik cada 5 minutos'}</p>
                 </div>
                 <button type="button" onClick={() => setMes(moverMes(mes, 1))} disabled={mes >= esteMes} aria-label="Mes siguiente" className={`${BOTON_ICONO} disabled:opacity-40`}>
                     <ChevronRightIcon className="h-4 w-4" />
@@ -142,9 +144,11 @@ export default function ConsumoCliente({ clienteId, nombre }: { clienteId: numbe
                                     <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-slate-200 dark:bg-slate-700" />Sin registro</span>
                                 </div>
                             )}
-                            <button type="button" onClick={enviarImagen} disabled={creando} className={`${BOTON_ACCION_PRIMARIO} w-full`}>
-                                <PhotoIcon className="h-4 w-4" /> {creando ? 'Creando imagen...' : 'Mandar imagen al cliente'}
-                            </button>
+                            {!portal && (
+                                <button type="button" onClick={enviarImagen} disabled={creando} className={`${BOTON_ACCION_PRIMARIO} w-full`}>
+                                    <PhotoIcon className="h-4 w-4" /> {creando ? 'Creando imagen...' : 'Mandar imagen al cliente'}
+                                </button>
+                            )}
                         </>
                     )}
                 </>

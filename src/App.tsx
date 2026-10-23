@@ -59,6 +59,8 @@ const CronjobLogs = lazy(() => import('@/pages/configuracion/CronjobLogs'));
 const TunnelsVPN = lazy(() => import('@/pages/configuracion/TunnelsVPN'));
 const PanelCobrador = lazy(() => import('@/pages/cobranza/PanelCobrador'));
 const PortalCliente = lazy(() => import('@/pages/portal/PortalCliente'));
+const PortalEntrada = lazy(() => import('@/pages/portal/cliente/PortalEntrada'));
+const PortalInicio = lazy(() => import('@/pages/portal/cliente/PortalInicio'));
 const TechDashboard = lazy(() => import('@/pages/technician/TechDashboard'));
 const ClientTechView = lazy(() => import('@/pages/technician/ClientTechView'));
 const TechSearch = lazy(() => import('@/pages/technician/TechSearch'));
@@ -175,6 +177,9 @@ function App() {
             <Route path="/docs" element={<DocsPage />} /> */}
             <Route path="/" element={<Login />} /> 
             <Route path="/login" element={<Login />} />
+            {/* Portal del cliente: entra con su contrato, sin usuario del personal. */}
+            <Route path="/cliente" element={<PortalEntrada />} />
+            <Route path="/cliente/inicio" element={<PortalInicio />} />
             <Route
               path="/portal/cliente/:cedula"
               element={protectedPage(
