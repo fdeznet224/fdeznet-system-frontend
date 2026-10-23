@@ -2082,3 +2082,50 @@ test('la ficha muestra el consumo por día y avisa cuando el mes no tiene regist
   await page.getByRole('button', { name: 'Mes anterior' }).click()
   await expect(page.getByText(/Este mes no tiene registro: el sistema guarda el consumo desde el 1 de/)).toBeVisible()
 })
+
+test('Mi red muestra los equipos de la ONU, bloquea uno y cambia solo la contraseña del WiFi', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  await page.route('**/api/clientes/1', (route) => route.fulfill({ json: {
+    id: 1, nombre: 'Francisca De la Cruz', telefono: '5550000000', direccion: 'Paraíso', ip_asignada: '10.10.10.254', estado: 'activo',
+  } }))
+  await page.route('**/api/clientes/1/red', (route) => route.fulfill({ json: {
+    ip: '10.10.10.254', onu: 'HWTCF1C8D69E', modelo: 'Huawei HG8145V5', tr069: true, al_dia: true,
+    ultimo_reporte: new Date().toISOString(), bloqueo_disponible: true, error_bloqueo: null,
+    redes: [
+      { indice: 1, ssid: 'FdezNet-Casa', banda: '2.4GHz', activa: true, clave: null, conectados: 2 },
+      { indice: 5, ssid: 'FdezNet-Casa', banda: '5GHz', activa: true, clave: null, conectados: 1 },
+    ],
+    equipos: [
+      { mac: '7a:49:bf:ef:ce:78', nombre: 'Galaxy-A56-5G', ip: '192.168.100.7', conectado: true, conexion: 'wifi', red: 'FdezNet-Casa · 2.4GHz', bloqueado: false },
+      { mac: '08:65:f0:5e:1f:7e', nombre: 'wlan0', ip: '192.168.100.10', conectado: false, conexion: 'wifi', red: null, bloqueado: false },
+    ],
+  } }))
+  const bloqueos: unknown[] = []
+  await page.route('**/api/clientes/1/red/bloqueo', (route) => {
+    bloqueos.push(route.request().postDataJSON())
+    return route.fulfill({ json: { bloqueados: ['7a:49:bf:ef:ce:78'] } })
+  })
+  const claves: unknown[] = []
+  await page.route('**/api/clientes/1/red/clave-wifi', (route) => {
+    claves.push(route.request().postDataJSON())
+    return route.fulfill({ json: { aplicado: true, bandas: 2 } })
+  })
+  await page.goto('/admin/clientes')
+  if ((page.viewportSize()?.width ?? 1024) < 640) await page.locator('article').first().click()
+  else await page.locator('tbody tr').first().click()
+  await page.getByRole('button', { name: 'Mi red', exact: true }).click()
+
+  const lista = page.getByTestId('equipos-red')
+  await expect(lista.getByText('Galaxy-A56-5G')).toBeVisible()
+  await expect(page.getByText('2.4GHz y 5GHz · 3 conectados')).toBeVisible()
+  await lista.getByRole('button', { name: 'Bloquear' }).first().click()
+  await expect(lista.getByRole('button', { name: 'Desbloquear' })).toBeVisible()
+  expect(bloqueos).toEqual([{ mac: '7a:49:bf:ef:ce:78', bloquear: true }])
+
+  await page.getByRole('button', { name: 'Contraseña' }).click()
+  await page.getByPlaceholder('Nueva contraseña (8 a 63 caracteres)').fill('nueva-clave-2026')
+  await page.getByRole('button', { name: 'Guardar' }).click()
+  await expect(page.getByText('Contraseña de FdezNet-Casa cambiada. Los equipos se reconectan con la nueva.')).toBeVisible()
+  expect(claves).toEqual([{ ssid: 'FdezNet-Casa', clave: 'nueva-clave-2026' }])
+})
