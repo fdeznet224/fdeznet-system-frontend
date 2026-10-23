@@ -1,13 +1,65 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import {
-    ArrowPathIcon, ChevronDownIcon, ComputerDesktopIcon, DevicePhoneMobileIcon, EyeIcon, EyeSlashIcon, PowerIcon, WifiIcon,
+    ArrowPathIcon, CheckCircleIcon, ChevronDownIcon, ComputerDesktopIcon, DevicePhoneMobileIcon, EyeIcon, EyeSlashIcon, PowerIcon, WifiIcon,
 } from '@heroicons/react/24/outline';
 
 import portalClient from '@/api/portal';
 import { apiErrorMessage } from '@/utils/apiError';
 import { redesPorNombre, type EquipoRed, type EstadoRed } from '@/pages/clientes/components/miRed';
 import { AVISO, BOTON, BOTON_SUAVE, CAMPO, ERROR, ETIQUETA, TARJETA, TITULO } from './ui';
+
+interface Cambio { equipo: EquipoRed; bloquear: boolean; paso: 'confirmar' | 'aplicando' | 'listo' | 'error'; error?: string }
+
+/** Confirmar el bloqueo y esperar a que la ONU lo aplique, con la ventana abierta hasta el final. */
+function VentanaCambio({ cambio, color, onConfirmar, onCerrar }: { cambio: Cambio; color: string; onConfirmar: () => void; onCerrar: () => void }) {
+    const nombre = cambio.equipo.nombre || 'este equipo';
+    const ocupada = cambio.paso === 'aplicando';
+    return (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center"
+            role="dialog" aria-modal="true" aria-labelledby="titulo-cambio" onClick={() => { if (!ocupada) onCerrar(); }}>
+            <div className={`${TARJETA} w-full max-w-sm space-y-4 text-center`} onClick={(e) => e.stopPropagation()}>
+                {cambio.paso === 'confirmar' && (
+                    <>
+                        <h2 id="titulo-cambio" className="text-lg font-semibold">{cambio.bloquear ? `¿Quitar el internet a ${nombre}?` : `¿Devolver el internet a ${nombre}?`}</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                            {cambio.bloquear ? 'Se desconectará de tu WiFi y no podrá volver a conectarse hasta que lo actives.' : 'Podrá conectarse otra vez a tu WiFi.'}
+                        </p>
+                        <div className="flex gap-2">
+                            <button type="button" onClick={onCerrar} className={`${BOTON_SUAVE} flex-1`}>Cancelar</button>
+                            <button type="button" onClick={onConfirmar} className={`${BOTON} h-11 flex-1 text-sm`} style={{ background: cambio.bloquear ? '#e11d48' : color }}>
+                                {cambio.bloquear ? 'Sí, bloquear' : 'Sí, activar'}
+                            </button>
+                        </div>
+                    </>
+                )}
+                {ocupada && (
+                    <div className="space-y-3 py-4" aria-live="polite">
+                        <ArrowPathIcon className="mx-auto h-8 w-8 animate-spin text-slate-400" />
+                        <p id="titulo-cambio" className="text-base font-semibold">{cambio.bloquear ? 'Bloqueando dispositivo…' : 'Activando dispositivo…'}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Lo estamos aplicando en tu módem, tarda unos segundos.</p>
+                    </div>
+                )}
+                {cambio.paso === 'listo' && (
+                    <div className="space-y-2 py-4" aria-live="polite">
+                        <CheckCircleIcon className="mx-auto h-10 w-10 text-emerald-500" />
+                        <p id="titulo-cambio" className="text-base font-semibold">{cambio.bloquear ? `${nombre} ya no tiene internet` : `${nombre} tiene internet otra vez`}</p>
+                    </div>
+                )}
+                {cambio.paso === 'error' && (
+                    <>
+                        <p id="titulo-cambio" className="text-base font-semibold">No se pudo {cambio.bloquear ? 'bloquear' : 'activar'}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{cambio.error}</p>
+                        <div className="flex gap-2">
+                            <button type="button" onClick={onCerrar} className={`${BOTON_SUAVE} flex-1`}>Cerrar</button>
+                            <button type="button" onClick={onConfirmar} className={`${BOTON} h-11 flex-1 text-sm`} style={{ background: color }}>Reintentar</button>
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
 
 function Interruptor({ encendido, ocupado, onCambiar, etiqueta }: { encendido: boolean; ocupado: boolean; onCambiar: () => void; etiqueta: string }) {
     return (
@@ -51,6 +103,7 @@ export default function RedPortal({ color }: { color: string }) {
     const [verClave, setVerClave] = useState(false);
     const [verDesconectados, setVerDesconectados] = useState(false);
     const [confirmarReinicio, setConfirmarReinicio] = useState(false);
+    const [cambio, setCambio] = useState<Cambio | null>(null);
 
     const leer = useCallback(async () => {
         setCargando(true);
@@ -69,18 +122,21 @@ export default function RedPortal({ color }: { color: string }) {
         return () => window.clearTimeout(t);
     }, [leer]);
 
-    const cambiarInternet = async (equipo: EquipoRed) => {
-        const bloquear = !equipo.bloqueado;
-        setOcupado(equipo.mac);
+    const pedirCambio = (equipo: EquipoRed) => setCambio({ equipo, bloquear: !equipo.bloqueado, paso: 'confirmar' });
+
+    const aplicarCambio = async () => {
+        if (!cambio) return;
+        const { equipo, bloquear } = cambio;
+        setCambio({ ...cambio, paso: 'aplicando' });
         try {
+            // Responde cuando la ONU ya lo guardó: con eso se actualiza la lista, sin recargar.
             const { data } = await portalClient.post<{ bloqueados: string[] }>('/portal/red/bloqueo', { mac: equipo.mac, bloquear });
             const bloqueados = new Set(data.bloqueados);
             setEstado((actual) => actual && { ...actual, equipos: actual.equipos.map((e) => ({ ...e, bloqueado: bloqueados.has(e.mac) })) });
-            toast.success(bloquear ? `${equipo.nombre || 'El equipo'} ya no tiene internet` : `${equipo.nombre || 'El equipo'} tiene internet otra vez`);
+            setCambio({ ...cambio, paso: 'listo' });
+            window.setTimeout(() => setCambio(null), 1500);
         } catch (e) {
-            toast.error(apiErrorMessage(e, 'Tu módem no aceptó el cambio'));
-        } finally {
-            setOcupado(null);
+            setCambio({ ...cambio, paso: 'error', error: apiErrorMessage(e, 'Tu módem no aceptó el cambio') });
         }
     };
 
@@ -166,11 +222,17 @@ export default function RedPortal({ color }: { color: string }) {
                             <ArrowPathIcon className={`h-5 w-5 ${cargando ? 'animate-spin' : ''}`} />
                         </button>
                     </div>
+                    {!estado.bloqueo_disponible && (
+                        <div className="mt-2 flex items-center justify-between gap-3 rounded-2xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+                            <span>No pudimos revisar qué equipos están bloqueados. Inténtalo en un momento.</span>
+                            <button type="button" onClick={() => void leer()} className="shrink-0 font-semibold underline">Actualizar</button>
+                        </div>
+                    )}
                     {estado.bloqueo_disponible && activos.length > 0 && (
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Apaga el interruptor para quitarle el internet a un equipo.</p>
                     )}
                     <ul className="mt-2 divide-y divide-slate-100 dark:divide-slate-800" data-testid="equipos-portal">
-                        {activos.map((e) => <Equipo key={e.mac} equipo={e} ocupado={ocupado === e.mac} onCambiar={() => void cambiarInternet(e)} />)}
+                        {activos.map((e) => <Equipo key={e.mac} equipo={e} ocupado={ocupado === e.mac} onCambiar={() => pedirCambio(e)} />)}
                         {activos.length === 0 && <li className="py-6 text-center text-sm text-slate-400">No hay equipos conectados ahora.</li>}
                     </ul>
                     {desconectados.length > 0 && (
@@ -181,7 +243,7 @@ export default function RedPortal({ color }: { color: string }) {
                             </button>
                             {verDesconectados && (
                                 <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                                    {desconectados.map((e) => <Equipo key={e.mac} equipo={e} ocupado={ocupado === e.mac} onCambiar={() => void cambiarInternet(e)} />)}
+                                    {desconectados.map((e) => <Equipo key={e.mac} equipo={e} ocupado={ocupado === e.mac} onCambiar={() => pedirCambio(e)} />)}
                                 </ul>
                             )}
                         </>
@@ -222,6 +284,7 @@ export default function RedPortal({ color }: { color: string }) {
                 )}
             </section>
             )}
+            {cambio && <VentanaCambio cambio={cambio} color={color} onConfirmar={() => void aplicarCambio()} onCerrar={() => setCambio(null)} />}
         </div>
     );
 }

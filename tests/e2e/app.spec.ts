@@ -2253,13 +2253,26 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
     redes: [{ indice: 1, ssid: 'FdezNet-F1C8', banda: '2.4GHz', activa: true, clave: null, conectados: 1 }],
     equipos: [{ mac: '7a:49:bf:ef:ce:78', nombre: 'Galaxy-A56-5G', ip: '192.168.100.7', conectado: true, conexion: 'wifi', red: 'FdezNet-F1C8 · 2.4GHz', bloqueado: false }],
   } }))
-  await page.route('**/api/portal/red/bloqueo', (route) => route.fulfill({ json: { bloqueados: ['7a:49:bf:ef:ce:78'] } }))
+  await page.route('**/api/portal/red/bloqueo', async (route) => {
+    await new Promise((listo) => setTimeout(listo, 600))
+    await route.fulfill({ json: { bloqueados: route.request().postDataJSON().bloquear ? ['7a:49:bf:ef:ce:78'] : [] } })
+  })
   await page.getByRole('button', { name: 'Mi WiFi' }).click()
   await expect(page.getByText('FdezNet-F1C8')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reiniciar' })).toBeVisible()
   const interruptor = page.getByRole('switch', { name: 'Internet de Galaxy-A56-5G' })
   await interruptor.click()
+  await expect(page.getByRole('dialog')).toContainText('¿Quitar el internet a Galaxy-A56-5G?')
+  await page.getByRole('button', { name: 'Sí, bloquear' }).click()
+  await expect(page.getByRole('dialog')).toContainText('Bloqueando dispositivo…')
+  await expect(page.getByRole('dialog')).toContainText('Galaxy-A56-5G ya no tiene internet')
+  await expect(page.getByRole('dialog')).toBeHidden()
   await expect(interruptor).toHaveAttribute('aria-checked', 'false')
+  // Y se vuelve a activar sin recargar.
+  await interruptor.click()
+  await page.getByRole('button', { name: 'Sí, activar' }).click()
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(interruptor).toHaveAttribute('aria-checked', 'true')
 
   // Perfil: cambiar el teléfono con el código que llega por WhatsApp.
   await page.route('**/api/portal/telefono/codigo', (route) => {

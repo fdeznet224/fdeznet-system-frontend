@@ -24,7 +24,7 @@ export default function ServiciosPortal({ contrato, telefonoEmpresa, color }: { 
 
     useEffect(() => {
         portalClient.get<{ disponible: boolean; perfiles: PerfilFicha[]; compradas: FichaComprada[] }>('/portal/fichas')
-            .then(({ data }) => { setDisponible(data.disponible); setPerfiles(data.perfiles); setCompradas(data.compradas); })
+            .then(({ data }) => { setDisponible(Boolean(data?.disponible)); setPerfiles(data?.perfiles ?? []); setCompradas(data?.compradas ?? []); })
             .catch(() => setPerfiles([]));
     }, []);
 
