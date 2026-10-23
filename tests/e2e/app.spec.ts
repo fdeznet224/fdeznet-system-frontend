@@ -2131,6 +2131,11 @@ test('Mi red muestra los equipos de la ONU, bloquea uno y cambia solo la contras
 })
 
 test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuenta y reporta una falla', async ({ page }) => {
+  const hoyMas = (dias: number) => {
+    const f = new Date()
+    f.setDate(f.getDate() + dias)
+    return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`
+  }
   await mockApi(page)
   let debeCambiar = true
   const enviados: Record<string, unknown[]> = { entrar: [], clave: [], falla: [] }
@@ -2154,6 +2159,8 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
         adeudos: [{ concepto: 'Noviembre 2026', monto: 350, vence: '01/11/2026', vencido: false }], promesa: null },
       pagos: [{ fecha: '2026-10-01', monto: 350, metodo: 'transferencia' }],
       datos_pago: 'Transferencia a *BBVA* con concepto F1C8', tiene_onu: true,
+      telefono: '9930000000', correo: null,
+      calendario: { tipo: 'por_vencer', fecha: hoyMas(3), dias: 3, vence: hoyMas(3), corte: hoyMas(5) },
     } }))
   await page.route('**/api/portal/falla', (route) => {
     enviados.falla.push(route.request().postDataJSON())
@@ -2171,9 +2178,60 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
 
   await expect(page.getByRole('heading', { name: 'Hola, Francisca' })).toBeVisible()
   await expect(page.getByTestId('plan-portal')).toContainText('20 Mbps')
-  await expect(page.getByText('Vence el 01/11/2026')).toBeVisible()
+  await expect(page.getByTestId('semana-pago')).toContainText('Tu pago vence en 3 días')
+  await expect(page.getByTestId('semana-pago')).toContainText('Corte')
+
+  // Pagos: cómo pagar, promesa y facturas con PDF.
+  await page.route('**/api/portal/facturas', (route) => route.fulfill({ json: [
+    { id: 41, concepto: 'Noviembre 2026', total: 350, saldo: 350, estado: 'pendiente', emitida: hoyMas(-2), vence: hoyMas(3), pagada: null },
+    { id: 30, concepto: 'Octubre 2026', total: 350, saldo: 0, estado: 'pagada', emitida: hoyMas(-32), vence: hoyMas(-27), pagada: hoyMas(-28) },
+  ] }))
+  await page.route('**/api/portal/facturas/30/pdf', (route) => route.fulfill({ body: '%PDF-1.4', contentType: 'application/pdf' }))
+  await page.route('**/api/portal/promesa', (route) => route.request().method() === 'GET'
+    ? route.fulfill({ json: { puede: true, desde: hoyMas(1), hasta: hoyMas(7), monto: 350 } })
+    : route.fulfill({ json: { fecha: route.request().postDataJSON().fecha, reactivado: false } }))
+  await page.getByRole('button', { name: 'Pagos', exact: true }).click()
   await page.getByRole('button', { name: '¿Cómo pago?' }).click()
   await expect(page.getByText('Transferencia a BBVA con concepto F1C8')).toBeVisible()
+  await expect(page.getByTestId('facturas-portal')).toContainText('Pagada')
+  const descarga = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Descargar PDF de Octubre 2026' }).click()
+  expect((await descarga).suggestedFilename()).toBe('factura-000030.pdf')
+  await page.getByLabel('Fecha en que pagarás').fill(hoyMas(4))
+  await page.getByRole('button', { name: 'Prometer pago' }).click()
+  await expect(page.getByText(/Listo: tienes hasta el/)).toBeVisible()
+
+  // Consumo en vivo.
+  await page.route('**/api/portal/trafico', (route) => route.fulfill({ json: { bajada_bps: 12_500_000, subida_bps: 1_200_000, disponible: true } }))
+  await page.route('**/api/portal/consumo?**', (route) => {
+    const mes = new URL(route.request().url()).searchParams.get('mes')!
+    const [anio, numero] = mes.split('-').map(Number)
+    const dias = Array.from({ length: new Date(anio, numero, 0).getDate() }, (_, n) => ({ fecha: `${mes}-${String(n + 1).padStart(2, '0')}`, bajada: 0, subida: 0, minutos: 0 }))
+    return route.fulfill({ json: { mes, dias, total_bajada: 0, total_subida: 0, dias_con_uso: 0, registro_desde: `${mes}-01` } })
+  })
+  await page.getByRole('button', { name: 'Consumo', exact: true }).click()
+  await expect(page.getByTestId('consumo-en-vivo')).toContainText('13')
+  await expect(page.getByTestId('consumo-en-vivo')).toContainText('En vivo')
+
+  // Perfil: cambiar el teléfono con el código que llega por WhatsApp.
+  const telefonos: unknown[] = []
+  await page.route('**/api/portal/telefono/codigo', (route) => {
+    telefonos.push(route.request().postDataJSON())
+    return route.fulfill({ json: { telefono: '9931112222', minutos: 10 } })
+  })
+  await page.route('**/api/portal/telefono/confirmar', (route) => {
+    telefonos.push(route.request().postDataJSON())
+    return route.fulfill({ json: { telefono: '9931112222' } })
+  })
+  await page.getByRole('button', { name: 'Mi perfil' }).click()
+  await page.getByRole('button', { name: 'Cambiar', exact: true }).first().click()
+  await page.getByLabel('Número nuevo').fill('993 111 2222')
+  await page.getByRole('button', { name: 'Mandar código' }).click()
+  await page.getByLabel('Código').fill('004321')
+  await page.getByRole('button', { name: 'Confirmar' }).click()
+  await expect(page.getByText('Número actualizado. Ahí te llegarán los avisos.')).toBeVisible()
+  expect(telefonos).toEqual([{ telefono: '993 111 2222' }, { codigo: '004321' }])
+  await page.getByRole('button', { name: 'Inicio', exact: true }).click()
   expect(enviados.entrar).toEqual([{ contrato: 'F1C8', clave: 'F1C8' }])
   expect(enviados.clave).toEqual([{ actual: 'F1C8', nueva: 'mi-clave-segura' }])
 

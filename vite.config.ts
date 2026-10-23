@@ -26,6 +26,8 @@ export default defineConfig({
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,
+        // Notificaciones push del portal del cliente (public/push-sw.js).
+        importScripts: ['push-sw.js'],
       },
       manifest: {
         name: 'FdezNet Operaciones',
