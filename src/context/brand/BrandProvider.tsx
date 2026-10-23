@@ -34,7 +34,9 @@ export function BrandProvider({ children }: { children: ReactNode }) {
     document.documentElement.style.setProperty('--brand-secondary', brand.color_secundario);
     let manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     if (!manifest) { manifest = document.createElement('link'); manifest.rel = 'manifest'; document.head.appendChild(manifest); }
-    manifest.href = `/api/public/manifest.webmanifest?v=${encodeURIComponent(brand.color_primario)}`;
+    // El portal del cliente se instala como otra app (abre en /cliente).
+    const deCliente = window.location.pathname.startsWith('/cliente');
+    manifest.href = `/api/public/${deCliente ? 'manifest-cliente' : 'manifest'}.webmanifest?v=${encodeURIComponent(brand.color_primario)}`;
     let theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (!theme) { theme = document.createElement('meta'); theme.name = 'theme-color'; document.head.appendChild(theme); }
     theme.content = brand.color_primario;

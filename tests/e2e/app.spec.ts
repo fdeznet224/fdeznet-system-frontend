@@ -2134,6 +2134,7 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await mockApi(page)
   let debeCambiar = true
   const enviados: Record<string, unknown[]> = { entrar: [], clave: [], falla: [] }
+  await page.route('**/api/portal/sesion', (route) => route.fulfill({ status: 401, json: { detail: 'Entra con tu contrato y contraseña.' } }))
   await page.route('**/api/portal/entrar', (route) => {
     enviados.entrar.push(route.request().postDataJSON())
     return route.fulfill({ json: { debe_cambiar: debeCambiar } })
@@ -2170,15 +2171,35 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
 
   await expect(page.getByRole('heading', { name: 'Hola, Francisca' })).toBeVisible()
   await expect(page.getByTestId('plan-portal')).toContainText('20 Mbps')
-  await expect(page.getByText('Al corriente. Próximo pago de $350.00 vence el 01/11/2026.')).toBeVisible()
-  await page.getByText('¿Cómo pago?').click()
+  await expect(page.getByText('Vence el 01/11/2026')).toBeVisible()
+  await page.getByRole('button', { name: '¿Cómo pago?' }).click()
   await expect(page.getByText('Transferencia a BBVA con concepto F1C8')).toBeVisible()
   expect(enviados.entrar).toEqual([{ contrato: 'F1C8', clave: 'F1C8' }])
   expect(enviados.clave).toEqual([{ actual: 'F1C8', nueva: 'mi-clave-segura' }])
 
+  await page.route('**/api/portal/red', (route) => route.fulfill({ json: {
+    ip: '10.10.10.254', onu: 'HWTCF1C8D69E', modelo: 'Huawei HG8145V5', tr069: true, al_dia: true,
+    ultimo_reporte: new Date().toISOString(), bloqueo_disponible: true, error_bloqueo: null,
+    redes: [{ indice: 1, ssid: 'FdezNet-F1C8', banda: '2.4GHz', activa: true, clave: null, conectados: 1 }],
+    equipos: [{ mac: '7a:49:bf:ef:ce:78', nombre: 'Galaxy-A56-5G', ip: '192.168.100.7', conectado: true, conexion: 'wifi', red: 'FdezNet-F1C8 · 2.4GHz', bloqueado: false }],
+  } }))
+  const bloqueos: unknown[] = []
+  await page.route('**/api/portal/red/bloqueo', (route) => {
+    bloqueos.push(route.request().postDataJSON())
+    return route.fulfill({ json: { bloqueados: ['7a:49:bf:ef:ce:78'] } })
+  })
+  await page.getByRole('button', { name: 'Mi red' }).click()
+  await expect(page.getByText('FdezNet-F1C8')).toBeVisible()
+  const interruptor = page.getByRole('switch', { name: 'Internet de Galaxy-A56-5G' })
+  await expect(interruptor).toHaveAttribute('aria-checked', 'true')
+  await interruptor.click()
+  await expect(interruptor).toHaveAttribute('aria-checked', 'false')
+  await expect(page.getByTestId('equipos-portal').getByText('Sin internet')).toBeVisible()
+  expect(bloqueos).toEqual([{ mac: '7a:49:bf:ef:ce:78', bloquear: true }])
+
   await page.getByRole('button', { name: 'Ayuda' }).click()
-  await page.getByLabel('¿Qué pasa?').selectOption('lentitud')
-  await page.getByLabel('Cuéntanos más').fill('Desde ayer en la noche va lento')
+  await page.getByRole('radio', { name: 'Va lento' }).click()
+  await page.getByLabel('Cuéntanos qué pasa').fill('Desde ayer en la noche va lento')
   await page.getByRole('button', { name: 'Enviar reporte' }).click()
   await expect(page.getByText('Recibimos tu reporte #88. Un técnico te contactará.')).toBeVisible()
   expect(enviados.falla).toEqual([{ categoria: 'lentitud', descripcion: 'Desde ayer en la noche va lento' }])
