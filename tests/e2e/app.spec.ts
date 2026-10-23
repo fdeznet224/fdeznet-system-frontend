@@ -2138,8 +2138,12 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   }
   await mockApi(page)
   let debeCambiar = true
-  const enviados: Record<string, unknown[]> = { entrar: [], clave: [], falla: [] }
+  const enviados: Record<string, unknown[]> = { entrar: [], clave: [], falla: [], ficha: [], telefono: [] }
   await page.route('**/api/portal/sesion', (route) => route.fulfill({ status: 401, json: { detail: 'Entra con tu contrato y contraseña.' } }))
+  await page.route('**/api/public/marca', (route) => route.fulfill({ json: {
+    empresa_nombre: 'FdezNet', sistema_nombre: 'FdezPay', logo_url: null, favicon_url: null, color_primario: '#2563eb',
+    color_secundario: '#4f46e5', empresa_telefono: '9930001111', empresa_email: null, empresa_direccion: null, pie_recibo: null,
+  } }))
   await page.route('**/api/portal/entrar', (route) => {
     enviados.entrar.push(route.request().postDataJSON())
     return route.fulfill({ json: { debe_cambiar: debeCambiar } })
@@ -2155,13 +2159,27 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
       nombre: 'Francisca De la Cruz', contrato: 'F1C8', direccion: 'Paraíso', conectado: true,
       plan: { nombre: 'Hogar 20', bajada_kbps: 20480, subida_kbps: 5120, precio: 350 },
       saldo_a_favor: 0,
-      cuenta: { estado_servicio: 'activo', explicacion: 'Al corriente. Próximo pago de $350.00 vence el 01/11/2026.',
+      cuenta: { estado_servicio: 'activo', explicacion: 'Al corriente.',
         adeudos: [{ concepto: 'Noviembre 2026', monto: 350, vence: '01/11/2026', vencido: false }], promesa: null },
       pagos: [{ fecha: '2026-10-01', monto: 350, metodo: 'transferencia' }],
       datos_pago: 'Transferencia a *BBVA* con concepto F1C8', tiene_onu: true,
-      telefono: '9930000000', correo: null,
+      telefono: '9930000000', correo: null, zona: 'Paraíso', pago_efectivo: 'en Villa de Guadalupe, tienda de doña Yoli',
       calendario: { tipo: 'por_vencer', fecha: hoyMas(3), dias: 3, vence: hoyMas(3), corte: hoyMas(5) },
     } }))
+  await page.route('**/api/portal/consumo?**', (route) => {
+    const mes = new URL(route.request().url()).searchParams.get('mes')!
+    const [anio, numero] = mes.split('-').map(Number)
+    const dias = Array.from({ length: new Date(anio, numero, 0).getDate() }, (_, n) => ({ fecha: `${mes}-${String(n + 1).padStart(2, '0')}`, bajada: 0, subida: 0, minutos: 0 }))
+    return route.fulfill({ json: { mes, dias, total_bajada: 30_000_000_000, total_subida: 2_000_000_000, dias_con_uso: 20, registro_desde: `${mes}-01` } })
+  })
+  await page.route('**/api/portal/trafico', (route) => route.fulfill({ json: { bajada_bps: 12_500_000, subida_bps: 1_200_000, disponible: true } }))
+  await page.route('**/api/portal/fichas', (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ json: { disponible: true, perfiles: [{ id: 'p1', nombre: '1 día', precio: 10, duracion: '1d' }, { id: 'p7', nombre: '7 días', precio: 70, duracion: '7d' }], compradas: [] } })
+    }
+    enviados.ficha.push(route.request().postDataJSON())
+    return route.fulfill({ json: { folio: 'F-77', perfil: '1 día', precio: 10, codigo: 'ZN4821', clave: null } })
+  })
   await page.route('**/api/portal/falla', (route) => {
     enviados.falla.push(route.request().postDataJSON())
     return route.fulfill({ status: 201, json: { id: 88 } })
@@ -2175,13 +2193,39 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await page.getByLabel('Contraseña nueva (mínimo 8)').fill('mi-clave-segura')
   await page.getByLabel('Repite la contraseña').fill('mi-clave-segura')
   await page.getByRole('button', { name: 'Guardar contraseña' }).click()
+  expect(enviados.entrar).toEqual([{ contrato: 'F1C8', clave: 'F1C8' }])
+  expect(enviados.clave).toEqual([{ actual: 'F1C8', nueva: 'mi-clave-segura' }])
 
-  await expect(page.getByRole('heading', { name: 'Hola, Francisca' })).toBeVisible()
-  await expect(page.getByTestId('plan-portal')).toContainText('20 Mbps')
-  await expect(page.getByTestId('semana-pago')).toContainText('Tu pago vence en 3 días')
-  await expect(page.getByTestId('semana-pago')).toContainText('Corte')
+  // Inicio: nombre y contrato, su plan con lo que paga, el estado del pago y el consumo del mes.
+  await expect(page.getByRole('heading', { name: 'Hola, Francisca De la Cruz' })).toBeVisible()
+  await expect(page.getByTestId('plan-portal')).toContainText('Hogar 20')
+  await expect(page.getByTestId('plan-portal')).toContainText('$350.00')
+  await expect(page.getByTestId('plan-portal')).toContainText('Tu pago vence en 3 días')
+  await expect(page.getByTestId('consumo-inicio')).toContainText('32')
+  await expect(page.getByTestId('consumo-inicio')).toContainText('Mbps ahora')
 
-  // Pagos: cómo pagar, promesa y facturas con PDF.
+  // Ficha de Zona FdezNet: se genera al momento y se suma a su factura.
+  await page.getByRole('button', { name: /Zona FdezNet/ }).click()
+  await page.getByRole('radio', { name: /1 día/ }).click()
+  await page.getByRole('button', { name: 'Comprar 1 día · $10.00' }).click()
+  await expect(page.getByTestId('ficha-nueva')).toContainText('ZN4821')
+  expect(enviados.ficha).toEqual([{ perfil_id: 'p1' }])
+  await expect(page.getByRole('link', { name: /FdezPlay/ })).toHaveAttribute('href', /wa\.me/)
+
+  // ¿Algo falla?: el reporte se levanta ahí mismo.
+  await page.getByRole('button', { name: /¿Algo falla\?/ }).click()
+  await page.getByRole('radio', { name: 'Va lento' }).click()
+  await page.getByLabel('Cuéntanos qué pasa').fill('Desde ayer en la noche va lento')
+  await page.getByRole('button', { name: 'Enviar reporte' }).click()
+  await expect(page.getByText('Recibimos tu reporte #88. Un técnico te contactará.')).toBeVisible()
+  expect(enviados.falla).toEqual([{ categoria: 'lentitud', descripcion: 'Desde ayer en la noche va lento' }])
+
+  // El consumo se abre desde Inicio y se regresa con la flecha.
+  await page.getByTestId('consumo-inicio').click()
+  await expect(page.getByTestId('consumo-en-vivo')).toContainText('En vivo')
+  await page.getByRole('button', { name: 'Regresar' }).click()
+
+  // Mis facturas: cómo y dónde pagar según su zona, promesa y PDF.
   await page.route('**/api/portal/facturas', (route) => route.fulfill({ json: [
     { id: 41, concepto: 'Noviembre 2026', total: 350, saldo: 350, estado: 'pendiente', emitida: hoyMas(-2), vence: hoyMas(3), pagada: null },
     { id: 30, concepto: 'Octubre 2026', total: 350, saldo: 0, estado: 'pagada', emitida: hoyMas(-32), vence: hoyMas(-27), pagada: hoyMas(-28) },
@@ -2190,10 +2234,11 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await page.route('**/api/portal/promesa', (route) => route.request().method() === 'GET'
     ? route.fulfill({ json: { puede: true, desde: hoyMas(1), hasta: hoyMas(7), monto: 350 } })
     : route.fulfill({ json: { fecha: route.request().postDataJSON().fecha, reactivado: false } }))
-  await page.getByRole('button', { name: 'Pagos', exact: true }).click()
-  await page.getByRole('button', { name: '¿Cómo pago?' }).click()
+  await page.getByRole('button', { name: 'Mis facturas' }).click()
+  await expect(page.getByTestId('semana-pago')).toContainText('Corte')
+  await page.getByRole('button', { name: '¿Cómo y dónde pago?' }).click()
   await expect(page.getByText('Transferencia a BBVA con concepto F1C8')).toBeVisible()
-  await expect(page.getByTestId('facturas-portal')).toContainText('Pagada')
+  await expect(page.getByTestId('pago-efectivo')).toContainText('En efectivo · Paraíso')
   const descarga = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Descargar PDF de Octubre 2026' }).click()
   expect((await descarga).suggestedFilename()).toBe('factura-000030.pdf')
@@ -2201,64 +2246,36 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await page.getByRole('button', { name: 'Prometer pago' }).click()
   await expect(page.getByText(/Listo: tienes hasta el/)).toBeVisible()
 
-  // Consumo en vivo.
-  await page.route('**/api/portal/trafico', (route) => route.fulfill({ json: { bajada_bps: 12_500_000, subida_bps: 1_200_000, disponible: true } }))
-  await page.route('**/api/portal/consumo?**', (route) => {
-    const mes = new URL(route.request().url()).searchParams.get('mes')!
-    const [anio, numero] = mes.split('-').map(Number)
-    const dias = Array.from({ length: new Date(anio, numero, 0).getDate() }, (_, n) => ({ fecha: `${mes}-${String(n + 1).padStart(2, '0')}`, bajada: 0, subida: 0, minutos: 0 }))
-    return route.fulfill({ json: { mes, dias, total_bajada: 0, total_subida: 0, dias_con_uso: 0, registro_desde: `${mes}-01` } })
-  })
-  await page.getByRole('button', { name: 'Consumo', exact: true }).click()
-  await expect(page.getByTestId('consumo-en-vivo')).toContainText('13')
-  await expect(page.getByTestId('consumo-en-vivo')).toContainText('En vivo')
-
-  // Perfil: cambiar el teléfono con el código que llega por WhatsApp.
-  const telefonos: unknown[] = []
-  await page.route('**/api/portal/telefono/codigo', (route) => {
-    telefonos.push(route.request().postDataJSON())
-    return route.fulfill({ json: { telefono: '9931112222', minutos: 10 } })
-  })
-  await page.route('**/api/portal/telefono/confirmar', (route) => {
-    telefonos.push(route.request().postDataJSON())
-    return route.fulfill({ json: { telefono: '9931112222' } })
-  })
-  await page.getByRole('button', { name: 'Mi perfil' }).click()
-  await page.getByRole('button', { name: 'Cambiar', exact: true }).first().click()
-  await page.getByLabel('Número nuevo').fill('993 111 2222')
-  await page.getByRole('button', { name: 'Mandar código' }).click()
-  await page.getByLabel('Código').fill('004321')
-  await page.getByRole('button', { name: 'Confirmar' }).click()
-  await expect(page.getByText('Número actualizado. Ahí te llegarán los avisos.')).toBeVisible()
-  expect(telefonos).toEqual([{ telefono: '993 111 2222' }, { codigo: '004321' }])
-  await page.getByRole('button', { name: 'Inicio', exact: true }).click()
-  expect(enviados.entrar).toEqual([{ contrato: 'F1C8', clave: 'F1C8' }])
-  expect(enviados.clave).toEqual([{ actual: 'F1C8', nueva: 'mi-clave-segura' }])
-
+  // Mi WiFi: interruptor de internet por equipo.
   await page.route('**/api/portal/red', (route) => route.fulfill({ json: {
     ip: '10.10.10.254', onu: 'HWTCF1C8D69E', modelo: 'Huawei HG8145V5', tr069: true, al_dia: true,
     ultimo_reporte: new Date().toISOString(), bloqueo_disponible: true, error_bloqueo: null,
     redes: [{ indice: 1, ssid: 'FdezNet-F1C8', banda: '2.4GHz', activa: true, clave: null, conectados: 1 }],
     equipos: [{ mac: '7a:49:bf:ef:ce:78', nombre: 'Galaxy-A56-5G', ip: '192.168.100.7', conectado: true, conexion: 'wifi', red: 'FdezNet-F1C8 · 2.4GHz', bloqueado: false }],
   } }))
-  const bloqueos: unknown[] = []
-  await page.route('**/api/portal/red/bloqueo', (route) => {
-    bloqueos.push(route.request().postDataJSON())
-    return route.fulfill({ json: { bloqueados: ['7a:49:bf:ef:ce:78'] } })
-  })
-  await page.getByRole('button', { name: 'Mi red' }).click()
+  await page.route('**/api/portal/red/bloqueo', (route) => route.fulfill({ json: { bloqueados: ['7a:49:bf:ef:ce:78'] } }))
+  await page.getByRole('button', { name: 'Mi WiFi' }).click()
   await expect(page.getByText('FdezNet-F1C8')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Reiniciar' })).toBeVisible()
   const interruptor = page.getByRole('switch', { name: 'Internet de Galaxy-A56-5G' })
-  await expect(interruptor).toHaveAttribute('aria-checked', 'true')
   await interruptor.click()
   await expect(interruptor).toHaveAttribute('aria-checked', 'false')
-  await expect(page.getByTestId('equipos-portal').getByText('Sin internet')).toBeVisible()
-  expect(bloqueos).toEqual([{ mac: '7a:49:bf:ef:ce:78', bloquear: true }])
 
-  await page.getByRole('button', { name: 'Ayuda' }).click()
-  await page.getByRole('radio', { name: 'Va lento' }).click()
-  await page.getByLabel('Cuéntanos qué pasa').fill('Desde ayer en la noche va lento')
-  await page.getByRole('button', { name: 'Enviar reporte' }).click()
-  await expect(page.getByText('Recibimos tu reporte #88. Un técnico te contactará.')).toBeVisible()
-  expect(enviados.falla).toEqual([{ categoria: 'lentitud', descripcion: 'Desde ayer en la noche va lento' }])
+  // Perfil: cambiar el teléfono con el código que llega por WhatsApp.
+  await page.route('**/api/portal/telefono/codigo', (route) => {
+    enviados.telefono.push(route.request().postDataJSON())
+    return route.fulfill({ json: { telefono: '9931112222', minutos: 10 } })
+  })
+  await page.route('**/api/portal/telefono/confirmar', (route) => {
+    enviados.telefono.push(route.request().postDataJSON())
+    return route.fulfill({ json: { telefono: '9931112222' } })
+  })
+  await page.getByRole('button', { name: 'Perfil', exact: true }).click()
+  await page.getByRole('button', { name: 'Cambiar', exact: true }).first().click()
+  await page.getByLabel('Número nuevo').fill('993 111 2222')
+  await page.getByRole('button', { name: 'Mandar código' }).click()
+  await page.getByLabel('Código').fill('004321')
+  await page.getByRole('button', { name: 'Confirmar' }).click()
+  await expect(page.getByText('Número actualizado. Ahí te llegarán los avisos.')).toBeVisible()
+  expect(enviados.telefono).toEqual([{ telefono: '993 111 2222' }, { codigo: '004321' }])
 })

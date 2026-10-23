@@ -86,13 +86,28 @@ export default function PagosPortal({ resumen, color, onCambio }: { resumen: Res
                     </div>
                 )}
                 {resumen.saldo_a_favor > 0 && <p className="text-sm text-emerald-700 dark:text-emerald-300">Tienes {dinero(resumen.saldo_a_favor)} a favor.</p>}
-                {resumen.datos_pago && (
+                {(resumen.datos_pago || resumen.pago_efectivo) && (
                     <div>
                         <button type="button" onClick={() => setVerPago((v) => !v)} className={`${BOTON_SUAVE} w-full justify-between`} aria-expanded={verPago}>
-                            ¿Cómo pago?
+                            ¿Cómo y dónde pago?
                             <ChevronDownIcon className={`h-4 w-4 transition ${verPago ? 'rotate-180' : ''}`} />
                         </button>
-                        {verPago && <p className="mt-3 whitespace-pre-line px-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{sinFormatoWhatsapp(resumen.datos_pago)}</p>}
+                        {verPago && (
+                            <div className="mt-3 space-y-4 px-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                                {resumen.datos_pago && (
+                                    <div>
+                                        <p className={`${ETIQUETA} mb-1`}>Transferencia o depósito</p>
+                                        <p className="whitespace-pre-line">{sinFormatoWhatsapp(resumen.datos_pago)}</p>
+                                    </div>
+                                )}
+                                {resumen.pago_efectivo && (
+                                    <div data-testid="pago-efectivo">
+                                        <p className={`${ETIQUETA} mb-1`}>En efectivo{resumen.zona ? ` · ${resumen.zona}` : ''}</p>
+                                        <p>{resumen.pago_efectivo}</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
             </section>

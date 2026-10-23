@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { BellAlertIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import { BellAlertIcon, ChatBubbleLeftRightIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
 
 import portalClient from '@/api/portal';
 import { apiErrorMessage } from '@/utils/apiError';
@@ -148,7 +148,9 @@ export function Notificaciones({ color, compacta = false }: { color: string; com
 }
 
 /** Sus datos (lo que el cliente debe ver), su WhatsApp, notificaciones y su contraseña. */
-export default function PerfilPortal({ resumen, color, onCambio, onSalir }: { resumen: Resumen; color: string; onCambio: () => void; onSalir: () => void }) {
+export default function PerfilPortal({ resumen, color, telefonoEmpresa, onCambio, onSalir }: {
+    resumen: Resumen; color: string; telefonoEmpresa: string | null; onCambio: () => void; onSalir: () => void;
+}) {
     const [cambiandoClave, setCambiandoClave] = useState(false);
     const bajada = resumen.plan ? velocidad(resumen.plan.bajada_kbps) : null;
     const subida = resumen.plan ? velocidad(resumen.plan.subida_kbps) : null;
@@ -159,6 +161,7 @@ export default function PerfilPortal({ resumen, color, onCambio, onSalir }: { re
                 <h2 className={TITULO}>{resumen.nombre}</h2>
                 <div className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
                     <Dato etiqueta="Contrato" valor={resumen.contrato} />
+                    <Dato etiqueta="Zona" valor={resumen.zona} />
                     <Dato etiqueta="Dirección" valor={resumen.direccion} />
                     <Dato etiqueta="Plan" valor={resumen.plan?.nombre} />
                     <Dato etiqueta="Velocidad" valor={bajada && subida ? `${bajada.valor} ${bajada.unidad} / ${subida.valor} ${subida.unidad}` : null} />
@@ -182,6 +185,19 @@ export default function PerfilPortal({ resumen, color, onCambio, onSalir }: { re
             </section>
 
             <InstalarApp color={color} />
+
+            {telefonoEmpresa && (
+                <a href={`https://wa.me/${telefonoEmpresa.replace(/\D/g, '').replace(/^(\d{10})$/, '52$1')}`} target="_blank" rel="noreferrer"
+                    className={`${TARJETA} flex items-center gap-4`}>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                        <ChatBubbleLeftRightIcon className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">Escríbenos por WhatsApp</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{telefonoEmpresa}</p>
+                    </div>
+                </a>
+            )}
 
             <button type="button" onClick={onSalir} className={`${BOTON_SUAVE} w-full text-rose-600 dark:text-rose-400`}>Cerrar sesión</button>
         </>

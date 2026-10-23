@@ -189,8 +189,15 @@ export default function RedPortal({ color }: { color: string }) {
                 </section>
             )}
 
-            {!estado && cargando && <div className={`${TARJETA} h-40 animate-pulse`} />}
+            {!estado && cargando && (
+                <div className={`${TARJETA} flex flex-col items-center gap-3 py-10 text-center`} data-testid="cargando-red">
+                    <ArrowPathIcon className="h-6 w-6 animate-spin text-slate-400" />
+                    <p className="text-sm font-medium">Cargando tus equipos…</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Estamos consultando tu módem, tarda unos segundos.</p>
+                </div>
+            )}
 
+            {estado?.tr069 && (
             <section className={`${TARJETA} space-y-3`}>
                 <div className="flex items-center gap-4">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -214,6 +221,7 @@ export default function RedPortal({ color }: { color: string }) {
                     </div>
                 )}
             </section>
+            )}
         </div>
     );
 }

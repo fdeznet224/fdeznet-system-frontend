@@ -1,7 +1,8 @@
 /** Estilo del portal del cliente: minimalista, un solo acento (el color de la marca), claro y oscuro. */
 
 export const FONDO = 'min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100';
-export const TARJETA = 'rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-900/5 dark:bg-slate-900 dark:ring-white/10';
+export const TARJETA_LISTA = 'rounded-3xl bg-white shadow-sm ring-1 ring-slate-900/5 dark:bg-slate-900 dark:ring-white/10';
+export const TARJETA = `${TARJETA_LISTA} p-5`;
 export const ETIQUETA = 'text-xs font-medium text-slate-500 dark:text-slate-400';
 export const TITULO = 'text-base font-semibold text-slate-900 dark:text-white';
 export const CAMPO = 'w-full rounded-2xl border-0 bg-slate-100 px-4 py-3.5 text-base text-slate-900 outline-none ring-1 ring-transparent transition placeholder:text-slate-400 focus:bg-white focus:ring-2 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-800';

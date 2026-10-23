@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import { ChevronRightIcon, LifebuoyIcon } from '@heroicons/react/24/outline';
 
 import portalClient from '@/api/portal';
 import { apiErrorMessage } from '@/utils/apiError';
 import type { Reporte } from './tipos';
-import { BOTON, CAMPO, TARJETA, TITULO } from './ui';
+import { BOTON, CAMPO, TARJETA_LISTA } from './ui';
 
 const FALLAS = [
     ['sin_internet', 'No tengo internet'],
@@ -17,17 +17,15 @@ const CATEGORIAS: Record<string, string> = {
     sin_internet: 'Sin internet', lentitud: 'Lentitud', router_wifi: 'WiFi o módem', potencia_baja: 'Señal de fibra',
     cable_roto: 'Fibra o cable', cambio_domicilio: 'Cambio de domicilio', otro: 'Otro',
 };
-const ESTADOS: Record<string, { texto: string; clase: string }> = {
-    pendiente: { texto: 'Recibido', clase: 'bg-slate-500/10 text-slate-600 dark:text-slate-300' },
-    asignada: { texto: 'Con técnico', clase: 'bg-blue-500/10 text-blue-700 dark:text-blue-300' },
-    en_camino: { texto: 'Técnico en camino', clase: 'bg-blue-500/10 text-blue-700 dark:text-blue-300' },
-    trabajando: { texto: 'En atención', clase: 'bg-amber-500/10 text-amber-700 dark:text-amber-300' },
-    terminada: { texto: 'Resuelto', clase: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
-    cancelada: { texto: 'Cancelado', clase: 'bg-slate-500/10 text-slate-500' },
+const ESTADOS: Record<string, string> = {
+    pendiente: 'Recibido', asignada: 'Con técnico', en_camino: 'Técnico en camino', trabajando: 'En atención',
+    terminada: 'Resuelto', cancelada: 'Cancelado',
 };
+const ABIERTOS = new Set(['pendiente', 'asignada', 'en_camino', 'trabajando']);
 
-/** Reportar una falla, ver cómo van sus reportes y escribir por WhatsApp. */
-export default function AyudaPortal({ telefono, color }: { telefono: string | null; color: string }) {
+/** «¿Algo falla?»: al tocarlo se abre el reporte; le llega al personal por WhatsApp como los del agente. */
+export default function AyudaPortal({ color }: { color: string }) {
+    const [abierto, setAbierto] = useState(false);
     const [categoria, setCategoria] = useState<string>('sin_internet');
     const [descripcion, setDescripcion] = useState('');
     const [enviando, setEnviando] = useState(false);
@@ -43,6 +41,7 @@ export default function AyudaPortal({ telefono, color }: { telefono: string | nu
             const { data } = await portalClient.post<{ id: number }>('/portal/falla', { categoria, descripcion });
             toast.success(`Recibimos tu reporte${data.id ? ` #${data.id}` : ''}. Un técnico te contactará.`, { duration: 8000 });
             setDescripcion('');
+            setAbierto(false);
             void leer();
         } catch (err) {
             toast.error(apiErrorMessage(err, 'No se pudo enviar el reporte'));
@@ -51,70 +50,56 @@ export default function AyudaPortal({ telefono, color }: { telefono: string | nu
         }
     };
 
-    const whatsapp = telefono ? `https://wa.me/${telefono.replace(/\D/g, '').replace(/^(\d{10})$/, '52$1')}` : null;
+    const abiertos = reportes.filter((r) => ABIERTOS.has(r.estado));
 
     return (
-        <>
-            <form onSubmit={reportar} className={`${TARJETA} space-y-4`}>
-                <div>
-                    <h2 className={TITULO}>Reportar una falla</h2>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Antes prueba reiniciar tu módem desde Mi red; muchas veces se arregla solo.</p>
-                </div>
-                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="¿Qué pasa?">
-                    {FALLAS.map(([valor, texto]) => {
-                        const elegida = categoria === valor;
-                        return (
-                            <button key={valor} type="button" role="radio" aria-checked={elegida} onClick={() => setCategoria(valor)}
-                                className={`rounded-full px-4 py-2 text-sm font-medium transition ${elegida ? 'text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
-                                style={elegida ? { background: color } : undefined}>
-                                {texto}
-                            </button>
-                        );
-                    })}
-                </div>
-                <textarea
-                    value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} maxLength={1000} aria-label="Cuéntanos qué pasa"
-                    placeholder="Cuéntanos qué pasa: desde cuándo, si ya reiniciaste, qué foco está en rojo…" className={`${CAMPO} resize-none`}
-                />
-                <button type="submit" disabled={enviando || descripcion.trim().length < 5} className={BOTON} style={{ background: color }}>
-                    {enviando ? 'Enviando…' : 'Enviar reporte'}
-                </button>
-            </form>
+        <section className={TARJETA_LISTA}>
+            <button type="button" onClick={() => setAbierto((a) => !a)} className="flex w-full items-center gap-4 px-5 py-4 text-left" aria-expanded={abierto}>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    <LifebuoyIcon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">¿Algo falla?</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">Levanta un reporte y un técnico te contacta</span>
+                </span>
+                <ChevronRightIcon className={`h-4 w-4 text-slate-400 transition ${abierto ? 'rotate-90' : ''}`} />
+            </button>
 
-            {reportes.length > 0 && (
-                <section className={TARJETA} data-testid="reportes-portal">
-                    <h2 className={TITULO}>Mis reportes</h2>
-                    <ul className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
-                        {reportes.map((r) => {
-                            const estado = ESTADOS[r.estado] ?? { texto: r.estado, clase: ESTADOS.pendiente.clase };
+            {abierto && (
+                <form onSubmit={reportar} className="space-y-3 px-5 pb-5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Antes prueba reiniciar tu módem desde Mi WiFi; muchas veces se arregla solo.</p>
+                    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="¿Qué pasa?">
+                        {FALLAS.map(([valor, texto]) => {
+                            const elegida = categoria === valor;
                             return (
-                                <li key={r.id} className="flex items-center gap-3 py-3">
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-medium">#{r.id} · {CATEGORIAS[r.categoria ?? ''] ?? 'Reporte'}</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                                            {r.creado ? new Date(r.creado).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : ''}
-                                            {r.programado && !r.terminado ? ` · visita el ${new Date(r.programado).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric' })}` : ''}
-                                        </p>
-                                    </div>
-                                    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${estado.clase}`}>{estado.texto}</span>
-                                </li>
+                                <button key={valor} type="button" role="radio" aria-checked={elegida} onClick={() => setCategoria(valor)}
+                                    className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${elegida ? 'text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
+                                    style={elegida ? { background: color } : undefined}>
+                                    {texto}
+                                </button>
                             );
                         })}
-                    </ul>
-                </section>
+                    </div>
+                    <textarea
+                        value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} maxLength={1000} aria-label="Cuéntanos qué pasa"
+                        placeholder="Cuéntanos qué pasa: desde cuándo, si ya reiniciaste, qué foco está en rojo…" className={`${CAMPO} resize-none`}
+                    />
+                    <button type="submit" disabled={enviando || descripcion.trim().length < 5} className={BOTON} style={{ background: color }}>
+                        {enviando ? 'Enviando…' : 'Enviar reporte'}
+                    </button>
+                </form>
             )}
 
-            {whatsapp && (
-                <a href={whatsapp} target="_blank" rel="noreferrer" className={`${TARJETA} flex items-center gap-4`}>
-                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                        <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">Escríbenos por WhatsApp</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{telefono}</p>
-                    </div>
-                </a>
+            {abiertos.length > 0 && (
+                <ul className="border-t border-slate-100 px-5 py-3 dark:border-slate-800" data-testid="reportes-portal">
+                    {abiertos.map((r) => (
+                        <li key={r.id} className="flex justify-between py-1 text-xs text-slate-500 dark:text-slate-400">
+                            <span>#{r.id} · {CATEGORIAS[r.categoria ?? ''] ?? 'Reporte'}</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-200">{ESTADOS[r.estado] ?? r.estado}</span>
+                        </li>
+                    ))}
+                </ul>
             )}
-        </>
+        </section>
     );
 }

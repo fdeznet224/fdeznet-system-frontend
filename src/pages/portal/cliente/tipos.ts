@@ -24,6 +24,8 @@ export interface Resumen {
     telefono: string | null;
     correo: string | null;
     calendario: Calendario;
+    zona: string | null;
+    pago_efectivo: string | null;
 }
 
 export interface Factura {
@@ -41,4 +43,9 @@ export interface OpcionesPromesa { puede: boolean; motivo?: string; desde?: stri
 
 export interface Reporte { id: number; categoria: string | null; estado: string; creado: string | null; programado: string | null; terminado: string | null }
 
-export type Pestana = 'inicio' | 'pagos' | 'consumo' | 'red' | 'ayuda' | 'perfil';
+export interface PerfilFicha { id: string; nombre: string; precio: number; duracion: string | null }
+export interface FichaComprada { concepto: string; codigo: string | null; precio: number; fecha: string | null; facturada: boolean }
+export interface FichaNueva { folio: string; perfil: string; precio: number; codigo: string; clave: string | null }
+
+/** Inicio, Mis facturas, Mi WiFi y Perfil van en la barra; Consumo se abre desde Inicio. */
+export type Pestana = 'inicio' | 'facturas' | 'red' | 'perfil' | 'consumo';
