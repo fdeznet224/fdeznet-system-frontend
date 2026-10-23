@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import {
-    ArrowPathIcon, CheckCircleIcon, ChevronDownIcon, ComputerDesktopIcon, DevicePhoneMobileIcon, EyeIcon, EyeSlashIcon, PowerIcon, WifiIcon,
+    ArrowPathIcon, CheckCircleIcon, ChevronDownIcon, ComputerDesktopIcon, DevicePhoneMobileIcon, EyeIcon, EyeSlashIcon, PencilIcon, PowerIcon, WifiIcon,
 } from '@heroicons/react/24/outline';
 
 import portalClient from '@/api/portal';
 import { apiErrorMessage } from '@/utils/apiError';
-import { redesPorNombre, type EquipoRed, type EstadoRed } from '@/pages/clientes/components/miRed';
+import { nombreEquipo, redesPorNombre, type EquipoRed, type EstadoRed } from '@/pages/clientes/components/miRed';
 import { AVISO, BOTON, BOTON_SUAVE, CAMPO, ERROR, ETIQUETA, TARJETA, TITULO } from './ui';
 
 // La ONU tarda ~5 s; si en 25 s no hay respuesta, se confirma preguntando (20 veces cada 3 s).
@@ -18,7 +18,7 @@ interface Cambio { equipo: EquipoRed; bloquear: boolean; paso: 'confirmar' | 'ap
 
 /** Confirmar el bloqueo y esperar a que la ONU lo aplique, con la ventana abierta hasta el final. */
 function VentanaCambio({ cambio, color, onConfirmar, onCerrar }: { cambio: Cambio; color: string; onConfirmar: () => void; onCerrar: () => void }) {
-    const nombre = cambio.equipo.nombre || 'este equipo';
+    const nombre = nombreEquipo(cambio.equipo) || 'este equipo';
     const ocupada = cambio.paso === 'aplicando';
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center"
@@ -66,6 +66,56 @@ function VentanaCambio({ cambio, color, onConfirmar, onCerrar }: { cambio: Cambi
     );
 }
 
+/** Ponerle nombre a un equipo ("Celular de Juan") para reconocerlo al bloquear. Se guarda en el sistema, no en el módem. */
+function VentanaNombre({ equipo, color, onGuardado, onCerrar }: {
+    equipo: EquipoRed; color: string; onGuardado: (apodo: string | null) => void; onCerrar: () => void;
+}) {
+    const [nombre, setNombre] = useState(equipo.apodo ?? '');
+    const [guardando, setGuardando] = useState(false);
+
+    const guardar = async (valor: string) => {
+        setGuardando(true);
+        try {
+            const { data } = await portalClient.post<{ apodo: string | null }>('/portal/red/nombre', { mac: equipo.mac, nombre: valor });
+            onGuardado(data.apodo);
+        } catch (e) {
+            toast.error(apiErrorMessage(e, 'No se pudo guardar el nombre'));
+            setGuardando(false);
+        }
+    };
+
+    const detalle = [equipo.nombre || 'Equipo sin nombre', equipo.red?.split(' · ')[1] || (equipo.conexion === 'cable' ? 'Por cable' : null)].filter(Boolean).join(' · ');
+    return (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center"
+            role="dialog" aria-modal="true" aria-labelledby="titulo-nombre" onClick={() => { if (!guardando) onCerrar(); }}>
+            <form className={`${TARJETA} w-full max-w-sm space-y-4`} onClick={(e) => e.stopPropagation()}
+                onSubmit={(e) => { e.preventDefault(); void guardar(nombre); }}>
+                <div>
+                    <h2 id="titulo-nombre" className="text-lg font-semibold">Ponle nombre</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Así lo reconoces rápido, por ejemplo «Celular de Juan».</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-3 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                    <p className="font-medium text-slate-700 dark:text-slate-200">{detalle}</p>
+                    <p className="font-mono">{equipo.mac.toUpperCase()}</p>
+                </div>
+                <input value={nombre} onChange={(e) => setNombre(e.target.value)} autoFocus maxLength={40}
+                    placeholder="Nombre del equipo" aria-label="Nombre del equipo" className={CAMPO} />
+                <div className="flex gap-2">
+                    <button type="button" onClick={onCerrar} disabled={guardando} className={`${BOTON_SUAVE} flex-1`}>Cancelar</button>
+                    <button type="submit" disabled={guardando || !nombre.trim()} className={`${BOTON} h-11 flex-1 text-sm`} style={{ background: color }}>
+                        {guardando ? 'Guardando…' : 'Guardar'}
+                    </button>
+                </div>
+                {equipo.apodo && (
+                    <button type="button" onClick={() => void guardar('')} disabled={guardando} className="w-full text-center text-xs font-medium text-slate-500 underline dark:text-slate-400">
+                        Quitar el nombre
+                    </button>
+                )}
+            </form>
+        </div>
+    );
+}
+
 function Interruptor({ encendido, ocupado, onCambiar, etiqueta }: { encendido: boolean; ocupado: boolean; onCambiar: () => void; etiqueta: string }) {
     return (
         <button
@@ -77,19 +127,24 @@ function Interruptor({ encendido, ocupado, onCambiar, etiqueta }: { encendido: b
     );
 }
 
-function Equipo({ equipo, ocupado, onCambiar }: { equipo: EquipoRed; ocupado: boolean; onCambiar: () => void }) {
+function Equipo({ equipo, ocupado, onCambiar, onNombrar }: { equipo: EquipoRed; ocupado: boolean; onCambiar: () => void; onNombrar: () => void }) {
     const Icono = equipo.conexion === 'cable' ? ComputerDesktopIcon : DevicePhoneMobileIcon;
-    const nombre = equipo.nombre || 'Equipo sin nombre';
-    const detalle = equipo.bloqueado ? 'Sin internet' : equipo.conectado ? (equipo.red?.split(' · ')[1] || (equipo.conexion === 'cable' ? 'Por cable' : 'Conectado')) : 'Desconectado';
+    const nombre = nombreEquipo(equipo) || 'Equipo sin nombre';
+    const estado = equipo.bloqueado ? 'Sin internet' : equipo.conectado ? (equipo.red?.split(' · ')[1] || (equipo.conexion === 'cable' ? 'Por cable' : 'Conectado')) : 'Desconectado';
+    // Con nombre propio se deja ver el del equipo, para no confundirlo.
+    const detalle = equipo.apodo && equipo.nombre ? `${estado} · ${equipo.nombre}` : estado;
     return (
         <li className="flex items-center gap-3 py-3">
             <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${equipo.conectado && !equipo.bloqueado ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' : 'bg-slate-100/60 text-slate-400 dark:bg-slate-800/50'}`}>
                 <Icono className="h-5 w-5" />
             </span>
-            <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{nombre}</p>
-                <p className={`truncate text-xs ${equipo.bloqueado ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'}`}>{detalle}</p>
-            </div>
+            <button type="button" onClick={onNombrar} className="min-w-0 flex-1 text-left" aria-label={`Ponerle nombre a ${nombre}`}>
+                <span className="flex items-center gap-1.5">
+                    <span className="truncate text-sm font-medium">{nombre}</span>
+                    <PencilIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                </span>
+                <span className={`block truncate text-xs ${equipo.bloqueado ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'}`}>{detalle}</span>
+            </button>
             {equipo.bloqueado !== null && (
                 <Interruptor encendido={!equipo.bloqueado} ocupado={ocupado} onCambiar={onCambiar} etiqueta={`Internet de ${nombre}`} />
             )}
@@ -109,6 +164,7 @@ export default function RedPortal({ color }: { color: string }) {
     const [verDesconectados, setVerDesconectados] = useState(false);
     const [confirmarReinicio, setConfirmarReinicio] = useState(false);
     const [cambio, setCambio] = useState<Cambio | null>(null);
+    const [nombrando, setNombrando] = useState<EquipoRed | null>(null);
 
     const leer = useCallback(async () => {
         setCargando(true);
@@ -126,6 +182,12 @@ export default function RedPortal({ color }: { color: string }) {
         const t = window.setTimeout(() => void leer(), 0);
         return () => window.clearTimeout(t);
     }, [leer]);
+
+    const nombrado = (mac: string, apodo: string | null) => {
+        setEstado((actual) => actual && { ...actual, equipos: actual.equipos.map((e) => (e.mac === mac ? { ...e, apodo } : e)) });
+        setNombrando(null);
+        toast.success(apodo ? `Listo, ahora se llama ${apodo}` : 'Le quitamos el nombre');
+    };
 
     const pedirCambio = (equipo: EquipoRed) => setCambio({ equipo, bloquear: !equipo.bloqueado, paso: 'confirmar' });
 
@@ -254,10 +316,10 @@ export default function RedPortal({ color }: { color: string }) {
                         </div>
                     )}
                     {estado.bloqueo_disponible && activos.length > 0 && (
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Apaga el interruptor para quitarle el internet a un equipo.</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Apaga el interruptor para quitarle el internet a un equipo. Toca su nombre para cambiarlo.</p>
                     )}
                     <ul className="mt-2 divide-y divide-slate-100 dark:divide-slate-800" data-testid="equipos-portal">
-                        {activos.map((e) => <Equipo key={e.mac} equipo={e} ocupado={ocupado === e.mac} onCambiar={() => pedirCambio(e)} />)}
+                        {activos.map((e) => <Equipo key={e.mac} equipo={e} ocupado={ocupado === e.mac} onCambiar={() => pedirCambio(e)} onNombrar={() => setNombrando(e)} />)}
                         {activos.length === 0 && <li className="py-6 text-center text-sm text-slate-400">No hay equipos conectados ahora.</li>}
                     </ul>
                     {desconectados.length > 0 && (
@@ -268,7 +330,7 @@ export default function RedPortal({ color }: { color: string }) {
                             </button>
                             {verDesconectados && (
                                 <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                                    {desconectados.map((e) => <Equipo key={e.mac} equipo={e} ocupado={ocupado === e.mac} onCambiar={() => pedirCambio(e)} />)}
+                                    {desconectados.map((e) => <Equipo key={e.mac} equipo={e} ocupado={ocupado === e.mac} onCambiar={() => pedirCambio(e)} onNombrar={() => setNombrando(e)} />)}
                                 </ul>
                             )}
                         </>
@@ -309,6 +371,7 @@ export default function RedPortal({ color }: { color: string }) {
                 )}
             </section>
             )}
+            {nombrando && <VentanaNombre equipo={nombrando} color={color} onGuardado={(apodo) => nombrado(nombrando.mac, apodo)} onCerrar={() => setNombrando(null)} />}
             {cambio && <VentanaCambio cambio={cambio} color={color} onConfirmar={() => void aplicarCambio()} onCerrar={() => setCambio(null)} />}
         </div>
     );

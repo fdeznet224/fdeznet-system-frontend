@@ -2277,6 +2277,14 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await expect(page.getByRole('dialog')).toContainText('Galaxy-A56-5G tiene internet otra vez', { timeout: 10_000 })
   await expect(page.getByRole('dialog')).toBeHidden()
   await expect(interruptor).toHaveAttribute('aria-checked', 'true')
+  // Ponerle nombre para no equivocarse de equipo; el de la ONU se sigue viendo.
+  await page.route('**/api/portal/red/nombre', (route) => route.fulfill({ json: { mac: '7a:49:bf:ef:ce:78', apodo: route.request().postDataJSON().nombre } }))
+  await page.getByRole('button', { name: 'Ponerle nombre a Galaxy-A56-5G' }).click()
+  await expect(page.getByRole('dialog')).toContainText('7A:49:BF:EF:CE:78')
+  await page.getByLabel('Nombre del equipo').fill('Celular de Juan')
+  await page.getByRole('button', { name: 'Guardar' }).click()
+  await expect(page.getByRole('switch', { name: 'Internet de Celular de Juan' })).toBeVisible()
+  await expect(page.getByTestId('equipos-portal')).toContainText('Galaxy-A56-5G')
 
   // Perfil: cambiar el teléfono con el código que llega por WhatsApp.
   await page.route('**/api/portal/telefono/codigo', (route) => {

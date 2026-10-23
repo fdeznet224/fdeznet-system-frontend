@@ -7,7 +7,7 @@ import {
     BOTON_ACCION_PRIMARIO, BOTON_ACCION_SECUNDARIO, BOTON_ICONO, CAMPO, PILDORA, TARJETA, TITULO_SECCION,
 } from '@/components/ui/estilo';
 import { apiErrorMessage } from '@/utils/apiError';
-import { redesPorNombre, type AccesoPortal, type EquipoRed, type EstadoRed } from './miRed';
+import { nombreEquipo, redesPorNombre, type AccesoPortal, type EquipoRed, type EstadoRed } from './miRed';
 
 function hace(fecha: string | null) {
     if (!fecha) return 'nunca';
@@ -78,7 +78,7 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
                 ...actual,
                 equipos: actual.equipos.map((e) => ({ ...e, bloqueado: bloqueados.has(e.mac) })),
             });
-            toast.success(bloquearlo ? `${equipo.nombre || equipo.mac} quedó sin internet` : `${equipo.nombre || equipo.mac} tiene internet otra vez`);
+            toast.success(bloquearlo ? `${nombreEquipo(equipo) || equipo.mac} quedó sin internet` : `${nombreEquipo(equipo) || equipo.mac} tiene internet otra vez`);
         } catch (e) {
             toast.error(apiErrorMessage(e, 'La ONU no aceptó el cambio'));
         } finally {
@@ -188,10 +188,10 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
                                     : <WifiIcon className="h-5 w-5 shrink-0 text-slate-400" />}
                                 <div className="min-w-0 flex-1">
                                     <p className={`truncate text-sm font-semibold ${equipo.conectado ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
-                                        {equipo.nombre || 'Sin nombre'}
+                                        {nombreEquipo(equipo) || 'Sin nombre'}
                                     </p>
                                     <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                                        {[equipo.ip, equipo.mac, equipo.red].filter(Boolean).join(' · ')}
+                                        {[equipo.apodo && equipo.nombre, equipo.ip, equipo.mac, equipo.red].filter(Boolean).join(' · ')}
                                     </p>
                                 </div>
                                 {equipo.bloqueado

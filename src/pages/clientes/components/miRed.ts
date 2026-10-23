@@ -8,6 +8,8 @@ export interface EquipoRed {
     conexion: 'wifi' | 'cable' | null;
     red: string | null;
     bloqueado: boolean | null;
+    /** Nombre que le puso el cliente en su portal ("Celular de Juan"). */
+    apodo?: string | null;
 }
 
 export interface RedWifi {
@@ -30,6 +32,11 @@ export interface EstadoRed {
     redes: RedWifi[];
     bloqueo_disponible: boolean;
     error_bloqueo: string | null;
+}
+
+/** Primero el nombre que le puso el cliente; si no, el que da el equipo. */
+export function nombreEquipo(equipo: EquipoRed) {
+    return equipo.apodo || equipo.nombre || '';
 }
 
 /** Una red por nombre: el 2.4 y el 5 GHz con el mismo SSID comparten contraseña. */
