@@ -2255,8 +2255,11 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   } }))
   await page.route('**/api/portal/red/bloqueo', async (route) => {
     await new Promise((listo) => setTimeout(listo, 600))
-    await route.fulfill({ json: { bloqueados: route.request().postDataJSON().bloquear ? ['7a:49:bf:ef:ce:78'] : [] } })
+    // Al activar, la ONU reinicia el WiFi y la respuesta no llega al celular.
+    if (!route.request().postDataJSON().bloquear) return route.abort('connectionreset')
+    await route.fulfill({ json: { bloqueados: ['7a:49:bf:ef:ce:78'] } })
   })
+  await page.route('**/api/portal/red/bloqueados', (route) => route.fulfill({ json: { bloqueados: [] } }))
   await page.getByRole('button', { name: 'Mi WiFi' }).click()
   await expect(page.getByText('FdezNet-F1C8')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reiniciar' })).toBeVisible()
@@ -2268,9 +2271,10 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await expect(page.getByRole('dialog')).toContainText('Galaxy-A56-5G ya no tiene internet')
   await expect(page.getByRole('dialog')).toBeHidden()
   await expect(interruptor).toHaveAttribute('aria-checked', 'false')
-  // Y se vuelve a activar sin recargar.
+  // Y se vuelve a activar sin recargar, aunque la respuesta se pierda: se confirma con la ONU.
   await interruptor.click()
   await page.getByRole('button', { name: 'Sí, activar' }).click()
+  await expect(page.getByRole('dialog')).toContainText('Galaxy-A56-5G tiene internet otra vez', { timeout: 10_000 })
   await expect(page.getByRole('dialog')).toBeHidden()
   await expect(interruptor).toHaveAttribute('aria-checked', 'true')
 

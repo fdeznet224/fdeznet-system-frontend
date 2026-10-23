@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import {
     ArrowPathIcon, CheckCircleIcon, ChevronDownIcon, ComputerDesktopIcon, DevicePhoneMobileIcon, EyeIcon, EyeSlashIcon, PowerIcon, WifiIcon,
@@ -8,6 +9,10 @@ import portalClient from '@/api/portal';
 import { apiErrorMessage } from '@/utils/apiError';
 import { redesPorNombre, type EquipoRed, type EstadoRed } from '@/pages/clientes/components/miRed';
 import { AVISO, BOTON, BOTON_SUAVE, CAMPO, ERROR, ETIQUETA, TARJETA, TITULO } from './ui';
+
+// La ONU tarda ~5 s; si en 25 s no hay respuesta, se confirma preguntando (20 veces cada 3 s).
+const ESPERA_CAMBIO_MS = 25_000;
+const CONFIRMACIONES = 20;
 
 interface Cambio { equipo: EquipoRed; bloquear: boolean; paso: 'confirmar' | 'aplicando' | 'listo' | 'error'; error?: string }
 
@@ -37,7 +42,7 @@ function VentanaCambio({ cambio, color, onConfirmar, onCerrar }: { cambio: Cambi
                     <div className="space-y-3 py-4" aria-live="polite">
                         <ArrowPathIcon className="mx-auto h-8 w-8 animate-spin text-slate-400" />
                         <p id="titulo-cambio" className="text-base font-semibold">{cambio.bloquear ? 'Bloqueando dispositivo…' : 'Activando dispositivo…'}</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Lo estamos aplicando en tu módem, tarda unos segundos.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Lo estamos aplicando en tu módem. Tu WiFi puede desconectarse unos segundos; no cierres esta pantalla.</p>
                     </div>
                 )}
                 {cambio.paso === 'listo' && (
@@ -128,16 +133,36 @@ export default function RedPortal({ color }: { color: string }) {
         if (!cambio) return;
         const { equipo, bloquear } = cambio;
         setCambio({ ...cambio, paso: 'aplicando' });
+        const quedo = (lista: string[]) => lista.includes(equipo.mac) === bloquear;
+        let bloqueados: string[] | null = null;
         try {
-            // Responde cuando la ONU ya lo guardó: con eso se actualiza la lista, sin recargar.
-            const { data } = await portalClient.post<{ bloqueados: string[] }>('/portal/red/bloqueo', { mac: equipo.mac, bloquear });
-            const bloqueados = new Set(data.bloqueados);
-            setEstado((actual) => actual && { ...actual, equipos: actual.equipos.map((e) => ({ ...e, bloqueado: bloqueados.has(e.mac) })) });
-            setCambio({ ...cambio, paso: 'listo' });
-            window.setTimeout(() => setCambio(null), 1500);
+            const { data } = await portalClient.post<{ bloqueados: string[] }>('/portal/red/bloqueo', { mac: equipo.mac, bloquear }, { timeout: ESPERA_CAMBIO_MS });
+            bloqueados = data.bloqueados;
         } catch (e) {
-            setCambio({ ...cambio, paso: 'error', error: apiErrorMessage(e, 'Tu módem no aceptó el cambio') });
+            // Al guardar el filtro la ONU reinicia el WiFi y puede cortar a este mismo celular:
+            // la respuesta se pierde aunque el cambio sí quedó. Solo es error si el servidor contestó.
+            if (axios.isAxiosError(e) && e.response) {
+                setCambio({ ...cambio, paso: 'error', error: apiErrorMessage(e, 'Tu módem no aceptó el cambio') });
+                return;
+            }
         }
+        // Sin respuesta: se pregunta a la ONU hasta confirmar (o rendirse al minuto).
+        for (let intento = 0; !(bloqueados && quedo(bloqueados)) && intento < CONFIRMACIONES; intento++) {
+            await new Promise((listo) => window.setTimeout(listo, 3000));
+            try {
+                bloqueados = (await portalClient.get<{ bloqueados: string[] }>('/portal/red/bloqueados', { timeout: 15_000 })).data.bloqueados;
+            } catch {
+                bloqueados = null;
+            }
+        }
+        if (!bloqueados || !quedo(bloqueados)) {
+            setCambio({ ...cambio, paso: 'error', error: 'No pudimos confirmarlo con tu módem. Revisa en un momento con el botón de actualizar.' });
+            return;
+        }
+        const lista = new Set(bloqueados);
+        setEstado((actual) => actual && { ...actual, equipos: actual.equipos.map((e) => ({ ...e, bloqueado: lista.has(e.mac) })) });
+        setCambio({ ...cambio, paso: 'listo' });
+        window.setTimeout(() => setCambio(null), 1500);
     };
 
     const guardarClave = async (ssid: string) => {
