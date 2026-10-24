@@ -419,7 +419,7 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y cómo se le cobra',
       password_pppoe: 'clave123', ip: '10.10.9.60', onu: 'ZTEG00000001',
       senal: { potencia: '-19.50 dBm', estado: 'online', recomendacion: '¡Señal EXCELENTE!' },
       cambios: ['plan Plan 300 → Plan 400'],
-      wifi: { red: 'FdezNet-A7F2', clave: '48213590' },
+      wifi: { red: 'FdezNet-A7F2', clave: '48213590', automatica: true },
       meses_gratis: 1,
       cobro: {
         activacion: '2026-10-05',

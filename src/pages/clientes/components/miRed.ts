@@ -36,7 +36,7 @@ export interface EstadoRed {
 
 /** Configuración automática de la ONU de un cliente nuevo (PPPoE y WiFi con su contrato). */
 export interface OnuAutomatica {
-    estado: 'pendiente' | 'aplicado' | 'vencido' | 'error';
+    estado: 'pendiente' | 'aplicado' | 'vencido' | 'error' | 'manual';
     red: string;
     clave: string;
     detalle: string | null;

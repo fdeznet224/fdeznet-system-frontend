@@ -231,7 +231,7 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
                     <WifiIcon className="h-5 w-5 shrink-0 text-slate-400" />
                     <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-slate-900 dark:text-white">
-                            Configuración automática · {{ pendiente: 'esperando a la ONU', aplicado: 'hecha', vencido: 'la ONU no se reportó', error: 'la ONU la rechazó' }[automatica.estado]}
+                            Configuración automática · {{ pendiente: 'esperando a la ONU', aplicado: 'hecha', vencido: 'la ONU no se reportó', error: 'la ONU la rechazó', manual: 'a mano (ZTE)' }[automatica.estado]}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                             WiFi {automatica.red} · contraseña de instalación {automatica.clave}

@@ -67,7 +67,8 @@ interface Resultado {
     senal?: { potencia?: string; estado?: string; recomendacion?: string } | null;
     cambios: string[];
     /** WiFi que el sistema le pone solo a la ONU en cuanto se reporta (con el PPPoE del cliente). */
-    wifi?: { red: string; clave: string } | null;
+    /** automatica false: ZTE sin ACS, el técnico lo pone a mano. */
+    wifi?: { red: string; clave: string; automatica: boolean } | null;
     meses_gratis?: number;
     cobro?: Cobro | null;
 }
@@ -376,9 +377,9 @@ export default function TechActivar() {
                         <div>
                             <p className="font-bold text-emerald-700 dark:text-emerald-400">Servicio activo y orden cerrada</p>
                             <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80">
-                                {resultado.wifi
+                                {resultado.wifi?.automatica
                                     ? 'La ONU se configura sola en 1 o 2 minutos con su PPPoE y este WiFi; al cliente le llega por WhatsApp.'
-                                    : 'Configura el router del cliente con estos datos.'}
+                                    : 'Configura la ONU del cliente con estos datos.'}
                             </p>
                         </div>
                     </div>
