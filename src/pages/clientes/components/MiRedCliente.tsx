@@ -7,7 +7,7 @@ import {
     BOTON_ACCION_PRIMARIO, BOTON_ACCION_SECUNDARIO, BOTON_ICONO, CAMPO, PILDORA, TARJETA, TITULO_SECCION,
 } from '@/components/ui/estilo';
 import { apiErrorMessage } from '@/utils/apiError';
-import { nombreEquipo, redesPorNombre, type AccesoPortal, type EquipoRed, type EstadoRed } from './miRed';
+import { nombreEquipo, redesPorNombre, type AccesoPortal, type EquipoRed, type EstadoRed, type OnuAutomatica } from './miRed';
 
 function hace(fecha: string | null) {
     if (!fecha) return 'nunca';
@@ -25,6 +25,7 @@ function hace(fecha: string | null) {
 export default function MiRedCliente({ clienteId }: { clienteId: number }) {
     const base = `/clientes/${clienteId}/red`;
     const [acceso, setAcceso] = useState<AccesoPortal | null>(null);
+    const [automatica, setAutomatica] = useState<OnuAutomatica | null>(null);
     const [estado, setEstado] = useState<EstadoRed | null>(null);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -47,7 +48,21 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
 
     useEffect(() => {
         client.get<AccesoPortal>(`/clientes/${clienteId}/portal-acceso`).then(({ data }) => setAcceso(data)).catch(() => setAcceso(null));
+        client.get<OnuAutomatica | null>(`/clientes/${clienteId}/onu-automatica`).then(({ data }) => setAutomatica(data?.estado ? data : null)).catch(() => setAutomatica(null));
     }, [clienteId]);
+
+    const reintentarAutomatica = async () => {
+        setOcupado('automatica');
+        try {
+            const { data } = await client.post<OnuAutomatica>(`/clientes/${clienteId}/onu-automatica/reintentar`);
+            setAutomatica(data);
+            toast.success('Listo: en cuanto la ONU se reporte se configura sola.');
+        } catch (e) {
+            toast.error(apiErrorMessage(e, 'No se pudo reintentar'));
+        } finally {
+            setOcupado(null);
+        }
+    };
 
     const restablecerPortal = async () => {
         setOcupado('portal');
@@ -210,6 +225,26 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
                         ))}
                     </div>
                 </section>
+            )}
+            {automatica && (
+                <div className={`${TARJETA} flex items-center gap-3 p-4`} data-testid="onu-automatica">
+                    <WifiIcon className="h-5 w-5 shrink-0 text-slate-400" />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                            Configuración automática · {{ pendiente: 'esperando a la ONU', aplicado: 'hecha', vencido: 'la ONU no se reportó', error: 'la ONU la rechazó' }[automatica.estado]}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            WiFi {automatica.red} · contraseña de instalación {automatica.clave}
+                            {automatica.aplicado_en ? ` · ${hace(automatica.aplicado_en)}` : ''}
+                        </p>
+                        {automatica.detalle && <p className="text-xs text-amber-700 dark:text-amber-300">{automatica.detalle}</p>}
+                    </div>
+                    {(automatica.estado === 'vencido' || automatica.estado === 'error') && (
+                        <button type="button" onClick={() => void reintentarAutomatica()} disabled={ocupado === 'automatica'} className={BOTON_ACCION_SECUNDARIO}>
+                            {ocupado === 'automatica' ? '...' : 'Reintentar'}
+                        </button>
+                    )}
+                </div>
             )}
             {acceso && (
                 <div className={`${TARJETA} flex items-center gap-3 p-4`}>

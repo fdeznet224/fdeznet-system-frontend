@@ -34,6 +34,16 @@ export interface EstadoRed {
     error_bloqueo: string | null;
 }
 
+/** Configuración automática de la ONU de un cliente nuevo (PPPoE y WiFi con su contrato). */
+export interface OnuAutomatica {
+    estado: 'pendiente' | 'aplicado' | 'vencido' | 'error';
+    red: string;
+    clave: string;
+    detalle: string | null;
+    creado_en: string;
+    aplicado_en: string | null;
+}
+
 /** Primero el nombre que le puso el cliente; si no, el que da el equipo. */
 export function nombreEquipo(equipo: EquipoRed) {
     return equipo.apodo || equipo.nombre || '';

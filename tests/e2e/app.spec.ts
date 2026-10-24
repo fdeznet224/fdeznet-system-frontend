@@ -419,6 +419,7 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y cómo se le cobra',
       password_pppoe: 'clave123', ip: '10.10.9.60', onu: 'ZTEG00000001',
       senal: { potencia: '-19.50 dBm', estado: 'online', recomendacion: '¡Señal EXCELENTE!' },
       cambios: ['plan Plan 300 → Plan 400'],
+      wifi: { red: 'FdezNet-A7F2', clave: '48213590' },
       meses_gratis: 1,
       cobro: {
         activacion: '2026-10-05',
@@ -453,6 +454,10 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y cómo se le cobra',
 
   await expect(page.getByText('Servicio activo y orden cerrada')).toBeVisible()
   await expect(page.getByText('clave123')).toBeVisible()
+  // La ONU se configura sola: el técnico ve el WiFi que le llega al cliente.
+  await expect(page.getByText('FdezNet-A7F2')).toBeVisible()
+  await expect(page.getByText('48213590')).toBeVisible()
+  await expect(page.getByText(/La ONU se configura sola/)).toBeVisible()
   await expect(page.getByText('Calendario de cobro')).toBeVisible()
   await expect(page.getByText('Explicación para el cliente')).toBeVisible()
   await expect(page.getByText('Tiene 1 mes gratis: del 5 de octubre al 4 de noviembre no paga nada.')).toBeVisible()

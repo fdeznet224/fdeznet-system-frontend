@@ -66,6 +66,8 @@ interface Resultado {
     onu?: string | null;
     senal?: { potencia?: string; estado?: string; recomendacion?: string } | null;
     cambios: string[];
+    /** WiFi que el sistema le pone solo a la ONU en cuanto se reporta (con el PPPoE del cliente). */
+    wifi?: { red: string; clave: string } | null;
     meses_gratis?: number;
     cobro?: Cobro | null;
 }
@@ -360,6 +362,10 @@ export default function TechActivar() {
             ]),
             ['IP', resultado.ip],
             ['ONU', resultado.onu],
+            ...(resultado.wifi ? [
+                ['Red WiFi', resultado.wifi.red] as [string, string | null | undefined],
+                ['Contraseña WiFi', resultado.wifi.clave] as [string, string | null | undefined],
+            ] : []),
         ];
         return (
             <div className="min-h-screen bg-slate-50 pb-16 text-slate-900 dark:bg-slate-950 dark:text-white">
@@ -369,7 +375,11 @@ export default function TechActivar() {
                         <CheckCircleIcon className="h-10 w-10 shrink-0 text-emerald-600" />
                         <div>
                             <p className="font-bold text-emerald-700 dark:text-emerald-400">Servicio activo y orden cerrada</p>
-                            <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80">Configura el router del cliente con estos datos.</p>
+                            <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80">
+                                {resultado.wifi
+                                    ? 'La ONU se configura sola en 1 o 2 minutos con su PPPoE y este WiFi; al cliente le llega por WhatsApp.'
+                                    : 'Configura el router del cliente con estos datos.'}
+                            </p>
                         </div>
                     </div>
                     <div className={tarjeta}>
