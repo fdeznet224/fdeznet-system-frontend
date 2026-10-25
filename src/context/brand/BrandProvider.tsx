@@ -37,6 +37,10 @@ export function BrandProvider({ children }: { children: ReactNode }) {
     // El portal del cliente se instala como otra app (abre en /cliente).
     const deCliente = window.location.pathname.startsWith('/cliente');
     manifest.href = `/api/public/${deCliente ? 'manifest-cliente' : 'manifest'}.webmanifest?v=${encodeURIComponent(brand.color_primario)}`;
+    // iPhone no lee el nombre del manifiesto al "Agregar a inicio": toma este.
+    let tituloApp = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+    if (!tituloApp) { tituloApp = document.createElement('meta'); tituloApp.name = 'apple-mobile-web-app-title'; document.head.appendChild(tituloApp); }
+    tituloApp.content = deCliente ? 'Mi Internet' : brand.sistema_nombre;
     let theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (!theme) { theme = document.createElement('meta'); theme.name = 'theme-color'; document.head.appendChild(theme); }
     theme.content = brand.color_primario;
