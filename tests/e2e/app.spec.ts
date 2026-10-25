@@ -2309,3 +2309,34 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await expect(page.getByText('Número actualizado. Ahí te llegarán los avisos.')).toBeVisible()
   expect(enviados.telefono).toEqual([{ telefono: '993 111 2222' }, { codigo: '004321' }])
 })
+
+test('portal del cliente: avisa la falla en su zona y cómo va su reconexión después de pagar', async ({ page }) => {
+  await mockApi(page)
+  let estado: Record<string, unknown> = { falla: { alcance: 'caja', desde: new Date().toISOString(), afectados: 5 }, reconexion: null }
+  const reinicios: unknown[] = []
+  await page.route('**/api/portal/sesion', (route) => route.fulfill({ json: { debe_cambiar: false } }))
+  await page.route('**/api/portal/resumen', (route) => route.fulfill({ json: {
+    nombre: 'Francisca', contrato: 'F1C8', direccion: 'Paraíso', conectado: false, plan: null, saldo_a_favor: 0,
+    cuenta: { estado_servicio: 'activo', explicacion: 'Al corriente.', adeudos: [], promesa: null }, pagos: [],
+    datos_pago: null, tiene_onu: true, telefono: null, correo: null, zona: 'Paraíso', pago_efectivo: null,
+    calendario: { tipo: 'al_corriente', fecha: null, dias: null, vence: null, corte: null },
+  } }))
+  await page.route('**/api/portal/estado-servicio', (route) => route.fulfill({ json: estado }))
+  await page.route('**/api/portal/reiniciar', (route) => { reinicios.push(1); return route.fulfill({ json: { ok: true } }) })
+
+  await page.goto('/cliente/inicio')
+  await expect(page.getByTestId('falla-zona')).toContainText('Hay una falla en la caja de fibra de tu calle')
+  await expect(page.getByTestId('falla-zona')).toContainText('no necesitas reportarlo')
+
+  estado = { falla: null, reconexion: { etapa: 'reactivando', desde: null, conectado: false } }
+  await page.reload()
+  await expect(page.getByTestId('reconexion')).toContainText('Estamos reactivando tu servicio')
+  await expect(page.getByTestId('falla-zona')).toBeHidden()
+
+  estado = { falla: null, reconexion: { etapa: 'reactivado', desde: new Date().toISOString(), conectado: false } }
+  await page.reload()
+  await expect(page.getByTestId('reconexion')).toContainText('Tu servicio se reactivó a las')
+  await page.getByRole('button', { name: 'Reiniciar mi módem' }).click()
+  await expect(page.getByText('Tu módem se está reiniciando')).toBeVisible()
+  expect(reinicios).toHaveLength(1)
+})

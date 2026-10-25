@@ -49,3 +49,9 @@ export interface FichaNueva { folio: string; perfil: string; precio: number; cod
 
 /** Inicio, Mis facturas, Mi WiFi y Perfil van en la barra; Consumo se abre desde Inicio. */
 export type Pestana = 'inicio' | 'facturas' | 'red' | 'perfil' | 'consumo';
+
+/** Aviso de arriba en Inicio: falla en su zona o cómo va su reconexión tras un corte. */
+export interface EstadoServicio {
+    falla: { alcance: 'nodo' | 'troncal' | 'caja'; desde: string | null; afectados: number } | null;
+    reconexion: { etapa: 'revisando_comprobante' | 'reactivando' | 'reactivado'; desde: string | null; conectado: boolean } | null;
+}

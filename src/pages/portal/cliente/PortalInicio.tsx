@@ -12,6 +12,7 @@ import AyudaPortal from './AyudaPortal';
 import BienvenidaApp from './BienvenidaApp';
 import { mensajeCalendario } from './calendario';
 import ConsumoPortal from './ConsumoPortal';
+import EstadoServicioPortal from './EstadoServicioPortal';
 import PagosPortal from './PagosPortal';
 import PerfilPortal, { Notificaciones } from './PerfilPortal';
 import RedPortal from './RedPortal';
@@ -99,7 +100,7 @@ export default function PortalInicio() {
                 {error && <p className={ERROR}>{error}</p>}
                 {!resumen && !error && <div className={`${TARJETA} h-48 animate-pulse`} />}
 
-                {resumen && pestana === 'inicio' && <Inicio resumen={resumen} color={color} ir={ir} telefonoEmpresa={brand.empresa_telefono} />}
+                {resumen && pestana === 'inicio' && <Inicio resumen={resumen} color={color} ir={ir} telefonoEmpresa={brand.empresa_telefono} onCambio={cargar} />}
                 {resumen && pestana === 'consumo' && <ConsumoPortal nombre={resumen.nombre} color={color} />}
                 {resumen && pestana === 'facturas' && <PagosPortal resumen={resumen} color={color} onCambio={cargar} />}
                 {resumen && pestana === 'red' && (resumen.tiene_onu
@@ -133,7 +134,7 @@ export default function PortalInicio() {
     );
 }
 
-function Inicio({ resumen, color, ir, telefonoEmpresa }: { resumen: Resumen; color: string; ir: (p: Pestana) => void; telefonoEmpresa: string | null }) {
+function Inicio({ resumen, color, ir, telefonoEmpresa, onCambio }: { resumen: Resumen; color: string; ir: (p: Pestana) => void; telefonoEmpresa: string | null; onCambio: () => void }) {
     const [mes, setMes] = useState<number | null>(null);
     const [ahora, setAhora] = useState<number | null>(null);
     const bajada = resumen.plan ? velocidad(resumen.plan.bajada_kbps) : null;
@@ -155,6 +156,7 @@ function Inicio({ resumen, color, ir, telefonoEmpresa }: { resumen: Resumen; col
 
     return (
         <>
+            <EstadoServicioPortal color={color} tieneOnu={resumen.tiene_onu} onReactivado={onCambio} />
             <section className={TARJETA} data-testid="plan-portal">
                 <div className="flex items-center justify-between">
                     <p className={ETIQUETA}>Tu plan</p>
