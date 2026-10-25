@@ -6,6 +6,7 @@ import portalClient from '@/api/portal';
 import { useBrand } from '@/context/brand/useBrand';
 import { apiErrorMessage } from '@/utils/apiError';
 import CambiarClavePortal from './CambiarClavePortal';
+import InstalarApp from './InstalarApp';
 import { BOTON, CAMPO, ERROR, ETIQUETA, FONDO, TARJETA, cambiarTema } from './ui';
 
 /**
@@ -108,6 +109,7 @@ export default function PortalEntrada() {
                         </p>
                     </form>
                 )}
+                {!debeCambiar && <InstalarApp color={brand.color_primario} />}
             </main>
         </div>
     );

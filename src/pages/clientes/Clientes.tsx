@@ -31,6 +31,8 @@ interface ClienteUnificado {
     identificador_onu?: string;
     tipo_conexion?: 'fibra' | 'radio';
     antena?: Antena | null;
+    /** Portal del cliente: ya puso su contraseña y en cuántos celulares recibe avisos. */
+    app?: { activa: boolean; ultimo_acceso: string | null; notificaciones: number };
     servicio: {
         plan_nombre: string;
         precio_plan: number;
@@ -62,7 +64,7 @@ interface DashboardStatusResponse {
     detalle_clientes?: Record<string, DashboardClientStatus>;
 }
 
-type ClientFilter = 'todos' | 'online' | 'offline' | 'potencia_alta' | 'potencia_normal' | 'senal_bajo' | 'suspendidos' | 'activos' | 'morosos' | 'radio' | 'fibra' | 'antena_caida';
+type ClientFilter = 'todos' | 'online' | 'offline' | 'potencia_alta' | 'potencia_normal' | 'senal_bajo' | 'suspendidos' | 'activos' | 'morosos' | 'radio' | 'fibra' | 'antena_caida' | 'usa_app' | 'sin_app';
 
 /** Última potencia óptica leída de la OLT (se lee cada hora). */
 interface Potencia { rx: number; nivel: 'alta' | 'normal'; fecha: string | null }
@@ -84,6 +86,21 @@ function IconoConexion({ tipo }: { tipo?: 'fibra' | 'radio' }) {
             className="shrink-0 select-none text-sm leading-none"
         >
             {radio ? '📡' : '⚡'}
+        </span>
+    );
+}
+
+/** 📱 si ya entra a la app del cliente; atenuado si no le llegan las notificaciones. */
+function IconoApp({ app }: { app?: ClienteUnificado['app'] }) {
+    if (!app?.activa) return null;
+    const avisos = app.notificaciones > 0;
+    return (
+        <span
+            className={`shrink-0 text-xs leading-none ${avisos ? '' : 'opacity-40 grayscale'}`}
+            title={avisos ? 'Usa la app y recibe los avisos como notificación' : 'Usa la app, sin notificaciones'}
+            aria-label={avisos ? 'Usa la app con notificaciones' : 'Usa la app sin notificaciones'}
+        >
+            📱
         </span>
     );
 }
@@ -166,7 +183,7 @@ interface ClientModalState {
     modo?: ToolMode;
 }
 
-const mobileStatusFilters: ClientFilter[] = ['todos', 'online', 'offline', 'potencia_alta', 'potencia_normal', 'radio', 'fibra', 'antena_caida', 'suspendidos', 'morosos'];
+const mobileStatusFilters: ClientFilter[] = ['todos', 'online', 'offline', 'potencia_alta', 'potencia_normal', 'radio', 'fibra', 'antena_caida', 'suspendidos', 'morosos', 'usa_app', 'sin_app'];
 
 export default function Clientes() {
     const [clientes, setClientes] = useState<ClienteUnificado[]>([]);
@@ -281,6 +298,8 @@ export default function Clientes() {
             if (filtroEstado === 'radio') return c.tipo_conexion === 'radio';
             if (filtroEstado === 'fibra') return c.tipo_conexion !== 'radio';
             if (filtroEstado === 'antena_caida') return c.tipo_conexion === 'radio' && c.antena?.responde === false;
+            if (filtroEstado === 'usa_app') return c.app?.activa === true;
+            if (filtroEstado === 'sin_app') return !c.app?.activa;
 
             return true;
         });
@@ -299,6 +318,7 @@ export default function Clientes() {
         morosos: clientes.filter(c => c.finanzas.total_deuda > 0).length,
         radio: clientes.filter(c => c.tipo_conexion === 'radio').length,
         antenaCaida: clientes.filter(c => c.tipo_conexion === 'radio' && c.antena?.responde === false).length,
+        usaApp: clientes.filter(c => c.app?.activa).length,
     }), [clientes, onlineStatus, potencias, cambiosSenal]);
 
     // Contadores de arriba: tocar uno filtra la lista; tocarlo otra vez la muestra completa.
@@ -311,6 +331,7 @@ export default function Clientes() {
         { filtro: 'suspendidos', valor: resumen.suspendidos, texto: 'Suspendidos', tono: 'ambar' },
         ...(resumen.radio > 0 ? [{ filtro: 'radio' as ClientFilter, valor: resumen.radio, texto: 'Radioenlace', tono: 'violeta' as Tono }] : []),
         ...(resumen.antenaCaida > 0 ? [{ filtro: 'antena_caida' as ClientFilter, valor: resumen.antenaCaida, texto: 'Antena no responde', tono: 'rojo' as Tono }] : []),
+        ...(resumen.usaApp > 0 ? [{ filtro: 'usa_app' as ClientFilter, valor: resumen.usaApp, texto: 'Usan la app', tono: 'azul' as Tono }] : []),
     ];
     const hayFiltros = Boolean(filtroRouter || filtroZona || filtroEstado !== 'todos');
     const SELECTOR = 'h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
@@ -484,7 +505,7 @@ export default function Clientes() {
                                     return (
                                         <tr key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className="group cursor-pointer align-top transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                             <td className="px-4 py-3">
-                                                <div className="flex items-center gap-1.5 font-semibold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400"><IconoConexion tipo={c.tipo_conexion} />{c.nombre}</div>
+                                                <div className="flex items-center gap-1.5 font-semibold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400"><IconoConexion tipo={c.tipo_conexion} />{c.nombre}<IconoApp app={c.app} /></div>
                                                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                                                     <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200" title="Número de contrato">{c.cedula || 'Sin contrato'}</span>
                                                     <span className="inline-flex items-center gap-1"><MapPinIcon className="h-3.5 w-3.5" />{c.zona || 'Sin zona'}</span>
@@ -534,7 +555,7 @@ export default function Clientes() {
                                 <article key={c.id} onClick={() => setDetailModal({ show: true, cliente: c })} className={`${TARJETA} p-4 transition active:scale-[0.99]`}>
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="min-w-0">
-                                            <h3 className="flex items-center gap-1.5 font-semibold leading-tight text-slate-900 dark:text-white"><IconoConexion tipo={c.tipo_conexion} /><span className="truncate">{c.nombre}</span></h3>
+                                            <h3 className="flex items-center gap-1.5 font-semibold leading-tight text-slate-900 dark:text-white"><IconoConexion tipo={c.tipo_conexion} /><span className="truncate">{c.nombre}</span><IconoApp app={c.app} /></h3>
                                             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                                                 <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{c.cedula || 'Sin contrato'}</span>
                                                 <span className="inline-flex items-center gap-1"><MapPinIcon className="h-3.5 w-3.5" />{c.zona || 'Sin zona'}</span>
@@ -618,6 +639,8 @@ const NOMBRE_FILTRO: Record<ClientFilter, string> = {
     radio: 'Radioenlace',
     fibra: 'Fibra óptica',
     antena_caida: 'Antena no responde',
+    usa_app: 'Usan la app',
+    sin_app: 'No usan la app',
 };
 
 function ConexionCliente({ status }: { status?: OnlineStatus }) {

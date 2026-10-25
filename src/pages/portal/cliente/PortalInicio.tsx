@@ -9,6 +9,7 @@ import { useBrand } from '@/context/brand/useBrand';
 import { apiErrorMessage } from '@/utils/apiError';
 import { datos } from '@/pages/clientes/components/consumo';
 import AyudaPortal from './AyudaPortal';
+import BienvenidaApp from './BienvenidaApp';
 import { mensajeCalendario } from './calendario';
 import ConsumoPortal from './ConsumoPortal';
 import PagosPortal from './PagosPortal';
@@ -108,6 +109,8 @@ export default function PortalInicio() {
                     <PerfilPortal resumen={resumen} color={color} telefonoEmpresa={brand.empresa_telefono} onCambio={cargar} onSalir={() => void salir()} />
                 )}
             </main>
+
+            {resumen && <BienvenidaApp color={color} />}
 
             <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200/60 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-white/5 dark:bg-slate-950/90">
                 <div className="mx-auto grid max-w-lg grid-cols-4 px-2">

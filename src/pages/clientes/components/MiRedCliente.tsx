@@ -254,7 +254,9 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                             {!acceso.contrato ? 'Sin contrato: no puede entrar al portal.'
                                 : acceso.activado
-                                    ? `Entra en /cliente con el contrato ${acceso.contrato} y su contraseña · último acceso ${hace(acceso.ultimo_acceso)}`
+                                    ? `Usa la app · último acceso ${hace(acceso.ultimo_acceso)} · ${acceso.notificaciones
+                                        ? `avisos activos en ${acceso.notificaciones === 1 ? '1 celular' : `${acceso.notificaciones} celulares`}`
+                                        : 'sin notificaciones (los avisos le llegan solo por WhatsApp)'}`
                                     : `Aún no entra. La primera vez usa su contrato ${acceso.contrato} como contraseña y pone una suya.`}
                         </p>
                     </div>

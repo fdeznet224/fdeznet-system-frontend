@@ -66,4 +66,6 @@ export interface AccesoPortal {
     contrato: string | null;
     activado: boolean;
     ultimo_acceso: string | null;
+    /** Celulares donde le llegan los avisos como notificación. */
+    notificaciones: number;
 }
