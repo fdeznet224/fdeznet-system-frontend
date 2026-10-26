@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogPanel } from '@headlessui/react';
-import { ArrowRightIcon, MagnifyingGlassIcon, UserIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ChevronRightIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
+import { CuadroIcono, Lista } from '@/components/ui/Pagina';
 import type { AppRole } from '@/utils/roles';
-import { itemsDelRol, sinAcentos, type ItemNav } from './navegacion';
+import { gruposDelRol, itemsDelRol, sinAcentos, type ItemNav } from './navegacion';
 
 export interface ClienteEncontrado {
     id: number;
@@ -63,17 +64,18 @@ export default function BuscadorGlobal({ abierto, rol, onCerrar, onCliente, onSe
         return () => { vigente = false; window.clearTimeout(espera); };
     }, [texto]);
 
-    const secciones = useMemo(() => {
+    // Sin texto se ven todas las secciones agrupadas, como en Más; al escribir, solo las que coinciden.
+    const grupos = useMemo(() => {
         const consulta = sinAcentos(texto.trim());
-        const todas = itemsDelRol(rol);
-        if (!consulta) return todas.slice(0, 6);
-        return todas.filter((item) => sinAcentos(`${item.nombre} ${item.palabras || ''}`).includes(consulta)).slice(0, 5);
+        if (!consulta) return gruposDelRol(rol);
+        const items = itemsDelRol(rol).filter((item) => sinAcentos(`${item.nombre} ${item.palabras || ''}`).includes(consulta)).slice(0, 8);
+        return items.length ? [{ nombre: 'Secciones', items }] : [];
     }, [texto, rol]);
 
     const resultados: Resultado[] = useMemo(() => [
         ...clientes.map((cliente) => ({ tipo: 'cliente' as const, cliente })),
-        ...secciones.map((item) => ({ tipo: 'seccion' as const, item })),
-    ], [clientes, secciones]);
+        ...grupos.flatMap((grupo) => grupo.items.map((item) => ({ tipo: 'seccion' as const, item }))),
+    ], [clientes, grupos]);
 
     useEffect(() => { setMarcado(0); }, [resultados.length]);
 
@@ -101,74 +103,76 @@ export default function BuscadorGlobal({ abierto, rol, onCerrar, onCliente, onSe
 
     const consultaCorta = texto.trim().length > 0 && texto.trim().length < 3;
 
+    const fila = (indice: number) => `flex min-h-[52px] w-full items-center gap-3 px-3.5 py-2 text-left transition active:bg-slate-100 dark:active:bg-slate-800 ${indice === marcado ? 'sm:bg-blue-50 sm:dark:bg-blue-500/10' : ''}`;
+    let indiceSeccion = clientes.length;
+
     return (
         <Dialog open={abierto} onClose={onCerrar} aria-label="Buscador" className="fixed inset-0 z-[90]">
             <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm" aria-hidden="true" />
-            <div className="fixed inset-0 flex items-start justify-center sm:p-4 sm:pt-[12vh]">
-                <DialogPanel className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl dark:bg-slate-900 sm:h-auto sm:max-h-[70vh] sm:max-w-xl sm:rounded-2xl sm:border sm:border-slate-200 sm:dark:border-slate-800">
-                    <div className="flex items-center gap-3 border-b border-slate-100 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] dark:border-slate-800 sm:pt-3">
-                        <MagnifyingGlassIcon className={`h-5 w-5 shrink-0 ${buscando ? 'animate-pulse text-blue-500' : 'text-slate-400'}`} />
-                        <input
-                            autoFocus
-                            type="text"
-                            role="searchbox"
-                            enterKeyHint="search"
-                            aria-label="Buscar cliente o sección"
-                            placeholder="Buscar cliente o sección..."
-                            value={texto}
-                            onChange={(evento) => setTexto(evento.target.value)}
-                            onKeyDown={teclas}
-                            className="h-10 min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
-                        />
-                        <button type="button" onClick={onCerrar} aria-label="Cerrar buscador" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white">
-                            <XMarkIcon className="h-5 w-5" />
+            <div className="fixed inset-0 flex items-start justify-center sm:p-4 sm:pt-[10vh]">
+                <DialogPanel className="flex h-[100dvh] w-full flex-col overflow-hidden bg-fondo shadow-2xl dark:bg-slate-950 sm:h-auto sm:max-h-[76vh] sm:max-w-xl sm:rounded-3xl">
+                    <div className="flex items-center gap-3 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:pt-4">
+                        <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl bg-[#e4e4ea] px-3 focus-within:ring-2 focus-within:ring-blue-500/40 dark:bg-slate-800">
+                            <MagnifyingGlassIcon className={`h-5 w-5 shrink-0 ${buscando ? 'animate-pulse text-blue-500' : 'text-[#8e8e93]'}`} />
+                            <input
+                                autoFocus
+                                type="text"
+                                role="searchbox"
+                                enterKeyHint="search"
+                                aria-label="Buscar cliente o sección"
+                                placeholder="Cliente o sección"
+                                value={texto}
+                                onChange={(evento) => setTexto(evento.target.value)}
+                                onKeyDown={teclas}
+                                className="h-full min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-[#8e8e93] dark:text-white"
+                            />
+                        </label>
+                        <button type="button" onClick={onCerrar} aria-label="Cerrar buscador" className="shrink-0 text-[16px] font-semibold text-blue-600 dark:text-blue-400">
+                            Cancelar
                         </button>
                     </div>
 
-                    <div ref={lista} className="flex-1 overflow-y-auto p-2">
-                        {clientes.length > 0 && <p className="px-3 pb-1 pt-2 text-xs font-semibold text-slate-400">Clientes</p>}
-                        {resultados.map((resultado, indice) => {
-                            const activo = indice === marcado;
-                            const clase = `flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${activo ? 'bg-blue-50 dark:bg-blue-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'}`;
-                            if (resultado.tipo === 'cliente') {
-                                const c = resultado.cliente;
-                                return (
-                                    <button key={`c${c.id}`} type="button" data-indice={indice} onMouseEnter={() => setMarcado(indice)} onClick={() => elegir(resultado)} className={clase}>
-                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                            {c.nombre.charAt(0).toUpperCase() || <UserIcon className="h-4 w-4" />}
-                                        </span>
+                    <div ref={lista} className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-1">
+                        {clientes.length > 0 && (
+                            <Lista titulo="Clientes">
+                                {clientes.map((c, indice) => (
+                                    <button key={`c${c.id}`} type="button" data-indice={indice} onMouseEnter={() => setMarcado(indice)} onClick={() => elegir(resultados[indice])} className={fila(indice)}>
+                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-bold uppercase text-white">{c.nombre.charAt(0) || '?'}</span>
                                         <span className="min-w-0 flex-1">
-                                            <span className="block truncate text-sm font-semibold text-slate-900 dark:text-white">{c.nombre}</span>
-                                            <span className="block truncate text-xs text-slate-500">{[c.cedula, c.telefono].filter(Boolean).join(' · ') || `Cliente #${c.id}`}</span>
+                                            <span className="block truncate text-[15px] font-semibold text-slate-900 dark:text-white">{c.nombre}</span>
+                                            <span className="block truncate text-[13px] text-[#5b6170] dark:text-slate-400">{[c.cedula, c.telefono].filter(Boolean).join(' · ') || `Cliente #${c.id}`}</span>
                                         </span>
                                         <span className="flex shrink-0 flex-col items-end gap-0.5">
                                             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${c.estado === 'activo' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'}`}>{c.estado}</span>
                                             {c.total_deuda > 0 && <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">Debe ${c.total_deuda}</span>}
                                         </span>
+                                        <ChevronRightIcon className="h-4 w-4 shrink-0 text-[#a1a1aa]" aria-hidden="true" />
                                     </button>
-                                );
-                            }
-                            const { item } = resultado;
-                            const primeraSeccion = indice === clientes.length;
-                            return (
-                                <div key={item.ruta}>
-                                    {primeraSeccion && <p className="px-3 pb-1 pt-2 text-xs font-semibold text-slate-400">{texto.trim() ? 'Secciones' : 'Ir a'}</p>}
-                                    <button type="button" data-indice={indice} onMouseEnter={() => setMarcado(indice)} onClick={() => elegir(resultado)} className={clase}>
-                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-300">
-                                            <item.icono className="h-4 w-4" />
-                                        </span>
-                                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{item.nombre}</span>
-                                        <ArrowRightIcon className={`h-4 w-4 shrink-0 ${activo ? 'text-blue-500' : 'text-slate-300 dark:text-slate-600'}`} />
-                                    </button>
-                                </div>
-                            );
-                        })}
-                        {consultaCorta && <p className="px-3 py-3 text-xs text-slate-500">Escribe al menos 3 letras para buscar clientes.</p>}
+                                ))}
+                            </Lista>
+                        )}
+
+                        {grupos.map((grupo) => (
+                            <Lista key={grupo.nombre} titulo={grupo.nombre}>
+                                {grupo.items.map((item) => {
+                                    const indice = indiceSeccion++;
+                                    return (
+                                        <button key={item.ruta} type="button" data-indice={indice} onMouseEnter={() => setMarcado(indice)} onClick={() => elegir(resultados[indice])} className={fila(indice)}>
+                                            <CuadroIcono icono={item.icono} tono={item.tono} />
+                                            <span className="min-w-0 flex-1 truncate text-[15px] text-slate-900 dark:text-white">{item.nombre}</span>
+                                            <ChevronRightIcon className="h-4 w-4 shrink-0 text-[#a1a1aa]" aria-hidden="true" />
+                                        </button>
+                                    );
+                                })}
+                            </Lista>
+                        ))}
+
+                        {consultaCorta && <p className="px-1 text-[13px] text-[#5b6170] dark:text-slate-400">Escribe al menos 3 letras para buscar clientes.</p>}
                         {!buscando && texto.trim().length >= 3 && resultados.length === 0 && (
-                            <p className="px-3 py-10 text-center text-sm font-semibold text-slate-500">Sin coincidencias</p>
+                            <p className="py-10 text-center text-[15px] font-semibold text-[#5b6170] dark:text-slate-400">Sin coincidencias</p>
                         )}
                     </div>
-                    <div className="hidden items-center gap-4 border-t border-slate-100 px-4 py-2 text-xs text-slate-400 dark:border-slate-800 sm:flex">
+                    <div className="hidden items-center gap-4 px-5 pb-3 text-xs text-[#8e8e93] sm:flex">
                         <span><kbd className="font-sans font-semibold">↑ ↓</kbd> moverse</span>
                         <span><kbd className="font-sans font-semibold">Enter</kbd> abrir</span>
                         <span><kbd className="font-sans font-semibold">Esc</kbd> cerrar</span>
