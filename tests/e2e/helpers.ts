@@ -242,6 +242,12 @@ export async function mockApi(page: Page) {
           ordenes_instalacion: 2, ordenes_reparacion: 4, routers_conectados: 3, routers_desconectados: 1, clientes_activos: 198,
         },
       }
+    } else if (url.pathname.endsWith('/dashboard/olts')) {
+      body = {
+        olts_en_linea: 2, olts_fuera: 1, olts_fuera_nombres: ['OLT Paraíso'],
+        onu_en_linea: 180, onu_fuera: 2, onu_potencia_baja: 1,
+        clientes_onu_fuera: [1, 2], clientes_potencia_baja: [1],
+      }
     } else if (url.pathname.endsWith('/dashboard/clientes-online-detalle')) {
       body = {
         metricas: {

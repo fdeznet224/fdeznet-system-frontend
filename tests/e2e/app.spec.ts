@@ -89,6 +89,11 @@ test('carga el panel principal con sus contratos tipados', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Últimos cobros' })).toBeVisible()
   await expect(page.getByText(/Admin E2E/).filter({ visible: true })).toHaveCount(1)
   await expect(page.getByRole('heading', { name: 'Servidor' })).toBeVisible()
+
+  // Monitoreo OLT: la OLT caída por nombre y las ONU caídas llevan a esos clientes.
+  await expect(page.getByRole('link', { name: /OLT fuera de línea/ })).toContainText('OLT Paraíso')
+  await page.getByRole('link', { name: /ONU fuera de línea/ }).click()
+  await expect(page).toHaveURL(/\/admin\/clientes\?revisar=1,2$/)
   await expect(page.getByRole('link', { name: 'Terminal de Cobro' })).toHaveCount(0)
 })
 

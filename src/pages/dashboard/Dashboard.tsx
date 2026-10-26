@@ -6,7 +6,8 @@ import {
     UsersIcon, CurrencyDollarIcon, ServerIcon, ArrowPathIcon,
     CpuChipIcon, ExclamationTriangleIcon, BanknotesIcon, UserPlusIcon,
     PauseIcon, CircleStackIcon, WifiIcon, ArrowUpRightIcon, DocumentTextIcon,
-    WrenchScrewdriverIcon, SignalSlashIcon, DocumentCheckIcon, UserGroupIcon, ChevronRightIcon
+    WrenchScrewdriverIcon, SignalSlashIcon, DocumentCheckIcon, UserGroupIcon, ChevronRightIcon,
+    SignalIcon, BoltSlashIcon, CheckCircleIcon, XCircleIcon
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 
@@ -76,6 +77,17 @@ interface DashboardData {
     };
 }
 
+interface ResumenOlts {
+    olts_en_linea: number;
+    olts_fuera: number;
+    olts_fuera_nombres: string[];
+    onu_en_linea: number;
+    onu_fuera: number;
+    onu_potencia_baja: number;
+    clientes_onu_fuera: number[];
+    clientes_potencia_baja: number[];
+}
+
 interface RouterSummary {
     id: number;
     nombre: string;
@@ -92,6 +104,7 @@ export default function Dashboard() {
     const [isPosOpen, setIsPosOpen] = useState(false);
     const [isCreateClientOpen, setIsCreateClientOpen] = useState(false);
     const [routersList, setRoutersList] = useState<RouterSummary[]>([]);
+    const [olts, setOlts] = useState<ResumenOlts | null>(null);
 
     const fetchData = useCallback(async () => {
         try {
@@ -112,6 +125,14 @@ export default function Dashboard() {
             console.error(error);
             setLoading(false);
         }
+    }, []);
+
+    // Leer las OLT tarda unos segundos: va aparte para no detener Inicio.
+    useEffect(() => {
+        const leer = () => client.get<ResumenOlts>('/dashboard/olts').then(({ data }) => setOlts(data)).catch(() => undefined);
+        void leer();
+        const intervalo = setInterval(leer, 60000);
+        return () => clearInterval(intervalo);
     }, []);
 
     useEffect(() => {
@@ -171,7 +192,8 @@ export default function Dashboard() {
             )}
 
             {/* Cuatro tarjetas: el número del día arriba y su total abajo. */}
-            <div className="-mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+            {/* En el celular van en una fila que se desliza de lado. */}
+            <div className="-mx-4 -mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4 lg:gap-4 [&::-webkit-scrollbar]:hidden">
                 <TarjetaDoble
                     icono={WifiIcon} tono="verde" a="/admin/clientes"
                     titulo="Clientes en línea" valor={metricas.clientes_online_mikrotik || 0} detalle="Conectados al MikroTik"
@@ -242,17 +264,21 @@ export default function Dashboard() {
                 </div>
             </section>
 
-            <Lista titulo="Servidor" className="lg:max-w-[calc(50%-0.5rem)]">
-                <FilaLista icono={CpuChipIcon} tono="azul" titulo="Procesador" valor={`${data.servidor.cpu_percent}%`}>
-                    <Barra porcentaje={data.servidor.cpu_percent} />
-                </FilaLista>
-                <FilaLista icono={CircleStackIcon} tono="violeta" titulo="Memoria" valor={`${data.servidor.ram_usada_percent}%`}>
-                    <Barra porcentaje={data.servidor.ram_usada_percent} />
-                </FilaLista>
-                <FilaLista icono={ServerIcon} tono="verde" titulo="Disco libre" valor={`${data.servidor.disco_libre_percent}%`}>
-                    <Barra porcentaje={100 - data.servidor.disco_libre_percent} />
-                </FilaLista>
-            </Lista>
+            <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+                <MonitoreoOlt olts={olts} />
+
+                <Lista titulo="Servidor">
+                    <FilaLista icono={CpuChipIcon} tono="azul" titulo="Procesador" valor={`${data.servidor.cpu_percent}%`}>
+                        <Barra porcentaje={data.servidor.cpu_percent} />
+                    </FilaLista>
+                    <FilaLista icono={CircleStackIcon} tono="violeta" titulo="Memoria" valor={`${data.servidor.ram_usada_percent}%`}>
+                        <Barra porcentaje={data.servidor.ram_usada_percent} />
+                    </FilaLista>
+                    <FilaLista icono={ServerIcon} tono="verde" titulo="Disco libre" valor={`${data.servidor.disco_libre_percent}%`}>
+                        <Barra porcentaje={100 - data.servidor.disco_libre_percent} />
+                    </FilaLista>
+                </Lista>
+            </div>
 
             {/* ================= MODALES ================= */}
             <Transition appear show={isPosOpen} as={Fragment}>
@@ -284,7 +310,7 @@ function TarjetaDoble({ icono, tono, titulo, valor, detalle, abajo, valorAbajo, 
     a: string;
 }) {
     return (
-        <Link to={a} className={`${TARJETA} group relative flex flex-col overflow-hidden p-4 transition hover:shadow-md active:scale-[0.99]`}>
+        <Link to={a} className={`${TARJETA} group relative flex w-[72%] shrink-0 snap-start flex-col overflow-hidden p-4 sm:w-auto transition hover:shadow-md active:scale-[0.99]`}>
             <span className={`absolute inset-x-0 top-0 h-1 ${CUADRO_TONO[tono]}`} aria-hidden="true" />
             <span className="flex items-center gap-2.5">
                 <CuadroIcono icono={icono} tono={tono} />
@@ -298,6 +324,35 @@ function TarjetaDoble({ icono, tono, titulo, valor, detalle, abajo, valorAbajo, 
                 <span className={`shrink-0 text-[15px] font-bold tabular-nums ${tonoAbajo ? TEXTO_TONO[tonoAbajo] : 'text-slate-900 dark:text-white'}`}>{valorAbajo}</span>
             </span>
         </Link>
+    );
+}
+
+/** OLT y ONU de los clientes; cada renglón lleva a esos clientes en Clientes. */
+function MonitoreoOlt({ olts }: { olts: ResumenOlts | null }) {
+    const leyendo = olts === null;
+    const cifra = (valor?: number) => (leyendo ? '…' : valor ?? 0);
+    const aClientes = (ids?: number[]) => (ids && ids.length ? `/admin/clientes?revisar=${ids.join(',')}` : undefined);
+    const caidas = olts?.olts_fuera ?? 0;
+    const onuFuera = olts?.onu_fuera ?? 0;
+    const baja = olts?.onu_potencia_baja ?? 0;
+    return (
+        <Lista titulo="Monitoreo OLT" pie={leyendo ? 'Leyendo las OLT…' : 'Se actualiza cada minuto.'}>
+            <FilaLista icono={SignalIcon} tono="verde" titulo="OLT en línea" detalle="Responden al sistema" valor={cifra(olts?.olts_en_linea)} a="/admin/radar" />
+            <FilaLista
+                icono={SignalSlashIcon} tono={caidas ? 'rojo' : 'neutro'} titulo="OLT fuera de línea"
+                detalle={caidas ? olts?.olts_fuera_nombres.join(', ') : 'Todas responden'}
+                valor={cifra(olts?.olts_fuera)} tonoValor={caidas ? 'rojo' : undefined} a="/admin/radar"
+            />
+            <FilaLista icono={CheckCircleIcon} tono="verde" titulo="ONU en línea" detalle="De clientes" valor={cifra(olts?.onu_en_linea)} />
+            <FilaLista
+                icono={XCircleIcon} tono={onuFuera ? 'rojo' : 'neutro'} titulo="ONU fuera de línea" detalle={onuFuera ? 'Ver esos clientes' : 'Ninguna'}
+                valor={cifra(olts?.onu_fuera)} tonoValor={onuFuera ? 'rojo' : undefined} a={aClientes(olts?.clientes_onu_fuera)}
+            />
+            <FilaLista
+                icono={BoltSlashIcon} tono={baja ? 'ambar' : 'neutro'} titulo="ONU con potencia baja" detalle="Peor que -27 dBm"
+                valor={cifra(olts?.onu_potencia_baja)} tonoValor={baja ? 'ambar' : undefined} a={aClientes(olts?.clientes_potencia_baja)}
+            />
+        </Lista>
     );
 }
 
