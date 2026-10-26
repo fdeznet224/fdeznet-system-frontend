@@ -3,6 +3,7 @@ import {
     type ComponentType, type ReactNode
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useDeslizarParaCerrar } from '@/components/ui/useDeslizarParaCerrar';
 import client from '@/api/axios';
 import type { ClientService } from '@/types/services';
 import { serviceDisplayName } from '@/types/services';
@@ -112,6 +113,7 @@ export default function ClientToolsModal(props: Props) {
 }
 
 function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActionSuccess, modoInicial = 'menu' }: ContentProps) {
+    const { panelRef, deslizar } = useDeslizarParaCerrar<HTMLDivElement>(onClose);
     const [mode, setMode] = useState<ToolMode>(modoInicial);
     const [clienteActual, setClienteActual] = useState<ClientReference>(clienteProp);
     const [servicios, setServicios] = useState<ClientService[]>([]);
@@ -281,7 +283,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
         <>
             <div role="dialog" aria-label="Herramientas del cliente" aria-modal="true" className={`fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm transition-opacity duration-300 dark:bg-black/90 sm:items-center sm:p-4`}>
                 
-                <div className="flex max-h-[88dvh] w-full max-w-md animate-in flex-col overflow-hidden rounded-t-[2rem] border border-slate-200 bg-white shadow-2xl slide-in-from-bottom-8 transition-colors dark:border-slate-800 dark:bg-slate-900 sm:max-h-[90vh] sm:rounded-2xl sm:zoom-in-95">
+                <div ref={panelRef} {...deslizar} className="flex max-h-[88dvh] w-full max-w-md animate-in flex-col overflow-hidden rounded-t-[2rem] border border-slate-200 bg-white shadow-2xl slide-in-from-bottom-8 transition-colors dark:border-slate-800 dark:bg-slate-900 sm:max-h-[90vh] sm:rounded-2xl sm:zoom-in-95">
 
                     <div className="flex justify-center bg-white pt-3 dark:bg-slate-900 sm:hidden">
                         <span className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-700" />
@@ -289,8 +291,8 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
 
                     {/* HEADER */}
                     <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
                                 <WrenchScrewdriverIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div className="min-w-0">
@@ -305,7 +307,7 @@ function ClientToolsModalContent({ isOpen, onClose, cliente: clienteProp, onActi
                                 </div>
                             </div>
                         </div>
-                        <button aria-label="Cerrar herramientas" onClick={onClose} className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors p-1"><XMarkIcon className="w-6 h-6" /></button>
+                        <button aria-label="Cerrar herramientas" onClick={onClose} className="shrink-0 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors p-1"><XMarkIcon className="w-6 h-6" /></button>
                     </div>
 
                     {/* BODY */}

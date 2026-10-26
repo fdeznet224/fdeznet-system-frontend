@@ -4,13 +4,12 @@ import { Dialog, Transition } from '@headlessui/react';
 import {
     UsersIcon, CurrencyDollarIcon, ServerIcon, ArrowPathIcon,
     CreditCardIcon, CpuChipIcon, ExclamationTriangleIcon,
-    BanknotesIcon, UserPlusIcon,
-    WifiIcon, ChartPieIcon, ArrowUpRightIcon
+    BanknotesIcon, UserPlusIcon, PauseIcon, CircleStackIcon,
+    WifiIcon, ArrowUpRightIcon
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 
-import { BOTON_ACCION_PRIMARIO, BOTON_ACCION_SECUNDARIO } from '@/components/ui/estilo';
-import { EncabezadoPagina, Metrica, Seccion, TituloGrupo, Vacio } from '@/components/ui/Pagina';
+import { EncabezadoPagina, FilaLista, Lista } from '@/components/ui/Pagina';
 import RegistrarPago from '@/pages/finanzas/components/RegistrarPago';
 import CreateClientModal from '@/pages/clientes/components/CreateClientModal';
 
@@ -74,15 +73,6 @@ interface DashboardDetailResponse {
     metricas: DashboardData['metricas'];
 }
 
-type ServerMetricColor = 'blue' | 'purple' | 'emerald';
-
-interface ServerMetricProps {
-    label: string;
-    value: string;
-    percent: number;
-    color: ServerMetricColor;
-}
-
 export default function Dashboard() {
     const [data, setData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -130,32 +120,19 @@ export default function Dashboard() {
     const totalSinSesion = data.metricas.clientes_offline_mikrotik || 0;
     const totalSuspendidos = data.metricas.total_suspendidos || data.resumen_clientes.contratos_suspendidos || 0;
     const porcentajeRecaudado = data.facturacion?.porcentaje ?? 0;
-    const usuario = (() => { try { return (JSON.parse(localStorage.getItem('user') || '{}') as { usuario?: string }).usuario || ''; } catch { return ''; } })();
     const hoy = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
     const pesos = (valor: number) => `$${valor.toLocaleString('es-MX')}`;
 
+    const facturacion = data.facturacion;
+
     return (
-        <div className="mx-auto flex max-w-7xl flex-col gap-4">
-            <EncabezadoPagina
-                etiqueta={hoy.charAt(0).toUpperCase() + hoy.slice(1)}
-                titulo={usuario ? `Hola, ${usuario}` : 'Inicio'}
-                descripcion="Panel de Control: red, clientes y cobranza en un vistazo."
-                acciones={(
-                    <>
-                        <button type="button" onClick={() => setIsCreateClientOpen(true)} className={BOTON_ACCION_SECUNDARIO}>
-                            <UserPlusIcon className="h-5 w-5" /> Nuevo cliente
-                        </button>
-                        <button type="button" onClick={() => setIsPosOpen(true)} aria-label="Cobrar" className={BOTON_ACCION_PRIMARIO}>
-                            <BanknotesIcon className="h-5 w-5" /> Cobrar
-                        </button>
-                    </>
-                )}
-            />
+        <div className="mx-auto flex max-w-6xl flex-col gap-5">
+            <EncabezadoPagina etiqueta={hoy.charAt(0).toUpperCase() + hoy.slice(1)} titulo="Inicio" />
 
             {data.inventario?.bajo && (
                 <Link
                     to="/admin/inventario"
-                    className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 transition-colors hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300"
+                    className="flex items-center gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200 transition-colors hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20"
                 >
                     <ExclamationTriangleIcon className="h-6 w-6 shrink-0" />
                     <span className="min-w-0">
@@ -169,71 +146,79 @@ export default function Dashboard() {
                 </Link>
             )}
 
-            {/* RED: lo primero que se revisa en la mañana */}
-            <div>
-                <TituloGrupo>Resumen de Red</TituloGrupo>
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <Metrica etiqueta="En línea" valor={totalConectados} detalle="Sesión activa en MikroTik" tono="verde" icono={WifiIcon} />
-                    <Metrica etiqueta="Servicios Offline / sin sesión" valor={totalSinSesion} detalle={totalSinSesion ? 'Revisar en Clientes' : 'Todo conectado'} tono={totalSinSesion ? 'rojo' : 'neutro'} icono={ExclamationTriangleIcon} />
-                    <Metrica etiqueta="Suspendidos" valor={totalSuspendidos} detalle="Por falta de pago" tono="ambar" icono={UsersIcon} />
-                    <Metrica etiqueta="Routers" valor={routersList.length} detalle="MikroTik registrados" icono={ServerIcon} />
+            <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+                <div className="flex flex-col gap-5">
+                    {/* COBRANZA DEL CICLO: lo primero que se ve, con los dos botones de todos los días */}
+                    <section className="flex flex-col gap-3 rounded-[20px] bg-blue-700 p-5 text-white">
+                        <div className="flex items-center justify-between gap-3">
+                            <h2 className="text-sm font-semibold">Cobranza del ciclo</h2>
+                            {facturacion && (
+                                <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold">
+                                    {facturacion.pendientes} pendientes
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-[40px] font-extrabold leading-none tracking-tight tabular-nums">{porcentajeRecaudado}%</p>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-white/25">
+                            <div className="h-full rounded-full bg-white transition-all duration-700" style={{ width: `${Math.min(100, porcentajeRecaudado)}%` }} />
+                        </div>
+                        <p className="text-[13px] text-blue-100">{facturacion?.pagadas ?? 0} pagadas de {facturacion?.total ?? 0} facturas</p>
+                        <div className="mt-1 grid grid-cols-2 gap-2.5">
+                            <button type="button" onClick={() => setIsPosOpen(true)} aria-label="Cobrar" className="flex h-11 items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-slate-900 transition active:scale-[0.98]">
+                                <BanknotesIcon className="h-5 w-5" /> Cobrar
+                            </button>
+                            <button type="button" onClick={() => setIsCreateClientOpen(true)} className="flex h-11 items-center justify-center gap-2 rounded-xl bg-white/20 text-sm font-bold text-white transition active:scale-[0.98]">
+                                <UserPlusIcon className="h-5 w-5" /> Nuevo cliente
+                            </button>
+                        </div>
+                    </section>
+
+                    <Lista titulo="Red">
+                        <FilaLista icono={WifiIcon} tono="verde" titulo="En línea" detalle="Con sesión en el MikroTik" valor={totalConectados} a="/admin/clientes" />
+                        <FilaLista icono={ExclamationTriangleIcon} tono={totalSinSesion ? 'rojo' : 'neutro'} titulo="Sin conexión" detalle={totalSinSesion ? 'Activos sin sesión: revisar' : 'Todos conectados'} valor={totalSinSesion} tonoValor={totalSinSesion ? 'rojo' : undefined} a="/admin/clientes" />
+                        <FilaLista icono={PauseIcon} tono="ambar" titulo="Suspendidos" detalle="Por falta de pago" valor={totalSuspendidos} a="/admin/clientes" />
+                        <FilaLista icono={ServerIcon} tono="neutro" titulo="Routers" detalle="MikroTik registrados" valor={routersList.length} a="/admin/routers" />
+                    </Lista>
                 </div>
-            </div>
 
-            {/* DINERO */}
-            <div>
-                <TituloGrupo>Cobranza</TituloGrupo>
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <Metrica etiqueta="Clientes actuales" valor={data.resumen_clientes.total_clientes} detalle={`${data.resumen_clientes.total_servicios_actuales} servicios`} tono="azul" icono={UsersIcon} />
-                    <Metrica etiqueta="Ingreso hoy" valor={pesos(data.finanzas.cobrado_hoy)} detalle={`${data.finanzas.clientes_cobrados_hoy || 0} clientes`} tono="verde" icono={BanknotesIcon} />
-                    <Metrica etiqueta="Cobrado en el mes" valor={pesos(data.finanzas.cobrado_mes)} detalle={`${data.finanzas.clientes_cobrados_mes || 0} clientes`} icono={CreditCardIcon} />
-                    <Metrica etiqueta="Recaudación del ciclo" valor={`${porcentajeRecaudado}%`} icono={ChartPieIcon} tono="violeta">
-                        <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                            <span className="block h-full rounded-full bg-violet-500 transition-all duration-700" style={{ width: `${Math.min(100, porcentajeRecaudado)}%` }} />
-                        </span>
-                        <span className="mt-1.5 flex justify-between text-xs text-slate-500">
-                            <span>{data.facturacion?.pagadas ?? 0} pagadas</span>
-                            <span>{data.facturacion?.pendientes ?? 0} pendientes</span>
-                        </span>
-                    </Metrica>
+                <div className="flex flex-col gap-5">
+                    <Lista titulo="Cobranza">
+                        <FilaLista icono={BanknotesIcon} tono="verde" titulo="Cobrado hoy" detalle={`${data.finanzas.clientes_cobrados_hoy || 0} clientes`} valor={pesos(data.finanzas.cobrado_hoy)} />
+                        <FilaLista icono={CreditCardIcon} tono="azul" titulo="Cobrado en el mes" detalle={`${data.finanzas.clientes_cobrados_mes || 0} clientes`} valor={pesos(data.finanzas.cobrado_mes)} a="/admin/transacciones" />
+                        <FilaLista icono={UsersIcon} tono="violeta" titulo="Clientes actuales" detalle={`${data.resumen_clientes.total_servicios_actuales} servicios`} valor={data.resumen_clientes.total_clientes} a="/admin/clientes" />
+                    </Lista>
+
+                    <Lista
+                        titulo="Últimos pagos"
+                        accion={<Link to="/admin/transacciones" className="flex items-center gap-1 text-[13px] font-semibold text-blue-600 hover:text-blue-500 dark:text-blue-400">Historial <ArrowUpRightIcon className="h-3.5 w-3.5" /></Link>}
+                    >
+                        {data.ultimos_pagos.length === 0 ? (
+                            <FilaLista icono={CurrencyDollarIcon} tono="neutro" titulo="No hay pagos registrados hoy." />
+                        ) : data.ultimos_pagos.map((p, i) => (
+                            <FilaLista
+                                key={i}
+                                icono={CurrencyDollarIcon}
+                                tono="verde"
+                                titulo={p.cliente}
+                                detalle={`${p.cobrador} · ${p.fecha.split(' ')[1] ?? ''}`}
+                                valor={`+${pesos(p.monto)}`}
+                                tonoValor="verde"
+                            />
+                        ))}
+                    </Lista>
+
+                    <Lista titulo="Servidor">
+                        <FilaLista icono={CpuChipIcon} tono="azul" titulo="Procesador" valor={`${data.servidor.cpu_percent}%`}>
+                            <Barra porcentaje={data.servidor.cpu_percent} />
+                        </FilaLista>
+                        <FilaLista icono={CircleStackIcon} tono="violeta" titulo="Memoria" valor={`${data.servidor.ram_usada_percent}%`}>
+                            <Barra porcentaje={data.servidor.ram_usada_percent} />
+                        </FilaLista>
+                        <FilaLista icono={ServerIcon} tono="verde" titulo="Disco libre" valor={`${data.servidor.disco_libre_percent}%`}>
+                            <Barra porcentaje={100 - data.servidor.disco_libre_percent} />
+                        </FilaLista>
+                    </Lista>
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                {/* ÚLTIMOS PAGOS */}
-                <Seccion
-                    className="lg:col-span-2"
-                    titulo="Últimos pagos"
-                    accion={<Link to="/admin/transacciones" className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-500 dark:text-blue-400">Historial <ArrowUpRightIcon className="h-3.5 w-3.5" /></Link>}
-                >
-                    {data.ultimos_pagos.length === 0 ? (
-                        <Vacio icono={CurrencyDollarIcon} titulo="No hay pagos registrados hoy." />
-                    ) : (
-                        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {data.ultimos_pagos.map((p, i) => (
-                                <li key={i} className="flex items-center gap-3 px-4 py-3">
-                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-                                        <CurrencyDollarIcon className="h-5 w-5" />
-                                    </span>
-                                    <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-sm font-semibold text-slate-900 dark:text-white">{p.cliente}</span>
-                                        <span className="block truncate text-xs text-slate-500">{p.cobrador} · {p.fecha.split(' ')[1]}</span>
-                                    </span>
-                                    <span className="shrink-0 text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">+{pesos(p.monto)}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </Seccion>
-
-                {/* SERVIDOR */}
-                <Seccion titulo={<span className="flex items-center gap-2"><CpuChipIcon className="h-4 w-4 text-slate-400" />Servidor</span>}>
-                    <div className="space-y-4 p-4">
-                        <ServerMetric label="CPU" value={`${data.servidor.cpu_percent}%`} percent={data.servidor.cpu_percent} color="blue" />
-                        <ServerMetric label="Memoria" value={`${data.servidor.ram_usada_percent}%`} percent={data.servidor.ram_usada_percent} color="purple" />
-                        <ServerMetric label="Disco" value={`${data.servidor.disco_libre_percent}% libre`} percent={100 - data.servidor.disco_libre_percent} color="emerald" />
-                    </div>
-                </Seccion>
             </div>
 
             {/* ================= MODALES ================= */}
@@ -253,21 +238,12 @@ export default function Dashboard() {
     );
 }
 
-// ================= SUBCOMPONENTES REFINADOS =================
-
-const ServerMetric = ({ label, value, percent, color }: ServerMetricProps) => {
-    const textColors: Record<ServerMetricColor, string> = { blue: 'text-blue-500', purple: 'text-purple-500', emerald: 'text-emerald-500' };
-    const bgColors: Record<ServerMetricColor, string> = { blue: 'bg-blue-500', purple: 'bg-purple-500', emerald: 'bg-emerald-500' };
-    
+/** Uso del servidor: barra fina debajo del renglón. */
+function Barra({ porcentaje }: { porcentaje: number }) {
+    const alto = porcentaje >= 85;
     return (
-        <div className="group">
-            <div className="flex justify-between mb-1.5 items-end">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
-                <span className={`text-xs font-semibold tabular-nums ${textColors[color]}`}>{value}</span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <div className={`h-full rounded-full transition-all duration-700 ${bgColors[color]}`} style={{ width: `${percent}%` }}></div>
-            </div>
-        </div>
+        <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-[#ececf0] dark:bg-slate-800">
+            <span className={`block h-full rounded-full transition-all duration-700 ${alto ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(100, Math.max(0, porcentaje))}%` }} />
+        </span>
     );
-};
+}

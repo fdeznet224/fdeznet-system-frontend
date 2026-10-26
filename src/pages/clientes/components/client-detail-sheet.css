@@ -1,98 +1,115 @@
-/* Estilos exclusivos del detalle de cliente. */
+/* Ficha del cliente con el estilo de listas del iPhone: fondo gris, encabezado
+   centrado, acciones en cuadros blancos y pestañas en un control segmentado. */
 
 .client-detail-panel {
   --client-card: #ffffff;
-  --client-soft: #f1f5f9;
-  --client-border: #e2e8f0;
-  --client-text: #0f172a;
-  --client-muted: #64748b;
-  --client-primary: #0f172a;
-  --client-primary-text: #ffffff;
+  --client-track: #e4e4ea;
+  --client-text: #111827;
+  --client-muted: #5b6170;
   overscroll-behavior: contain;
 }
 
-.dark .client-detail-panel,
-html.dark .client-detail-panel {
+.dark .client-detail-panel {
   --client-card: #161b28;
-  --client-soft: #0f1219;
-  --client-border: #1e293b;
+  --client-track: #1e2533;
   --client-text: #f8fafc;
   --client-muted: #94a3b8;
-  --client-primary: #ffffff;
-  --client-primary-text: #0f172a;
 }
 
 .client-sheet-header {
-  background: var(--client-card);
-  border-bottom: 1px solid var(--client-border);
-  padding: 14px 18px 16px;
   flex-shrink: 0;
+  padding: 8px 12px 14px;
   position: relative;
   z-index: 20;
 }
 
+.client-sheet-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .client-sheet-handle {
-  width: 54px;
+  width: 40px;
   height: 5px;
   border-radius: 999px;
-  background: #dbe2ec;
-  margin: 0 auto 14px;
+  background: #c7c7cc;
 }
 
-.dark .client-avatar,
-html.dark .client-avatar {
-  background: #ffffff;
-  color: #0f172a;
+.dark .client-sheet-handle {
+  background: #334155;
 }
 
-.dark .client-sheet-handle,
-html.dark .client-sheet-handle {
-  background: #263244;
+.client-round-button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 0;
+  background: var(--client-track);
+  color: var(--client-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 120ms ease, background 160ms ease;
 }
 
-.client-header-row {
+.client-round-button:active {
+  transform: scale(0.94);
+}
+
+.client-header-center {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 12px;
 }
 
 .client-avatar {
-  width: 48px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
   border-radius: 999px;
-  background: #0f172a;
+  background: #2563eb;
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 20px;
+  font-weight: 800;
+  font-size: 26px;
   flex: 0 0 auto;
 }
 
 .client-header-title {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.2;
-  font-weight: 700;
-  color: var(--client-text);
-  letter-spacing: -0.025em;
+  margin: 10px 0 0;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 800;
+  color: var(--client-text);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.client-header-sub {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--client-muted);
 }
 
 .client-header-name-input {
+  display: block;
   width: min(420px, 100%);
+  margin: 8px auto 0;
   border: 1px solid transparent;
-  border-radius: 14px;
-  background: var(--client-soft);
+  border-radius: 12px;
+  background: var(--client-card);
   color: var(--client-text);
-  padding: 8px 11px;
+  padding: 10px 12px;
   font-weight: 700;
   font-size: 18px;
+  text-align: center;
   outline: none;
 }
 
@@ -104,131 +121,44 @@ html.dark .client-sheet-handle {
 .client-tags {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 6px;
-  margin-top: 9px;
+  margin-top: 10px;
 }
 
 .client-tag {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
   border-radius: 999px;
-  padding: 5px 9px;
-  font-size: 11px;
-  font-weight: 600;
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #e2e8f0;
-  max-width: 100%;
-}
-
-.dark .client-tag,
-html.dark .client-tag {
-  background: rgba(15, 23, 42, 0.66);
-  color: #cbd5e1;
-  border-color: #1f2937;
-}
-
-.client-tag b {
-  color: var(--client-text);
+  padding: 4px 10px;
+  font-size: 12px;
   font-weight: 700;
+  background: var(--client-track);
+  color: #3f3f46;
+}
+
+.dark .client-tag {
+  color: #cbd5e1;
 }
 
 .client-tag--ok {
-  background: #ecfdf5;
-  color: #047857;
-  border-color: #bbf7d0;
-}
-
-.client-tag--ok b {
-  color: #065f46;
-}
-
-.client-tag--warn {
-  background: #fffbeb;
-  color: #b45309;
-  border-color: #fde68a;
-}
-
-.client-tag--warn b {
-  color: #92400e;
+  background: #dcfce7;
+  color: #166534;
 }
 
 .client-tag--danger {
-  background: #fff1f2;
-  color: #be123c;
-  border-color: #fecdd3;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
-.client-tag--danger b {
-  color: #9f1239;
+.dark .client-tag--ok {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
 }
 
-.dark .client-tag--ok,
-html.dark .client-tag--ok {
-  background: rgba(16, 185, 129, 0.14);
-  color: #6ee7b7;
-  border-color: rgba(16, 185, 129, 0.28);
-}
-
-.dark .client-tag--ok b,
-html.dark .client-tag--ok b {
-  color: #d1fae5;
-}
-
-.dark .client-tag--warn,
-html.dark .client-tag--warn {
-  background: rgba(245, 158, 11, 0.14);
-  color: #fcd34d;
-  border-color: rgba(245, 158, 11, 0.28);
-}
-
-.dark .client-tag--warn b,
-html.dark .client-tag--warn b {
-  color: #fde68a;
-}
-
-.dark .client-tag--danger,
-html.dark .client-tag--danger {
-  background: rgba(244, 63, 94, 0.14);
-  color: #fda4af;
-  border-color: rgba(244, 63, 94, 0.28);
-}
-
-.dark .client-tag--danger b,
-html.dark .client-tag--danger b {
-  color: #fecdd3;
-}
-
-.client-close-button {
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  background: #f8fafc;
-  color: #94a3b8;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  transition: 160ms ease;
-  flex: 0 0 auto;
-}
-
-.client-close-button:hover {
-  background: #e2e8f0;
-  color: #475569;
-}
-
-.dark .client-close-button,
-html.dark .client-close-button {
-  background: #111827;
-  color: #94a3b8;
-}
-
-.dark .client-close-button:hover,
-html.dark .client-close-button:hover {
-  background: #1f2937;
-  color: #e5e7eb;
+.dark .client-tag--danger {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
 }
 
 .client-scroll-body {
@@ -238,114 +168,54 @@ html.dark .client-close-button:hover {
 .client-contact-actions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .client-contact-action {
-  min-height: 58px;
-  border: 1px solid var(--client-border);
-  border-radius: 18px;
+  min-height: 60px;
+  border: 0;
+  border-radius: 14px;
   background: var(--client-card);
-  color: var(--client-muted);
+  color: #2563eb;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
   font-size: 12px;
-  font-weight: 600;
-  transition: 160ms ease;
+  font-weight: 700;
+  transition: transform 120ms ease;
+}
+
+.dark .client-contact-action {
+  color: #60a5fa;
 }
 
 .client-contact-action:active {
   transform: scale(0.97);
 }
 
-.client-contact-action--call { color: #2563eb; }
-.client-contact-action--whatsapp { color: #059669; }
-.client-contact-action--map { color: #d97706; }
-
-.client-quick-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.client-saldo-card {
-  background: var(--client-card);
-  border: 1px solid var(--client-border);
-  border-radius: 16px;
-  padding: 14px;
-  box-shadow: none;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 118px;
-}
-
-.dark .client-saldo-card,
-html.dark .client-saldo-card {
-  box-shadow: none;
-}
-
-.client-saldo-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.client-saldo-icon {
-  color: #10b981;
-}
-
-.client-saldo-add {
-  background: #d1fae5;
-  color: #059669;
-  border-radius: 12px;
-  padding: 6px;
-  border: 0;
-}
-
-.dark .client-saldo-add,
-html.dark .client-saldo-add {
-  background: rgba(16, 185, 129, 0.18);
-  color: #6ee7b7;
-}
-
-.client-saldo-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--client-muted);
-  margin: 12px 0 3px;
-}
-
-.client-saldo-value {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--client-text);
-}
-
+/* Pestañas: control segmentado gris que se desliza de lado si no caben. */
 .client-tabs-shell {
   position: sticky;
   top: 0;
   z-index: 30;
-  margin-left: -16px;
-  margin-right: -16px;
-  padding: 8px 16px 10px;
-  background: rgba(245, 246, 248, 0.94);
+  margin: 0 -16px;
+  padding: 6px 16px 8px;
+  background: rgba(242, 242, 247, 0.94);
   backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.75);
 }
 
-.dark .client-tabs-shell,
-html.dark .client-tabs-shell {
+.dark .client-tabs-shell {
   background: rgba(15, 18, 25, 0.94);
-  border-bottom-color: rgba(31, 41, 55, 0.75);
 }
 
 .client-tabs-row {
   display: flex;
-  gap: 8px;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--client-track);
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -356,80 +226,45 @@ html.dark .client-tabs-shell {
 }
 
 .client-tab-button {
-  flex: 0 0 auto;
-  padding: 8px 14px;
-  border-radius: 999px;
+  flex: 1 0 auto;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: #3f3f46;
   font-size: 13px;
   font-weight: 600;
-  border: 1px solid var(--client-border);
-  background: var(--client-card);
-  color: var(--client-muted);
-  transition: 160ms ease;
+  white-space: nowrap;
+  transition: background 160ms ease;
+}
+
+.dark .client-tab-button {
+  color: #cbd5e1;
 }
 
 .client-tab-button--active {
-  background: var(--client-primary);
-  color: var(--client-primary-text);
-  border-color: transparent;
+  background: var(--client-card);
+  color: var(--client-text);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 @media (max-width: 640px) {
-  .client-contact-actions {
-    gap: 7px;
-  }
-
-  .client-contact-action {
-    min-height: 52px;
-    border-radius: 14px;
-    font-size: 12px;
-  }
-
   .client-detail-panel {
-    height: 92dvh !important;
-    max-height: 92dvh;
-    border-radius: 28px 28px 0 0 !important;
+    height: 94dvh !important;
+    max-height: 94dvh;
+    border-radius: 22px 22px 0 0 !important;
     animation: clientSheetUp 220ms cubic-bezier(.2, .9, .2, 1);
   }
 
-  .client-sheet-header {
-    padding: 12px 18px 14px;
+  .client-scroll-body {
+    padding-top: 4px !important;
+    padding-bottom: 28px !important;
   }
 
-  .client-avatar {
-    width: 44px;
-    height: 44px;
-    font-size: 18px;
-  }
-
-  .client-header-title {
-    font-size: 20px;
-  }
-
-  .client-tags {
-    max-height: 68px;
-    overflow-y: auto;
-    padding-right: 2px;
-  }
-
-  .client-tag {
-    font-size: 10px;
-    padding: 5px 8px;
-  }
-
-  .client-quick-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .client-saldo-card {
-    min-height: 104px;
-    border-radius: 22px;
-    padding: 14px;
-  }
-
-  .client-tabs-shell {
-    margin-left: -16px;
-    margin-right: -16px;
+  .client-detail-panel [class*="bottom-4"] button {
+    min-height: 44px;
   }
 }
 
@@ -447,149 +282,4 @@ html.dark .client-tabs-shell {
 @keyframes clientModalIn {
   from { opacity: 0; transform: translateY(10px) scale(0.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-
-/* ===== Client Detail mobile compact v2 =====
-   En móvil se eliminan las 4 tarjetas rápidas para que las tabs suban.
-   La información principal queda en las etiquetas superiores:
-   Estado, Cédula, Instalación y Pago.
-*/
-@media (max-width: 640px) {
-  .client-quick-grid {
-    display: none !important;
-  }
-
-  .client-scroll-body {
-    padding-top: 10px !important;
-    gap: 12px;
-  }
-
-  .client-tabs-shell {
-    margin-top: 0 !important;
-    padding-top: 4px !important;
-    padding-bottom: 10px !important;
-  }
-
-  .client-tabs-row {
-    gap: 7px;
-  }
-
-  .client-tab-button {
-    padding: 8px 13px;
-    font-size: 13px;
-    box-shadow: none;
-  }
-
-  .client-tag {
-    font-size: 10px;
-    padding: 5px 8px;
-  }
-
-  .client-tags {
-    max-height: none;
-    overflow: visible;
-  }
-
-  .client-sheet-header {
-    padding-bottom: 12px;
-  }
-}
-
-/* En tablet/desktop las tarjetas rápidas siguen visibles, pero más compactas */
-@media (min-width: 641px) {
-  .client-quick-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .client-saldo-card {
-    min-height: 104px;
-  }
-}
-
-
-/* ===== Client Detail header summary v3 ===== */
-.client-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 0 0 auto;
-}
-
-.client-edit-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--client-border);
-  border-radius: 999px;
-  background: var(--client-card);
-  color: var(--client-text);
-  padding: 10px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  transition: 160ms ease;
-}
-
-.client-edit-button:hover {
-  transform: translateY(-1px);
-  border-color: rgba(37, 99, 235, 0.45);
-}
-
-.client-detail-panel .client-floating-edit,
-.client-detail-panel .client-bottom-edit,
-.client-detail-panel .client-fixed-edit {
-  display: none !important;
-}
-
-@media (max-width: 640px) {
-  .client-tags {
-    max-height: none !important;
-    overflow: visible !important;
-  }
-
-  .client-header-actions {
-    gap: 8px;
-  }
-
-  .client-edit-button {
-    width: 40px;
-    height: 40px;
-    padding: 0;
-    justify-content: center;
-    font-size: 0;
-  }
-
-  .client-edit-button span {
-    display: none;
-  }
-
-  .client-tabs-shell {
-    padding-top: 2px !important;
-    padding-bottom: 10px !important;
-  }
-
-  .client-scroll-body {
-    padding-top: 10px !important;
-    padding-bottom: 28px !important;
-  }
-
-  .client-tab-button {
-    padding: 8px 13px;
-  }
-}
-
-
-/* ===== Client Detail action footer v5 ===== */
-@media (max-width: 640px) {
-  .client-scroll-body {
-    padding-bottom: 28px !important;
-  }
-}
-
-
-/* ===== Client Detail edit load data v6 ===== */
-@media (max-width: 640px) {
-  .client-detail-panel [class*="bottom-4"] button {
-    min-height: 44px;
-  }
 }

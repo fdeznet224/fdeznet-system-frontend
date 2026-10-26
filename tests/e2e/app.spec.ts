@@ -74,11 +74,11 @@ test('carga el panel principal con sus contratos tipados', async ({ page }) => {
   await mockApi(page)
   await page.goto('/admin/dashboard')
 
-  await expect(page.getByRole('heading', { name: 'Hola, admin-e2e' })).toBeVisible()
-  await expect(page.getByText(/Panel de Control/)).toBeVisible()
-  await expect(page.getByText('Resumen de Red')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Inicio', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Cobranza del ciclo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Red', exact: true })).toBeVisible()
   await expect(page.getByText('Clientes actuales')).toBeVisible()
-  await expect(page.getByText('Servicios Offline / sin sesión')).toBeVisible()
+  await expect(page.getByText('Sin conexión', { exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Terminal de Cobro' })).toHaveCount(0)
 })
 
@@ -103,10 +103,10 @@ test('abre herramientas y alta desde el listado unificado', async ({ page }) => 
     await page.getByRole('button', { name: 'Filtrar clientes' }).click()
     await expect(page.getByRole('dialog', { name: 'Filtros de clientes' })).toBeVisible()
     await page.getByRole('button', { name: 'Listo' }).click()
-    await expect(page.getByRole('link', { name: 'Llamar a Cliente E2E' })).toHaveAttribute('href', 'tel:5550000000')
-    await expect(page.getByRole('link', { name: 'Abrir ubicación de Cliente E2E' })).toHaveAttribute('href', 'https://www.google.com/maps/dir/?api=1&destination=19.4326%2C-99.1332&travelmode=driving')
+    // La lista solo abre la ficha y las herramientas; llamar y la ubicación van en la ficha.
     await page.locator('article').first().click()
     await expect(page.locator('.client-detail-panel')).toBeVisible()
+    await expect(page.locator('.client-detail-panel').getByRole('link', { name: 'Llamar' })).toHaveAttribute('href', 'tel:5550000000')
     await expect(page.getByText('Copiar IP')).toHaveCount(0)
     await expect(page.getByTitle('Copiar IP asignada')).toBeVisible()
     await page.locator('.client-close-button').click()
@@ -285,10 +285,15 @@ test('el supervisor entra a clientes y en inventario solo ve los retiros', async
   await expect(page).toHaveURL(/\/admin\/clientes$/)
   await expect(page.getByRole('heading', { name: 'Clientes', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Terminal de Cobro' })).toHaveCount(0)
-  // En celular las secciones están en "Más"; en computadora, en el grupo Operaciones de la barra lateral.
-  if ((page.viewportSize()?.width ?? 1024) < 1024) await page.getByRole('button', { name: 'Más', exact: true }).click()
-  else await page.getByRole('button', { name: 'Operaciones' }).click()
-  await expect(page.getByText('Órdenes / Instalaciones').last()).toBeVisible()
+  // En celular Órdenes va en la barra de abajo y lo demás en la pantalla Más; en computadora, en el grupo Operaciones.
+  if ((page.viewportSize()?.width ?? 1024) < 1024) {
+    await expect(page.getByRole('navigation', { name: 'Navegación rápida' }).getByRole('link', { name: 'Órdenes' })).toBeVisible()
+    await page.getByRole('link', { name: 'Más', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Más', exact: true })).toBeVisible()
+  } else {
+    await page.getByRole('button', { name: 'Operaciones' }).click()
+    await expect(page.getByText('Órdenes / Instalaciones').last()).toBeVisible()
+  }
   await expect(page.getByText('Bajas / Recuperación')).toHaveCount(0)
   await page.getByRole('link', { name: 'Inventario / Bodega' }).click()
 
@@ -692,7 +697,7 @@ test('busca un cliente desde el encabezado global', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)
   await page.goto('/admin/dashboard')
-  await expect(page.getByRole('heading', { name: 'Hola, admin-e2e' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Inicio', exact: true })).toBeVisible()
 
   // En celular, la lupa del encabezado; en computadora, Ctrl+K.
   if ((page.viewportSize()?.width ?? 1024) < 1024) await page.getByRole('button', { name: 'Buscar cliente' }).click()
@@ -1180,8 +1185,7 @@ test('inicia sesión con el contrato tipado y redirige al panel', async ({ page 
   await page.getByRole('button', { name: 'Iniciar Sesión' }).click()
 
   await expect(page).toHaveURL(/\/admin\/dashboard$/)
-  await expect(page.getByRole('heading', { name: 'Hola, admin-e2e' })).toBeVisible()
-  await expect(page.getByText(/Panel de Control/)).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Inicio', exact: true })).toBeVisible()
 })
 
 test('carga el portal público del cliente', async ({ page }) => {
@@ -1303,7 +1307,7 @@ test('los contadores de clientes filtran por conexión y potencia', async ({ pag
   const alta = page.getByRole('button', { name: /Potencia alta/ })
   await expect(alta).toContainText('1')
   await expect(page.getByRole('button', { name: /^0\s*Potencia normal/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /^1\s*Online/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^1\s*En línea/ })).toBeVisible()
   await alta.click()
   await expect(alta).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('span:visible', { hasText: '-28.40 dBm' }).first()).toBeVisible()
@@ -2339,4 +2343,42 @@ test('portal del cliente: avisa la falla en su zona y cómo va su reconexión de
   await page.getByRole('button', { name: 'Reiniciar mi módem' }).click()
   await expect(page.getByText('Tu módem se está reiniciando')).toBeVisible()
   expect(reinicios).toHaveLength(1)
+})
+
+test('en el celular la ficha del cliente se cierra deslizándola hacia abajo y la X se ve con nombres largos', async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 1024) >= 640, 'solo celular')
+  await authenticateAs(page)
+  await mockApi(page)
+  const nombre = 'María Guadalupe Hernández de la Fuente Rodríguez Villalobos'
+  await page.route('**/api/clientes/1', (route) => route.fulfill({ json: {
+    id: 1, nombre, telefono: '5550000000', direccion: 'Dirección E2E', ip_asignada: '10.0.0.2', estado: 'activo',
+  } }))
+  await page.goto('/admin/clientes')
+  await page.locator('article').first().click()
+
+  const panel = page.locator('.client-detail-panel')
+  await expect(page.getByRole('heading', { name: nombre })).toBeVisible()
+  const ancho = page.viewportSize()!.width
+  const cerrar = (await page.getByRole('button', { name: 'Cerrar', exact: true }).boundingBox())!
+  expect(cerrar.x + cerrar.width).toBeLessThanOrEqual(ancho)
+
+  // Un poco hacia abajo no la cierra: regresa a su lugar.
+  const encabezado = (await panel.locator('.client-sheet-header').boundingBox())!
+  const x = encabezado.x + encabezado.width / 2
+  const y = encabezado.y + 20
+  const deslizar = async (hasta: number) => {
+    const header = panel.locator('.client-sheet-header')
+    await header.dispatchEvent('touchstart', { touches: [{ identifier: 1, clientX: x, clientY: y }] })
+    for (const paso of [10, hasta / 2, hasta]) {
+      await header.dispatchEvent('touchmove', { touches: [{ identifier: 1, clientX: x, clientY: y + paso }] })
+    }
+    await header.dispatchEvent('touchend', { touches: [] })
+  }
+  await page.waitForTimeout(300)
+  await deslizar(40)
+  await page.waitForTimeout(300)
+  await expect(panel).toBeVisible()
+
+  await deslizar(250)
+  await expect(panel).toHaveCount(0)
 })

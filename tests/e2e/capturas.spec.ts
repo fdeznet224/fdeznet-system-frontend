@@ -30,7 +30,7 @@ test('menú más y buscador', async ({ page }, info) => {
   await page.goto('/admin/clientes')
   await page.waitForTimeout(800)
   if (info.project.name === 'mobile-chrome') {
-    await page.getByRole('button', { name: 'Más', exact: true }).click()
+    await page.getByRole('link', { name: 'Más', exact: true }).click()
     await page.waitForTimeout(400)
     await page.screenshot({ path: `${DESTINO}/${info.project.name}-mas.png` })
     await page.keyboard.press('Escape')

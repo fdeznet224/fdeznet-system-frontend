@@ -22,6 +22,7 @@ import ClientServicesPanel from './ClientServicesPanel';
 import CambiarIpModal from './CambiarIpModal';
 import { nombreFormaCobro } from '@/utils/formaCobro';
 import './client-detail-sheet.css';
+import { useDeslizarParaCerrar } from '@/components/ui/useDeslizarParaCerrar';
 import { apiErrorMessage } from '@/utils/apiError';
 import PotenciaEnVivo from './PotenciaEnVivo';
 import ConsumoCliente from './ConsumoCliente';
@@ -164,6 +165,7 @@ const disabledInputClass = "w-full min-h-12 bg-slate-50 dark:bg-slate-900/30 tex
 const labelClass = "block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2 pl-1 select-none";
 
 export default function ClientDetailModal({ isOpen, onClose, cliente: clienteInicial, onEditSuccess }: Props) {
+    const { panelRef, deslizar } = useDeslizarParaCerrar<HTMLDivElement>(onClose);
     const [cliente, setCliente] = useState<DetailedClient | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [addingSaldo, setAddingSaldo] = useState(false);
@@ -615,83 +617,51 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                 </Transition.Child>
 
                 <div className="fixed inset-0 flex items-end sm:items-center justify-center p-0 sm:p-4">
-                    <Dialog.Panel className="client-detail-panel w-full h-[92dvh] sm:h-[88vh] sm:max-w-5xl bg-slate-100 dark:bg-[#07080a] sm:rounded-[2rem] rounded-t-[2rem] flex flex-col relative overflow-hidden shadow-2xl">
+                    <Dialog.Panel ref={panelRef} {...deslizar} className="client-detail-panel w-full h-[94dvh] sm:h-[88vh] sm:max-w-5xl bg-fondo dark:bg-slate-950 sm:rounded-[2rem] rounded-t-[2rem] flex flex-col relative overflow-hidden shadow-2xl">
                         {/* ================= HEADER BOTTOM SHEET ================= */}
                         <div className="client-sheet-header">
-                            <div className="client-sheet-handle sm:hidden" />
+                            <div className="client-sheet-top">
+                                {!loadingData && !isEditing && cliente ? (
+                                    <button type="button" onClick={toggleEditMode} aria-label="Editar cliente" className="client-round-button">
+                                        <PencilSquareIcon className="h-5 w-5" />
+                                    </button>
+                                ) : <span className="h-11 w-11" />}
+                                <div className="client-sheet-handle sm:invisible" />
+                                <button type="button" onClick={onClose} aria-label="Cerrar" className="client-close-button client-round-button">
+                                    <XMarkIcon className="h-5 w-5" />
+                                </button>
+                            </div>
 
-                            <div className="client-header-row">
-                                <div className="flex gap-4 min-w-0 flex-1">
-                                    {loadingData ? (
-                                        <div className="client-avatar bg-slate-200 dark:bg-slate-800 animate-pulse" />
-                                    ) : (
-                                        <div className="client-avatar">
-                                            {cliente?.nombre?.charAt(0).toUpperCase() || 'C'}
-                                        </div>
-                                    )}
-
-                                    <div className="min-w-0 flex-1">
-                                        {loadingData ? (
-                                            <>
-                                                <div className="h-6 w-44 bg-slate-200 dark:bg-slate-800 rounded-xl mb-3 animate-pulse" />
-                                                <div className="h-6 w-64 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
-                                            </>
-                                        ) : isEditing ? (
-                                            <input
-                                                type="text"
-                                                name="nombre"
-                                                value={formData.nombre}
-                                                onChange={handleInputChange}
-                                                className="client-header-name-input"
-                                            />
-                                        ) : (
-                                            <>
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <h2 className="client-header-title truncate">{cliente?.nombre || 'Cliente'}</h2>
-                                                    {cliente?.nombre && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => copiarTexto(cliente.nombre)}
-                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                                            title="Copiar nombre"
-                                                        >
-                                                            <ClipboardDocumentIcon className="w-4 h-4" />
-                                                        </button>
-                                                    )}
-                                                </div>
-
-                                                <div className="client-tags">
-                                                    <span className={classNames('client-tag', cliente?.estado === 'activo' ? 'client-tag--ok' : 'client-tag--danger')}>
-                                                        Estado <b>{cliente?.estado === 'activo' ? 'Activo' : (cliente?.estado || 'N/A')}</b>
-                                                    </span>
-
-                                                    <span className="client-tag">Número de contrato <b>{cliente?.cedula || 'N/A'}</b></span>
-
-                                                    <span className="client-tag">
-                                                        Instalación <b>{formatDate(servicioActual?.fecha_instalacion || cliente?.created_at)}</b>
-                                                    </span>
-                                                </div>
-                                            </>
+                            {loadingData ? (
+                                <div className="flex flex-col items-center gap-2 pb-2">
+                                    <div className="client-avatar animate-pulse bg-slate-200 dark:bg-slate-800" />
+                                    <div className="h-6 w-48 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+                                </div>
+                            ) : isEditing ? (
+                                <input type="text" name="nombre" aria-label="Nombre" value={formData.nombre} onChange={handleInputChange} className="client-header-name-input" />
+                            ) : (
+                                <div className="client-header-center">
+                                    <div className="client-avatar">{cliente?.nombre?.charAt(0).toUpperCase() || 'C'}</div>
+                                    <h2 className="client-header-title">
+                                        {cliente?.nombre || 'Cliente'}
+                                        {cliente?.nombre && (
+                                            <button type="button" onClick={() => copiarTexto(cliente.nombre)} title="Copiar nombre" aria-label="Copiar nombre" className="ml-1 inline-flex rounded-lg p-1 align-middle text-[#a1a1aa] transition hover:text-blue-500">
+                                                <ClipboardDocumentIcon className="h-4 w-4" />
+                                            </button>
                                         )}
+                                    </h2>
+                                    <p className="client-header-sub">
+                                        {cliente?.cedula ? `Contrato ${cliente.cedula}` : 'Sin contrato'}{cliente?.zona?.nombre ? ` · ${cliente.zona.nombre}` : ''}
+                                    </p>
+                                    <div className="client-tags">
+                                        <span className={classNames('client-tag', cliente?.estado === 'activo' ? 'client-tag--ok' : 'client-tag--danger')}>
+                                            {cliente?.estado === 'activo' ? 'Activo' : (cliente?.estado || 'N/A')}
+                                        </span>
+                                        <span className="client-tag">Instalado {formatDate(servicioActual?.fecha_instalacion || cliente?.created_at)}</span>
                                     </div>
                                 </div>
-
-                                <div className="client-header-actions">
-                                    {!loadingData && !isEditing && cliente && (
-                                        <button onClick={toggleEditMode} className="client-edit-button">
-                                            <PencilSquareIcon className="w-4 h-4" />
-                                            <span>Editar</span>
-                                        </button>
-                                    )}
-
-                                    <button onClick={onClose} className="client-close-button">
-                                        <XMarkIcon className="w-6 h-6" />
-                                    </button>
-                                </div>
-                            </div>
+                            )}
                         </div>
-
-
 
                         {/* ================= SCROLL CONTENT ================= */}
                         <div className="client-scroll-body flex-1 overflow-y-auto p-4 sm:p-6 pb-8 space-y-5 scrollbar-hide">
@@ -1405,21 +1375,21 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
 
 /** Un dato de la ficha: etiqueta a la izquierda y valor a la derecha, como lista. */
 const DetailTile = ({ label, value, highlight, danger, copy, onClick }: DetailTileProps) => (
-    <div className="flex min-h-12 items-center justify-between gap-3 border-b border-slate-100 py-2.5 last:border-b-0 dark:border-slate-800 sm:[&:nth-last-child(2):nth-child(odd)]:border-b-0">
-        <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
+    <div className="flex min-h-12 items-center justify-between gap-3 border-b border-[#ececf0] py-2.5 last:border-b-0 dark:border-slate-800 sm:[&:nth-last-child(2):nth-child(odd)]:border-b-0">
+        <span className="shrink-0 text-[15px] text-slate-900 dark:text-white">{label}</span>
         <span className="flex min-w-0 items-center gap-1">
             {onClick ? (
                 <button
                     type="button"
                     onClick={onClick}
-                    className="min-w-0 break-words text-right text-sm font-semibold text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-500 dark:text-blue-400"
+                    className="min-w-0 break-words text-right text-[15px] font-semibold text-blue-600 hover:text-blue-500 dark:text-blue-400"
                 >
                     {value || 'N/A'}
                 </button>
             ) : (
                 <span className={classNames(
-                    'min-w-0 break-words text-right text-sm font-semibold',
-                    danger ? 'text-rose-600 dark:text-rose-400' : highlight ? 'text-slate-900 dark:text-white' : 'text-slate-800 dark:text-slate-200',
+                    'min-w-0 break-words text-right text-[15px]',
+                    danger ? 'font-semibold text-red-600 dark:text-red-400' : highlight ? 'font-semibold text-slate-900 dark:text-white' : 'text-[#5b6170] dark:text-slate-300',
                 )}>{value || 'N/A'}</span>
             )}
             {copy && value && value !== 'N/A' && value !== 'DHCP' && value !== 'Sin equipo' && (
@@ -1442,13 +1412,14 @@ const StatusPill = ({ label, value, className }: StatusPillProps) => (
     </span>
 );
 
-const SectionCard = ({ title, icon: Icon, children }: SectionCardProps) => (
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 pb-2 pt-4 dark:border-slate-800 dark:bg-slate-900">
-        <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
-            <Icon className="h-4 w-4 text-slate-400" /> {title}
-        </h3>
-        {children}
-    </div>
+/** Grupo de la ficha, como lista del iPhone: título gris afuera y tarjeta blanca. */
+const SectionCard = ({ title, children }: SectionCardProps) => (
+    <section>
+        <h3 className="px-1 pb-1.5 text-[13px] font-semibold uppercase text-[#5b6170] dark:text-slate-400">{title}</h3>
+        <div className="rounded-2xl bg-white px-4 py-1 ring-1 ring-black/[0.04] dark:bg-slate-900 dark:ring-white/[0.06]">
+            {children}
+        </div>
+    </section>
 );
 
 const InfoRow = ({ label, value, copy }: InfoRowProps) => (

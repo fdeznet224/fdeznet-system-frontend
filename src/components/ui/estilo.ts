@@ -1,29 +1,35 @@
 /**
- * Estilo común de FdezPay (admin, técnico y cobrador): superficies blancas con
- * borde fino, un solo color de acento (azul) y tipografía sin mayúsculas
- * forzadas. En oscuro, los mismos tonos azul noche de la app del técnico.
+ * Estilo común de FdezPay (admin, técnico y cobrador), como las listas del
+ * iPhone: fondo gris, tarjetas blancas sin borde marcado, un solo color de
+ * acento (azul) y títulos de grupo en gris. En oscuro, los tonos azul noche.
  */
-export const TARJETA = 'rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900';
+export const TARJETA = 'rounded-2xl bg-white ring-1 ring-black/[0.04] dark:bg-slate-900 dark:ring-white/[0.06]';
 
-export const TITULO_SECCION = 'px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400';
+export const TITULO_SECCION = 'px-1 text-[13px] font-semibold uppercase text-[#5b6170] dark:text-slate-400';
 
 export const BOTON_PRIMARIO = 'flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-500 active:scale-[0.98] disabled:opacity-50';
 
 export const BOTON_EXITO = 'flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-50';
 
-export const BOTON_SECUNDARIO = 'flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-50 dark:border-slate-700 dark:bg-transparent dark:text-slate-200 dark:hover:bg-slate-800';
+export const BOTON_SECUNDARIO = 'flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-50 dark:border-slate-700 dark:bg-transparent dark:text-slate-200 dark:hover:bg-slate-800';
 
 export const CAMPO = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
 
 export const ETIQUETA_CAMPO = 'mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400';
 
 /** Botón de acción del encabezado: compacto, se ve igual en celular y escritorio. */
-export const BOTON_ACCION = 'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl px-3.5 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50';
+export const BOTON_ACCION = 'inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-3.5 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50';
 export const BOTON_ACCION_PRIMARIO = `${BOTON_ACCION} bg-blue-600 text-white hover:bg-blue-500`;
 export const BOTON_ACCION_SECUNDARIO = `${BOTON_ACCION} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800`;
 
 /** Botón cuadrado con solo ícono (siempre con aria-label). */
-export const BOTON_ICONO = 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white';
+export const BOTON_ICONO = 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white';
+
+/** Botón redondo gris de ícono, para el encabezado en celular (siempre con aria-label). */
+export const BOTON_REDONDO = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e4e4ea] text-slate-900 transition active:scale-95 dark:bg-slate-800 dark:text-white';
+
+/** Campo de búsqueda gris, sin borde, como en el iPhone. */
+export const CAMPO_BUSQUEDA = 'h-11 w-full rounded-xl bg-[#e4e4ea] pl-10 pr-4 text-[15px] text-slate-900 outline-none transition placeholder:text-[#5b6170] focus:ring-2 focus:ring-blue-500/40 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400';
 
 export type Tono = 'neutro' | 'azul' | 'verde' | 'rojo' | 'ambar' | 'violeta';
 
@@ -53,4 +59,14 @@ export const PUNTO_TONO: Record<Tono, string> = {
     rojo: 'bg-rose-500',
     ambar: 'bg-amber-500',
     violeta: 'bg-violet-500',
+};
+
+/** Cuadrito de color con el ícono en blanco, como en los Ajustes del iPhone. */
+export const CUADRO_TONO: Record<Tono, string> = {
+    neutro: 'bg-slate-500',
+    azul: 'bg-blue-600',
+    verde: 'bg-green-600',
+    rojo: 'bg-red-600',
+    ambar: 'bg-orange-600',
+    violeta: 'bg-violet-600',
 };

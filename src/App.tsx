@@ -26,6 +26,7 @@ import type { AppRole } from '@/utils/roles';
 const Login = lazy(() => import('@/pages/auth/Login'));
 const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'));
 const Layout = lazy(() => import('@/components/layout/Layout'));
+const MasSecciones = lazy(() => import('@/components/layout/MasSecciones'));
 const Clientes = lazy(() => import('@/pages/clientes/Clientes'));
 const Planes = lazy(() => import('@/pages/infraestructura/planes/Planes'));
 const Routers = lazy(() => import('@/pages/infraestructura/routers/Routers'));
@@ -214,6 +215,7 @@ function App() {
               )}
             >
                 <Route path="/admin/dashboard" element={protectedPage(<Dashboard />, ['admin'])} />
+                <Route path="/admin/mas" element={<MasSecciones />} />
                 <Route path="/admin/ordenes" element={protectedPage(<Orders />, ['admin', 'supervisor'])} />
                 {/* Bajas ahora es la pestaña Retiros del inventario. */}
                 <Route path="/admin/bajas" element={<Navigate to="/admin/inventario?tab=retiros" replace />} />

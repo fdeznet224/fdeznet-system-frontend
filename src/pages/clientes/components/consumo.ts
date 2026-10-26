@@ -69,7 +69,7 @@ const ANCHO = 1080;
 const MARGEN = 64;
 const CELDA = (ANCHO - MARGEN * 2) / 7;
 const ALTO_CELDA = 120;
-const FUENTE = '"Inter Variable", system-ui, sans-serif';
+const FUENTE = '"Plus Jakarta Sans", system-ui, sans-serif';
 const DIAS_SEMANA = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const COLORES: Record<EstadoDia, [string, string]> = {
     uso: ['#d1fae5', '#065f46'],

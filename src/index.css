@@ -1,20 +1,21 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *)); /* 👈 LE DICTA A TAILWIND V4 QUE TRABAJE POR INYECCIÓN DE CLASES */
 
-/* Inter va dentro de la app (sin Google Fonts) para que funcione sin internet. */
+/* Plus Jakarta Sans va dentro de la app (sin Google Fonts) para que funcione sin internet. */
 @theme {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   /* Los mismos tonos azul noche en todo el sistema (admin, técnico y cobrador). */
   --color-slate-900: #161b28;
   --color-slate-950: #0f1219;
-  /* Inter en 900 se ve tosca: lo "negro" queda en 800. */
+  /* La fuente llega a 800: lo "negro" queda en 800. */
   --font-weight-black: 800;
+  /* Fondo gris de las listas agrupadas (estilo iPhone). */
+  --color-fondo: #f2f2f7;
 }
 
 /* ✅ SOLUCIÓN: Cambia dinámicamente según la clase .dark del HTML raíz */
 body {
-  @apply bg-[#f5f6f8] font-sans text-slate-900 antialiased dark:bg-[#0f1219] dark:text-slate-100 transition-colors duration-300;
-  font-feature-settings: "cv11", "ss01";
+  @apply bg-fondo font-sans text-slate-900 antialiased dark:bg-[#0f1219] dark:text-slate-100 transition-colors duration-300;
   min-width: 320px;
   min-height: 100dvh;
   margin: 0;

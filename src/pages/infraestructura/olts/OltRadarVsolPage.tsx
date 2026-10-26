@@ -26,6 +26,7 @@ import {
   type OltOnuDetalle,
   type OltSavePayload,
 } from "./types";
+import { EncabezadoPagina } from "@/components/ui/Pagina";
 import "./styles.css";
 
 type StatusFilter = "todos" | "online" | "offline" | "critica" | "regular" | "registradas" | "no_registradas";
@@ -1022,12 +1023,7 @@ export default function OltRadarVsolPage() {
 
   return (
     <div className="olt-page">
-      <div className="olt-page__header">
-        <div>
-          <h1 className="olt-page__title">Radar OLT / Fibra</h1>
-          <p className="olt-page__subtitle">ONU online/offline, potencia, PON y cliente propietario.</p>
-        </div>
-      </div>
+      <EncabezadoPagina titulo="Radar OLT / Fibra" descripcion="ONU en línea o apagadas, potencia, PON y cliente de cada una." />
 
       {!selectedOlt ? (
         <section className="olt-card" aria-label="Elegir OLT">
