@@ -6,12 +6,12 @@ import {
     UsersIcon, CurrencyDollarIcon, ServerIcon, ArrowPathIcon,
     CpuChipIcon, ExclamationTriangleIcon, BanknotesIcon, UserPlusIcon,
     PauseIcon, CircleStackIcon, WifiIcon, ArrowUpRightIcon, DocumentTextIcon,
-    WrenchScrewdriverIcon, SignalSlashIcon, DocumentCheckIcon, UserGroupIcon, ChevronRightIcon,
+    WrenchScrewdriverIcon, SignalSlashIcon, UserMinusIcon, UserGroupIcon, QuestionMarkCircleIcon, ChevronRightIcon,
     SignalIcon, BoltSlashIcon, CheckCircleIcon, XCircleIcon
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 
-import { CuadroIcono, EncabezadoPagina, FilaLista, Lista } from '@/components/ui/Pagina';
+import { CuadroIcono, EncabezadoPagina, FilaLista } from '@/components/ui/Pagina';
 import { BOTON_ACCION_PRIMARIO, BOTON_ACCION_SECUNDARIO, CUADRO_TONO, TARJETA, TEXTO_TONO, TITULO_SECCION, type Tono } from '@/components/ui/estilo';
 import RegistrarPago from '@/pages/finanzas/components/RegistrarPago';
 import CreateClientModal from '@/pages/clientes/components/CreateClientModal';
@@ -73,7 +73,10 @@ interface DashboardData {
         ordenes_reparacion: number;
         routers_conectados: number;
         routers_desconectados: number;
+        clientes_registrados: number;
         clientes_activos: number;
+        clientes_suspendidos: number;
+        clientes_sin_contrato: number;
     };
 }
 
@@ -84,6 +87,7 @@ interface ResumenOlts {
     onu_en_linea: number;
     onu_fuera: number;
     onu_potencia_baja: number;
+    onu_sin_cliente: number;
     clientes_onu_fuera: number[];
     clientes_potencia_baja: number[];
 }
@@ -216,17 +220,16 @@ export default function Dashboard() {
                 />
             </div>
 
-            <section>
-                <h2 className={`${TITULO_SECCION} pb-1.5`}>Resumen del sistema</h2>
-                <div className={`${TARJETA} grid grid-cols-1 gap-px overflow-hidden bg-[#ececf0] sm:grid-cols-2 lg:grid-cols-3 dark:bg-slate-800 [&>*]:bg-white dark:[&>*]:bg-slate-900`}>
-                    <FilaLista icono={ServerIcon} tono="verde" titulo="Routers activos" detalle="Responden al sistema" valor={pendientes?.routers_conectados ?? 0} a="/admin/routers" />
-                    <FilaLista icono={SignalSlashIcon} tono={routersCaidos ? 'rojo' : 'neutro'} titulo="Routers desconectados" detalle={routersCaidos ? 'Sin respuesta: revisar' : 'Todos en línea'} valor={routersCaidos} tonoValor={routersCaidos ? 'rojo' : undefined} a="/admin/routers" />
-                    <FilaLista icono={UsersIcon} tono="azul" titulo="Clientes activos" detalle="Con servicio activo" valor={pendientes?.clientes_activos ?? resumen.contratos_activos} a="/admin/clientes" />
-                    <FilaLista icono={PauseIcon} tono="ambar" titulo="Clientes suspendidos" detalle="Por falta de pago" valor={metricas.total_suspendidos || resumen.contratos_suspendidos || 0} a="/admin/clientes" />
-                    <FilaLista icono={DocumentCheckIcon} tono="violeta" titulo="Contratos activos" detalle={`${resumen.total_servicios_actuales} servicios en total`} valor={resumen.contratos_activos} a="/admin/clientes" />
-                    <FilaLista icono={UserGroupIcon} tono={sinConexion ? 'rojo' : 'neutro'} titulo="Clientes offline" detalle={sinConexion ? 'Sin sesión en el MikroTik' : 'Todos conectados'} valor={sinConexion} tonoValor={sinConexion ? 'rojo' : undefined} a="/admin/clientes" />
-                </div>
-            </section>
+            <Rejilla titulo="Resumen del sistema" pie={pendientes ? `${pendientes.clientes_registrados} clientes registrados: activos, suspendidos y sin contrato suman el total.` : undefined}>
+                <FilaLista icono={ServerIcon} tono="verde" titulo="Routers activos" detalle="Responden al sistema" valor={pendientes?.routers_conectados ?? 0} a="/admin/routers" />
+                <FilaLista icono={SignalSlashIcon} tono={routersCaidos ? 'rojo' : 'neutro'} titulo="Routers desconectados" detalle={routersCaidos ? 'Sin respuesta: revisar' : 'Todos en línea'} valor={routersCaidos} tonoValor={routersCaidos ? 'rojo' : undefined} a="/admin/routers" />
+                <FilaLista icono={UserGroupIcon} tono={sinConexion ? 'rojo' : 'neutro'} titulo="Clientes offline" detalle={sinConexion ? 'Sin sesión en el MikroTik' : 'Todos conectados'} valor={sinConexion} tonoValor={sinConexion ? 'rojo' : undefined} a="/admin/clientes" />
+                <FilaLista icono={UsersIcon} tono="azul" titulo="Clientes activos" detalle="Con servicio activo" valor={pendientes?.clientes_activos ?? resumen.contratos_activos} a="/admin/clientes" />
+                <FilaLista icono={PauseIcon} tono="ambar" titulo="Clientes suspendidos" detalle="Por falta de pago" valor={pendientes?.clientes_suspendidos ?? (metricas.total_suspendidos || resumen.contratos_suspendidos || 0)} a="/admin/clientes" />
+                <FilaLista icono={UserMinusIcon} tono="neutro" titulo="Sin contrato activo" detalle="Retirados, cancelados o por instalar" valor={pendientes?.clientes_sin_contrato ?? 0} />
+            </Rejilla>
+
+            <MonitoreoOlt olts={olts} />
 
             <section>
                 <div className="flex items-end justify-between gap-3 px-1 pb-1.5">
@@ -264,21 +267,17 @@ export default function Dashboard() {
                 </div>
             </section>
 
-            <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-                <MonitoreoOlt olts={olts} />
-
-                <Lista titulo="Servidor">
-                    <FilaLista icono={CpuChipIcon} tono="azul" titulo="Procesador" valor={`${data.servidor.cpu_percent}%`}>
-                        <Barra porcentaje={data.servidor.cpu_percent} />
-                    </FilaLista>
-                    <FilaLista icono={CircleStackIcon} tono="violeta" titulo="Memoria" valor={`${data.servidor.ram_usada_percent}%`}>
-                        <Barra porcentaje={data.servidor.ram_usada_percent} />
-                    </FilaLista>
-                    <FilaLista icono={ServerIcon} tono="verde" titulo="Disco libre" valor={`${data.servidor.disco_libre_percent}%`}>
-                        <Barra porcentaje={100 - data.servidor.disco_libre_percent} />
-                    </FilaLista>
-                </Lista>
-            </div>
+            <Rejilla titulo="Servidor">
+                <FilaLista icono={CpuChipIcon} tono="azul" titulo="Procesador" valor={`${data.servidor.cpu_percent}%`}>
+                    <Barra porcentaje={data.servidor.cpu_percent} />
+                </FilaLista>
+                <FilaLista icono={CircleStackIcon} tono="violeta" titulo="Memoria" detalle={`${data.servidor.ram_total_gb} GB en total`} valor={`${data.servidor.ram_usada_percent}%`}>
+                    <Barra porcentaje={data.servidor.ram_usada_percent} />
+                </FilaLista>
+                <FilaLista icono={ServerIcon} tono="verde" titulo="Disco libre" valor={`${data.servidor.disco_libre_percent}%`}>
+                    <Barra porcentaje={100 - data.servidor.disco_libre_percent} />
+                </FilaLista>
+            </Rejilla>
 
             {/* ================= MODALES ================= */}
             <Transition appear show={isPosOpen} as={Fragment}>
@@ -327,6 +326,19 @@ function TarjetaDoble({ icono, tono, titulo, valor, detalle, abajo, valorAbajo, 
     );
 }
 
+/** Renglones de lista en rejilla: una columna en el celular, tres en PC. */
+function Rejilla({ titulo, pie, children }: { titulo: string; pie?: ReactNode; children: ReactNode }) {
+    return (
+        <section>
+            <h2 className={`${TITULO_SECCION} pb-1.5`}>{titulo}</h2>
+            <div className={`${TARJETA} grid grid-cols-1 gap-px overflow-hidden bg-[#ececf0] sm:grid-cols-2 lg:grid-cols-3 dark:bg-slate-800 [&>*]:bg-white dark:[&>*]:bg-slate-900`}>
+                {children}
+            </div>
+            {pie && <p className="px-1 pt-1.5 text-xs text-[#5b6170] dark:text-slate-400">{pie}</p>}
+        </section>
+    );
+}
+
 /** OLT y ONU de los clientes; cada renglón lleva a esos clientes en Clientes. */
 function MonitoreoOlt({ olts }: { olts: ResumenOlts | null }) {
     const leyendo = olts === null;
@@ -336,7 +348,7 @@ function MonitoreoOlt({ olts }: { olts: ResumenOlts | null }) {
     const onuFuera = olts?.onu_fuera ?? 0;
     const baja = olts?.onu_potencia_baja ?? 0;
     return (
-        <Lista titulo="Monitoreo OLT" pie={leyendo ? 'Leyendo las OLT…' : 'Se actualiza cada minuto.'}>
+        <Rejilla titulo="Monitoreo OLT" pie={leyendo ? 'Leyendo las OLT…' : 'Se actualiza cada minuto.'}>
             <FilaLista icono={SignalIcon} tono="verde" titulo="OLT en línea" detalle="Responden al sistema" valor={cifra(olts?.olts_en_linea)} a="/admin/radar" />
             <FilaLista
                 icono={SignalSlashIcon} tono={caidas ? 'rojo' : 'neutro'} titulo="OLT fuera de línea"
@@ -352,7 +364,8 @@ function MonitoreoOlt({ olts }: { olts: ResumenOlts | null }) {
                 icono={BoltSlashIcon} tono={baja ? 'ambar' : 'neutro'} titulo="ONU con potencia baja" detalle="Peor que -27 dBm"
                 valor={cifra(olts?.onu_potencia_baja)} tonoValor={baja ? 'ambar' : undefined} a={aClientes(olts?.clientes_potencia_baja)}
             />
-        </Lista>
+            <FilaLista icono={QuestionMarkCircleIcon} tono="neutro" titulo="ONU sin cliente" detalle="Registradas en la OLT, sin ligar" valor={cifra(olts?.onu_sin_cliente)} a="/admin/radar" />
+        </Rejilla>
     );
 }
 

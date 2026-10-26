@@ -239,13 +239,14 @@ export async function mockApi(page: Page) {
         servidor: { cpu_percent: 5, ram_total_gb: 8, ram_usada_percent: 20, disco_libre_percent: 80 },
         pendientes: {
           facturas_no_pagadas: 12, saldo_no_pagado: 4200, facturas_vencidas: 3, saldo_vencido: 1050,
-          ordenes_instalacion: 2, ordenes_reparacion: 4, routers_conectados: 3, routers_desconectados: 1, clientes_activos: 198,
+          ordenes_instalacion: 2, ordenes_reparacion: 4, routers_conectados: 3, routers_desconectados: 1,
+          clientes_registrados: 243, clientes_activos: 198, clientes_suspendidos: 12, clientes_sin_contrato: 33,
         },
       }
     } else if (url.pathname.endsWith('/dashboard/olts')) {
       body = {
         olts_en_linea: 2, olts_fuera: 1, olts_fuera_nombres: ['OLT Paraíso'],
-        onu_en_linea: 180, onu_fuera: 2, onu_potencia_baja: 1,
+        onu_en_linea: 180, onu_fuera: 2, onu_potencia_baja: 1, onu_sin_cliente: 3,
         clientes_onu_fuera: [1, 2], clientes_potencia_baja: [1],
       }
     } else if (url.pathname.endsWith('/dashboard/clientes-online-detalle')) {

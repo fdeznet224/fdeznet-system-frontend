@@ -86,6 +86,9 @@ test('carga el panel principal con sus contratos tipados', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Resumen del sistema' })).toBeVisible()
   await expect(page.getByRole('link', { name: /Routers desconectados/ })).toContainText('1')
   await expect(page.getByRole('link', { name: /Clientes offline/ })).toContainText('8')
+  // Activos, suspendidos y sin contrato cuentan clientes y suman el total registrado.
+  await expect(page.getByText('Sin contrato activo')).toBeVisible()
+  await expect(page.getByText(/243 clientes registrados/)).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Últimos cobros' })).toBeVisible()
   await expect(page.getByText(/Admin E2E/).filter({ visible: true })).toHaveCount(1)
   await expect(page.getByRole('heading', { name: 'Servidor' })).toBeVisible()
