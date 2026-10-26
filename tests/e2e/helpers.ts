@@ -235,8 +235,12 @@ export async function mockApi(page: Page) {
         metricas: { total_clientes: 1, navegando_ok: 1, falla_tecnica: 0, morosos_online: 0, morosos_offline: 0 },
         finanzas: { cobrado_hoy: 0, cobrado_mes: 0, clientes_cobrados_hoy: 0, clientes_cobrados_mes: 0, moneda: 'MXN' },
         facturacion: { total: 216, pagadas: 204, pendientes: 12, porcentaje: 94.4 },
-        ultimos_pagos: [],
+        ultimos_pagos: [{ cliente: 'Cliente Global E2E', monto: 350, cobrador: 'Admin E2E', fecha: '25/10 10:42' }],
         servidor: { cpu_percent: 5, ram_total_gb: 8, ram_usada_percent: 20, disco_libre_percent: 80 },
+        pendientes: {
+          facturas_no_pagadas: 12, saldo_no_pagado: 4200, facturas_vencidas: 3, saldo_vencido: 1050,
+          ordenes_instalacion: 2, ordenes_reparacion: 4, routers_conectados: 3, routers_desconectados: 1, clientes_activos: 198,
+        },
       }
     } else if (url.pathname.endsWith('/dashboard/clientes-online-detalle')) {
       body = {

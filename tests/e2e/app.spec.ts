@@ -75,10 +75,20 @@ test('carga el panel principal con sus contratos tipados', async ({ page }) => {
   await page.goto('/admin/dashboard')
 
   await expect(page.getByRole('heading', { name: 'Inicio', exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Cobranza del ciclo' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Red', exact: true })).toBeVisible()
-  await expect(page.getByText('Clientes actuales')).toBeVisible()
-  await expect(page.getByText('Sin conexión', { exact: true })).toBeVisible()
+  // Tarjetas: el número del día arriba y su total abajo.
+  const enLinea = page.getByRole('link', { name: /Clientes en línea/ })
+  await expect(enLinea).toContainText('208')
+  await expect(enLinea).toContainText('Total en el sistema')
+  await expect(page.getByRole('link', { name: /Facturas no pagadas/ })).toContainText('Vencidas')
+  await expect(page.getByRole('link', { name: /Órdenes de instalación/ })).toContainText('Órdenes de reparación')
+  await expect(page.getByRole('link', { name: /Cobrado hoy/ })).toContainText('Cobrado este mes')
+
+  await expect(page.getByRole('heading', { name: 'Resumen del sistema' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Routers desconectados/ })).toContainText('1')
+  await expect(page.getByRole('link', { name: /Clientes offline/ })).toContainText('8')
+  await expect(page.getByRole('heading', { name: 'Últimos cobros' })).toBeVisible()
+  await expect(page.getByText(/Admin E2E/).filter({ visible: true })).toHaveCount(1)
+  await expect(page.getByRole('heading', { name: 'Servidor' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Terminal de Cobro' })).toHaveCount(0)
 })
 

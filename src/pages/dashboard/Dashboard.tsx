@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import client from '@/api/axios';
 import { Dialog, Transition } from '@headlessui/react';
+import type { ComponentType, ReactNode } from 'react';
 import {
     UsersIcon, CurrencyDollarIcon, ServerIcon, ArrowPathIcon,
-    CreditCardIcon, CpuChipIcon, ExclamationTriangleIcon,
-    BanknotesIcon, UserPlusIcon, PauseIcon, CircleStackIcon,
-    WifiIcon, ArrowUpRightIcon
+    CpuChipIcon, ExclamationTriangleIcon, BanknotesIcon, UserPlusIcon,
+    PauseIcon, CircleStackIcon, WifiIcon, ArrowUpRightIcon, DocumentTextIcon,
+    WrenchScrewdriverIcon, SignalSlashIcon, DocumentCheckIcon, UserGroupIcon, ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 
-import { EncabezadoPagina, FilaLista, Lista } from '@/components/ui/Pagina';
+import { CuadroIcono, EncabezadoPagina, FilaLista, Lista } from '@/components/ui/Pagina';
+import { BOTON_ACCION_PRIMARIO, BOTON_ACCION_SECUNDARIO, CUADRO_TONO, TARJETA, TEXTO_TONO, TITULO_SECCION, type Tono } from '@/components/ui/estilo';
 import RegistrarPago from '@/pages/finanzas/components/RegistrarPago';
 import CreateClientModal from '@/pages/clientes/components/CreateClientModal';
 
@@ -60,6 +62,17 @@ interface DashboardData {
         clientes_cobrados: number;
         clientes_con_saldo_pendiente: number;
         saldo_pendiente: number;
+    };
+    pendientes?: {
+        facturas_no_pagadas: number;
+        saldo_no_pagado: number;
+        facturas_vencidas: number;
+        saldo_vencido: number;
+        ordenes_instalacion: number;
+        ordenes_reparacion: number;
+        routers_conectados: number;
+        routers_desconectados: number;
+        clientes_activos: number;
     };
 }
 
@@ -116,23 +129,34 @@ export default function Dashboard() {
     if (loading) return <div className="flex h-[60vh] items-center justify-center"><ArrowPathIcon className="h-8 w-8 animate-spin text-blue-500" /></div>;
     if (!data) return null;
 
-    const totalConectados = data.metricas.clientes_online_mikrotik || 0;
-    const totalSinSesion = data.metricas.clientes_offline_mikrotik || 0;
-    const totalSuspendidos = data.metricas.total_suspendidos || data.resumen_clientes.contratos_suspendidos || 0;
-    const porcentajeRecaudado = data.facturacion?.porcentaje ?? 0;
     const hoy = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
     const pesos = (valor: number) => `$${valor.toLocaleString('es-MX')}`;
-
-    const facturacion = data.facturacion;
+    const { metricas, resumen_clientes: resumen, finanzas } = data;
+    const pendientes = data.pendientes;
+    const sinConexion = metricas.clientes_offline_mikrotik || 0;
+    const routersCaidos = pendientes?.routers_desconectados ?? 0;
 
     return (
-        <div className="mx-auto flex max-w-6xl flex-col gap-5">
-            <EncabezadoPagina etiqueta={hoy.charAt(0).toUpperCase() + hoy.slice(1)} titulo="Inicio" />
+        <div className="mx-auto flex max-w-6xl flex-col gap-6">
+            <EncabezadoPagina
+                etiqueta={hoy.charAt(0).toUpperCase() + hoy.slice(1)}
+                titulo="Inicio"
+                acciones={
+                    <>
+                        <button type="button" onClick={() => setIsPosOpen(true)} aria-label="Cobrar" className={`${BOTON_ACCION_PRIMARIO} flex-1 sm:flex-none`}>
+                            <BanknotesIcon className="h-5 w-5" /> Cobrar
+                        </button>
+                        <button type="button" onClick={() => setIsCreateClientOpen(true)} className={`${BOTON_ACCION_SECUNDARIO} flex-1 sm:flex-none`}>
+                            <UserPlusIcon className="h-5 w-5" /> Nuevo cliente
+                        </button>
+                    </>
+                }
+            />
 
             {data.inventario?.bajo && (
                 <Link
                     to="/admin/inventario"
-                    className="flex items-center gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200 transition-colors hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20"
+                    className="-mt-4 flex items-center gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200 transition-colors hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20"
                 >
                     <ExclamationTriangleIcon className="h-6 w-6 shrink-0" />
                     <span className="min-w-0">
@@ -146,80 +170,89 @@ export default function Dashboard() {
                 </Link>
             )}
 
-            <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-                <div className="flex flex-col gap-5">
-                    {/* COBRANZA DEL CICLO: lo primero que se ve, con los dos botones de todos los días */}
-                    <section className="flex flex-col gap-3 rounded-[20px] bg-blue-700 p-5 text-white">
-                        <div className="flex items-center justify-between gap-3">
-                            <h2 className="text-sm font-semibold">Cobranza del ciclo</h2>
-                            {facturacion && (
-                                <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold">
-                                    {facturacion.pendientes} pendientes
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-[40px] font-extrabold leading-none tracking-tight tabular-nums">{porcentajeRecaudado}%</p>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-white/25">
-                            <div className="h-full rounded-full bg-white transition-all duration-700" style={{ width: `${Math.min(100, porcentajeRecaudado)}%` }} />
-                        </div>
-                        <p className="text-[13px] text-blue-100">{facturacion?.pagadas ?? 0} pagadas de {facturacion?.total ?? 0} facturas</p>
-                        <div className="mt-1 grid grid-cols-2 gap-2.5">
-                            <button type="button" onClick={() => setIsPosOpen(true)} aria-label="Cobrar" className="flex h-11 items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-slate-900 transition active:scale-[0.98]">
-                                <BanknotesIcon className="h-5 w-5" /> Cobrar
-                            </button>
-                            <button type="button" onClick={() => setIsCreateClientOpen(true)} className="flex h-11 items-center justify-center gap-2 rounded-xl bg-white/20 text-sm font-bold text-white transition active:scale-[0.98]">
-                                <UserPlusIcon className="h-5 w-5" /> Nuevo cliente
-                            </button>
-                        </div>
-                    </section>
-
-                    <Lista titulo="Red">
-                        <FilaLista icono={WifiIcon} tono="verde" titulo="En línea" detalle="Con sesión en el MikroTik" valor={totalConectados} a="/admin/clientes" />
-                        <FilaLista icono={ExclamationTriangleIcon} tono={totalSinSesion ? 'rojo' : 'neutro'} titulo="Sin conexión" detalle={totalSinSesion ? 'Activos sin sesión: revisar' : 'Todos conectados'} valor={totalSinSesion} tonoValor={totalSinSesion ? 'rojo' : undefined} a="/admin/clientes" />
-                        <FilaLista icono={PauseIcon} tono="ambar" titulo="Suspendidos" detalle="Por falta de pago" valor={totalSuspendidos} a="/admin/clientes" />
-                        <FilaLista icono={ServerIcon} tono="neutro" titulo="Routers" detalle="MikroTik registrados" valor={routersList.length} a="/admin/routers" />
-                    </Lista>
-                </div>
-
-                <div className="flex flex-col gap-5">
-                    <Lista titulo="Cobranza">
-                        <FilaLista icono={BanknotesIcon} tono="verde" titulo="Cobrado hoy" detalle={`${data.finanzas.clientes_cobrados_hoy || 0} clientes`} valor={pesos(data.finanzas.cobrado_hoy)} />
-                        <FilaLista icono={CreditCardIcon} tono="azul" titulo="Cobrado en el mes" detalle={`${data.finanzas.clientes_cobrados_mes || 0} clientes`} valor={pesos(data.finanzas.cobrado_mes)} a="/admin/transacciones" />
-                        <FilaLista icono={UsersIcon} tono="violeta" titulo="Clientes actuales" detalle={`${data.resumen_clientes.total_servicios_actuales} servicios`} valor={data.resumen_clientes.total_clientes} a="/admin/clientes" />
-                    </Lista>
-
-                    <Lista
-                        titulo="Últimos pagos"
-                        accion={<Link to="/admin/transacciones" className="flex items-center gap-1 text-[13px] font-semibold text-blue-600 hover:text-blue-500 dark:text-blue-400">Historial <ArrowUpRightIcon className="h-3.5 w-3.5" /></Link>}
-                    >
-                        {data.ultimos_pagos.length === 0 ? (
-                            <FilaLista icono={CurrencyDollarIcon} tono="neutro" titulo="No hay pagos registrados hoy." />
-                        ) : data.ultimos_pagos.map((p, i) => (
-                            <FilaLista
-                                key={i}
-                                icono={CurrencyDollarIcon}
-                                tono="verde"
-                                titulo={p.cliente}
-                                detalle={`${p.cobrador} · ${p.fecha.split(' ')[1] ?? ''}`}
-                                valor={`+${pesos(p.monto)}`}
-                                tonoValor="verde"
-                            />
-                        ))}
-                    </Lista>
-
-                    <Lista titulo="Servidor">
-                        <FilaLista icono={CpuChipIcon} tono="azul" titulo="Procesador" valor={`${data.servidor.cpu_percent}%`}>
-                            <Barra porcentaje={data.servidor.cpu_percent} />
-                        </FilaLista>
-                        <FilaLista icono={CircleStackIcon} tono="violeta" titulo="Memoria" valor={`${data.servidor.ram_usada_percent}%`}>
-                            <Barra porcentaje={data.servidor.ram_usada_percent} />
-                        </FilaLista>
-                        <FilaLista icono={ServerIcon} tono="verde" titulo="Disco libre" valor={`${data.servidor.disco_libre_percent}%`}>
-                            <Barra porcentaje={100 - data.servidor.disco_libre_percent} />
-                        </FilaLista>
-                    </Lista>
-                </div>
+            {/* Cuatro tarjetas: el número del día arriba y su total abajo. */}
+            <div className="-mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+                <TarjetaDoble
+                    icono={WifiIcon} tono="verde" a="/admin/clientes"
+                    titulo="Clientes en línea" valor={metricas.clientes_online_mikrotik || 0} detalle="Conectados al MikroTik"
+                    abajo="Total en el sistema" valorAbajo={resumen.total_clientes}
+                />
+                <TarjetaDoble
+                    icono={BanknotesIcon} tono="azul" a="/admin/transacciones"
+                    titulo="Cobrado hoy" valor={pesos(finanzas.cobrado_hoy)} detalle={`${finanzas.clientes_cobrados_hoy || 0} clientes`}
+                    abajo="Cobrado este mes" valorAbajo={pesos(finanzas.cobrado_mes)}
+                />
+                <TarjetaDoble
+                    icono={DocumentTextIcon} tono="ambar" a="/admin/facturas"
+                    titulo="Facturas no pagadas" valor={pendientes?.facturas_no_pagadas ?? 0} detalle={pesos(pendientes?.saldo_no_pagado ?? 0)}
+                    abajo="Vencidas" valorAbajo={pendientes?.facturas_vencidas ?? 0} tonoAbajo={pendientes?.facturas_vencidas ? 'rojo' : undefined}
+                />
+                <TarjetaDoble
+                    icono={WrenchScrewdriverIcon} tono="violeta" a="/admin/ordenes"
+                    titulo="Órdenes de instalación" valor={pendientes?.ordenes_instalacion ?? 0} detalle="Sin terminar"
+                    abajo="Órdenes de reparación" valorAbajo={pendientes?.ordenes_reparacion ?? 0}
+                />
             </div>
+
+            <section>
+                <h2 className={`${TITULO_SECCION} pb-1.5`}>Resumen del sistema</h2>
+                <div className={`${TARJETA} grid grid-cols-1 gap-px overflow-hidden bg-[#ececf0] sm:grid-cols-2 lg:grid-cols-3 dark:bg-slate-800 [&>*]:bg-white dark:[&>*]:bg-slate-900`}>
+                    <FilaLista icono={ServerIcon} tono="verde" titulo="Routers activos" detalle="Responden al sistema" valor={pendientes?.routers_conectados ?? 0} a="/admin/routers" />
+                    <FilaLista icono={SignalSlashIcon} tono={routersCaidos ? 'rojo' : 'neutro'} titulo="Routers desconectados" detalle={routersCaidos ? 'Sin respuesta: revisar' : 'Todos en línea'} valor={routersCaidos} tonoValor={routersCaidos ? 'rojo' : undefined} a="/admin/routers" />
+                    <FilaLista icono={UsersIcon} tono="azul" titulo="Clientes activos" detalle="Con servicio activo" valor={pendientes?.clientes_activos ?? resumen.contratos_activos} a="/admin/clientes" />
+                    <FilaLista icono={PauseIcon} tono="ambar" titulo="Clientes suspendidos" detalle="Por falta de pago" valor={metricas.total_suspendidos || resumen.contratos_suspendidos || 0} a="/admin/clientes" />
+                    <FilaLista icono={DocumentCheckIcon} tono="violeta" titulo="Contratos activos" detalle={`${resumen.total_servicios_actuales} servicios en total`} valor={resumen.contratos_activos} a="/admin/clientes" />
+                    <FilaLista icono={UserGroupIcon} tono={sinConexion ? 'rojo' : 'neutro'} titulo="Clientes offline" detalle={sinConexion ? 'Sin sesión en el MikroTik' : 'Todos conectados'} valor={sinConexion} tonoValor={sinConexion ? 'rojo' : undefined} a="/admin/clientes" />
+                </div>
+            </section>
+
+            <section>
+                <div className="flex items-end justify-between gap-3 px-1 pb-1.5">
+                    <h2 className={TITULO_SECCION.replace('px-1 ', '')}>Últimos cobros</h2>
+                    <Link to="/admin/transacciones" className="flex items-center gap-1 text-[13px] font-semibold text-blue-600 hover:text-blue-500 dark:text-blue-400">Historial <ArrowUpRightIcon className="h-3.5 w-3.5" /></Link>
+                </div>
+                <div className={`${TARJETA} overflow-hidden`}>
+                    {data.ultimos_pagos.length === 0 ? (
+                        <FilaLista icono={CurrencyDollarIcon} tono="neutro" titulo="No hay cobros registrados." />
+                    ) : (
+                        <>
+                            <div className="hidden grid-cols-[1fr_1fr_90px_70px_110px] gap-3 border-b border-[#ececf0] px-4 py-2.5 text-[12px] font-semibold uppercase text-[#5b6170] dark:border-slate-800 dark:text-slate-400 sm:grid">
+                                <span>Cliente</span><span>Cobró</span><span>Fecha</span><span>Hora</span><span className="text-right">Monto</span>
+                            </div>
+                            <ul className="divide-y divide-[#ececf0] dark:divide-slate-800">
+                                {data.ultimos_pagos.map((p, i) => {
+                                    const [fecha, hora = ''] = p.fecha.split(' ');
+                                    return (
+                                        <li key={i} className="flex items-center gap-3 px-3.5 py-2.5 sm:grid sm:grid-cols-[1fr_1fr_90px_70px_110px] sm:px-4">
+                                            <CuadroIcono icono={CurrencyDollarIcon} tono="verde" className="sm:hidden" />
+                                            <span className="min-w-0 flex-1 sm:contents">
+                                                <span className="block truncate text-[15px] font-semibold text-slate-900 dark:text-white">{p.cliente}</span>
+                                                <span className="block truncate text-[13px] text-[#5b6170] dark:text-slate-400 sm:hidden">{p.cobrador} · {fecha} {hora}</span>
+                                                <span className="hidden truncate text-[14px] text-slate-700 dark:text-slate-300 sm:block">{p.cobrador}</span>
+                                                <span className="hidden text-[14px] tabular-nums text-[#5b6170] dark:text-slate-400 sm:block">{fecha}</span>
+                                                <span className="hidden text-[14px] tabular-nums text-[#5b6170] dark:text-slate-400 sm:block">{hora}</span>
+                                            </span>
+                                            <span className="shrink-0 text-right text-[15px] font-bold tabular-nums text-emerald-600 dark:text-emerald-400">+{pesos(p.monto)}</span>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </>
+                    )}
+                </div>
+            </section>
+
+            <Lista titulo="Servidor" className="lg:max-w-[calc(50%-0.5rem)]">
+                <FilaLista icono={CpuChipIcon} tono="azul" titulo="Procesador" valor={`${data.servidor.cpu_percent}%`}>
+                    <Barra porcentaje={data.servidor.cpu_percent} />
+                </FilaLista>
+                <FilaLista icono={CircleStackIcon} tono="violeta" titulo="Memoria" valor={`${data.servidor.ram_usada_percent}%`}>
+                    <Barra porcentaje={data.servidor.ram_usada_percent} />
+                </FilaLista>
+                <FilaLista icono={ServerIcon} tono="verde" titulo="Disco libre" valor={`${data.servidor.disco_libre_percent}%`}>
+                    <Barra porcentaje={100 - data.servidor.disco_libre_percent} />
+                </FilaLista>
+            </Lista>
 
             {/* ================= MODALES ================= */}
             <Transition appear show={isPosOpen} as={Fragment}>
@@ -235,6 +268,36 @@ export default function Dashboard() {
 
             <CreateClientModal isOpen={isCreateClientOpen} onClose={() => setIsCreateClientOpen(false)} onSuccess={handleCreateClientSuccess} routers={routersList} />
         </div>
+    );
+}
+
+/** Tarjeta de Inicio: número principal arriba y, separado por una línea, su total. */
+function TarjetaDoble({ icono, tono, titulo, valor, detalle, abajo, valorAbajo, tonoAbajo, a }: {
+    icono: ComponentType<{ className?: string }>;
+    tono: Tono;
+    titulo: string;
+    valor: ReactNode;
+    detalle?: string;
+    abajo: string;
+    valorAbajo: ReactNode;
+    tonoAbajo?: Tono;
+    a: string;
+}) {
+    return (
+        <Link to={a} className={`${TARJETA} group relative flex flex-col overflow-hidden p-4 transition hover:shadow-md active:scale-[0.99]`}>
+            <span className={`absolute inset-x-0 top-0 h-1 ${CUADRO_TONO[tono]}`} aria-hidden="true" />
+            <span className="flex items-center gap-2.5">
+                <CuadroIcono icono={icono} tono={tono} />
+                <span className="min-w-0 flex-1 text-[13px] font-semibold leading-tight text-[#5b6170] dark:text-slate-400">{titulo}</span>
+                <ChevronRightIcon className="hidden h-4 w-4 shrink-0 text-[#a1a1aa] sm:block" aria-hidden="true" />
+            </span>
+            <span className={`mt-3 block truncate text-[26px] font-extrabold leading-none tracking-tight tabular-nums sm:text-[30px] ${TEXTO_TONO[tono]}`}>{valor}</span>
+            {detalle && <span className="mt-1 block truncate text-[12px] text-[#5b6170] dark:text-slate-400">{detalle}</span>}
+            <span className="mt-3 flex items-center justify-between gap-2 border-t border-[#ececf0] pt-2.5 dark:border-slate-800">
+                <span className="min-w-0 truncate text-[12px] font-medium text-[#5b6170] dark:text-slate-400 sm:text-[13px]">{abajo}</span>
+                <span className={`shrink-0 text-[15px] font-bold tabular-nums ${tonoAbajo ? TEXTO_TONO[tonoAbajo] : 'text-slate-900 dark:text-white'}`}>{valorAbajo}</span>
+            </span>
+        </Link>
     );
 }
 
