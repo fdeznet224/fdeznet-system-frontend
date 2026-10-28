@@ -1697,7 +1697,7 @@ test('trabajando: la misma revisión sirve para terminar y avisa si la potencia 
   await expect.poll(() => cierre).toEqual({ solucion: 'Se empalmó, el poste sigue con la caja dañada', version: 4 })
 })
 
-test('en camino a una reparación el técnico ve PPPoE y potencia, completa el teléfono y cambia la ONU', async ({ page }) => {
+test('en camino a una reparación el técnico ve PPPoE y potencia, completa el teléfono y cambia la ONU con el mismo WiFi', async ({ page }) => {
   await authenticateAs(page, 'tecnico')
   await mockApi(page)
   await page.route(/\/api\/ordenes\/$/, (route) => route.fulfill({ json: [
@@ -1719,11 +1719,14 @@ test('en camino a una reparación el técnico ve PPPoE y potencia, completa el t
   await page.route('**/api/ordenes/56/onus-disponibles', (route) => route.fulfill({ json: [
     { id: 11, identificador: 'HWTC22222222', modelo: 'HG8145V5' },
   ] }))
+  // El sistema sabe el nombre de su red pero no la contraseña: se la pregunta al cliente.
+  await page.route('**/api/ordenes/56/wifi-cliente', (route) => route.fulfill({ json: { red: 'FdezNet-VM01', clave: null } }))
   let cambio: Record<string, unknown> | null = null
   await page.route('**/api/ordenes/56/cambiar-onu', async (route) => {
     cambio = route.request().postDataJSON()
     ficha = { ...ficha, identificador_onu: 'HWTC22222222' }
-    await route.fulfill({ json: { onu: 'HWTC22222222', onu_anterior: 'HWTC11111111' } })
+    await route.fulfill({ json: { onu: 'HWTC22222222', onu_anterior: 'HWTC11111111',
+      wifi: { red: 'FdezNet-VM01', clave: 'victor2024', automatica: true, clave_nueva: false } } })
   })
   await page.goto('/tech/dashboard')
   await page.getByRole('button', { name: 'Agenda', exact: true }).click()
@@ -1745,8 +1748,11 @@ test('en camino a una reparación el técnico ve PPPoE y potencia, completa el t
   await datos.getByRole('button', { name: 'Cambiar ONU' }).click()
   await datos.getByLabel('ONU nueva').fill('2222')
   await datos.getByRole('option', { name: /HWTC22222222/ }).click()
+  await expect(datos.getByLabel('Nombre del WiFi')).toHaveValue('FdezNet-VM01')
+  await datos.getByLabel('Contraseña del WiFi').fill('victor2024')
   await datos.getByRole('button', { name: /Guardar cambio de ONU/ }).click()
-  await expect.poll(() => cambio).toEqual({ estado_vieja_onu: 'CON_FALLA', onu_id: 11 })
+  await expect.poll(() => cambio).toEqual({ estado_vieja_onu: 'CON_FALLA', onu_id: 11, wifi_red: 'FdezNet-VM01', wifi_clave: 'victor2024' })
+  await expect(page.getByText(/Se configura sola con su WiFi FdezNet-VM01/)).toBeVisible()
   await expect(datos.getByText('HWTC22222222')).toBeVisible()
 })
 

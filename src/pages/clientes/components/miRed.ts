@@ -34,9 +34,11 @@ export interface EstadoRed {
     error_bloqueo: string | null;
 }
 
-/** Configuración automática de la ONU de un cliente nuevo (PPPoE y WiFi con su contrato). */
+/** Configuración automática de la ONU de un cliente nuevo o de reemplazo (PPPoE y su WiFi).
+ * guardado: solo la contraseña que puso el cliente o el admin, para el próximo cambio de ONU. */
 export interface OnuAutomatica {
-    estado: 'pendiente' | 'aplicado' | 'vencido' | 'error' | 'manual';
+    estado: 'pendiente' | 'aplicado' | 'vencido' | 'error' | 'manual' | 'guardado';
+    cambio_onu?: boolean;
     red: string;
     clave: string;
     detalle: string | null;

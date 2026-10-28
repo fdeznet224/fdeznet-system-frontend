@@ -88,6 +88,9 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
     const [onus, setOnus] = useState<OnuDisponible[]>([]);
     const [onu, setOnu] = useState('');
     const [estadoVieja, setEstadoVieja] = useState('CON_FALLA');
+    // El WiFi que llevará la ONU nueva: el que el sistema conoce, o el que dice el cliente.
+    const [wifiRed, setWifiRed] = useState('');
+    const [wifiClave, setWifiClave] = useState('');
 
     const cargar = useCallback(async () => {
         try {
@@ -232,9 +235,16 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
     const abrirCambioOnu = async () => {
         setEditando('onu');
         setOnu('');
+        setWifiRed('');
+        setWifiClave('');
         try {
-            const { data } = await client.get<OnuDisponible[]>(`/ordenes/${ordenId}/onus-disponibles`);
+            const [{ data }, { data: wifi }] = await Promise.all([
+                client.get<OnuDisponible[]>(`/ordenes/${ordenId}/onus-disponibles`),
+                client.get<{ red: string | null; clave: string | null }>(`/ordenes/${ordenId}/wifi-cliente`),
+            ]);
             setOnus(data);
+            setWifiRed(wifi.red || '');
+            setWifiClave(wifi.clave || '');
         } catch (error) {
             toast.error(apiErrorMessage(error, 'No se pudo cargar el inventario'));
         }
@@ -248,11 +258,17 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
         }
         setOcupado('onu');
         try {
-            const { data } = await client.post<{ onu: string }>(`/ordenes/${ordenId}/cambiar-onu`, {
+            const { data } = await client.post<{ onu: string; wifi: { red: string; clave: string; clave_nueva: boolean } | null }>(`/ordenes/${ordenId}/cambiar-onu`, {
                 estado_vieja_onu: estadoVieja,
                 ...(elegida ? { onu_id: elegida.id } : { onu_identificador: onu.trim() }),
+                ...(wifiRed.trim() ? { wifi_red: wifiRed.trim() } : {}),
+                ...(wifiClave ? { wifi_clave: wifiClave } : {}),
             });
-            toast.success(`ONU cambiada: ${data.onu}`);
+            if (data.wifi?.clave_nueva) {
+                toast.success(`ONU cambiada: ${data.onu}. WiFi nuevo para el cliente: ${data.wifi.red} · ${data.wifi.clave}`, { duration: 20000 });
+            } else {
+                toast.success(`ONU cambiada: ${data.onu}${data.wifi ? `. Se configura sola con su WiFi ${data.wifi.red}` : ''}`, { duration: 8000 });
+            }
             setEditando(null);
             await cargar();
         } catch (error) {
@@ -366,6 +382,11 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
                             <option value="CON_FALLA">La ONU retirada tiene falla</option>
                             <option value="DISPONIBLE">La ONU retirada funciona (vuelve a inventario)</option>
                         </select>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            WiFi que llevará la ONU nueva (sus equipos se conectan solos si es el mismo). Si falta, pregúntaselo al cliente; sin contraseña se pone una nueva.
+                        </p>
+                        <input aria-label="Nombre del WiFi" value={wifiRed} onChange={(e) => setWifiRed(e.target.value)} maxLength={32} placeholder="Nombre del WiFi" className={CAMPO} />
+                        <input aria-label="Contraseña del WiFi" value={wifiClave} onChange={(e) => setWifiClave(e.target.value)} maxLength={63} placeholder="Contraseña del WiFi" autoComplete="off" className={CAMPO} />
                         <button type="button" disabled={ocupado !== null} onClick={() => void cambiarOnu()} className={BOTON_EXITO}>
                             <CheckBadgeIcon className="h-4 w-4" /> {ocupado === 'onu' ? 'Guardando…' : 'Guardar cambio de ONU'}
                         </button>
