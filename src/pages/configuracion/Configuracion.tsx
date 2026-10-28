@@ -4,7 +4,7 @@ import {
     MapPinIcon, ChatBubbleLeftRightIcon, ArrowUpTrayIcon, 
     UsersIcon, KeyIcon, 
     DocumentTextIcon, Cog6ToothIcon, QrCodeIcon,
-    CommandLineIcon, ShieldCheckIcon, PaintBrushIcon, CloudArrowUpIcon, CircleStackIcon, ArchiveBoxArrowDownIcon,
+    CommandLineIcon, ShieldCheckIcon, PaintBrushIcon, CircleStackIcon,
     PuzzlePieceIcon
 } from '@heroicons/react/24/outline';
 import { TARJETA } from '@/components/ui/estilo';
@@ -21,14 +21,6 @@ export default function Configuracion() {
             color: "text-blue-500",
             bg: "bg-blue-500/10",
             path: "/admin/configuracion/marca"
-        },
-        {
-            titulo: "Licencias y versiones",
-            descripcion: "Registra instalaciones, revisa versiones y envía avisos de actualización.",
-            icon: CloudArrowUpIcon,
-            color: "text-cyan-500",
-            bg: "bg-cyan-500/10",
-            path: "/admin/configuracion/licencias"
         },
         {
             titulo: "Integraciones y claves",
@@ -61,14 +53,6 @@ export default function Configuracion() {
             color: "text-cyan-500",
             bg: "bg-cyan-500/10",
             path: "/admin/configuracion/almacenamiento"
-        },
-        {
-            titulo: "Respaldos y recuperación",
-            descripcion: "Programa respaldos, consulta el historial y recupera un punto anterior.",
-            icon: ArchiveBoxArrowDownIcon,
-            color: "text-violet-500",
-            bg: "bg-violet-500/10",
-            path: "/admin/configuracion/respaldos"
         },
         {
             titulo: "Panel de Control & Cortes",

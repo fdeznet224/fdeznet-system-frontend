@@ -22,13 +22,6 @@ interface SessionUser {
     rol: AppRole;
 }
 
-interface LicenseNotice {
-    estado: string;
-    mensaje: string;
-    plan_nombre: string | null;
-    vigente_hasta: string | null;
-}
-
 const NOMBRE_ROL: Record<AppRole, string> = { admin: 'Administrador', supervisor: 'Supervisor', cajero: 'Cajero', tecnico: 'Técnico' };
 
 function getSessionUser(raw: string | null): SessionUser {
@@ -62,7 +55,6 @@ export default function Layout() {
     const location = useLocation();
     const user = getSessionUser(localStorage.getItem('user'));
 
-    const [licenseNotice, setLicenseNotice] = useState<LicenseNotice | null>(null);
     const [buscadorAbierto, setBuscadorAbierto] = useState(false);
     const [clienteAbierto, setClienteAbierto] = useState<ClienteEncontrado | null>(null);
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark'));
@@ -74,19 +66,6 @@ export default function Layout() {
     // Cada grupo se abre o cierra a mano; sin tocarlo, solo está abierto el de la pantalla actual.
     const [gruposElegidos, setGruposElegidos] = useState<Record<string, boolean>>({});
     const grupoAbierto = (nombre: string) => gruposElegidos[nombre] ?? nombre === grupoActual?.nombre;
-
-    useEffect(() => {
-        let active = true;
-        const loadLicense = async () => {
-            try {
-                const { data } = await client.get<LicenseNotice>('/licencia/estado');
-                if (active) setLicenseNotice(data);
-            } catch { /* La navegación conserva su manejo normal de sesión. */ }
-        };
-        void loadLicense();
-        const timer = window.setInterval(() => void loadLicense(), 5 * 60 * 1000);
-        return () => { active = false; window.clearInterval(timer); };
-    }, []);
 
     // Ctrl+K (o ⌘K) abre el buscador desde cualquier pantalla.
     useEffect(() => {
@@ -202,11 +181,6 @@ export default function Layout() {
                 {/* Sin barra arriba: cada pantalla abre con su título grande (y la lupa en el celular). */}
                 <main className="custom-scrollbar relative flex-1 overflow-y-auto overflow-x-hidden">
                     <div className="mx-auto w-full max-w-[1600px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 lg:px-8 lg:pb-10 lg:pt-8">
-                        {licenseNotice && ['gracia', 'vencida', 'suspendida', 'revocada'].includes(licenseNotice.estado) && (
-                            <div className={`mb-4 rounded-2xl border p-4 text-sm font-semibold ${licenseNotice.estado === 'gracia' ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200' : 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200'}`}>
-                                {licenseNotice.mensaje}{licenseNotice.plan_nombre ? ` · Plan ${licenseNotice.plan_nombre}` : ''}
-                            </div>
-                        )}
                         <Outlet context={contextoMas} />
                     </div>
                 </main>

@@ -51,10 +51,8 @@ const Importar = lazy(() => import('@/pages/configuracion/Importar'));
 const Sistema = lazy(() => import('@/pages/configuracion/Sistema'));
 const Integraciones = lazy(() => import('@/pages/configuracion/Integraciones'));
 const StorageManagement = lazy(() => import('@/pages/configuracion/StorageManagement'));
-const BackupManagement = lazy(() => import('@/pages/configuracion/BackupManagement'));
 const BotWhatsapp = lazy(() => import('@/pages/configuracion/BotWhatsapp'));
 const MarcaBlanca = lazy(() => import('@/pages/configuracion/MarcaBlanca'));
-const LicenciasVersiones = lazy(() => import('@/pages/configuracion/LicenciasVersiones'));
 const WhatsappPage = lazy(() => import('@/pages/configuracion/WhatsappPage'));
 const CronjobLogs = lazy(() => import('@/pages/configuracion/CronjobLogs'));
 const TunnelsVPN = lazy(() => import('@/pages/configuracion/TunnelsVPN'));
@@ -242,7 +240,6 @@ function App() {
                 {/* Configuración Principal */}
                 <Route path="/admin/configuracion" element={protectedPage(<Configuracion />, ['admin'])} />
                 <Route path="/admin/configuracion/marca" element={protectedPage(<MarcaBlanca />, ['admin'])} />
-                <Route path="/admin/configuracion/licencias" element={protectedPage(<LicenciasVersiones />, ['admin'])} />
                 <Route path="/admin/configuracion/integraciones" element={protectedPage(<Integraciones />, ['admin'])} />
                 {/* El chat lo atienden desde el celular; queda la bandeja de salida. */}
                 <Route path="/admin/mensajes" element={<Navigate to="/admin/whatsapp/salidas" replace />} />
@@ -262,7 +259,6 @@ function App() {
                 <Route path="/admin/configuracion/cron" element={protectedPage(<CronjobLogs />, ['admin'])} />
                 <Route path="/admin/configuracion/sistema" element={protectedPage(<Sistema />, ['admin'])} />
                 <Route path="/admin/configuracion/almacenamiento" element={protectedPage(<StorageManagement />, ['admin'])} />
-                <Route path="/admin/configuracion/respaldos" element={protectedPage(<BackupManagement />, ['admin'])} />
                 <Route path="/admin/configuracion/bot-whatsapp" element={protectedPage(<BotWhatsapp />, ['admin'])} />
                 <Route path="/admin/configuracion/vpn" element={protectedPage(<TunnelsVPN />, ['admin'])} />
             </Route>

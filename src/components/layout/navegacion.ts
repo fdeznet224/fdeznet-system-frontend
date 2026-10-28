@@ -92,7 +92,7 @@ export const GRUPOS: GrupoNav[] = [
             { nombre: 'Plantillas Fact.', ruta: '/admin/configuracion/plantillas-facturacion', icono: BanknotesIcon, tono: 'ambar', roles: ADMIN, palabras: 'facturacion ciclo corte' },
             { nombre: 'Perfiles PPPoE', ruta: '/admin/configuracion/pppoe', icono: BoltIcon, tono: 'neutro', roles: ADMIN, palabras: 'pppoe dhcp' },
             { nombre: 'Logs Sistema/Cron', ruta: '/admin/configuracion/cron', icono: CommandLineIcon, tono: 'neutro', roles: ADMIN, palabras: 'bitacora errores tareas' },
-            { nombre: 'Sistema y Respaldo', ruta: '/admin/configuracion/sistema', icono: ComputerDesktopIcon, tono: 'neutro', roles: ADMIN, palabras: 'version actualizar backup' },
+            { nombre: 'Sistema', ruta: '/admin/configuracion/sistema', icono: ComputerDesktopIcon, tono: 'neutro', roles: ADMIN, palabras: 'zona horaria ajustes' },
             { nombre: 'Almacenamiento', ruta: '/admin/configuracion/almacenamiento', icono: CircleStackIcon, tono: 'neutro', roles: ADMIN, palabras: 'disco archivos' },
             { nombre: 'Importar Datos', ruta: '/admin/configuracion/importar', icono: ArrowDownTrayIcon, tono: 'neutro', roles: ADMIN, palabras: 'excel csv' },
             { nombre: 'Túneles VPN', ruta: '/admin/configuracion/vpn', icono: ShieldCheckIcon, tono: 'neutro', roles: ADMIN, palabras: 'wireguard' },
