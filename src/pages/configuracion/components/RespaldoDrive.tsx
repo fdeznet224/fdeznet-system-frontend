@@ -134,6 +134,7 @@ export default function RespaldoDrive() {
           )}
         </div>
       ) : (
+        <>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <input
             type="email" value={correo} onChange={(event) => setCorreo(event.target.value)} placeholder="Correo de Gmail (opcional)"
@@ -144,6 +145,11 @@ export default function RespaldoDrive() {
             {busy === 'conectar' ? 'Abriendo Google…' : 'Conectar Google Drive'}
           </button>
         </div>
+        <p className="mt-2 text-xs text-slate-500">
+          En la pantalla de Google marca la casilla <b>«Ver, editar, crear y borrar solo los archivos específicos de Google Drive»</b>;
+          sin ella no se puede guardar el respaldo. El sistema no ve ningún otro archivo de tu Drive.
+        </p>
+        </>
       )}
     </section>
   );
