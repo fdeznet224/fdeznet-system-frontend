@@ -18,7 +18,7 @@ const updateServiceWorker = registerSW({
     }
   },
   onOfflineReady() {
-    console.log('FdezNet listo para trabajar offline');
+    console.log('WisPay listo para trabajar offline');
   },
 })
 

@@ -30,9 +30,9 @@ export default defineConfig({
         importScripts: ['push-sw.js'],
       },
       manifest: {
-        name: 'FdezNet Operaciones',
-        short_name: 'FdezNet',
-        description: 'Gestión integral para FdezNet ISP',
+        name: 'WisPay',
+        short_name: 'WisPay',
+        description: 'Administración de tu ISP: clientes, cobranza y red',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',

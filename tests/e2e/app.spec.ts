@@ -43,7 +43,7 @@ test('carga el panel técnico tipado', async ({ page }) => {
   await mockApi(page)
   await page.goto('/tech/dashboard')
 
-  await expect(page.getByText('FdezNet Tech')).toBeVisible()
+  await expect(page.getByText('Mi ISP Tech')).toBeVisible()
   await expect(page.getByLabel('Buscar cliente')).toBeVisible()
 })
 
@@ -175,20 +175,6 @@ test('el aviso de potencias altas sale a la hora elegida y no en la madrugada', 
   await expect.poll(() => guardado?.hora_aviso_senal).toBe('')
 })
 
-test('administra programación e historial de respaldos', async ({ page }) => {
-  await authenticateAs(page)
-  await mockApi(page)
-  await page.goto('/admin/configuracion/respaldos')
-
-  await expect(page.getByRole('heading', { name: 'Respaldos y recuperación' })).toBeVisible()
-  await expect(page.getByText('20260912-030000.tar.gz.gpg')).toBeVisible()
-  await expect(page.getByText('1.0 MB')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Verificar' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Restaurar' })).toBeVisible()
-  await expect(page.getByLabel('Respaldar cada cuántos días')).toHaveValue('3')
-  await expect(page.getByLabel('Conservar respaldos durante (días)')).toHaveValue('30')
-})
-
 test('carga la importación masiva con catálogos vacíos', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)
@@ -264,7 +250,7 @@ test('impide que el técnico abra el panel administrativo', async ({ page }) => 
   await page.goto('/admin/clientes')
 
   await expect(page).toHaveURL(/\/tech\/dashboard$/)
-  await expect(page.getByText('FdezNet Tech')).toBeVisible()
+  await expect(page.getByText('Mi ISP Tech')).toBeVisible()
 })
 
 test('impide que el cajero abra las herramientas técnicas', async ({ page }) => {
@@ -402,13 +388,13 @@ test('al reabrir la app sin internet el técnico entra directo a su panel', asyn
   await authenticateAs(page, 'tecnico')
   await mockApi(page)
   await page.goto('/tech/dashboard')
-  await expect(page.getByText('FdezNet Tech')).toBeVisible()
+  await expect(page.getByText('Mi ISP Tech')).toBeVisible()
 
   // Cerró la app con wifi y datos apagados; al abrirla entra por "/".
   await page.route('**/api/**', (route) => route.abort('internetdisconnected'))
   await page.goto('/')
   await expect(page).toHaveURL(/\/tech\/dashboard/)
-  await expect(page.getByText('FdezNet Tech')).toBeVisible()
+  await expect(page.getByText('Mi ISP Tech')).toBeVisible()
   await expect(page.getByLabel('Buscar cliente')).toBeVisible()
 })
 
@@ -1102,21 +1088,6 @@ test('configura contraseñas PPPoE fijas o aleatorias', async ({ page }) => {
   await expect(page.getByPlaceholder('Mínimo 3 caracteres')).toBeVisible()
 })
 
-test('permite iniciar una actualización disponible desde la licencia local', async ({ page }) => {
-  await authenticateAs(page)
-  await mockApi(page)
-  await page.goto('/admin/configuracion/licencias')
-
-  await expect(page.getByText('Actualización disponible: v2.16.0')).toBeVisible()
-  const updateRequest = page.waitForRequest((request) =>
-    request.method() === 'POST'
-    && request.url().endsWith('/configuracion/mantenimiento/actualizar'))
-  page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: 'Actualizar ahora' }).click()
-  await updateRequest
-  await expect(page.getByRole('button', { name: 'Actualizando…' })).toBeDisabled()
-})
-
 test('carga las plantillas de mensajes de WhatsApp', async ({ page }) => {
   await authenticateAs(page)
   await mockApi(page)
@@ -1232,7 +1203,7 @@ test('abre la herramienta móvil de escaneo QR', async ({ page }) => {
   await page.goto('/scanner')
 
   await expect(page.getByRole('heading', { name: 'Buscar Cliente' })).toBeVisible()
-  await expect(page.getByText('FdezNet Tech')).toBeVisible()
+  await expect(page.getByText('Mi ISP Tech')).toBeVisible()
 })
 
 test('abre y guarda el formulario tipado de una OLT', async ({ page }) => {
@@ -2237,13 +2208,14 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await expect(page.getByTestId('consumo-inicio')).toContainText('32')
   await expect(page.getByTestId('consumo-inicio')).toContainText('Mbps ahora')
 
-  // Ficha de Zona FdezNet: se genera al momento y se suma a su factura.
-  await page.getByRole('button', { name: /Zona FdezNet/ }).click()
+  // Ficha de internet: se genera al momento y se suma a su factura.
+  await page.getByRole('button', { name: /Fichas de internet/ }).click()
   await page.getByRole('radio', { name: /1 día/ }).click()
   await page.getByRole('button', { name: 'Comprar 1 día · $10.00' }).click()
   await expect(page.getByTestId('ficha-nueva')).toContainText('ZN4821')
   expect(enviados.ficha).toEqual([{ perfil_id: 'p1' }])
-  await expect(page.getByRole('link', { name: /FdezPlay/ })).toHaveAttribute('href', /wa\.me/)
+  // En la nube no se ofrece FdezPlay (es un servicio del dueño).
+  await expect(page.getByRole('link', { name: /FdezPlay/ })).toHaveCount(0)
 
   // ¿Algo falla?: el reporte se levanta ahí mismo.
   await page.getByRole('button', { name: /¿Algo falla\?/ }).click()

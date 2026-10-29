@@ -100,7 +100,7 @@ export default function PortalInicio() {
                 {error && <p className={ERROR}>{error}</p>}
                 {!resumen && !error && <div className={`${TARJETA} h-48 animate-pulse`} />}
 
-                {resumen && pestana === 'inicio' && <Inicio resumen={resumen} color={color} ir={ir} telefonoEmpresa={brand.empresa_telefono} onCambio={cargar} />}
+                {resumen && pestana === 'inicio' && <Inicio resumen={resumen} color={color} ir={ir} onCambio={cargar} />}
                 {resumen && pestana === 'consumo' && <ConsumoPortal nombre={resumen.nombre} color={color} />}
                 {resumen && pestana === 'facturas' && <PagosPortal resumen={resumen} color={color} onCambio={cargar} />}
                 {resumen && pestana === 'red' && (resumen.tiene_onu
@@ -134,7 +134,7 @@ export default function PortalInicio() {
     );
 }
 
-function Inicio({ resumen, color, ir, telefonoEmpresa, onCambio }: { resumen: Resumen; color: string; ir: (p: Pestana) => void; telefonoEmpresa: string | null; onCambio: () => void }) {
+function Inicio({ resumen, color, ir, onCambio }: { resumen: Resumen; color: string; ir: (p: Pestana) => void; onCambio: () => void }) {
     const [mes, setMes] = useState<number | null>(null);
     const [ahora, setAhora] = useState<number | null>(null);
     const bajada = resumen.plan ? velocidad(resumen.plan.bajada_kbps) : null;
@@ -205,7 +205,7 @@ function Inicio({ resumen, color, ir, telefonoEmpresa, onCambio }: { resumen: Re
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Toca para ver tu consumo de cada día</p>
             </button>
 
-            <ServiciosPortal contrato={resumen.contrato} telefonoEmpresa={telefonoEmpresa} color={color} />
+            <ServiciosPortal color={color} />
             <AyudaPortal color={color} />
             <Notificaciones color={color} compacta />
         </>

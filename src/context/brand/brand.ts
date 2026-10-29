@@ -12,8 +12,8 @@ export interface BrandConfig {
 }
 
 export const DEFAULT_BRAND: BrandConfig = {
-  empresa_nombre: 'FdezNet',
-  sistema_nombre: 'FdezPay',
+  empresa_nombre: 'Mi ISP',
+  sistema_nombre: 'WisPay',
   logo_url: null,
   favicon_url: null,
   color_primario: '#2563eb',
