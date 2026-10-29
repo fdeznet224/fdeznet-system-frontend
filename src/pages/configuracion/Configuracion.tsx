@@ -48,7 +48,7 @@ export default function Configuracion() {
         },
         {
             titulo: "Almacenamiento y cierres",
-            descripcion: "Consulta el uso de disco, archiva meses y configura la limpieza segura.",
+            descripcion: "Respaldo en tu Google Drive, uso de disco, archivo de meses y limpieza segura.",
             icon: CircleStackIcon,
             color: "text-cyan-500",
             bg: "bg-cyan-500/10",

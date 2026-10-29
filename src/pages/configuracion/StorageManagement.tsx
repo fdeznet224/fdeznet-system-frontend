@@ -5,6 +5,7 @@ import { ArchiveBoxIcon, ArrowPathIcon, CircleStackIcon, CloudArrowDownIcon, Doc
 import client from '@/api/axios';
 import { EncabezadoPagina } from '@/components/ui/Pagina';
 import { BOTON_ACCION_SECUNDARIO } from '@/components/ui/estilo';
+import RespaldoDrive from './components/RespaldoDrive';
 
 interface StoragePolicy {
   limpieza_automatica: boolean;
@@ -126,6 +127,8 @@ export default function StorageManagement() {
           ['Comprobantes archivados', String(data.comprobantes.archivados), ArchiveBoxIcon, 'text-violet-500'],
         ].map(([label, value, Icon, color]) => <div key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><Icon className={`mb-3 h-7 w-7 ${color}`} /><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{value}</p></div>)}
       </section>
+
+      <RespaldoDrive />
 
       <section className="grid gap-6 lg:grid-cols-5">
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 lg:col-span-3">
