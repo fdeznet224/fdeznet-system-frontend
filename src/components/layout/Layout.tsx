@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-    ArrowRightStartOnRectangleIcon, ChevronDownIcon, MagnifyingGlassIcon,
+    ArrowRightStartOnRectangleIcon, ChevronDownIcon, ExclamationTriangleIcon, MagnifyingGlassIcon,
     MoonIcon, SignalIcon, Squares2X2Icon, SunIcon,
 } from '@heroicons/react/24/outline';
 import { Squares2X2Icon as Squares2X2Lleno } from '@heroicons/react/24/solid';
@@ -20,6 +20,12 @@ import { RUTA_MAS, barraDelRol, grupoDeRuta, gruposDelRol, itemDeRuta, type Item
 interface SessionUser {
     usuario: string;
     rol: AppRole;
+}
+
+// Lo manda el panel central de WisPay cuando la mensualidad del ISP está por vencer o vencida.
+interface AvisoCuenta {
+    tono: 'ambar' | 'rojo';
+    mensaje: string;
 }
 
 const NOMBRE_ROL: Record<AppRole, string> = { admin: 'Administrador', supervisor: 'Supervisor', cajero: 'Cajero', tecnico: 'Técnico' };
@@ -55,6 +61,7 @@ export default function Layout() {
     const location = useLocation();
     const user = getSessionUser(localStorage.getItem('user'));
 
+    const [avisoCuenta, setAvisoCuenta] = useState<AvisoCuenta | null>(null);
     const [buscadorAbierto, setBuscadorAbierto] = useState(false);
     const [clienteAbierto, setClienteAbierto] = useState<ClienteEncontrado | null>(null);
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark'));
@@ -66,6 +73,21 @@ export default function Layout() {
     // Cada grupo se abre o cierra a mano; sin tocarlo, solo está abierto el de la pantalla actual.
     const [gruposElegidos, setGruposElegidos] = useState<Record<string, boolean>>({});
     const grupoAbierto = (nombre: string) => gruposElegidos[nombre] ?? nombre === grupoActual?.nombre;
+
+    // Solo el administrador ve el aviso de pago; la API lo guarda unos minutos.
+    useEffect(() => {
+        if (user.rol !== 'admin') return undefined;
+        let activo = true;
+        const cargar = async () => {
+            try {
+                const { data } = await client.get<{ aviso: AvisoCuenta | null }>('/configuracion/cuenta-nube');
+                if (activo) setAvisoCuenta(data.aviso);
+            } catch { /* Sin aviso si no responde; la sesión se maneja aparte. */ }
+        };
+        void cargar();
+        const timer = window.setInterval(() => void cargar(), 15 * 60 * 1000);
+        return () => { activo = false; window.clearInterval(timer); };
+    }, [user.rol]);
 
     // Ctrl+K (o ⌘K) abre el buscador desde cualquier pantalla.
     useEffect(() => {
@@ -181,6 +203,12 @@ export default function Layout() {
                 {/* Sin barra arriba: cada pantalla abre con su título grande (y la lupa en el celular). */}
                 <main className="custom-scrollbar relative flex-1 overflow-y-auto overflow-x-hidden">
                     <div className="mx-auto w-full max-w-[1600px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 lg:px-8 lg:pb-10 lg:pt-8">
+                        {avisoCuenta && (
+                            <div role="alert" className={`mb-4 flex items-start gap-3 rounded-2xl border p-4 text-sm font-semibold ${avisoCuenta.tono === 'ambar' ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200' : 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200'}`}>
+                                <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 flex-none" aria-hidden="true" />
+                                <span>{avisoCuenta.mensaje}</span>
+                            </div>
+                        )}
                         <Outlet context={contextoMas} />
                     </div>
                 </main>
