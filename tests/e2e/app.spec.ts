@@ -2424,3 +2424,67 @@ test('en el celular la ficha del cliente se cierra deslizándola hacia abajo y l
   await deslizar(250)
   await expect(panel).toHaveCount(0)
 })
+
+test('activa la huella al entrar y la siguiente vez entra con ella', async ({ page, context }) => {
+  // Un "celular" con huella: el autenticador virtual de Chrome.
+  const cdp = await context.newCDPSession(page)
+  await cdp.send('WebAuthn.enable')
+  await cdp.send('WebAuthn.addVirtualAuthenticator', { options: {
+    protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true,
+    isUserVerified: true, automaticPresenceSimulation: true,
+  } })
+  await mockApi(page)
+  interface CredencialEnviada {
+    token?: string
+    nombre?: string
+    credencial?: { id?: string; rawId?: string; response?: Record<string, string | undefined> }
+  }
+  let registro: CredencialEnviada | null = null
+  let entrada: CredencialEnviada | null = null
+  await page.route('**/api/auth/huella/registro/opciones', (route) => route.fulfill({ json: {
+    token: 'reto-registro',
+    opciones: JSON.stringify({
+      rp: { id: 'localhost', name: 'FdezNet' },
+      user: { id: 'MQ', name: 'admin-e2e', displayName: 'Admin E2E' },
+      challenge: 'dGVzdC1yZXRvLTEyMzQ1Njc4',
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', residentKey: 'required', userVerification: 'required' },
+      attestation: 'none', excludeCredentials: [], timeout: 60000,
+    }),
+  } }))
+  await page.route('**/api/auth/huella/registro', async (route) => {
+    registro = route.request().postDataJSON()
+    await route.fulfill({ status: 201, json: { id: 1, nombre: (registro as CredencialEnviada | null)?.nombre } })
+  })
+  await page.route('**/api/auth/huella/entrar/opciones', (route) => route.fulfill({ json: {
+    token: 'reto-entrada',
+    opciones: JSON.stringify({ challenge: 'b3Ryby1yZXRvLTg3NjU0MzIx', rpId: 'localhost', allowCredentials: [], userVerification: 'required', timeout: 60000 }),
+  } }))
+  await page.route('**/api/auth/huella/entrar', async (route) => {
+    entrada = route.request().postDataJSON()
+    await route.fulfill({ json: { access_token: 'e2e-token', token_type: 'bearer', expira_en_minutos: 60, user: { id: 1, usuario: 'admin-e2e', rol: 'admin' } } })
+  })
+
+  // Las llaves de acceso piden un dominio (localhost), no una IP.
+  await page.goto('http://localhost:4173/login')
+  await expect(page.getByRole('button', { name: 'Entrar con huella' })).toHaveCount(0)
+  await page.getByPlaceholder('admin').fill('admin-e2e')
+  await page.getByPlaceholder('••••••••').fill('clave')
+  await page.getByRole('button', { name: 'Iniciar Sesión' }).click()
+  await expect(page.getByText('¿Entrar con tu huella la próxima vez?')).toBeVisible()
+  await page.getByRole('button', { name: 'Activar huella' }).click()
+  await expect(page).toHaveURL(/\/admin\//)
+  expect(registro?.token).toBe('reto-registro')
+  expect(registro?.credencial?.response?.attestationObject).toBeTruthy()
+  expect(registro?.credencial?.rawId).toBe(registro?.credencial?.id)
+
+  // Cierra sesión (se conserva que este celular entra con huella) y vuelve a entrar.
+  await page.evaluate(() => { const marca = localStorage.getItem('huella-celular'); localStorage.clear(); if (marca) localStorage.setItem('huella-celular', marca) })
+  await page.goto('http://localhost:4173/login')
+  await page.getByRole('button', { name: 'Entrar con huella' }).click()
+  await expect(page).toHaveURL(/\/admin\//)
+  expect(entrada?.token).toBe('reto-entrada')
+  expect(entrada?.credencial?.id).toBe(registro?.credencial?.id)
+  expect(entrada?.credencial?.response?.signature).toBeTruthy()
+  expect(entrada?.credencial?.response?.userHandle).toBe('MQ')
+})

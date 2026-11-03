@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
-import { ShieldCheckIcon, PencilSquareIcon, XMarkIcon, ServerStackIcon, TrashIcon, UserCircleIcon, KeyIcon, IdentificationIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, PencilSquareIcon, XMarkIcon, ServerStackIcon, TrashIcon, UserCircleIcon, KeyIcon, IdentificationIcon, EyeIcon, EyeSlashIcon, FingerPrintIcon } from '@heroicons/react/24/outline';
 
 import { apiErrorMessage } from '@/utils/apiError';
 import { EncabezadoPagina } from '@/components/ui/Pagina';
@@ -153,6 +153,19 @@ export default function Usuarios() {
             toast.success("Eliminado");
             void fetchData();
         } catch { toast.error("Error al eliminar"); }
+    };
+
+    // Si alguien perdió su celular: ya no entra con esa huella (la contraseña sigue).
+    const quitarHuellas = async (u: SystemUser) => {
+        try {
+            const { data } = await client.get<{ celulares: number }>(`/usuarios/${u.id}/huellas`);
+            if (!data.celulares) { toast(`${u.usuario} no tiene huella en ningún celular`); return; }
+            if (!confirm(`${u.usuario} entra con huella en ${data.celulares} celular${data.celulares === 1 ? '' : 'es'}. ¿Quitarlas? Seguirá entrando con su contraseña.`)) return;
+            await client.delete(`/usuarios/${u.id}/huellas`);
+            toast.success('Huellas quitadas');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'No se pudieron quitar las huellas'));
+        }
     };
 
     return (
@@ -379,6 +392,9 @@ export default function Usuarios() {
                                             <div className="flex justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => handleEdit(u)} className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition border border-transparent hover:border-blue-200 dark:hover:border-blue-500/20">
                                                     <PencilSquareIcon className="w-5 h-5"/>
+                                                </button>
+                                                <button onClick={() => void quitarHuellas(u)} title="Huellas de sus celulares" aria-label={`Huellas de ${u.usuario}`} className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                                    <FingerPrintIcon className="w-5 h-5"/>
                                                 </button>
                                                 <button onClick={() => handleDelete(u.id)} className="p-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition border border-transparent hover:border-rose-200 dark:hover:border-rose-500/20">
                                                     <TrashIcon className="w-5 h-5"/>

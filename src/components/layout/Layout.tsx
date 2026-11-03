@@ -16,6 +16,8 @@ import BuscadorGlobal, { type ClienteEncontrado } from './BuscadorGlobal';
 import { AbrirBuscador } from './buscadorContexto';
 import type { ContextoMas } from './MasSecciones';
 import { RUTA_MAS, barraDelRol, grupoDeRuta, gruposDelRol, itemDeRuta, type ItemNav } from './navegacion';
+import { limpiarSesionLocal } from '@/utils/huella';
+import HuellaBoton from '@/components/HuellaBoton';
 
 interface SessionUser {
     usuario: string;
@@ -108,7 +110,7 @@ export default function Layout() {
 
     const cerrarSesion = () => {
         void client.post('/auth/logout').finally(() => {
-            localStorage.clear();
+            limpiarSesionLocal();
             notifySessionChanged();
             navigate('/');
         });
@@ -192,6 +194,7 @@ export default function Layout() {
                     <button type="button" onClick={cambiarTema} title={temaEtiqueta} aria-label={temaEtiqueta} className="rounded-lg p-2 text-[#5b6170] transition hover:bg-black/[0.05] hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
                         {darkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
                     </button>
+                    <HuellaBoton usuario={user.usuario} className="rounded-lg p-2 text-[#5b6170] transition hover:bg-black/[0.05] hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white" />
                     <button type="button" onClick={cerrarSesion} title="Cerrar sesión" aria-label="Cerrar sesión" className="rounded-lg p-2 text-[#5b6170] transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-400">
                         <ArrowRightStartOnRectangleIcon className="h-5 w-5" />
                     </button>
