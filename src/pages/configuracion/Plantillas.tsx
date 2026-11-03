@@ -45,6 +45,7 @@ export default function Plantillas() {
     const titulos: Record<string, string> = {
         'bienvenida': '👋 Mensaje de Bienvenida',
         'nueva_factura': '📄 Nueva Factura Generada',
+        'aviso_prorrateo': '🧾 Saldo de Prorrateo (no corta)',
         'recordatorio_pago': '🔔 Recordatorio Amigable (Previo)', // 👈 NUEVO EVENTO
         'pago_recibido': '✅ Pago Recibido (Adjunta PDF)',
         'abono_recibido': '💸 Abono Parcial Recibido',
