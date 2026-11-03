@@ -31,7 +31,8 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
     const tiposMensaje = [
         { id: 'bienvenida', label: '👋 Bienvenida (Instalación)' },
         { id: 'nueva_factura', label: '📄 Nueva Factura Generada' },
-        { id: 'aviso_prorrateo', label: '🧾 Saldo de Prorrateo (no corta)' },
+        { id: 'aviso_prorrateo', label: '🧾 Saldo de Prorrateo (lo paga después)' },
+        { id: 'recordatorio_prorrateo', label: '⏰ Prorrateo: mañana se suma a su factura' },
         { id: 'recordatorio_pago', label: '🔔 Recordatorio Amigable (Previo)' }, // 👈 NUEVO EVENTO
         { id: 'pago_recibido', label: '✅ Confirmación de Pago (PDF)' },
         { id: 'abono_recibido', label: '💸 Abono Parcial Recibido' },

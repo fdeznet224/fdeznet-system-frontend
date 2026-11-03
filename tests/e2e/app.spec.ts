@@ -460,6 +460,15 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y cómo se le cobra',
       },
     } })
   })
+  let prorrateo = { hay: true, total: 129.03, saldo: 129.03, pagado: false, desde: '2026-11-05', hasta: '2026-11-14', se_suma_el: '2026-11-15', metodo: null as string | null, cobrado_por: null as string | null }
+  let decision: Record<string, unknown> | null = null
+  await page.route('**/api/ordenes/41/prorrateo', async (route) => {
+    if (route.request().method() === 'POST') {
+      decision = route.request().postDataJSON()
+      prorrateo = { ...prorrateo, saldo: 0, pagado: true, metodo: 'efectivo', cobrado_por: 'Luis Técnico' }
+    }
+    await route.fulfill({ json: prorrateo })
+  })
   await page.goto('/tech/activar/41')
 
   await expect(page.getByLabel('Nombre del titular')).toHaveValue('Ana Lopez')
@@ -498,6 +507,15 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y cómo se le cobra',
   await page.getByRole('button', { name: 'Volver' }).click()
   await page.getByRole('button', { name: /Ana Lopez/ }).click()
   await expect(page.getByText('Explicación para el cliente')).toBeVisible()
+
+  // El prorrateo: no se termina hasta decidir; lo cobra en efectivo y le muestra que ya pagó.
+  await expect(page.getByText('No corta su servicio. Si no lo paga ahora, se suma a su factura del 15 nov')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Terminar instalación' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Lo paga ahora en efectivo' }).click()
+  await expect(page.getByText(/El cobro queda a tu nombre/)).toBeVisible()
+  await page.getByRole('button', { name: 'Ya lo recibí' }).click()
+  await expect(page.getByTestId('prorrateo-pagado')).toContainText('cobrado por Luis Técnico')
+  expect(decision).toMatchObject({ accion: 'efectivo' })
 
   // Hasta que el técnico termina la instalación.
   await page.getByRole('button', { name: 'Terminar instalación' }).click()
