@@ -15,6 +15,7 @@ import {
 const DIAS_SEMANA = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const CELDA: Record<EstadoDia, string> = {
     uso: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200',
+    solo_whatsapp: 'bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200',
     sin_uso: 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-200',
     sin_registro: 'bg-slate-50 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500',
     futuro: 'text-slate-300 dark:text-slate-600',
@@ -96,6 +97,9 @@ export default function ConsumoCliente({ clienteId, nombre, portal = false }: { 
                         <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
                             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Datos</p>
                             <p className="text-lg font-bold text-slate-900 dark:text-white">{datos(consumo.total_bajada + consumo.total_subida)}</p>
+                            {(consumo.total_suspendido ?? 0) > 0 && (
+                                <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-300">{datos(consumo.total_suspendido ?? 0)} solo WhatsApp</p>
+                            )}
                         </div>
                         <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
                             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">En línea</p>
@@ -125,7 +129,7 @@ export default function ConsumoCliente({ clienteId, nombre, portal = false }: { 
                                             className={`flex aspect-square min-h-11 flex-col items-center justify-center rounded-lg text-sm font-bold transition ${CELDA[estado]} ${elegido === d.fecha ? 'ring-2 ring-blue-500' : ''}`}
                                         >
                                             {Number(d.fecha.slice(8))}
-                                            {estado === 'uso' && <span className="hidden text-[10px] font-semibold opacity-80 sm:block">{datos(d.bajada + d.subida)}</span>}
+                                            {(estado === 'uso' || estado === 'solo_whatsapp') && <span className="hidden text-[10px] font-semibold opacity-80 sm:block">{datos(d.bajada + d.subida)}</span>}
                                         </button>
                                     );
                                 })}
@@ -134,12 +138,16 @@ export default function ConsumoCliente({ clienteId, nombre, portal = false }: { 
                                 <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
                                     <span className="font-semibold">{new Date(`${dia.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}:</span>{' '}
                                     {dia.bajada + dia.subida > 0
-                                        ? `bajó ${datos(dia.bajada)} y subió ${datos(dia.subida)}; en línea ${horas(dia.minutos)}.`
+                                        ? `bajó ${datos(dia.bajada)} y subió ${datos(dia.subida)}; en línea ${horas(dia.minutos)}.${
+                                            (dia.suspendido ?? 0) >= dia.bajada + dia.subida
+                                                ? ' Estaba suspendido: solo WhatsApp.'
+                                                : (dia.suspendido ?? 0) > 0 ? ` De eso, ${datos(dia.suspendido ?? 0)} fue estando suspendido (solo WhatsApp).` : ''}`
                                         : estadoDia(dia, consumo.registro_desde) === 'sin_uso' ? 'no se conectó.' : 'sin registro.'}
                                 </p>
                             ) : (
                                 <div className="flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400">
                                     <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-emerald-200 dark:bg-emerald-500/40" />Usó internet</span>
+                                    <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-blue-200 dark:bg-blue-500/40" />Solo WhatsApp (suspendido)</span>
                                     <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-rose-200 dark:bg-rose-500/40" />Sin uso</span>
                                     <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-slate-200 dark:bg-slate-700" />Sin registro</span>
                                 </div>

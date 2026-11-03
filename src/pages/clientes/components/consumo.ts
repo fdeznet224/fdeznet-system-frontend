@@ -5,6 +5,8 @@ export interface DiaConsumo {
     bajada: number;
     subida: number;
     minutos: number;
+    /** De bajada + subida, lo que usó estando suspendido (solo WhatsApp). */
+    suspendido?: number;
 }
 
 export interface ConsumoMes {
@@ -13,11 +15,12 @@ export interface ConsumoMes {
     total_bajada: number;
     total_subida: number;
     dias_con_uso: number;
+    total_suspendido?: number;
     /** Primer día que el sistema registró consumo de este cliente. */
     registro_desde: string | null;
 }
 
-export type EstadoDia = 'uso' | 'sin_uso' | 'sin_registro' | 'futuro';
+export type EstadoDia = 'uso' | 'solo_whatsapp' | 'sin_uso' | 'sin_registro' | 'futuro';
 
 export { compartirImagen };
 
@@ -40,7 +43,10 @@ export function hoyIso(): string {
 
 export function estadoDia(dia: DiaConsumo, registroDesde: string | null, hoy = hoyIso()): EstadoDia {
     if (dia.fecha > hoy) return 'futuro';
-    if (dia.bajada + dia.subida > 0) return 'uso';
+    const total = dia.bajada + dia.subida;
+    // Todo lo del día fue estando suspendido: no es consumo normal.
+    if (total > 0 && (dia.suspendido ?? 0) >= total) return 'solo_whatsapp';
+    if (total > 0) return 'uso';
     if (!registroDesde || dia.fecha < registroDesde) return 'sin_registro';
     return 'sin_uso';
 }
@@ -61,7 +67,7 @@ export function moverMes(mes: string, pasos: number): string {
 export function diasRegistrados(consumo: ConsumoMes, hoy = hoyIso()): number {
     return consumo.dias.filter((dia) => {
         const estado = estadoDia(dia, consumo.registro_desde, hoy);
-        return estado === 'uso' || estado === 'sin_uso';
+        return estado === 'uso' || estado === 'solo_whatsapp' || estado === 'sin_uso';
     }).length;
 }
 
@@ -73,6 +79,7 @@ const FUENTE = '"Plus Jakarta Sans", system-ui, sans-serif';
 const DIAS_SEMANA = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const COLORES: Record<EstadoDia, [string, string]> = {
     uso: ['#d1fae5', '#065f46'],
+    solo_whatsapp: ['#dbeafe', '#1e40af'],
     sin_uso: ['#ffe4e6', '#9f1239'],
     sin_registro: ['#f8fafc', '#94a3b8'],
     futuro: ['#ffffff', '#cbd5e1'],
@@ -151,16 +158,21 @@ export async function imagenConsumo({ consumo, cliente, empresa, color, telefono
         ctx.fillStyle = texto;
         ctx.font = `800 32px ${FUENTE}`;
         ctx.fillText(String(n + 1), x + CELDA / 2, fila + 52);
-        if (estado === 'uso' || estado === 'sin_uso') {
+        if (estado === 'uso' || estado === 'solo_whatsapp' || estado === 'sin_uso') {
             ctx.font = `700 21px ${FUENTE}`;
-            ctx.fillText(estado === 'uso' ? datos(dia.bajada + dia.subida) : 'Sin uso', x + CELDA / 2, fila + 90);
+            ctx.fillText(estado === 'sin_uso' ? 'Sin uso' : datos(dia.bajada + dia.subida), x + CELDA / 2, fila + 90);
         }
     });
     y += semanas * ALTO_CELDA + 30;
     ctx.textAlign = 'left';
 
-    const leyenda: [EstadoDia, string][] = [['uso', 'Usó internet'], ['sin_uso', 'Sin uso'], ['sin_registro', 'Sin registro']];
-    ctx.font = `600 26px ${FUENTE}`;
+    const conWhatsapp = consumo.dias.some((dia) => estadoDia(dia, consumo.registro_desde) === 'solo_whatsapp');
+    const leyenda: [EstadoDia, string][] = [
+        ['uso', 'Usó internet'],
+        ...(conWhatsapp ? [['solo_whatsapp', 'Solo WhatsApp'] as [EstadoDia, string]] : []),
+        ['sin_uso', 'Sin uso'], ['sin_registro', 'Sin registro'],
+    ];
+    ctx.font = `600 ${conWhatsapp ? 22 : 26}px ${FUENTE}`;
     let x = MARGEN;
     for (const [estado, texto] of leyenda) {
         caja(ctx, x, y, 36, 36, 8, COLORES[estado][0]);
@@ -171,7 +183,7 @@ export async function imagenConsumo({ consumo, cliente, empresa, color, telefono
         ctx.stroke();
         ctx.fillStyle = '#334155';
         ctx.fillText(texto, x + 48, y + 28);
-        x += 48 + ctx.measureText(texto).width + 40;
+        x += 48 + ctx.measureText(texto).width + (conWhatsapp ? 28 : 40);
     }
     y += 90;
     ctx.fillStyle = '#e2e8f0';
