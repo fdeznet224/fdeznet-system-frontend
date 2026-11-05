@@ -1,7 +1,8 @@
 import { Navigate, useOutletContext } from 'react-router-dom';
-import { ArrowRightStartOnRectangleIcon, MagnifyingGlassIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline';
+import { ArrowRightStartOnRectangleIcon, FingerPrintIcon, MagnifyingGlassIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 
 import { FilaLista, Lista } from '@/components/ui/Pagina';
+import HuellaBoton from '@/components/HuellaBoton';
 import { Inicial } from './Layout';
 import type { GrupoNav, ItemNav } from './navegacion';
 
@@ -60,6 +61,7 @@ export default function MasSecciones() {
 
             <Lista>
                 <FilaLista icono={darkMode ? SunIcon : MoonIcon} tono="neutro" titulo={darkMode ? 'Modo claro' : 'Modo oscuro'} onClick={cambiarTema} />
+                <HuellaBoton usuario={usuario} boton={(abrir) => <FilaLista icono={FingerPrintIcon} tono="azul" titulo="Entrar con huella" onClick={abrir} />} />
                 <button type="button" onClick={cerrarSesion} className="flex min-h-[52px] w-full items-center gap-3 px-3.5 text-left text-[15px] font-semibold text-red-600 active:bg-slate-100 dark:text-red-400 dark:active:bg-slate-800">
                     <ArrowRightStartOnRectangleIcon className="h-[30px] w-[30px] p-1" />
                     Cerrar sesión

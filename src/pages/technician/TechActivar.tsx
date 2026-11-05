@@ -15,6 +15,7 @@ import { cachedRequest, getCachedValue, setCachedValue } from '../../offline/db'
 import { apiErrorMessage } from '@/utils/apiError';
 import SugerenciaNap from '@/components/naps/SugerenciaNap';
 import SelectorOnu from './SelectorOnu';
+import ProrrateoInstalacion from './ProrrateoInstalacion';
 import { SERIE_MINIMA, normalizarSerie } from './onu';
 import ResumenCobro from '@/components/cobro/ResumenCobro';
 import type { Cobro } from '@/components/cobro/imagenCobro';
@@ -158,6 +159,8 @@ export default function TechActivar() {
     const [ocupados, setOcupados] = useState<number[]>([]);
     const [activando, setActivando] = useState(false);
     const [resultado, setResultado] = useState<Resultado | null>(null);
+    // Con prorrateo pendiente, se termina hasta decidir si lo paga ahora o después.
+    const [prorrateoListo, setProrrateoListo] = useState(false);
 
     const cargarCatalogo = useCallback(async (zonaId?: string) => {
         const consulta = zonaId ? `?zona_id=${zonaId}` : '';
@@ -406,12 +409,23 @@ export default function TechActivar() {
                             archivo={`cobro-${resultado.contrato}`}
                         />
                     )}
+                    {resultado.cobro?.prorrateo && ordenId && online && (
+                        <ProrrateoInstalacion ordenId={Number(ordenId)} onDecidido={setProrrateoListo} />
+                    )}
                     <p className="px-1 text-center text-xs text-slate-500">
                         Estos datos se quedan en tu celular aunque se cierre la app. Desde tu agenda vuelves a abrirlos.
                     </p>
-                    <button type="button" onClick={() => void terminar()} className={`${BOTON_PRIMARIO} h-12`}>
-                        Terminar instalación
-                    </button>
+                    {(() => {
+                        const esperando = Boolean(resultado.cobro?.prorrateo && ordenId && online && !prorrateoListo);
+                        return (
+                            <>
+                                {esperando && <p className="px-1 text-center text-xs font-semibold text-amber-700 dark:text-amber-300">Antes de terminar, elige cómo paga el prorrateo.</p>}
+                                <button type="button" disabled={esperando} onClick={() => void terminar()} className={`${BOTON_PRIMARIO} h-12 disabled:opacity-50`}>
+                                    Terminar instalación
+                                </button>
+                            </>
+                        );
+                    })()}
                 </div>
             </div>
         );

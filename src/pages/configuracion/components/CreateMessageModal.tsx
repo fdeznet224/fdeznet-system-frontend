@@ -31,6 +31,8 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
     const tiposMensaje = [
         { id: 'bienvenida', label: '👋 Bienvenida (Instalación)' },
         { id: 'nueva_factura', label: '📄 Nueva Factura Generada' },
+        { id: 'aviso_prorrateo', label: '🧾 Saldo de Prorrateo (lo paga después)' },
+        { id: 'recordatorio_prorrateo', label: '⏰ Prorrateo: mañana se suma a su factura' },
         { id: 'recordatorio_pago', label: '🔔 Recordatorio Amigable (Previo)' }, // 👈 NUEVO EVENTO
         { id: 'pago_recibido', label: '✅ Confirmación de Pago (PDF)' },
         { id: 'abono_recibido', label: '💸 Abono Parcial Recibido' },
@@ -69,6 +71,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
                 { name: 'periodo_hasta', label: 'Fin Periodo', desc: 'Último día incluido en la factura' },
                 { name: 'dias_con_servicio', label: 'Días Cobrados', desc: 'Cantidad de días que sí tuvieron servicio' },
                 { name: 'dias_sin_servicio', label: 'Días No Cobrados', desc: 'Cantidad de días completos suspendidos' },
+                { name: 'fecha_proxima_factura', label: 'Próxima Factura', desc: 'Fecha de la factura a la que se suma el prorrateo' },
             ]
         },
         {

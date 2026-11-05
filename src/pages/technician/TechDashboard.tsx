@@ -32,6 +32,8 @@ import FinalizarReparacion from './FinalizarReparacion';
 import RutaReparacion from './RutaReparacion';
 import DatosReparacion from './DatosReparacion';
 import { BOTON_EXITO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO, TARJETA, TITULO_SECCION } from './estilo';
+import { limpiarSesionLocal } from '@/utils/huella';
+import HuellaBoton from '@/components/HuellaBoton';
 
 interface TechnicianUser {
     id: number;
@@ -354,13 +356,16 @@ export default function TechDashboard() {
                         <h1 className="text-sm font-black text-slate-800 dark:text-white leading-tight transition-colors">{user?.usuario}</h1>
                     </div>
                 </div>
+                <div className="flex items-center gap-1">
+                {user?.usuario && <HuellaBoton usuario={user.usuario} className="app-icon-button" />}
                 <button
                     aria-label="Cerrar sesión"
-                    onClick={() => { if (confirm("¿Cerrar sesión?")) { void client.post('/auth/logout').finally(() => { localStorage.clear(); notifySessionChanged(); navigate('/login'); }); } }}
+                    onClick={() => { if (confirm("¿Cerrar sesión?")) { void client.post('/auth/logout').finally(() => { limpiarSesionLocal(); notifySessionChanged(); navigate('/login'); }); } }}
                     className="app-icon-button hover:text-rose-500 dark:hover:text-rose-500"
                 >
                     <PowerIcon className="w-5 h-5" />
                 </button>
+                </div>
             </div>
 
             {/* CONTENIDO PRINCIPAL */}

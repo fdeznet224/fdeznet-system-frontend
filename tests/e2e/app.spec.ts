@@ -446,6 +446,15 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y cómo se le cobra',
       },
     } })
   })
+  let prorrateo = { hay: true, total: 129.03, saldo: 129.03, pagado: false, desde: '2026-11-05', hasta: '2026-11-14', se_suma_el: '2026-11-15', metodo: null as string | null, cobrado_por: null as string | null }
+  let decision: Record<string, unknown> | null = null
+  await page.route('**/api/ordenes/41/prorrateo', async (route) => {
+    if (route.request().method() === 'POST') {
+      decision = route.request().postDataJSON()
+      prorrateo = { ...prorrateo, saldo: 0, pagado: true, metodo: 'efectivo', cobrado_por: 'Luis Técnico' }
+    }
+    await route.fulfill({ json: prorrateo })
+  })
   await page.goto('/tech/activar/41')
 
   await expect(page.getByLabel('Nombre del titular')).toHaveValue('Ana Lopez')
@@ -484,6 +493,15 @@ test('el técnico activa la solicitud y ve contrato, PPPoE y cómo se le cobra',
   await page.getByRole('button', { name: 'Volver' }).click()
   await page.getByRole('button', { name: /Ana Lopez/ }).click()
   await expect(page.getByText('Explicación para el cliente')).toBeVisible()
+
+  // El prorrateo: no se termina hasta decidir; lo cobra en efectivo y le muestra que ya pagó.
+  await expect(page.getByText('No corta su servicio. Si no lo paga ahora, se suma a su factura del 15 nov')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Terminar instalación' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Lo paga ahora en efectivo' }).click()
+  await expect(page.getByText(/El cobro queda a tu nombre/)).toBeVisible()
+  await page.getByRole('button', { name: 'Ya lo recibí' }).click()
+  await expect(page.getByTestId('prorrateo-pagado')).toContainText('cobrado por Luis Técnico')
+  expect(decision).toMatchObject({ accion: 'efectivo' })
 
   // Hasta que el técnico termina la instalación.
   await page.getByRole('button', { name: 'Terminar instalación' }).click()
@@ -2094,7 +2112,7 @@ test('Mi red muestra los equipos de la ONU, bloquea uno y cambia solo la contras
     id: 1, nombre: 'Francisca De la Cruz', telefono: '5550000000', direccion: 'Paraíso', ip_asignada: '10.10.10.254', estado: 'activo',
   } }))
   await page.route('**/api/clientes/1/red', (route) => route.fulfill({ json: {
-    ip: '10.10.10.254', onu: 'HWTCF1C8D69E', modelo: 'Huawei HG8145V5', tr069: true, al_dia: true,
+    ip: '10.10.10.254', onu: 'HWTCF1C8D69E', modelo: 'Huawei HG8145V5', marca: 'huawei', tr069: true, al_dia: true,
     ultimo_reporte: new Date().toISOString(), bloqueo_disponible: true, error_bloqueo: null,
     redes: [
       { indice: 1, ssid: 'FdezNet-Casa', banda: '2.4GHz', activa: true, clave: null, conectados: 2 },
@@ -2195,6 +2213,9 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await page.getByRole('button', { name: 'Entrar' }).click()
   await expect(page.getByRole('heading', { name: 'Crea tu contraseña' })).toBeVisible()
   await page.getByLabel('Contraseña nueva (mínimo 8)').fill('mi-clave-segura')
+  // El ojo deja ver lo que escribió (en el celular es fácil equivocarse).
+  await page.getByRole('button', { name: 'Mostrar contraseña' }).first().click()
+  await expect(page.getByLabel('Contraseña nueva (mínimo 8)')).toHaveAttribute('type', 'text')
   await page.getByLabel('Repite la contraseña').fill('mi-clave-segura')
   await page.getByRole('button', { name: 'Guardar contraseña' }).click()
   expect(enviados.entrar).toEqual([{ contrato: 'F1C8', clave: 'F1C8' }])
@@ -2267,10 +2288,15 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await page.route('**/api/portal/red/bloqueados', (route) => route.fulfill({ json: { bloqueados: [] } }))
   await page.getByRole('button', { name: 'Mi WiFi' }).click()
   await expect(page.getByText('FdezNet-F1C8')).toBeVisible()
+  // Su módem con su modelo y su dibujo, para que vea qué equipo tiene.
+  await expect(page.getByTestId('modelo-modem')).toHaveText('Huawei HG8145V5')
+  await expect(page.getByRole('img', { name: 'Módem Huawei' })).toBeVisible()
+  await expect(page.getByText('En línea')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reiniciar' })).toBeVisible()
   const interruptor = page.getByRole('switch', { name: 'Internet de Galaxy-A56-5G' })
   await interruptor.click()
   await expect(page.getByRole('dialog')).toContainText('¿Quitar el internet a Galaxy-A56-5G?')
+  await expect(page.getByRole('dialog')).toContainText('Seguirá conectado a tu WiFi, pero sin internet')
   await page.getByRole('button', { name: 'Sí, bloquear' }).click()
   await expect(page.getByRole('dialog')).toContainText('Bloqueando dispositivo…')
   await expect(page.getByRole('dialog')).toContainText('Galaxy-A56-5G ya no tiene internet')
@@ -2377,4 +2403,68 @@ test('en el celular la ficha del cliente se cierra deslizándola hacia abajo y l
 
   await deslizar(250)
   await expect(panel).toHaveCount(0)
+})
+
+test('activa la huella al entrar y la siguiente vez entra con ella', async ({ page, context }) => {
+  // Un "celular" con huella: el autenticador virtual de Chrome.
+  const cdp = await context.newCDPSession(page)
+  await cdp.send('WebAuthn.enable')
+  await cdp.send('WebAuthn.addVirtualAuthenticator', { options: {
+    protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true,
+    isUserVerified: true, automaticPresenceSimulation: true,
+  } })
+  await mockApi(page)
+  interface CredencialEnviada {
+    token?: string
+    nombre?: string
+    credencial?: { id?: string; rawId?: string; response?: Record<string, string | undefined> }
+  }
+  let registro: CredencialEnviada | null = null
+  let entrada: CredencialEnviada | null = null
+  await page.route('**/api/auth/huella/registro/opciones', (route) => route.fulfill({ json: {
+    token: 'reto-registro',
+    opciones: JSON.stringify({
+      rp: { id: 'localhost', name: 'FdezNet' },
+      user: { id: 'MQ', name: 'admin-e2e', displayName: 'Admin E2E' },
+      challenge: 'dGVzdC1yZXRvLTEyMzQ1Njc4',
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', residentKey: 'required', userVerification: 'required' },
+      attestation: 'none', excludeCredentials: [], timeout: 60000,
+    }),
+  } }))
+  await page.route('**/api/auth/huella/registro', async (route) => {
+    registro = route.request().postDataJSON()
+    await route.fulfill({ status: 201, json: { id: 1, nombre: (registro as CredencialEnviada | null)?.nombre } })
+  })
+  await page.route('**/api/auth/huella/entrar/opciones', (route) => route.fulfill({ json: {
+    token: 'reto-entrada',
+    opciones: JSON.stringify({ challenge: 'b3Ryby1yZXRvLTg3NjU0MzIx', rpId: 'localhost', allowCredentials: [], userVerification: 'required', timeout: 60000 }),
+  } }))
+  await page.route('**/api/auth/huella/entrar', async (route) => {
+    entrada = route.request().postDataJSON()
+    await route.fulfill({ json: { access_token: 'e2e-token', token_type: 'bearer', expira_en_minutos: 60, user: { id: 1, usuario: 'admin-e2e', rol: 'admin' } } })
+  })
+
+  // Las llaves de acceso piden un dominio (localhost), no una IP.
+  await page.goto('http://localhost:4173/login')
+  await expect(page.getByRole('button', { name: 'Entrar con huella' })).toHaveCount(0)
+  await page.getByPlaceholder('admin').fill('admin-e2e')
+  await page.getByPlaceholder('••••••••').fill('clave')
+  await page.getByRole('button', { name: 'Iniciar Sesión' }).click()
+  await expect(page.getByText('¿Entrar con tu huella la próxima vez?')).toBeVisible()
+  await page.getByRole('button', { name: 'Activar huella' }).click()
+  await expect(page).toHaveURL(/\/admin\//)
+  expect(registro?.token).toBe('reto-registro')
+  expect(registro?.credencial?.response?.attestationObject).toBeTruthy()
+  expect(registro?.credencial?.rawId).toBe(registro?.credencial?.id)
+
+  // Cierra sesión (se conserva que este celular entra con huella) y vuelve a entrar.
+  await page.evaluate(() => { const marca = localStorage.getItem('huella-celular'); localStorage.clear(); if (marca) localStorage.setItem('huella-celular', marca) })
+  await page.goto('http://localhost:4173/login')
+  await page.getByRole('button', { name: 'Entrar con huella' }).click()
+  await expect(page).toHaveURL(/\/admin\//)
+  expect(entrada?.token).toBe('reto-entrada')
+  expect(entrada?.credencial?.id).toBe(registro?.credencial?.id)
+  expect(entrada?.credencial?.response?.signature).toBeTruthy()
+  expect(entrada?.credencial?.response?.userHandle).toBe('MQ')
 })

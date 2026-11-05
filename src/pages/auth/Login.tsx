@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react'; 
 import axios from 'axios';
 import { apiErrorMessage } from '@/utils/apiError';
@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { notifySessionChanged } from '@/offline/db';
 import { useBrand } from '@/context/brand/useBrand';
+import { activarHuella, entrarConHuella, huellaActivadaAqui, huellaPosible, nombreDeEsteCelular, NO_PREGUNTAR_HUELLA } from '@/utils/huella';
 import {
     defaultPathForRole,
     type AppRole,
@@ -18,6 +19,7 @@ import {
     ArrowPathIcon,
     EyeIcon,
     EyeSlashIcon,
+    FingerPrintIcon,
 } from '@heroicons/react/24/outline';
 
 interface LoginUser {
@@ -55,6 +57,73 @@ export default function Login() {
     // directo, también sin internet. Si la sesión venció, el servidor responde
     // 401 al volver la conexión y se regresa aquí.
     const [rolInicial] = useState(rolGuardado);
+    // Huella: el botón sale en los celulares donde ya se activó; si no, se ofrece al entrar.
+    const [conHuella, setConHuella] = useState(false);
+    const [puedeHuella, setPuedeHuella] = useState(false);
+    const [ofrecer, setOfrecer] = useState<LoginUser | null>(null);
+    const [activando, setActivando] = useState(false);
+
+    useEffect(() => {
+        void huellaPosible().then((posible) => {
+            setPuedeHuella(posible);
+            setConHuella(posible && Boolean(huellaActivadaAqui()));
+        });
+    }, []);
+
+    const irAlInicio = (user: LoginUser) => navigate(defaultPathForRole(user.rol.toLowerCase() as AppRole));
+
+    const sesionIniciada = (data: LoginResponse, porHuella: boolean) => {
+        // La sesión vive en una cookie HttpOnly; JavaScript conserva solo
+        // los datos no sensibles necesarios para presentar la interfaz.
+        localStorage.removeItem('token');
+        localStorage.setItem('user', JSON.stringify(data.user));
+        notifySessionChanged();
+        toast.success(`¡Bienvenido de nuevo, ${data.user.usuario}!`, { icon: '👋' });
+        if (!porHuella && puedeHuella && !huellaActivadaAqui() && !localStorage.getItem(NO_PREGUNTAR_HUELLA)) {
+            setOfrecer(data.user);
+            return;
+        }
+        irAlInicio(data.user);
+    };
+
+    const entrarHuella = async () => {
+        setIsLoading(true);
+        try {
+            sesionIniciada(await entrarConHuella() as LoginResponse, true);
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'NotAllowedError') {
+                toast('Se canceló la huella. También puedes entrar con tu contraseña.');
+            } else if (axios.isAxiosError(error) && error.response?.status === 401) {
+                localStorage.removeItem('huella-celular');
+                setConHuella(false);
+                toast.error(apiErrorMessage(error, 'Esa huella ya no está registrada; entra con tu contraseña.'));
+            } else {
+                toast.error(apiErrorMessage(error, 'No se pudo entrar con la huella. Entra con tu contraseña.'));
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const responderOferta = async (activar: boolean) => {
+        if (!ofrecer) return;
+        if (activar) {
+            setActivando(true);
+            try {
+                await activarHuella(ofrecer.usuario, nombreDeEsteCelular());
+                toast.success('Listo: la próxima vez entra con tu huella');
+            } catch (error) {
+                if (!(error instanceof DOMException && error.name === 'NotAllowedError')) {
+                    toast.error(apiErrorMessage(error, 'No se pudo activar la huella'));
+                }
+            } finally {
+                setActivando(false);
+            }
+        } else {
+            localStorage.setItem(NO_PREGUNTAR_HUELLA, '1');
+        }
+        irAlInicio(ofrecer);
+    };
 
     const handleLogin = async (e: FormEvent) => {
         e.preventDefault();
@@ -66,24 +135,8 @@ export default function Login() {
 
         try {
             const response = await client.post<LoginResponse>('/auth/login', formData);
-            
-            // La sesión vive en una cookie HttpOnly; JavaScript conserva solo
-            // los datos no sensibles necesarios para presentar la interfaz.
-            localStorage.removeItem('token');
-            localStorage.setItem('user', JSON.stringify(response.data.user));
-            notifySessionChanged();
-            
-            // ✅ MEJORA: Quitamos los estilos fijos oscuros para que el App.tsx los adapte al tema claro/oscuro
-            toast.success(`¡Bienvenido de nuevo, ${response.data.user.usuario}!`, {
-                icon: '👋'
-            });
+            sesionIniciada(response.data, false);
 
-            // 2. LÓGICA DE REDIRECCIÓN
-            const userRole = response.data.user.rol; 
-            const role = userRole.toLowerCase();
-
-            navigate(defaultPathForRole(role as AppRole));
-            
         } catch (error) {
             console.error(error);
             // Sin respuesta del servidor no es la contraseña: es la conexión.
@@ -103,6 +156,28 @@ export default function Login() {
     };
 
     if (rolInicial) return <Navigate to={defaultPathForRole(rolInicial)} replace />;
+
+    if (ofrecer) {
+        return (
+            <div className="flex min-h-[100dvh] items-center justify-center bg-white px-6 font-sans dark:bg-slate-950">
+                <div className="w-full max-w-sm text-center">
+                    <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                        <FingerPrintIcon className="h-11 w-11" />
+                    </span>
+                    <h2 className="mt-6 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">¿Entrar con tu huella la próxima vez?</h2>
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                        En este celular podrás entrar con tu huella o tu cara, sin escribir la contraseña. Tu huella no sale del teléfono.
+                    </p>
+                    <button type="button" disabled={activando} onClick={() => void responderOferta(true)} className="mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-70">
+                        <FingerPrintIcon className="h-5 w-5" />{activando ? 'Activando…' : 'Activar huella'}
+                    </button>
+                    <button type="button" disabled={activando} onClick={() => void responderOferta(false)} className="mt-3 h-12 w-full rounded-xl text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                        Ahora no
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const logo = (tamano: string) => (
         <span className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl ${tamano}`} style={{ background: `linear-gradient(135deg, ${brand.color_primario}, ${brand.color_secundario})` }}>
@@ -147,7 +222,15 @@ export default function Login() {
                     <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Inicia sesión en {brand.empresa_nombre}</h2>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Administración, técnicos y cobradores entran aquí.</p>
 
-                    <form className="mt-8 space-y-4" onSubmit={handleLogin}>
+                    {conHuella && (
+                        <>
+                            <button type="button" onClick={() => void entrarHuella()} disabled={isLoading} className="mt-8 flex h-14 w-full items-center justify-center gap-3 rounded-xl border-2 border-blue-600 text-base font-semibold text-blue-700 transition hover:bg-blue-50 active:scale-[0.98] disabled:opacity-70 dark:border-blue-500 dark:text-blue-300 dark:hover:bg-blue-500/10">
+                                <FingerPrintIcon className="h-7 w-7" /> Entrar con huella
+                            </button>
+                            <p className="mt-6 text-center text-xs font-medium text-slate-400">o con tu contraseña</p>
+                        </>
+                    )}
+                    <form className={`${conHuella ? 'mt-4' : 'mt-8'} space-y-4`} onSubmit={handleLogin}>
                         <div>
                             <label htmlFor="login-usuario" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Usuario</label>
                             <div className="relative">

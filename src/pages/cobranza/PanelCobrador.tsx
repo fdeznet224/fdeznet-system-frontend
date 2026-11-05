@@ -17,6 +17,8 @@ import {
 import { apiErrorMessage } from '@/utils/apiError';
 import { useBrand } from '@/context/brand/useBrand';
 import { BOTON_EXITO, CAMPO, ETIQUETA_CAMPO, TARJETA, TITULO_SECCION } from '../technician/estilo';
+import { limpiarSesionLocal } from '@/utils/huella';
+import HuellaBoton from '@/components/HuellaBoton';
 
 type PaymentMethod = 'efectivo' | 'transferencia';
 
@@ -228,7 +230,7 @@ export default function PanelCobrador() {
     const handleLogout = () => {
         if(confirm("¿Cerrar sesión?")) {
             void client.post('/auth/logout').finally(() => {
-                localStorage.clear();
+                limpiarSesionLocal();
                 notifySessionChanged();
                 navigate('/login');
             });
@@ -451,6 +453,7 @@ export default function PanelCobrador() {
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
+                    {user.usuario && <HuellaBoton usuario={user.usuario} className="app-icon-button" />}
                     <button aria-label="Actualizar" onClick={() => void fetchData()} className="app-icon-button">
                         <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
                     </button>
