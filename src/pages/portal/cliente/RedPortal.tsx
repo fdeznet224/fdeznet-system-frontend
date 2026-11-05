@@ -8,11 +8,26 @@ import {
 import portalClient from '@/api/portal';
 import { apiErrorMessage } from '@/utils/apiError';
 import { nombreEquipo, redesPorNombre, type EquipoRed, type EstadoRed } from '@/pages/clientes/components/miRed';
+import DibujoModem from './DibujoModem';
 import { AVISO, BOTON, BOTON_SUAVE, CAMPO, ERROR, ETIQUETA, TARJETA, TITULO } from './ui';
 
 // La ONU tarda ~5 s; si en 25 s no hay respuesta, se confirma preguntando (20 veces cada 3 s).
 const ESPERA_CAMBIO_MS = 25_000;
 const CONFIRMACIONES = 20;
+
+/** La marca que manda el servidor o, si no llega, la que dice el modelo ("ZTE F670L", "Huawei HG8145V5"). */
+function marcaModem(estado: Pick<EstadoRed, 'modelo' | 'marca'>): 'huawei' | 'zte' | null {
+    if (estado.marca) return estado.marca;
+    const modelo = (estado.modelo ?? '').toLowerCase();
+    return modelo.includes('zte') || /\bf6\d\d/.test(modelo) ? 'zte' : modelo.includes('huawei') || /\b(hg|eg)8/.test(modelo) ? 'huawei' : null;
+}
+
+/** "ZTE F670L"; sin modelo, la marca; sin nada, "Módem de internet". */
+function nombreModem(estado: Pick<EstadoRed, 'modelo' | 'marca'>): string {
+    if (estado.modelo?.trim()) return estado.modelo.trim();
+    const marca = marcaModem(estado);
+    return marca === 'zte' ? 'Módem ZTE' : marca === 'huawei' ? 'Módem Huawei' : 'Módem de internet';
+}
 
 interface Cambio { equipo: EquipoRed; bloquear: boolean; paso: 'confirmar' | 'aplicando' | 'listo' | 'error'; error?: string }
 
@@ -28,7 +43,7 @@ function VentanaCambio({ cambio, color, onConfirmar, onCerrar }: { cambio: Cambi
                     <>
                         <h2 id="titulo-cambio" className="text-lg font-semibold">{cambio.bloquear ? `¿Quitar el internet a ${nombre}?` : `¿Devolver el internet a ${nombre}?`}</h2>
                         <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {cambio.bloquear ? 'Se desconectará de tu WiFi y no podrá volver a conectarse hasta que lo actives.' : 'Podrá conectarse otra vez a tu WiFi.'}
+                            {cambio.bloquear ? 'Seguirá conectado a tu WiFi, pero sin internet hasta que lo actives.' : 'Volverá a tener internet en tu WiFi.'}
                         </p>
                         <div className="flex gap-2">
                             <button type="button" onClick={onCerrar} className={`${BOTON_SUAVE} flex-1`}>Cancelar</button>
@@ -255,6 +270,7 @@ export default function RedPortal({ color }: { color: string }) {
     };
 
     const red = estado ? redesPorNombre(estado.redes)[0] : undefined;
+    const enLinea = Boolean(estado?.tr069 && estado.al_dia);
     const activos = estado?.equipos.filter((e) => e.conectado || e.bloqueado) ?? [];
     const desconectados = estado?.equipos.filter((e) => !e.conectado && !e.bloqueado) ?? [];
 
@@ -264,19 +280,32 @@ export default function RedPortal({ color }: { color: string }) {
             {estado && !estado.tr069 && <p className={AVISO}>Tu módem todavía no está conectado al portal. Pronto podrás ver y controlar tus equipos aquí.</p>}
             {estado?.tr069 && !estado.al_dia && <p className={AVISO}>Tu módem no contestó ahora; ves lo último que reportó.</p>}
 
-            {red && (
+            {estado && (
                 <section className={`${TARJETA} space-y-4`}>
-                    <div className="flex items-center gap-4">
-                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white" style={{ background: color }}>
-                            <WifiIcon className="h-6 w-6" />
-                        </span>
-                        <div className="min-w-0">
-                            <p className={ETIQUETA}>Tu WiFi</p>
-                            <p className="truncate text-lg font-semibold">{red.ssid}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{red.bandas.join(' y ') || 'WiFi'} · {red.conectados} {red.conectados === 1 ? 'equipo' : 'equipos'}</p>
+                    <div className="flex items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                            <p className={ETIQUETA}>Tu módem</p>
+                            <p className="truncate text-lg font-semibold" data-testid="modelo-modem">{nombreModem(estado)}</p>
+                            <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                                <span className={`h-2 w-2 shrink-0 rounded-full ${enLinea ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                {enLinea ? 'En línea' : estado.tr069 ? 'No contestó ahora' : 'Pronto en el portal'}
+                            </p>
                         </div>
+                        <DibujoModem marca={marcaModem(estado)} modelo={estado.modelo} enLinea={enLinea} color={color} className="-my-3 -mr-2 h-32 w-36 shrink-0" />
                     </div>
-                    {editando ? (
+                    {red && (
+                        <div className="flex items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white" style={{ background: color }}>
+                                <WifiIcon className="h-6 w-6" />
+                            </span>
+                            <div className="min-w-0">
+                                <p className={ETIQUETA}>Tu WiFi</p>
+                                <p className="truncate text-base font-semibold">{red.ssid}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{red.bandas.join(' y ') || 'WiFi'} · {red.conectados} {red.conectados === 1 ? 'equipo' : 'equipos'}</p>
+                            </div>
+                        </div>
+                    )}
+                    {!red ? null : editando ? (
                         <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void guardarClave(red.ssid); }}>
                             <div className="relative">
                                 <input

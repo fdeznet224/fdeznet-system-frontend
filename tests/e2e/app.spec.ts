@@ -2141,7 +2141,7 @@ test('Mi red muestra los equipos de la ONU, bloquea uno y cambia solo la contras
     id: 1, nombre: 'Francisca De la Cruz', telefono: '5550000000', direccion: 'Paraíso', ip_asignada: '10.10.10.254', estado: 'activo',
   } }))
   await page.route('**/api/clientes/1/red', (route) => route.fulfill({ json: {
-    ip: '10.10.10.254', onu: 'HWTCF1C8D69E', modelo: 'Huawei HG8145V5', tr069: true, al_dia: true,
+    ip: '10.10.10.254', onu: 'HWTCF1C8D69E', modelo: 'Huawei HG8145V5', marca: 'huawei', tr069: true, al_dia: true,
     ultimo_reporte: new Date().toISOString(), bloqueo_disponible: true, error_bloqueo: null,
     redes: [
       { indice: 1, ssid: 'FdezNet-Casa', banda: '2.4GHz', activa: true, clave: null, conectados: 2 },
@@ -2242,6 +2242,9 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await page.getByRole('button', { name: 'Entrar' }).click()
   await expect(page.getByRole('heading', { name: 'Crea tu contraseña' })).toBeVisible()
   await page.getByLabel('Contraseña nueva (mínimo 8)').fill('mi-clave-segura')
+  // El ojo deja ver lo que escribió (en el celular es fácil equivocarse).
+  await page.getByRole('button', { name: 'Mostrar contraseña' }).first().click()
+  await expect(page.getByLabel('Contraseña nueva (mínimo 8)')).toHaveAttribute('type', 'text')
   await page.getByLabel('Repite la contraseña').fill('mi-clave-segura')
   await page.getByRole('button', { name: 'Guardar contraseña' }).click()
   expect(enviados.entrar).toEqual([{ contrato: 'F1C8', clave: 'F1C8' }])
@@ -2313,10 +2316,15 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
   await page.route('**/api/portal/red/bloqueados', (route) => route.fulfill({ json: { bloqueados: [] } }))
   await page.getByRole('button', { name: 'Mi WiFi' }).click()
   await expect(page.getByText('FdezNet-F1C8')).toBeVisible()
+  // Su módem con su modelo y su dibujo, para que vea qué equipo tiene.
+  await expect(page.getByTestId('modelo-modem')).toHaveText('Huawei HG8145V5')
+  await expect(page.getByRole('img', { name: 'Módem Huawei' })).toBeVisible()
+  await expect(page.getByText('En línea')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reiniciar' })).toBeVisible()
   const interruptor = page.getByRole('switch', { name: 'Internet de Galaxy-A56-5G' })
   await interruptor.click()
   await expect(page.getByRole('dialog')).toContainText('¿Quitar el internet a Galaxy-A56-5G?')
+  await expect(page.getByRole('dialog')).toContainText('Seguirá conectado a tu WiFi, pero sin internet')
   await page.getByRole('button', { name: 'Sí, bloquear' }).click()
   await expect(page.getByRole('dialog')).toContainText('Bloqueando dispositivo…')
   await expect(page.getByRole('dialog')).toContainText('Galaxy-A56-5G ya no tiene internet')

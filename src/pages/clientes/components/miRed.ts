@@ -25,6 +25,7 @@ export interface EstadoRed {
     ip: string | null;
     onu: string | null;
     modelo: string | null;
+    marca?: 'huawei' | 'zte' | null;
     tr069: boolean;
     al_dia: boolean;
     ultimo_reporte: string | null;
