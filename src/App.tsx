@@ -51,6 +51,7 @@ const Importar = lazy(() => import('@/pages/configuracion/Importar'));
 const Sistema = lazy(() => import('@/pages/configuracion/Sistema'));
 const Integraciones = lazy(() => import('@/pages/configuracion/Integraciones'));
 const StorageManagement = lazy(() => import('@/pages/configuracion/StorageManagement'));
+const MiCuenta = lazy(() => import('@/pages/configuracion/MiCuenta'));
 const BotWhatsapp = lazy(() => import('@/pages/configuracion/BotWhatsapp'));
 const MarcaBlanca = lazy(() => import('@/pages/configuracion/MarcaBlanca'));
 const WhatsappPage = lazy(() => import('@/pages/configuracion/WhatsappPage'));
@@ -259,6 +260,7 @@ function App() {
                 <Route path="/admin/configuracion/cron" element={protectedPage(<CronjobLogs />, ['admin'])} />
                 <Route path="/admin/configuracion/sistema" element={protectedPage(<Sistema />, ['admin'])} />
                 <Route path="/admin/configuracion/almacenamiento" element={protectedPage(<StorageManagement />, ['admin'])} />
+                <Route path="/admin/configuracion/mi-cuenta" element={protectedPage(<MiCuenta />, ['admin'])} />
                 <Route path="/admin/configuracion/bot-whatsapp" element={protectedPage(<BotWhatsapp />, ['admin'])} />
                 <Route path="/admin/configuracion/vpn" element={protectedPage(<TunnelsVPN />, ['admin'])} />
             </Route>

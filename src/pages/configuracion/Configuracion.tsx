@@ -5,7 +5,7 @@ import {
     UsersIcon, KeyIcon, 
     DocumentTextIcon, Cog6ToothIcon, QrCodeIcon,
     CommandLineIcon, ShieldCheckIcon, PaintBrushIcon, CircleStackIcon,
-    PuzzlePieceIcon
+    PuzzlePieceIcon, SparklesIcon
 } from '@heroicons/react/24/outline';
 import { TARJETA } from '@/components/ui/estilo';
 import { EncabezadoPagina } from '@/components/ui/Pagina';
@@ -14,6 +14,14 @@ export default function Configuracion() {
     const navigate = useNavigate();
 
     const herramientas = [
+        {
+            titulo: "Mi cuenta",
+            descripcion: "Tu plan de WisPay, días que quedan de tu mensualidad y actualizaciones del sistema.",
+            icon: SparklesIcon,
+            color: "text-violet-500",
+            bg: "bg-violet-500/10",
+            path: "/admin/configuracion/mi-cuenta"
+        },
         {
             titulo: "Marca blanca",
             descripcion: "Configura nombre, logotipo, colores y datos comerciales.",
