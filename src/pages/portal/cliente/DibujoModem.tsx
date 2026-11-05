@@ -1,13 +1,16 @@
 import { useId } from 'react';
 
-type Variante = 'zte' | 'huawei-blanca' | 'huawei-negra' | 'generico';
+type Variante = 'zte' | 'huawei-blanca' | 'huawei-negra' | 'huawei-x6' | 'generico';
 
 /** Qué módem dibujar según las fotos de los equipos que se instalan:
  * ZTE F670L negra, plana y sin antenas; Huawei HG8145V5 blanca y HG8145V3 negra, las dos con
- * dos antenas de lámina y rejilla arriba. */
+ * dos antenas de lámina y rejilla arriba; Huawei EG8145X6-10 blanca, lisa, con ranuras al costado. */
 function varianteModem(marca: 'huawei' | 'zte' | null | undefined, modelo: string | null | undefined): Variante {
     if (marca === 'zte') return 'zte';
-    if (marca === 'huawei') return /v3\b/i.test(modelo ?? '') ? 'huawei-negra' : 'huawei-blanca';
+    if (marca === 'huawei') {
+        if (/x6/i.test(modelo ?? '')) return 'huawei-x6';
+        return /v3\b/i.test(modelo ?? '') ? 'huawei-negra' : 'huawei-blanca';
+    }
     return 'generico';
 }
 
@@ -35,7 +38,7 @@ export default function DibujoModem({ marca, modelo, enLinea, color, className =
     const id = useId().replace(/:/g, '');
     const variante = varianteModem(marca, modelo);
     const huawei = variante.startsWith('huawei');
-    const t = TONOS[variante === 'huawei-blanca' || variante === 'generico' ? 'blanca' : 'negra'];
+    const t = TONOS[variante === 'huawei-negra' || variante === 'zte' ? 'negra' : 'blanca'];
     const luz = enLinea ? '#22c55e' : '#f59e0b';
     const nombre = variante === 'zte' ? 'Módem ZTE' : huawei ? 'Módem Huawei' : 'Módem';
     const g = (n: string) => `${n}-${id}`;
@@ -93,9 +96,15 @@ export default function DibujoModem({ marca, modelo, enLinea, color, className =
                 </g>
             ))}
 
+            {variante === 'huawei-x6' && Array.from({ length: 12 }, (_, i) => {
+                // Ranuras del costado, como la X6-10.
+                const a = punto(0, 14 + i * 3);
+                return <path key={i} d={`M${a.x + GRUESO.x * 1.6} ${a.y + GRUESO.y * 1.6} l${GRUESO.x * 4.2} ${GRUESO.y * 4.2}`} stroke="#7d8999" strokeWidth="1" strokeLinecap="round" />;
+            })}
+
             <g transform={PLANO}>
                 <rect x="0" y="0" width="100" height="60" rx="7" fill={`url(#${g('cara')})`} stroke={t.borde} strokeWidth="0.5" />
-                {huawei && <rect x="7" y="12" width="86" height="42" rx="3" fill={`url(#${g('rejilla')})`} />}
+                {huawei && variante !== 'huawei-x6' && <rect x="7" y="12" width="86" height="42" rx="3" fill={`url(#${g('rejilla')})`} />}
                 {variante === 'zte' && <path d="M3 10.5 H97" stroke="#07080a" strokeWidth="0.9" />}
                 <rect x="0" y="0" width="100" height="60" rx="7" fill={`url(#${g('reflejo')})`} />
 

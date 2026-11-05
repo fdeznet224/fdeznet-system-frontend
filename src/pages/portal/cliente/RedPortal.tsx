@@ -19,7 +19,7 @@ const CONFIRMACIONES = 20;
 function marcaModem(estado: Pick<EstadoRed, 'modelo' | 'marca'>): 'huawei' | 'zte' | null {
     if (estado.marca) return estado.marca;
     const modelo = (estado.modelo ?? '').toLowerCase();
-    return modelo.includes('zte') || /\bf6\d\d/.test(modelo) ? 'zte' : modelo.includes('huawei') || /\b(hg|eg)8/.test(modelo) ? 'huawei' : null;
+    return modelo.includes('zte') || /\bf6\d\d/.test(modelo) ? 'zte' : modelo.includes('huawei') || /\b(hg|eg)8|x6-/.test(modelo) ? 'huawei' : null;
 }
 
 /** "ZTE F670L"; sin modelo, la marca; sin nada, "Módem de internet". */
