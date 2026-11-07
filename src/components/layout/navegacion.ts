@@ -4,7 +4,7 @@ import {
     ClipboardDocumentListIcon, Cog6ToothIcon, ComputerDesktopIcon, CubeIcon,
     DocumentTextIcon, GlobeAltIcon, HomeIcon, MapIcon, ServerStackIcon,
     ShieldCheckIcon, SignalIcon, SparklesIcon, UsersIcon, ArrowDownTrayIcon,
-    QrCodeIcon, BoltIcon, CircleStackIcon, CommandLineIcon, WifiIcon,
+    QrCodeIcon, BoltIcon, CircleStackIcon, CommandLineIcon, WifiIcon, CpuChipIcon,
 } from '@heroicons/react/24/outline';
 
 import type { Tono } from '@/components/ui/estilo';
@@ -63,6 +63,7 @@ export const GRUPOS: GrupoNav[] = [
         icono: SignalIcon,
         items: [
             { nombre: 'Radar OLT', corto: 'Radar', ruta: '/admin/radar', icono: SignalIcon, tono: 'azul', roles: ADMIN, palabras: 'onu vsol señal potencia pon' },
+            { nombre: 'TR-069 (Equipos)', corto: 'TR-069', ruta: '/admin/tr069', icono: CpuChipIcon, tono: 'violeta', roles: ADMIN, palabras: 'acs genieacs modem router onu huawei zte plantilla wan wifi config equipos' },
             { nombre: 'Mapa de Red', ruta: '/admin/mapa', icono: MapIcon, tono: 'verde', roles: ADMIN, palabras: 'ubicaciones' },
             { nombre: 'Cajas NAP (Fibra)', ruta: '/admin/naps', icono: CubeIcon, tono: 'verde', roles: ADMIN, palabras: 'nap mangas puertos kml' },
             { nombre: 'Nodos / Routers', ruta: '/admin/routers', icono: ServerStackIcon, tono: 'neutro', roles: ADMIN, palabras: 'mikrotik' },
