@@ -1,24 +1,45 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { PowerIcon } from '@heroicons/react/24/outline';
+import { DocumentCheckIcon, PowerIcon } from '@heroicons/react/24/outline';
 
 import client from '@/api/axios';
-import { BOTON_ACCION_SECUNDARIO, TARJETA } from '@/components/ui/estilo';
+import { BOTON_ACCION_PRIMARIO, BOTON_ACCION_SECUNDARIO, PILDORA, TARJETA } from '@/components/ui/estilo';
 import { EncabezadoPagina } from '@/components/ui/Pagina';
 import { apiErrorMessage } from '@/utils/apiError';
 import ConfigEquipo from './ConfigEquipo';
-import { hace, type EquipoTr069 } from './tr069';
+import { hace, type EquipoTr069, type EstadoPlantilla } from './tr069';
 
 /** Un módem del ACS: quién es, de qué cliente y su configuración completa. */
 export default function EquipoTr069Page() {
     const { deviceId = '' } = useParams();
     const [equipo, setEquipo] = useState<EquipoTr069 | null>(null);
     const [reiniciando, setReiniciando] = useState(false);
+    const [plantilla, setPlantilla] = useState<EstadoPlantilla | null>(null);
+    const [ocupado, setOcupado] = useState<'revisar' | 'aplicar' | null>(null);
+    const [version, setVersion] = useState(0);
+
+    const plantillaAccion = async (accion: 'revisar' | 'aplicar') => {
+        setOcupado(accion);
+        try {
+            const { data } = await client.post<EstadoPlantilla>(`/tr069/equipos/${encodeURIComponent(deviceId)}/plantilla/${accion}`, {}, { timeout: 300000 });
+            setPlantilla(data);
+            if (accion === 'aplicar') {
+                toast.success(data.hecho?.length ? `Listo: ${data.hecho.join(', ')}` : 'Ya estaba como la plantilla');
+                setVersion((v) => v + 1);
+            } else if (!data.plantilla) {
+                toast('No hay plantilla para este modelo');
+            }
+        } catch (e) {
+            toast.error(apiErrorMessage(e, accion === 'aplicar' ? 'No se pudo aplicar la plantilla' : 'No se pudo revisar'));
+        } finally {
+            setOcupado(null);
+        }
+    };
 
     useEffect(() => {
         client.get<EquipoTr069>(`/tr069/equipos/${encodeURIComponent(deviceId)}`)
-            .then(({ data }) => setEquipo(data))
+            .then(({ data }) => { setEquipo(data); setPlantilla(data.plantilla); })
             .catch((e) => toast.error(apiErrorMessage(e, 'No se encontró el equipo')));
     }, [deviceId]);
 
@@ -69,7 +90,35 @@ export default function EquipoTr069Page() {
                     </div>
                 </div>
             )}
-            <ConfigEquipo deviceId={deviceId} />
+            <div className={`${TARJETA} space-y-3 p-4`}>
+                <div className="flex items-center gap-3">
+                    <DocumentCheckIcon className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">Plantilla{plantilla?.plantilla?.nombre ? `: ${plantilla.plantilla.nombre}` : ''}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {plantilla?.revisado_en ? `Revisado ${hace(plantilla.revisado_en)}` : 'Sin revisar'}
+                            {plantilla?.aplicado_en ? ` · aplicada ${hace(plantilla.aplicado_en)}` : ''}
+                        </p>
+                    </div>
+                    {plantilla?.conforme === true && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${PILDORA.verde}`}>Conforme</span>}
+                    {plantilla?.conforme === false && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${PILDORA.ambar}`}>Le falta</span>}
+                </div>
+                {plantilla?.error && <p className="text-xs text-rose-600">{plantilla.error}</p>}
+                {plantilla && plantilla.faltan.length > 0 && (
+                    <ul className="list-disc space-y-0.5 pl-5 text-xs text-slate-600 dark:text-slate-300">
+                        {plantilla.faltan.map((f) => <li key={f}>{f}</li>)}
+                    </ul>
+                )}
+                <div className="flex gap-2">
+                    <button type="button" onClick={() => void plantillaAccion('revisar')} disabled={ocupado !== null} className={`${BOTON_ACCION_SECUNDARIO} flex-1`}>
+                        {ocupado === 'revisar' ? 'Revisando...' : 'Revisar'}
+                    </button>
+                    <button type="button" onClick={() => void plantillaAccion('aplicar')} disabled={ocupado !== null} className={`${BOTON_ACCION_PRIMARIO} flex-1`}>
+                        {ocupado === 'aplicar' ? 'Aplicando...' : 'Aplicar plantilla'}
+                    </button>
+                </div>
+            </div>
+            <ConfigEquipo key={version} deviceId={deviceId} />
         </div>
     );
 }

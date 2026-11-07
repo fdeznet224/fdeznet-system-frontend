@@ -8,6 +8,17 @@ export type EquipoTr069 = {
     ultimo_reporte: string | null;
     ultimo_arranque: string | null;
     cliente: { id: number; nombre: string } | null;
+    plantilla: EstadoPlantilla;
+};
+
+export type EstadoPlantilla = {
+    plantilla: { id: number; nombre: string | null } | null;
+    conforme: boolean | null;
+    faltan: string[];
+    hecho?: string[];
+    error: string | null;
+    revisado_en: string | null;
+    aplicado_en: string | null;
 };
 
 export function hace(fecha: string | null) {
