@@ -16,12 +16,12 @@ type WanPlantilla = {
 };
 type RedPlantilla = { nombre: string; bandas: string[]; oculta: boolean };
 type Definicion = { wans: WanPlantilla[]; redes: RedPlantilla[]; lan: Record<string, unknown> | null };
-type Plantilla = { id?: number; nombre: string; marca: 'huawei' | 'zte'; modelos: string; automatica: boolean; definicion: Definicion };
+type Plantilla = { id?: number; nombre: string; marca: 'todas' | 'huawei' | 'zte'; modelos: string; automatica: boolean; definicion: Definicion };
 
 const BANDAS = ['2.4 GHz', '5 GHz'];
 const LANS = ['LAN1', 'LAN2', 'LAN3', 'LAN4'];
 const NUEVA: Plantilla = {
-    nombre: '', marca: 'huawei', modelos: '', automatica: false,
+    nombre: 'General', marca: 'todas', modelos: '', automatica: false,
     definicion: {
         wans: [{ nombre: 'Internet', acs: true, tipo: 'pppoe', modo: 'ruta', vlan: 10, servicio: 'TR069_INTERNET', nat: true, pppoe_cliente: true, puertos: ['LAN1', 'LAN2', 'LAN3', 'red:cliente'] }],
         redes: [{ nombre: 'cliente', bandas: [...BANDAS], oculta: false }],
@@ -92,19 +92,25 @@ function Editor({ inicial, onGuardada, onCancelar }: { inicial: Plantilla; onGua
                 <div className="grid grid-cols-2 gap-2">
                     <label className="col-span-2">
                         <span className={ETIQUETA_CAMPO}>Nombre</span>
-                        <input className={CAMPO} value={p.nombre} placeholder="Huawei con Zona FdezNet" onChange={(e) => setP({ ...p, nombre: e.target.value })} />
+                        <input className={CAMPO} value={p.nombre} placeholder="General" onChange={(e) => setP({ ...p, nombre: e.target.value })} />
                     </label>
-                    <label>
-                        <span className={ETIQUETA_CAMPO}>Marca</span>
-                        <select className={CAMPO} value={p.marca} onChange={(e) => setP({ ...p, marca: e.target.value as 'huawei' | 'zte' })}>
-                            <option value="huawei">Huawei</option>
-                            <option value="zte">ZTE</option>
+                    <label className={p.marca === 'todas' ? 'col-span-2' : ''}>
+                        <span className={ETIQUETA_CAMPO}>Para qué equipos</span>
+                        <select className={CAMPO} value={p.marca} onChange={(e) => setP({ ...p, marca: e.target.value as Plantilla['marca'], modelos: e.target.value === 'todas' ? '' : p.modelos })}>
+                            <option value="todas">Todos (Huawei y ZTE)</option>
+                            <option value="huawei">Solo Huawei</option>
+                            <option value="zte">Solo ZTE</option>
                         </select>
                     </label>
-                    <label>
-                        <span className={ETIQUETA_CAMPO}>Modelos (vacío = todos)</span>
-                        <input className={CAMPO} value={p.modelos} placeholder="HG8145V5, HG8145X6" onChange={(e) => setP({ ...p, modelos: e.target.value })} />
-                    </label>
+                    {p.marca !== 'todas' && (
+                        <label>
+                            <span className={ETIQUETA_CAMPO}>Modelos (vacío = todos)</span>
+                            <input className={CAMPO} value={p.modelos} placeholder="HG8145X6" onChange={(e) => setP({ ...p, modelos: e.target.value })} />
+                        </label>
+                    )}
+                    <p className="col-span-2 text-[11px] text-slate-400">
+                        Una sola plantilla sirve para todos: el sistema la traduce a Huawei o ZTE. Haz una aparte solo si algún modelo necesita algo distinto.
+                    </p>
                 </div>
                 <label className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800/50">
                     <span>
@@ -218,9 +224,9 @@ export default function PlantillasTr069() {
         if (!copiarDe) return;
         setCopiando(true);
         try {
-            const { data } = await client.get<{ marca: 'huawei' | 'zte'; modelos: string; definicion: Definicion }>(
+            const { data } = await client.get<{ marca: Plantilla['marca']; modelos: string; definicion: Definicion }>(
                 `/tr069/plantillas/desde-equipo/${encodeURIComponent(copiarDe)}`, { timeout: 120000 });
-            setEditando({ nombre: '', marca: data.marca, modelos: data.modelos, automatica: false, definicion: data.definicion });
+            setEditando({ nombre: 'General', marca: data.marca, modelos: data.modelos, automatica: false, definicion: data.definicion });
         } catch (e) {
             toast.error(apiErrorMessage(e, 'No se pudo leer ese equipo'));
         } finally {
@@ -255,7 +261,7 @@ export default function PlantillasTr069() {
                             <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{p.nombre}</p>
                                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                                    {p.marca === 'huawei' ? 'Huawei' : 'ZTE'} · {p.modelos || 'todos los modelos'} · {p.definicion.wans.length} WAN · {p.definicion.redes.length} redes
+                                    {p.marca === 'todas' ? 'Todos los equipos' : `${p.marca === 'huawei' ? 'Huawei' : 'ZTE'} · ${p.modelos || 'todos los modelos'}`} · {p.definicion.wans.length} WAN · {p.definicion.redes.length} redes
                                 </p>
                             </div>
                             <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${p.automatica ? PILDORA.verde : PILDORA.neutro}`}>
