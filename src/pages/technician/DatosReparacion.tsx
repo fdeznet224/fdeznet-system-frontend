@@ -94,7 +94,7 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
     const [wifiRed, setWifiRed] = useState('');
     const [wifiClave, setWifiClave] = useState('');
     // El WiFi que el sistema sabe del cliente (null: aún no se carga) y si el técnico pone otro.
-    const [wifiConocido, setWifiConocido] = useState<{ red: string | null; clave: string | null } | null>(null);
+    const [wifiConocido, setWifiConocido] = useState<{ red: string | null; clave: string | null; nueva?: string } | null>(null);
     const [otroWifi, setOtroWifi] = useState(false);
 
     const cargar = useCallback(async () => {
@@ -247,7 +247,7 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
         try {
             const [{ data }, { data: wifi }] = await Promise.all([
                 client.get<OnuDisponible[]>(`/ordenes/${ordenId}/onus-disponibles`),
-                client.get<{ red: string | null; clave: string | null }>(`/ordenes/${ordenId}/wifi-cliente`),
+                client.get<{ red: string | null; clave: string | null; nueva?: string }>(`/ordenes/${ordenId}/wifi-cliente`),
             ]);
             setOnus(data);
             setWifiConocido(wifi);
@@ -399,7 +399,7 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
                             ) : wifiConocido.red ? (
                                 <p>Su misma red <b>{wifiConocido.red}</b> con una contraseña nueva (la de antes no se puede leer). Se le manda al cliente por WhatsApp.</p>
                             ) : (
-                                <p>No sabemos su WiFi: se creará <b>FdezNet-{ficha.cedula}</b> con una contraseña nueva y se le manda al cliente por WhatsApp.</p>
+                                <p>No sabemos su WiFi: se creará <b>{wifiConocido.nueva || `FdezNet-${ficha.cedula}`}</b> con una contraseña nueva y se le manda al cliente por WhatsApp.</p>
                             )}
                             <button type="button" onClick={() => setOtroWifi((v) => !v)} className="mt-2 font-semibold text-blue-600 dark:text-blue-400">
                                 {otroWifi ? 'Usar el que dice el sistema' : 'El cliente quiere otro WiFi'}
