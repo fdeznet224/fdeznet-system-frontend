@@ -14,6 +14,7 @@ import { useSync } from '@/context/sync/context';
 import { cachedRequest, getCachedValue, setCachedValue } from '../../offline/db';
 import { apiErrorMessage } from '@/utils/apiError';
 import SugerenciaNap from '@/components/naps/SugerenciaNap';
+import EstadoOnuNueva from './EstadoOnuNueva';
 import SelectorOnu from './SelectorOnu';
 import ProrrateoInstalacion from './ProrrateoInstalacion';
 import { SERIE_MINIMA, normalizarSerie } from './onu';
@@ -57,6 +58,7 @@ interface Catalogo {
 }
 
 interface Resultado {
+    cliente_id: number;
     contrato: string;
     nombre: string;
     plan: string;
@@ -381,11 +383,12 @@ export default function TechActivar() {
                             <p className="font-bold text-emerald-700 dark:text-emerald-400">Servicio activo y orden cerrada</p>
                             <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80">
                                 {resultado.wifi?.automatica
-                                    ? 'La ONU se configura sola en 1 o 2 minutos con su PPPoE y este WiFi; al cliente le llega por WhatsApp.'
+                                    ? 'Abajo ves cuando la ONU quede configurada con su PPPoE y su WiFi.'
                                     : 'Configura la ONU del cliente con estos datos.'}
                             </p>
                         </div>
                     </div>
+                    {resultado.wifi?.automatica && resultado.cliente_id ? <EstadoOnuNueva clienteId={resultado.cliente_id} /> : null}
                     <div className={tarjeta}>
                         {filas.map(([nombre, valor]) => (
                             <div key={nombre} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0 dark:border-slate-800">

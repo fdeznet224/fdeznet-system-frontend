@@ -44,6 +44,7 @@ export default function Plantillas() {
     // 🔥 AQUÍ SE AGREGÓ EL RECORDATORIO AMIGABLE 🔥
     const titulos: Record<string, string> = {
         'bienvenida': '👋 Mensaje de Bienvenida',
+        'wifi_nuevo': '📶 WiFi nuevo (cambio de ONU)',
         'nueva_factura': '📄 Nueva Factura Generada',
         'aviso_prorrateo': '🧾 Saldo de Prorrateo (lo paga después)',
         'recordatorio_prorrateo': '⏰ Prorrateo: mañana se suma a su factura',
