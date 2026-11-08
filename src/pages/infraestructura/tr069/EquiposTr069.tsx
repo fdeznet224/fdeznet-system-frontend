@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowPathIcon, CpuChipIcon, DocumentDuplicateIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
@@ -6,6 +6,7 @@ import client from '@/api/axios';
 import { BOTON_ACCION_SECUNDARIO, BOTON_ICONO, CAMPO_BUSQUEDA } from '@/components/ui/estilo';
 import { EncabezadoPagina, FilaLista, Lista, Metrica, Vacio } from '@/components/ui/Pagina';
 import { apiErrorMessage } from '@/utils/apiError';
+import AcsDelIsp, { type DatosAcs } from './AcsDelIsp';
 import { hace, type EquipoTr069 } from './tr069';
 
 type Filtro = 'todos' | 'sin_cliente' | 'sin_reportar' | 'no_conformes';
@@ -18,6 +19,9 @@ export default function EquiposTr069() {
     const [error, setError] = useState<string | null>(null);
     const [busqueda, setBusqueda] = useState('');
     const [filtro, setFiltro] = useState<Filtro>('todos');
+    // En la nube, sin ACS activado no hay equipos que leer (no es un error).
+    const [sinAcs, setSinAcs] = useState(false);
+    const sinAcsAntes = useRef(false);
 
     const leer = useCallback(async () => {
         setCargando(true);
@@ -35,6 +39,13 @@ export default function EquiposTr069() {
     useEffect(() => {
         const t = window.setTimeout(() => void leer(), 0);
         return () => window.clearTimeout(t);
+    }, [leer]);
+
+    const cambioAcs = useCallback((acs: DatosAcs) => {
+        const falta = acs.en_la_nube && !acs.activo;
+        if (sinAcsAntes.current && !falta) void leer(); // Recién activado: ya hay a quién preguntar.
+        sinAcsAntes.current = falta;
+        setSinAcs(falta);
     }, [leer]);
 
     const sinReportar = (e: EquipoTr069) => !e.ultimo_reporte || Date.now() - new Date(e.ultimo_reporte).getTime() > UNA_HORA;
@@ -72,6 +83,8 @@ export default function EquiposTr069() {
                     </>
                 )}
             />
+            <AcsDelIsp onCambio={cambioAcs} />
+            {!sinAcs && (<>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Metrica etiqueta="Equipos" valor={conteo.todos} tono="azul" onClick={() => setFiltro('todos')} activo={filtro === 'todos'} />
                 <Metrica etiqueta="Sin cliente" valor={conteo.sin_cliente} tono="ambar" onClick={() => setFiltro('sin_cliente')} activo={filtro === 'sin_cliente'} />
@@ -102,6 +115,7 @@ export default function EquiposTr069() {
                     ))}
                 </Lista>
             )}
+            </>)}
         </div>
     );
 }
