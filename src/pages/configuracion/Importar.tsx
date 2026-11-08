@@ -5,16 +5,36 @@ import { CloudArrowUpIcon, DocumentTextIcon, ArrowDownTrayIcon, ExclamationTrian
 
 import { apiErrorMessage } from '@/utils/apiError';
 import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { NOMBRE_MODO, modoRouter, type ModoAcceso } from '@/utils/accesoRed';
+
+const QUE_TRAE: Record<ModoAcceso, string> = {
+    pppoe: 'Trae los secrets PPPoE del MikroTik: usuario, contraseña, IP y ONU.',
+    dhcp: 'Trae los leases DHCP de la red: IP y MAC del equipo, sin PPPoE. Si es antena, pon su IP en ip_antena.',
+    estatica: 'Trae las colas simples de cada IP de la red, sin PPPoE ni lease. Si es antena, pon su IP en ip_antena.',
+};
+
+/** El error de una descarga llega como Blob: se lee su "detail". */
+async function errorDeBlob(error: unknown, defecto: string) {
+    const datos = (error as { response?: { data?: unknown } })?.response?.data;
+    if (datos instanceof Blob) {
+        try {
+            const detalle = JSON.parse(await datos.text())?.detail;
+            if (typeof detalle === 'string') return detalle;
+        } catch { /* no era JSON */ }
+    }
+    return apiErrorMessage(error, defecto);
+}
 
 interface CatalogOption {
     id: number;
     nombre: string;
     cidr?: string;
+    tipo_seguridad?: string;
 }
 
 interface ImportResult {
     importados: number;
-    errores?: unknown | unknown[];
+    errores?: string | string[];
 }
 
 interface CatalogInput {
@@ -106,16 +126,16 @@ export default function Importar() {
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `Plantilla_Clientes_R${routerId}.xlsx`);
+            link.setAttribute('download', `Plantilla_${NOMBRE_MODO[modo].replace(' ', '_')}_R${routerId}.xlsx`);
             document.body.appendChild(link);
             link.click();
             link.remove();
             
             toast.dismiss(loadingToast);
             toast.success("Plantilla descargada.");
-        } catch {
+        } catch (error) {
             toast.dismiss(loadingToast);
-            toast.error("Error al generar la plantilla");
+            toast.error(await errorDeBlob(error, "Error al generar la plantilla"));
         }
     };
 
@@ -148,6 +168,8 @@ export default function Importar() {
             setLoading(false);
         }
     };
+
+    const modo = modoRouter(routers.find((r) => String(r.id) === routerId)?.tipo_seguridad);
 
     const catalogInputs: CatalogInput[] = [
         { label: 'Router MikroTik', value: routerId, setValue: setRouterId, options: routers },
@@ -191,6 +213,11 @@ export default function Importar() {
                             <button onClick={handleDescargarPlantilla} className="w-full mt-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm">
                                 <ArrowDownTrayIcon className="w-5 h-5"/> Descargar Plantilla
                             </button>
+                            {routerId && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400" data-testid="importar-modo">
+                                    <span className="font-bold text-slate-700 dark:text-slate-200">Router en modo {NOMBRE_MODO[modo]}.</span> {QUE_TRAE[modo]}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
