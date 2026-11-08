@@ -24,6 +24,7 @@ import client from '@/api/axios';
 import { FORMAS_COBRO, nombreFormaCobro, type FormaCobro } from '@/utils/formaCobro';
 import { apiErrorMessage } from '@/utils/apiError';
 import SugerenciaNap from '@/components/naps/SugerenciaNap';
+import { NOMBRE_MODO, modoRouter } from '@/utils/accesoRed';
 
 interface Props {
   isOpen: boolean;
@@ -132,6 +133,9 @@ type FormDataState = {
   user_pppoe: string;
   pass_pppoe: string;
   mac_address: string;
+  // Fibra (ONU) o antena (radioenlace): con antena no hay OLT/ONU/NAP.
+  tipo_conexion: 'fibra' | 'radio';
+  ip_antena: string;
   caja_nap_id: string;
   puerto_nap: string;
   tecnico_id: string;
@@ -201,6 +205,8 @@ const createInitialFormData = (): FormDataState => {
     user_pppoe: '',
     pass_pppoe: '',
     mac_address: '',
+    tipo_conexion: 'fibra',
+    ip_antena: '',
     caja_nap_id: '',
     puerto_nap: '',
     tecnico_id: '',
@@ -234,6 +240,7 @@ export default function CreateClientModal({
     user_pppoe?: string;
     pass_pppoe?: string;
     mac_address?: string;
+    ip?: string;
     estado?: string;
   } | null>(null);
 
@@ -242,6 +249,16 @@ export default function CreateClientModal({
   const [planes, setPlanes] = useState<PlanCatalog[]>([]);
   const [redes, setRedes] = useState<NetworkCatalog[]>([]);
   const [ipsLibres, setIpsLibres] = useState<string[]>([]);
+  // DHCP: la IP que el equipo (antena/router del cliente) ya tomó del MikroTik.
+  const [leaseDhcp, setLeaseDhcp] = useState<{
+    clave: string;
+    encontrado: boolean;
+    ip?: string;
+    dinamico?: boolean;
+    equipo?: string | null;
+    red_id?: number | null;
+    usable?: boolean;
+  } | null>(null);
   const [naps, setNaps] = useState<NapCatalog[]>([]);
   const [tecnicos, setTecnicos] = useState<TechnicianCatalog[]>([]);
   const [puertosOcupados, setPuertosOcupados] = useState<number[]>([]);
@@ -249,6 +266,12 @@ export default function CreateClientModal({
   const [inventarioDisponible, setInventarioDisponible] = useState<InventoryCatalog[]>([]);
   const [selectedPlantilla, setSelectedPlantilla] = useState<TemplateCatalog | null>(null);
   const [formData, setFormData] = useState<FormDataState>(createInitialFormData);
+  // El formulario pide solo lo del modo del router elegido (PPPoE, DHCP o IP fija).
+  const selectedRouter = routers.find(
+    (router) => router.id === Number(formData.router_id),
+  );
+  const modo = modoRouter(selectedRouter?.tipo_seguridad);
+  const esAntena = formData.tipo_conexion === 'radio';
 
   useEffect(() => {
     if (!isOpen) return;
@@ -377,6 +400,8 @@ export default function CreateClientModal({
     setFormData((prev) => ({
       ...prev,
       zona_id: zonaId,
+      // Zona sin OLT = clientes de antena (se puede cambiar).
+      ...(zona ? { tipo_conexion: zona.olt_id ? 'fibra' as const : 'radio' as const } : {}),
       ...(zona?.olt_id ? { olt_id: String(zona.olt_id), onu_id: '' } : {}),
       ...(zona?.plantilla_id ? { plantilla_id: String(zona.plantilla_id) } : {}),
     }));
@@ -413,7 +438,8 @@ export default function CreateClientModal({
       ip_asignada: '',
       plan_id: '',
       pass_pppoe: '',
-      mac_address: '',
+      // La MAC de la antena se queda: es del equipo, no del router.
+      mac_address: prev.tipo_conexion === 'radio' ? prev.mac_address : '',
     }));
     if (!rId) {
       setRedes([]);
@@ -456,6 +482,12 @@ export default function CreateClientModal({
 
   const handleRedChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     void cargarRed(e.target.value);
+  };
+
+  const usarIpDelLease = async (ip: string, redId: number) => {
+    if (String(redId) !== formData.red_id) await cargarRed(String(redId));
+    setIpsLibres((prev) => (prev.includes(ip) ? prev : [ip, ...prev]));
+    setFormData((prev) => ({ ...prev, red_id: String(redId), ip_asignada: ip }));
   };
 
   const cargarRed = async (netId: string) => {
@@ -546,17 +578,23 @@ export default function CreateClientModal({
         contrato_apartado: formData.contrato_apartado.trim().toUpperCase() || null,
         plantilla_id: formData.plantilla_id ? Number(formData.plantilla_id) : null,
         red_id: formData.red_id ? Number(formData.red_id) : null,
-        caja_nap_id: formData.caja_nap_id ? Number(formData.caja_nap_id) : null,
-        puerto_nap: formData.puerto_nap ? Number(formData.puerto_nap) : null,
+        caja_nap_id: esAntena || !formData.caja_nap_id ? null : Number(formData.caja_nap_id),
+        puerto_nap: esAntena || !formData.puerto_nap ? null : Number(formData.puerto_nap),
         tecnico_id: formData.tecnico_id ? Number(formData.tecnico_id) : null,
         latitud: formData.latitud ? parseFloat(formData.latitud) : null,
         longitud: formData.longitud ? parseFloat(formData.longitud) : null,
-        user_pppoe: formData.user_pppoe?.trim() || null,
-        pass_pppoe: formData.pass_pppoe?.trim() || null,
+        user_pppoe: modo === 'pppoe' ? formData.user_pppoe?.trim() || null : null,
+        pass_pppoe: modo === 'pppoe' ? formData.pass_pppoe?.trim() || null : null,
         mac_address: formData.mac_address?.trim() || null,
         ip_asignada: formData.ip_asignada?.trim() || null,
+        tipo_conexion: formData.tipo_conexion,
+        ip_antena: esAntena ? formData.ip_antena.trim() || null : null,
         estado: 'pendiente_instalacion',
       };
+      if (esAntena) {
+        payload.olt_id = null;
+        payload.onu_id = null;
+      }
 
       const ipSeleccionadaParaActivar = String(
         payload.ip_asignada || formData.ip_asignada || '',
@@ -627,11 +665,12 @@ export default function CreateClientModal({
           datosCliente.cedula
           || clienteRegistrado.cedula
           || clienteRegistrado.id.toString(),
-        hardware_id: onuAsignada ? onuAsignada.identificador : 'SIN ASIGNAR',
+        hardware_id: esAntena ? 'Antena' : onuAsignada?.identificador || 'SIN ASIGNAR',
         id: datosCliente.id || clienteRegistrado.id,
         user_pppoe: datosCliente.user_pppoe || payload.user_pppoe || undefined,
         pass_pppoe: datosCliente.pass_pppoe || payload.pass_pppoe || undefined,
         mac_address: datosCliente.mac_address || payload.mac_address || undefined,
+        ip: modo === 'estatica' ? ipSeleccionadaParaActivar : undefined,
         estado: 'Activo',
       });
       setStep(4);
@@ -713,15 +752,28 @@ export default function CreateClientModal({
 
   const canContinueStep1 = formData.nombre && formData.telefono && formData.zona_id;
   const canContinueStep2 = formData.plantilla_id && formData.plan_id;
-  const selectedRouter = routers.find(
-    (router) => router.id === Number(formData.router_id),
-  );
-  const isDhcp = selectedRouter?.tipo_seguridad === 'dhcp';
+  const macParaLease = modo === 'dhcp' && step === 3 && formData.router_id
+    ? formData.mac_address.replace(/[^0-9a-fA-F]/g, '')
+    : '';
+  useEffect(() => {
+    if (macParaLease.length !== 12) return undefined;
+    const clave = `${formData.router_id}-${macParaLease}`;
+    let vigente = true;
+    client.get(`/network/routers/${formData.router_id}/lease-dhcp`, { params: { mac: macParaLease } })
+      .then(({ data }) => { if (vigente) setLeaseDhcp({ clave, ...data }); })
+      .catch(() => { if (vigente) setLeaseDhcp(null); });
+    return () => { vigente = false; };
+  }, [macParaLease, formData.router_id]);
+  const lease = leaseDhcp && leaseDhcp.clave === `${formData.router_id}-${macParaLease}` ? leaseDhcp : null;
+
   const canSubmit = formData.router_id
-    && (isDhcp
+    && (!esAntena || Boolean(formData.ip_antena.trim()))
+    && (modo === 'dhcp'
       ? Boolean(formData.mac_address)
-      : formData.user_pppoe
-        && (pppoePasswordMode === 'aleatoria' || formData.pass_pppoe));
+      : modo === 'estatica'
+        ? Boolean(formData.ip_asignada)
+        : formData.user_pppoe
+          && (pppoePasswordMode === 'aleatoria' || formData.pass_pppoe));
 
   const renderProgress = () => {
     const progress = step >= 4 ? 100 : Math.min((step / 3) * 100, 100);
@@ -881,7 +933,52 @@ export default function CreateClientModal({
                         <p className="mt-1 text-[11px] text-slate-500">Si el técnico ya lo escribió en el conector, ponlo aquí para que el cliente quede con ese número.</p>
                       </div>
 
-                      <div>
+                      <div className="md:col-span-2">
+                        <label className={labelClass}>Tipo de conexión</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {([['fibra', 'Fibra (ONU)'], ['radio', 'Antena']] as const).map(([valor, nombre]) => (
+                            <button
+                              key={valor}
+                              type="button"
+                              onClick={() => setFormData((prev) => ({ ...prev, tipo_conexion: valor }))}
+                              className={`min-h-12 rounded-2xl px-4 text-sm font-bold transition ${formData.tipo_conexion === valor
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-200'}`}
+                            >
+                              {nombre}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {esAntena && (
+                        <div>
+                          <label className={labelClass}>IP de administración de la antena</label>
+                          <input
+                            className={flatInputClass}
+                            value={formData.ip_antena}
+                            onChange={(e) => setFormData({ ...formData, ip_antena: e.target.value })}
+                            placeholder="Ej: 192.168.1.20"
+                            inputMode="decimal"
+                          />
+                          <p className="mt-1 text-[11px] text-slate-500">Con la que entras a la antena; el sistema la revisa con ping desde el MikroTik.</p>
+                        </div>
+                      )}
+
+                      {esAntena && (
+                        <div>
+                          <label className={labelClass}>MAC de la WAN de la antena</label>
+                          <input
+                            className={flatInputClass}
+                            value={formData.mac_address}
+                            onChange={(e) => setFormData({ ...formData, mac_address: e.target.value })}
+                            placeholder="AA:BB:CC:DD:EE:FF"
+                          />
+                          <p className="mt-1 text-[11px] text-slate-500">La que ve el MikroTik (en DHCP es la del lease).</p>
+                        </div>
+                      )}
+
+                      {!esAntena && <div>
                         <label className={labelClass}>OLT Base</label>
                         <select
                           className={flatInputClass}
@@ -901,9 +998,9 @@ export default function CreateClientModal({
                             </option>
                           ))}
                         </select>
-                      </div>
+                      </div>}
 
-                      <div>
+                      {!esAntena && <div>
                         <label className={labelClass}>ONU / Equipo</label>
                         <select
                           className={flatInputClass}
@@ -919,7 +1016,7 @@ export default function CreateClientModal({
                             </option>
                           ))}
                         </select>
-                      </div>
+                      </div>}
                     </div>
                   )}
 
@@ -1106,6 +1203,11 @@ export default function CreateClientModal({
 
                   {step === 3 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {selectedRouter && (
+                        <p className="md:col-span-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                          {selectedRouter.nombre} usa {NOMBRE_MODO[modo]}: solo se piden sus datos.
+                        </p>
+                      )}
                       <div>
                         <label className={labelClass}>Red</label>
                         <div className="relative">
@@ -1136,6 +1238,9 @@ export default function CreateClientModal({
                           }
                         >
                           <option value="">Sin IP fija...</option>
+                          {formData.ip_asignada && !ipsLibres.includes(formData.ip_asignada) && (
+                            <option value={formData.ip_asignada}>{formData.ip_asignada}</option>
+                          )}
                           {ipsLibres.map((ip) => (
                             <option key={ip} value={ip}>
                               {ip}
@@ -1144,7 +1249,35 @@ export default function CreateClientModal({
                         </select>
                       </div>
 
-                      {!isDhcp && <div>
+                      {modo === 'estatica' && (
+                        <div className="md:col-span-2 rounded-2xl bg-blue-50 p-4 text-xs font-medium text-blue-800 dark:bg-blue-500/10 dark:text-blue-300">
+                          IP fija: pon esta IP en {esAntena ? 'la antena' : 'el equipo'} del cliente, con la máscara y la puerta de enlace de la red. El sistema le pone la velocidad del plan con una cola en el MikroTik; no lleva usuario PPPoE.
+                        </div>
+                      )}
+
+                      {modo === 'dhcp' && lease?.encontrado && lease.ip && (
+                        <div className={`md:col-span-2 rounded-2xl p-4 text-xs font-medium ${lease.usable
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300'
+                          : 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+                          <p>
+                            {esAntena ? 'La antena' : 'El equipo'}{lease.equipo ? ` (${lease.equipo})` : ''} ya tomó la <b>{lease.ip}</b>{lease.dinamico ? ' (dinámica)' : ''} del DHCP.
+                            {lease.usable
+                              ? ' Al activar se vuelve estática con esa IP y la velocidad del plan.'
+                              : ' No es de una red de este MikroTik o ya la tiene otro cliente: se le pondrá la IP elegida.'}
+                          </p>
+                          {lease.usable && lease.red_id && formData.ip_asignada !== lease.ip && (
+                            <button
+                              type="button"
+                              onClick={() => void usarIpDelLease(lease.ip as string, lease.red_id as number)}
+                              className="mt-2 rounded-xl bg-emerald-600 px-3 py-2 font-bold text-white"
+                            >
+                              Dejarle la {lease.ip}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {modo === 'pppoe' && <div>
                         <label className={labelClass}>Usuario PPPoE</label>
                         <div className="relative">
                           <UserIcon className="w-5 h-5 absolute left-4 top-4 text-slate-400" />
@@ -1158,7 +1291,7 @@ export default function CreateClientModal({
                         </div>
                       </div>}
 
-                      {!isDhcp && <div>
+                      {modo === 'pppoe' && <div>
                         <label className={labelClass}>Contraseña PPPoE</label>
                         <div className="relative">
                           <KeyIcon className="w-5 h-5 absolute left-4 top-4 text-slate-400" />
@@ -1179,7 +1312,7 @@ export default function CreateClientModal({
                         )}
                       </div>}
 
-                      {isDhcp && (
+                      {modo === 'dhcp' && !esAntena && (
                         <div className="md:col-span-2">
                           <label className={labelClass}>MAC WAN/CPE vista por MikroTik</label>
                           <input
@@ -1195,6 +1328,7 @@ export default function CreateClientModal({
                         </div>
                       )}
 
+                      {!esAntena && <>
                       <div>
                         <label className={labelClass}>Caja NAP</label>
                         <div className="relative">
@@ -1249,6 +1383,7 @@ export default function CreateClientModal({
                           {renderPuertoOptions()}
                         </select>
                       </div>
+                      </>}
 
                       <div>
                         <label className={labelClass}>Técnico</label>
@@ -1314,7 +1449,18 @@ export default function CreateClientModal({
                           </p>
                         </button>
 
-                        {!createdClient.mac_address && <button
+                        {createdClient.ip && (
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(createdClient.ip || '')}
+                            className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                          >
+                            <GlobeAmericasIcon className="w-6 h-6 text-blue-600 mb-3" />
+                            <p className="text-xs text-slate-500 font-bold">IP fija (ponla en su equipo)</p>
+                            <p className="font-black text-slate-900 dark:text-white break-all">{createdClient.ip}</p>
+                          </button>
+                        )}
+                        {createdClient.user_pppoe && <button
                           type="button"
                           onClick={() => copyToClipboard(createdClient.user_pppoe || '')}
                           className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
@@ -1332,12 +1478,12 @@ export default function CreateClientModal({
                             className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                           >
                             <WifiIcon className="w-6 h-6 text-blue-600 mb-3" />
-                            <p className="text-xs text-slate-500 font-bold">MAC WAN/CPE</p>
+                            <p className="text-xs text-slate-500 font-bold">{esAntena ? 'MAC WAN de la antena' : 'MAC WAN/CPE'}</p>
                             <p className="font-black text-slate-900 dark:text-white break-all">{createdClient.mac_address}</p>
                           </button>
                         )}
 
-                        {!createdClient.mac_address && <button
+                        {createdClient.user_pppoe && <button
                           type="button"
                           onClick={() => copyToClipboard(createdClient.pass_pppoe || '')}
                           className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"

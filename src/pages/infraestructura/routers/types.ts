@@ -1,4 +1,4 @@
-export type RouterSecurity = 'pppoe' | 'dhcp';
+export type RouterSecurity = 'pppoe' | 'dhcp' | 'estatica';
 export type RouterControl = 'colas_dinamicas' | 'colas_estaticas';
 
 export interface RouterRecord {

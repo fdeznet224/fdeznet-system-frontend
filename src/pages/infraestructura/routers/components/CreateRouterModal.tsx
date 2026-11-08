@@ -14,7 +14,8 @@ const initialState: RouterFormData = {
     ip_vpn: '',
     user_api: 'admin',
     pass_api: '',
-    port_api: 8728,
+    // API REST de RouterOS 7 (servicio www): puerto 80.
+    port_api: 80,
     tipo_seguridad: 'pppoe',
     tipo_control: 'colas_dinamicas',
     version_os: 'v7'
@@ -48,7 +49,8 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                     ip_vpn: routerToEdit.ip_vpn || '',
                     user_api: routerToEdit.user_api || 'admin',
                     pass_api: '', 
-                    port_api: routerToEdit.port_api || 8728,
+                    // 8728/8291 son de la API vieja y Winbox; el sistema usa REST (80).
+                    port_api: routerToEdit.port_api && ![8728, 8291].includes(routerToEdit.port_api) ? routerToEdit.port_api : 80,
                     tipo_seguridad: routerToEdit.tipo_seguridad || 'pppoe', 
                     tipo_control: routerToEdit.tipo_control || 'colas_dinamicas',
                     version_os: routerToEdit.version_os || 'v7'
@@ -150,7 +152,7 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                                             value={formData.user_api} onChange={e => setFormData({...formData, user_api: e.target.value})}/>
                                     </div>
                                     <div>
-                                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Puerto</label>
+                                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Puerto REST (www)</label>
                                         <input type="number" className="w-full bg-white dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-mono focus:border-emerald-500 outline-none transition-colors text-center" required 
                                             value={formData.port_api} onChange={e => setFormData({...formData, port_api: Number(e.target.value)})}/>
                                     </div>
@@ -185,6 +187,7 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                                 >
                                     <option value="pppoe">PPPoE (PPP Secrets)</option>
                                     <option value="dhcp">DHCP estático (IP + MAC)</option>
+                                    <option value="estatica">IP fija (puesta en el equipo)</option>
                                 </select>
                             </div>
                             <div>
@@ -193,12 +196,20 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                                     <span className="text-slate-800 dark:text-slate-300 font-black text-sm">
                                         {formData.tipo_seguridad === 'dhcp'
                                             ? 'Rate-limit en lease DHCP'
-                                            : 'Perfil PPPoE / cola dinámica'}
+                                            : formData.tipo_seguridad === 'estatica'
+                                                ? 'Cola simple por IP'
+                                                : 'Perfil PPPoE / cola dinámica'}
                                     </span>
                                     <LockClosedIcon className="w-4 h-4 text-slate-500" />
                                 </div>
                             </div>
                         </div>
+                        {formData.tipo_seguridad === 'estatica' && (
+                            <div className="mt-4 flex gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs font-medium text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
+                                <InformationCircleIcon className="h-5 w-5 shrink-0" />
+                                <p>El cliente trae la IP puesta en su equipo o antena. El sistema crea una cola simple por su IP con la velocidad del plan y lo corta poniendo la IP en la lista de corte. No pide usuario PPPoE ni MAC.</p>
+                            </div>
+                        )}
                         {formData.tipo_seguridad === 'dhcp' && (
                             <div className="mt-4 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
                                 <InformationCircleIcon className="h-5 w-5 shrink-0" />
