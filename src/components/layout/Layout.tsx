@@ -13,6 +13,7 @@ import type { AppRole } from '@/utils/roles';
 import { useBrand } from '@/context/brand/useBrand';
 import { CuadroIcono } from '@/components/ui/Pagina';
 import BuscadorGlobal, { type ClienteEncontrado } from './BuscadorGlobal';
+import PreguntaTipoRed from './TipoRed';
 import { AbrirBuscador } from './buscadorContexto';
 import type { ContextoMas } from './MasSecciones';
 import { RUTA_MAS, barraDelRol, grupoDeRuta, gruposDelRol, itemDeRuta, type ItemNav } from './navegacion';
@@ -69,8 +70,8 @@ export default function Layout() {
     const [clienteAbierto, setClienteAbierto] = useState<ClienteEncontrado | null>(null);
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark'));
 
-    const grupos = useMemo(() => gruposDelRol(user.rol), [user.rol]);
-    const barra = useMemo(() => barraDelRol(user.rol), [user.rol]);
+    const grupos = useMemo(() => gruposDelRol(user.rol, brand.tipo_red), [user.rol, brand.tipo_red]);
+    const barra = useMemo(() => barraDelRol(user.rol, brand.tipo_red), [user.rol, brand.tipo_red]);
     const actual = itemDeRuta(location.pathname);
     const grupoActual = grupoDeRuta(location.pathname);
     // Cada grupo se abre o cierra a mano; sin tocarlo, solo está abierto el de la pantalla actual.
@@ -247,6 +248,8 @@ export default function Layout() {
                 onCliente={setClienteAbierto}
                 onSeccion={(item) => navigate(item.ruta)}
             />
+
+            {user.rol === 'admin' && <PreguntaTipoRed />}
 
             {clienteAbierto && (
                 <ClientDetailModal isOpen onClose={() => setClienteAbierto(null)} cliente={clienteAbierto} />

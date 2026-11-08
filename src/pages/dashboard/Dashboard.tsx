@@ -15,6 +15,8 @@ import { CuadroIcono, EncabezadoPagina, FilaLista } from '@/components/ui/Pagina
 import { BOTON_ACCION_PRIMARIO, BOTON_ACCION_SECUNDARIO, CUADRO_TONO, TARJETA, TEXTO_TONO, TITULO_SECCION, type Tono } from '@/components/ui/estilo';
 import RegistrarPago from '@/pages/finanzas/components/RegistrarPago';
 import CreateClientModal from '@/pages/clientes/components/CreateClientModal';
+import { useBrand } from '@/context/brand/useBrand';
+import { usaFibra } from '@/components/layout/navegacion';
 
 interface DashboardData {
     inventario?: { disponibles: number; minimo: number; bajo: boolean };
@@ -109,6 +111,7 @@ export default function Dashboard() {
     const [isCreateClientOpen, setIsCreateClientOpen] = useState(false);
     const [routersList, setRoutersList] = useState<RouterSummary[]>([]);
     const [olts, setOlts] = useState<ResumenOlts | null>(null);
+    const conFibra = usaFibra(useBrand().brand.tipo_red);
 
     const fetchData = useCallback(async () => {
         try {
@@ -133,11 +136,12 @@ export default function Dashboard() {
 
     // Leer las OLT tarda unos segundos: va aparte para no detener Inicio.
     useEffect(() => {
+        if (!conFibra) return undefined;
         const leer = () => client.get<ResumenOlts>('/dashboard/olts').then(({ data }) => setOlts(data)).catch(() => undefined);
         void leer();
         const intervalo = setInterval(leer, 60000);
         return () => clearInterval(intervalo);
-    }, []);
+    }, [conFibra]);
 
     useEffect(() => {
         const initialLoad = window.setTimeout(() => void fetchData(), 0);
@@ -229,7 +233,7 @@ export default function Dashboard() {
                 <FilaLista icono={UserMinusIcon} tono="neutro" titulo="Sin contrato activo" detalle="Retirados, cancelados o por instalar" valor={pendientes?.clientes_sin_contrato ?? 0} />
             </Rejilla>
 
-            <MonitoreoOlt olts={olts} />
+            {conFibra && <MonitoreoOlt olts={olts} />}
 
             <section>
                 <div className="flex items-end justify-between gap-3 px-1 pb-1.5">

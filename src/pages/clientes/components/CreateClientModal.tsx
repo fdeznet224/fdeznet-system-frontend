@@ -25,6 +25,7 @@ import { FORMAS_COBRO, nombreFormaCobro, type FormaCobro } from '@/utils/formaCo
 import { apiErrorMessage } from '@/utils/apiError';
 import SugerenciaNap from '@/components/naps/SugerenciaNap';
 import { NOMBRE_MODO, modoRouter } from '@/utils/accesoRed';
+import { useBrand } from '@/context/brand/useBrand';
 
 interface Props {
   isOpen: boolean;
@@ -272,6 +273,14 @@ export default function CreateClientModal({
   );
   const modo = modoRouter(selectedRouter?.tipo_seguridad);
   const esAntena = formData.tipo_conexion === 'radio';
+  // WISP = todo por antena; ISP de fibra = todo por ONU; híbrido (o sin elegir) = se escoge.
+  const tipoRed = useBrand().brand.tipo_red;
+  const conexionFija = tipoRed === 'wisp' ? 'radio' as const : tipoRed === 'fibra' ? 'fibra' as const : null;
+  useEffect(() => {
+    if (conexionFija && formData.tipo_conexion !== conexionFija) {
+      setFormData((prev) => ({ ...prev, tipo_conexion: conexionFija }));
+    }
+  }, [conexionFija, formData.tipo_conexion]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -933,7 +942,7 @@ export default function CreateClientModal({
                         <p className="mt-1 text-[11px] text-slate-500">Si el técnico ya lo escribió en el conector, ponlo aquí para que el cliente quede con ese número.</p>
                       </div>
 
-                      <div className="md:col-span-2">
+                      {!conexionFija && <div className="md:col-span-2">
                         <label className={labelClass}>Tipo de conexión</label>
                         <div className="grid grid-cols-2 gap-2">
                           {([['fibra', 'Fibra (ONU)'], ['radio', 'Antena']] as const).map(([valor, nombre]) => (
@@ -949,7 +958,7 @@ export default function CreateClientModal({
                             </button>
                           ))}
                         </div>
-                      </div>
+                      </div>}
 
                       {esAntena && (
                         <div>

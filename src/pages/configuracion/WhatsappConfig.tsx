@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ComponentType } from 'react';
 import QRCode from 'react-qr-code';
 import client from '../../api/axios';
 import { toast } from 'react-hot-toast';
+import { apiErrorMessage } from '@/utils/apiError';
 import { 
     DevicePhoneMobileIcon, ArrowPathIcon, CheckBadgeIcon, TrashIcon, 
     ShieldCheckIcon, BoltIcon, ClockIcon, PlayCircleIcon, PowerIcon
@@ -79,8 +80,8 @@ export default function WhatsappConfig() {
             await client.post('/whatsapp/init');
             toast.success("Motor activo. Esperando WhatsApp...", { id: loadToast });
             window.setTimeout(() => void checkStatus(), 2000);
-        } catch {
-            toast.error("No se pudo encender el motor", { id: loadToast });
+        } catch (error: unknown) {
+            toast.error(apiErrorMessage(error, "No se pudo encender el motor"), { id: loadToast, duration: 8000 });
         } finally {
             setReloading(false);
         }

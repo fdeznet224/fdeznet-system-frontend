@@ -6,6 +6,7 @@ import client from '@/api/axios';
 import { DEFAULT_BRAND, type BrandConfig } from '@/context/brand/brand';
 import { useBrand } from '@/context/brand/useBrand';
 import { EncabezadoPagina } from '@/components/ui/Pagina';
+import { SelectorTipoRed } from '@/components/layout/TipoRed';
 
 const fieldClass = 'w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
 
@@ -47,8 +48,12 @@ export default function MarcaBlanca() {
         <Field label="Correo"><input type="email" className={fieldClass} value={form.empresa_email || ''} onChange={(e) => update('empresa_email', e.target.value || null)} /></Field>
         <div className="sm:col-span-2"><Field label="Dirección"><input className={fieldClass} value={form.empresa_direccion || ''} onChange={(e) => update('empresa_direccion', e.target.value || null)} /></Field></div>
         <div className="sm:col-span-2"><Field label="Pie de recibos"><textarea rows={3} className={fieldClass} value={form.pie_recibo || ''} onChange={(e) => update('pie_recibo', e.target.value || null)} /></Field></div>
+        <div className="sm:col-span-2">
+          <span className="mb-2 block text-xs font-semibold text-slate-500">Tipo de red (se guarda al tocarlo; el menú se adapta)</span>
+          <SelectorTipoRed />
+        </div>
         <div className="flex gap-3 sm:col-span-2">
-          <button type="button" onClick={() => setForm(DEFAULT_BRAND)} className="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm font-black text-slate-600 dark:border-slate-700 dark:text-slate-300">Restablecer</button>
+          <button type="button" onClick={() => setForm({ ...DEFAULT_BRAND, tipo_red: brand.tipo_red })} className="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm font-black text-slate-600 dark:border-slate-700 dark:text-slate-300">Restablecer</button>
           <button type="button" disabled={saving || !form.empresa_nombre.trim() || !form.sistema_nombre.trim()} onClick={() => void save()} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50"><CheckCircleIcon className="h-5 w-5" />{saving ? 'Guardando…' : 'Guardar'}</button>
         </div>
       </div>
