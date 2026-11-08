@@ -6,6 +6,7 @@ import client from '@/api/axios';
 import { CuadroIcono, Lista } from '@/components/ui/Pagina';
 import type { AppRole } from '@/utils/roles';
 import { gruposDelRol, itemsDelRol, sinAcentos, type ItemNav } from './navegacion';
+import { useBrand } from '@/context/brand/useBrand';
 
 export interface ClienteEncontrado {
     id: number;
@@ -31,6 +32,7 @@ export default function BuscadorGlobal({ abierto, rol, onCerrar, onCliente, onSe
     onSeccion: (item: ItemNav) => void;
 }) {
     const [texto, setTexto] = useState('');
+    const tipoRed = useBrand().brand.tipo_red;
     const [clientes, setClientes] = useState<ClienteEncontrado[]>([]);
     const [buscando, setBuscando] = useState(false);
     const [marcado, setMarcado] = useState(0);
@@ -67,10 +69,10 @@ export default function BuscadorGlobal({ abierto, rol, onCerrar, onCliente, onSe
     // Sin texto se ven todas las secciones agrupadas, como en Más; al escribir, solo las que coinciden.
     const grupos = useMemo(() => {
         const consulta = sinAcentos(texto.trim());
-        if (!consulta) return gruposDelRol(rol);
-        const items = itemsDelRol(rol).filter((item) => sinAcentos(`${item.nombre} ${item.palabras || ''}`).includes(consulta)).slice(0, 8);
+        if (!consulta) return gruposDelRol(rol, tipoRed);
+        const items = itemsDelRol(rol, tipoRed).filter((item) => sinAcentos(`${item.nombre} ${item.palabras || ''}`).includes(consulta)).slice(0, 8);
         return items.length ? [{ nombre: 'Secciones', items }] : [];
-    }, [texto, rol]);
+    }, [texto, rol, tipoRed]);
 
     const resultados: Resultado[] = useMemo(() => [
         ...clientes.map((cliente) => ({ tipo: 'cliente' as const, cliente })),

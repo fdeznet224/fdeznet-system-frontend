@@ -9,7 +9,11 @@ export interface BrandConfig {
   empresa_email: string | null;
   empresa_direccion: string | null;
   pie_recibo: string | null;
+  /** wisp = radioenlaces, fibra, hibrido; null = el admin aún no lo elige. */
+  tipo_red?: TipoRed | null;
 }
+
+export type TipoRed = 'wisp' | 'fibra' | 'hibrido';
 
 export const DEFAULT_BRAND: BrandConfig = {
   empresa_nombre: 'Mi ISP',
@@ -22,4 +26,5 @@ export const DEFAULT_BRAND: BrandConfig = {
   empresa_email: null,
   empresa_direccion: null,
   pie_recibo: null,
+  tipo_red: null,
 };

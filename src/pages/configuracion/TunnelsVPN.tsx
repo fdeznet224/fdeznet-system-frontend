@@ -6,7 +6,7 @@ import {
     PlusIcon, ShieldCheckIcon, ArrowPathIcon, TrashIcon, 
     DocumentDuplicateIcon, KeyIcon, ServerStackIcon, 
     BoltIcon, XMarkIcon, DevicePhoneMobileIcon, 
-    QrCodeIcon, ArrowDownTrayIcon
+    QrCodeIcon, ArrowDownTrayIcon, PencilSquareIcon
 } from '@heroicons/react/24/outline';
 import { apiErrorMessage } from '@/utils/apiError';
 import { EncabezadoPagina } from '@/components/ui/Pagina';
@@ -48,6 +48,30 @@ export default function TunnelsVPN() {
     const [tipoTunnel, setTipoTunnel] = useState<'mikrotik' | 'tecnico'>('mikrotik');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [qrModalData, setQrModalData] = useState<{script_text: string, nombre: string} | null>(null);
+    const [editando, setEditando] = useState<VpnTunnel | null>(null);
+    const [subredesEdit, setSubredesEdit] = useState("");
+    const [guardandoEdit, setGuardandoEdit] = useState(false);
+
+    const abrirEdicion = (tunnel: VpnTunnel) => {
+        setEditando(tunnel);
+        setSubredesEdit((tunnel.subredes_remotas || '').split(',').map(s => s.trim()).filter(Boolean).join('\n'));
+    };
+
+    const guardarSubredes = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editando) return;
+        setGuardandoEdit(true);
+        try {
+            await client.patch(`/vpn/tunnels/${editando.id}`, { subredes_remotas: subredesEdit.trim() || null });
+            toast.success('Subredes actualizadas');
+            setEditando(null);
+            void fetchTunnels();
+        } catch (error: unknown) {
+            toast.error(getApiError(error, 'No se pudieron guardar las subredes'));
+        } finally {
+            setGuardandoEdit(false);
+        }
+    };
 
     const fetchTunnels = useCallback(async () => {
         try {
@@ -248,6 +272,11 @@ export default function TunnelsVPN() {
                                     >
                                         {isMobile ? <><QrCodeIcon className="w-4 h-4"/> Ver Código QR</> : <><ServerStackIcon className="w-4 h-4"/> Script MikroTik</>}
                                     </button>
+                                    {!isMobile && (
+                                        <button type="button" aria-label={`Editar subredes de ${tunnel.nombre}`} title="Editar subredes" onClick={() => abrirEdicion(tunnel)} className="p-3 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 text-slate-500 hover:text-white rounded-xl transition-all border border-slate-200 dark:border-slate-700">
+                                            <PencilSquareIcon className="w-5 h-5" />
+                                        </button>
+                                    )}
                                     <button onClick={() => handleDelete(tunnel.id)} className="p-3 bg-slate-100 dark:bg-slate-800 hover:bg-rose-600 text-slate-500 hover:text-white rounded-xl transition-all border border-slate-200 dark:border-slate-700">
                                         <TrashIcon className="w-5 h-5" />
                                     </button>
@@ -344,6 +373,35 @@ export default function TunnelsVPN() {
                                 <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-semibold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
                                 <button type="submit" disabled={isCreating} className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl font-semibold text-xs shadow-lg hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                                     {isCreating ? <ArrowPathIcon className="w-4 h-4 animate-spin"/> : 'Generar Llaves'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL EDITAR SUBREDES */}
+            {editando && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-6 animate-in zoom-in-95">
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+                            <PencilSquareIcon className="w-5 h-5 text-emerald-500" /> Subredes de {editando.nombre}
+                        </h3>
+                        <p className="text-xs text-slate-500 mb-4">IP del túnel <span className="font-mono">{editando.ip_asignada}</span>. No hace falta volver a pegar el script en el MikroTik.</p>
+                        <form onSubmit={guardarSubredes} className="space-y-4">
+                            <textarea
+                                rows={5}
+                                value={subredesEdit}
+                                onChange={(e) => setSubredesEdit(e.target.value)}
+                                placeholder={'192.168.21.0/24\n10.10.5.0/24'}
+                                className="w-full resize-none p-4 text-sm font-mono font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-emerald-500 text-slate-900 dark:text-white transition-colors"
+                                autoFocus
+                            />
+                            <p className="text-[11px] leading-relaxed text-slate-500">Una red por línea (o separadas por coma). Las que quites dejarán de alcanzarse desde el sistema.</p>
+                            <div className="flex gap-3">
+                                <button type="button" onClick={() => setEditando(null)} className="flex-1 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-semibold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
+                                <button type="submit" disabled={guardandoEdit} className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl font-semibold text-xs shadow-lg hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                                    {guardandoEdit ? <ArrowPathIcon className="w-4 h-4 animate-spin"/> : 'Guardar'}
                                 </button>
                             </div>
                         </form>

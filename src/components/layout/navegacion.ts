@@ -9,6 +9,7 @@ import {
 
 import type { Tono } from '@/components/ui/estilo';
 import type { AppRole } from '@/utils/roles';
+import type { TipoRed } from '@/context/brand/brand';
 
 type Icono = ComponentType<{ className?: string }>;
 
@@ -25,6 +26,8 @@ export interface ItemNav {
     barra?: AppRole[];
     /** Otras palabras con las que se encuentra en el buscador. */
     palabras?: string;
+    /** Solo para estos tipos de red (sin esto: todos). Un WISP no ve lo de fibra. */
+    redes?: TipoRed[];
 }
 
 export interface GrupoNav {
@@ -38,6 +41,7 @@ export const GRUPO_PRINCIPAL = 'Principal';
 export const RUTA_MAS = '/admin/mas';
 const ADMIN: AppRole[] = ['admin'];
 const AMBOS: AppRole[] = ['admin', 'supervisor'];
+const CON_FIBRA: TipoRed[] = ['fibra', 'hibrido'];
 
 /** El primer grupo no lleva título: es lo de todos los días. */
 export const GRUPOS: GrupoNav[] = [
@@ -62,10 +66,10 @@ export const GRUPOS: GrupoNav[] = [
         nombre: 'Infraestructura',
         icono: SignalIcon,
         items: [
-            { nombre: 'Radar OLT', corto: 'Radar', ruta: '/admin/radar', icono: SignalIcon, tono: 'azul', roles: ADMIN, palabras: 'onu vsol señal potencia pon' },
-            { nombre: 'TR-069 (Equipos)', corto: 'TR-069', ruta: '/admin/tr069', icono: CpuChipIcon, tono: 'violeta', roles: ADMIN, palabras: 'acs genieacs modem router onu huawei zte plantilla wan wifi config equipos' },
+            { nombre: 'Radar OLT', corto: 'Radar', ruta: '/admin/radar', icono: SignalIcon, tono: 'azul', roles: ADMIN, redes: CON_FIBRA, palabras: 'onu vsol señal potencia pon' },
+            { nombre: 'TR-069 (Equipos)', corto: 'TR-069', ruta: '/admin/tr069', icono: CpuChipIcon, tono: 'violeta', roles: ADMIN, redes: CON_FIBRA, palabras: 'acs genieacs modem router onu huawei zte plantilla wan wifi config equipos' },
             { nombre: 'Mapa de Red', ruta: '/admin/mapa', icono: MapIcon, tono: 'verde', roles: ADMIN, palabras: 'ubicaciones' },
-            { nombre: 'Cajas NAP (Fibra)', ruta: '/admin/naps', icono: CubeIcon, tono: 'verde', roles: ADMIN, palabras: 'nap mangas puertos kml' },
+            { nombre: 'Cajas NAP (Fibra)', ruta: '/admin/naps', icono: CubeIcon, tono: 'verde', roles: ADMIN, redes: CON_FIBRA, palabras: 'nap mangas puertos kml' },
             { nombre: 'Nodos / Routers', ruta: '/admin/routers', icono: ServerStackIcon, tono: 'neutro', roles: ADMIN, palabras: 'mikrotik' },
             { nombre: 'Redes IP (Pools)', ruta: '/admin/redes', icono: GlobeAltIcon, tono: 'azul', roles: ADMIN, palabras: 'ipam direcciones' },
             { nombre: 'Planes de Internet', ruta: '/admin/planes', icono: WifiIcon, tono: 'violeta', roles: ADMIN, palabras: 'velocidad precios' },
@@ -101,19 +105,31 @@ export const GRUPOS: GrupoNav[] = [
     },
 ];
 
-export function gruposDelRol(rol: AppRole): GrupoNav[] {
+/** ¿Esta red usa fibra (OLT, NAP, TR-069)? Sin elegir todavía se muestra todo. */
+export function usaFibra(tipoRed?: TipoRed | null): boolean {
+    return tipoRed !== 'wisp';
+}
+
+/** ¿Esta red tiene clientes por radioenlace? */
+export function usaRadio(tipoRed?: TipoRed | null): boolean {
+    return tipoRed !== 'fibra';
+}
+
+const paraLaRed = (item: ItemNav, tipoRed?: TipoRed | null) => !tipoRed || !item.redes || item.redes.includes(tipoRed);
+
+export function gruposDelRol(rol: AppRole, tipoRed?: TipoRed | null): GrupoNav[] {
     return GRUPOS
-        .map((grupo) => ({ ...grupo, items: grupo.items.filter((item) => item.roles.includes(rol)) }))
+        .map((grupo) => ({ ...grupo, items: grupo.items.filter((item) => item.roles.includes(rol) && paraLaRed(item, tipoRed)) }))
         .filter((grupo) => grupo.items.length > 0);
 }
 
-export function itemsDelRol(rol: AppRole): ItemNav[] {
-    return gruposDelRol(rol).flatMap((grupo) => grupo.items);
+export function itemsDelRol(rol: AppRole, tipoRed?: TipoRed | null): ItemNav[] {
+    return gruposDelRol(rol, tipoRed).flatMap((grupo) => grupo.items);
 }
 
 /** Lo que va en la barra de abajo del celular; el resto queda en "Más". */
-export function barraDelRol(rol: AppRole): ItemNav[] {
-    return itemsDelRol(rol).filter((item) => item.barra?.includes(rol)).slice(0, 3);
+export function barraDelRol(rol: AppRole, tipoRed?: TipoRed | null): ItemNav[] {
+    return itemsDelRol(rol, tipoRed).filter((item) => item.barra?.includes(rol)).slice(0, 3);
 }
 
 /** La sección de la ruta actual (la más específica que coincida). */

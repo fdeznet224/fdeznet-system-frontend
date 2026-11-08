@@ -22,6 +22,7 @@ import { modoRouter } from '@/utils/accesoRed';
 import ResumenCobro from '@/components/cobro/ResumenCobro';
 import type { Cobro } from '@/components/cobro/imagenCobro';
 import { claveResultado, guardarActivacion, terminarActivacion } from './activacionesPendientes';
+import { useBrand } from '@/context/brand/useBrand';
 import { BOTON_EXITO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO, ETIQUETA_CAMPO, TARJETA } from './estilo';
 
 interface Opcion {
@@ -239,7 +240,10 @@ export default function TechActivar() {
     // conexión: ONU y NAP en fibra, IP y MAC de la antena en radio.
     const modo = modoRouter(infra?.router?.modo);
     const esDhcp = modo === 'dhcp';
-    const conexion: 'fibra' | 'radio' = form.tipo_conexion || (infra && !infra.olt ? 'radio' : 'fibra');
+    // WISP = todo por antena; ISP de fibra = todo por ONU; híbrido (o sin elegir) = se escoge.
+    const tipoRed = useBrand().brand.tipo_red;
+    const conexionFija = tipoRed === 'wisp' ? 'radio' as const : tipoRed === 'fibra' ? 'fibra' as const : null;
+    const conexion: 'fibra' | 'radio' = conexionFija || form.tipo_conexion || (infra && !infra.olt ? 'radio' : 'fibra');
     const esAntena = conexion === 'radio';
     const nap = infra?.naps.find((n) => String(n.id) === form.caja_nap_id);
     const onuElegida = useMemo(
@@ -555,7 +559,7 @@ export default function TechActivar() {
                             )}
                         </div>
                     )}
-                    <div>
+                    {!conexionFija && <div>
                         <span className={etiqueta}>Conexión</span>
                         <div className="grid grid-cols-2 gap-2">
                             {([['fibra', 'Fibra (ONU)'], ['radio', 'Antena']] as const).map(([valor, nombre]) => (
@@ -565,7 +569,7 @@ export default function TechActivar() {
                                 </button>
                             ))}
                         </div>
-                    </div>
+                    </div>}
                     {modo === 'estatica' && (
                         <p className="rounded-xl bg-blue-50 p-3 text-xs font-medium text-blue-800 dark:bg-blue-500/10 dark:text-blue-300">
                             IP fija: al activar te digo qué IP ponerle {esAntena ? 'a la antena' : 'al equipo'}. No lleva usuario PPPoE.
