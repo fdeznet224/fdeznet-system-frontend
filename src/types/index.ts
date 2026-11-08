@@ -9,7 +9,7 @@ export interface Router {
     port_api: number;
     pass_api?: string; 
     
-    tipo_seguridad: 'pppoe' | 'dhcp'; 
+    tipo_seguridad: 'pppoe' | 'dhcp' | 'estatica';
     tipo_control: 'colas_dinamicas' | 'colas_estaticas';
     version_os: string;
     

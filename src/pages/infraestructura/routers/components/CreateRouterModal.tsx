@@ -185,6 +185,7 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                                 >
                                     <option value="pppoe">PPPoE (PPP Secrets)</option>
                                     <option value="dhcp">DHCP estático (IP + MAC)</option>
+                                    <option value="estatica">IP fija (puesta en el equipo)</option>
                                 </select>
                             </div>
                             <div>
@@ -193,12 +194,20 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                                     <span className="text-slate-800 dark:text-slate-300 font-black text-sm">
                                         {formData.tipo_seguridad === 'dhcp'
                                             ? 'Rate-limit en lease DHCP'
-                                            : 'Perfil PPPoE / cola dinámica'}
+                                            : formData.tipo_seguridad === 'estatica'
+                                                ? 'Cola simple por IP'
+                                                : 'Perfil PPPoE / cola dinámica'}
                                     </span>
                                     <LockClosedIcon className="w-4 h-4 text-slate-500" />
                                 </div>
                             </div>
                         </div>
+                        {formData.tipo_seguridad === 'estatica' && (
+                            <div className="mt-4 flex gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs font-medium text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
+                                <InformationCircleIcon className="h-5 w-5 shrink-0" />
+                                <p>El cliente trae la IP puesta en su equipo o antena. El sistema crea una cola simple por su IP con la velocidad del plan y lo corta poniendo la IP en la lista de corte. No pide usuario PPPoE ni MAC.</p>
+                            </div>
+                        )}
                         {formData.tipo_seguridad === 'dhcp' && (
                             <div className="mt-4 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
                                 <InformationCircleIcon className="h-5 w-5 shrink-0" />

@@ -18,6 +18,7 @@ import EstadoOnuNueva from './EstadoOnuNueva';
 import SelectorOnu from './SelectorOnu';
 import ProrrateoInstalacion from './ProrrateoInstalacion';
 import { SERIE_MINIMA, normalizarSerie } from './onu';
+import { modoRouter } from '@/utils/accesoRed';
 import ResumenCobro from '@/components/cobro/ResumenCobro';
 import type { Cobro } from '@/components/cobro/imagenCobro';
 import { claveResultado, guardarActivacion, terminarActivacion } from './activacionesPendientes';
@@ -63,6 +64,8 @@ interface Resultado {
     nombre: string;
     plan: string;
     modo: string;
+    tipo_conexion?: 'fibra' | 'radio';
+    ip_antena?: string | null;
     usuario_pppoe?: string | null;
     password_pppoe?: string | null;
     ip?: string | null;
@@ -91,12 +94,15 @@ interface Formulario {
     longitud: string;
     mac_address: string;
     meses_gratis: string;
+    /** '' = según la zona (sin OLT, antena). */
+    tipo_conexion?: '' | 'fibra' | 'radio';
+    ip_antena?: string;
 }
 
 const VACIO: Formulario = {
     nombre: '', telefono: '', direccion: '', zona_id: '', plan_id: '', plantilla_id: '',
     contrato_apartado: '', onu: '', caja_nap_id: '', puerto_nap: '', latitud: '', longitud: '',
-    mac_address: '', meses_gratis: '1',
+    mac_address: '', meses_gratis: '1', tipo_conexion: '', ip_antena: '',
 };
 
 const NUEVO = '__nuevo';
@@ -229,7 +235,12 @@ export default function TechActivar() {
     }, [form.caja_nap_id]);
 
     const infra = catalogo?.infraestructura;
-    const esDhcp = infra?.router?.modo === 'dhcp';
+    // El formulario pide solo lo del modo del MikroTik de la zona y lo de la
+    // conexión: ONU y NAP en fibra, IP y MAC de la antena en radio.
+    const modo = modoRouter(infra?.router?.modo);
+    const esDhcp = modo === 'dhcp';
+    const conexion: 'fibra' | 'radio' = form.tipo_conexion || (infra && !infra.olt ? 'radio' : 'fibra');
+    const esAntena = conexion === 'radio';
     const nap = infra?.naps.find((n) => String(n.id) === form.caja_nap_id);
     const onuElegida = useMemo(
         () => catalogo?.onus.find((o) => normalizarSerie(o.identificador) === normalizarSerie(form.onu)),
@@ -284,12 +295,15 @@ export default function TechActivar() {
             return;
         }
         if (!form.zona_id || !form.plan_id) return toast.error('Elige la zona y el plan');
-        if (infra?.olt && !onuElegida && normalizarSerie(form.onu).length < SERIE_MINIMA) {
+        if (!esAntena && infra?.olt && !onuElegida && normalizarSerie(form.onu).length < SERIE_MINIMA) {
             return toast.error('Escribe, escanea o elige el serial/MAC de la ONU instalada');
         }
-        if (form.caja_nap_id && !form.puerto_nap) return toast.error('Indica el puerto de la caja NAP');
+        if (esAntena && !(form.ip_antena || '').trim()) return toast.error('Falta la IP de administración de la antena');
+        if (!esAntena && form.caja_nap_id && !form.puerto_nap) return toast.error('Indica el puerto de la caja NAP');
         if (!form.latitud || !form.longitud) return toast.error('Falta capturar la ubicación GPS');
-        if (esDhcp && !form.mac_address.trim()) return toast.error('Falta la MAC que ve el MikroTik');
+        if (esDhcp && !form.mac_address.trim()) {
+            return toast.error(esAntena ? 'Falta la MAC de la WAN de la antena' : 'Falta la MAC que ve el MikroTik');
+        }
 
         setActivando(true);
         const aviso = toast.loading('Activando en el MikroTik...');
@@ -305,14 +319,16 @@ export default function TechActivar() {
                 plan_id: Number(form.plan_id),
                 plantilla_id: form.plantilla_id ? Number(form.plantilla_id) : null,
                 contrato_apartado: form.contrato_apartado.trim().toUpperCase() || null,
-                onu_id: onuElegida?.id ?? null,
-                onu_identificador: !onuElegida && form.onu.trim() ? form.onu.trim() : null,
-                caja_nap_id: form.caja_nap_id ? Number(form.caja_nap_id) : null,
-                puerto_nap: form.puerto_nap ? Number(form.puerto_nap) : null,
+                onu_id: esAntena ? null : onuElegida?.id ?? null,
+                onu_identificador: !esAntena && !onuElegida && form.onu.trim() ? form.onu.trim() : null,
+                caja_nap_id: !esAntena && form.caja_nap_id ? Number(form.caja_nap_id) : null,
+                puerto_nap: !esAntena && form.puerto_nap ? Number(form.puerto_nap) : null,
                 latitud: Number(form.latitud),
                 longitud: Number(form.longitud),
-                mac_address: esDhcp ? form.mac_address.trim() : null,
+                mac_address: esDhcp || esAntena ? form.mac_address.trim() || null : null,
                 meses_gratis: mesesGratis,
+                tipo_conexion: conexion,
+                ip_antena: esAntena ? (form.ip_antena || '').trim() : null,
             });
             toast.success('¡Cliente activado!', { id: aviso });
             await setCachedValue(claveBorrador, null);
@@ -362,12 +378,14 @@ export default function TechActivar() {
     if (resultado) {
         const filas: [string, string | null | undefined][] = [
             ['Contrato', resultado.contrato],
-            ...(resultado.modo === 'dhcp' ? [] : [
+            ...(resultado.modo !== 'pppoe' ? [] : [
                 ['Usuario PPPoE', resultado.usuario_pppoe] as [string, string | null | undefined],
                 ['Contraseña PPPoE', resultado.password_pppoe] as [string, string | null | undefined],
             ]),
-            ['IP', resultado.ip],
-            ['ONU', resultado.onu],
+            [resultado.modo === 'estatica' ? 'IP fija (ponla en su equipo)' : 'IP', resultado.ip],
+            ...(resultado.tipo_conexion === 'radio'
+                ? [['IP de la antena', resultado.ip_antena] as [string, string | null | undefined]]
+                : [['ONU', resultado.onu] as [string, string | null | undefined]]),
             ...(resultado.wifi ? [
                 ['Red WiFi', resultado.wifi.red] as [string, string | null | undefined],
                 ['Contraseña WiFi', resultado.wifi.clave] as [string, string | null | undefined],
@@ -384,7 +402,9 @@ export default function TechActivar() {
                             <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80">
                                 {resultado.wifi?.automatica
                                     ? 'Abajo ves cuando la ONU quede configurada con su PPPoE y su WiFi.'
-                                    : 'Configura la ONU del cliente con estos datos.'}
+                                    : resultado.tipo_conexion === 'radio'
+                                        ? 'Configura la antena del cliente con estos datos.'
+                                        : 'Configura la ONU del cliente con estos datos.'}
                             </p>
                         </div>
                     </div>
@@ -535,7 +555,31 @@ export default function TechActivar() {
                             )}
                         </div>
                     )}
-                    {infra?.olt && (
+                    <div>
+                        <span className={etiqueta}>Conexión</span>
+                        <div className="grid grid-cols-2 gap-2">
+                            {([['fibra', 'Fibra (ONU)'], ['radio', 'Antena']] as const).map(([valor, nombre]) => (
+                                <button key={valor} type="button" onClick={() => cambiar({ tipo_conexion: valor })}
+                                    className={`h-11 rounded-xl text-sm font-bold ${conexion === valor ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>
+                                    {nombre}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    {modo === 'estatica' && (
+                        <p className="rounded-xl bg-blue-50 p-3 text-xs font-medium text-blue-800 dark:bg-blue-500/10 dark:text-blue-300">
+                            IP fija: al activar te digo qué IP ponerle {esAntena ? 'a la antena' : 'al equipo'}. No lleva usuario PPPoE.
+                        </p>
+                    )}
+                    {esAntena && (
+                        <label className="block"><span className={etiqueta}>IP de administración de la antena</span>
+                            <input value={form.ip_antena || ''} onChange={(e) => cambiar({ ip_antena: e.target.value })} placeholder="192.168.1.20" inputMode="decimal" className={`${campo} font-mono`} /></label>
+                    )}
+                    {esAntena && (
+                        <label className="block"><span className={etiqueta}>MAC de la WAN de la antena{esDhcp ? '' : ' (opcional)'}</span>
+                            <input value={form.mac_address} onChange={(e) => cambiar({ mac_address: e.target.value })} placeholder="AA:BB:CC:DD:EE:FF" className={`${campo} font-mono uppercase`} /></label>
+                    )}
+                    {!esAntena && infra?.olt && (
                         <SelectorOnu
                             onus={catalogo.onus}
                             valor={form.onu}
@@ -543,13 +587,14 @@ export default function TechActivar() {
                             onCambiar={(onu) => cambiar({ onu })}
                         />
                     )}
-                    {esDhcp && (
+                    {esDhcp && !esAntena && (
                         <label className="block"><span className={etiqueta}>MAC WAN/CPE que ve el MikroTik</span>
                             <input value={form.mac_address} onChange={(e) => cambiar({ mac_address: e.target.value })} placeholder="AA:BB:CC:DD:EE:FF" className={`${campo} font-mono uppercase`} /></label>
                     )}
                     <button type="button" onClick={capturarGps} className={`${BOTON_SECUNDARIO} h-11 w-full ${form.latitud ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300' : ''}`}>
                         <MapPinIcon className="h-5 w-5" /> {form.latitud ? 'Ubicación capturada' : 'Capturar ubicación GPS'}
                     </button>
+                    {!esAntena && <>
                     <div className="grid grid-cols-2 gap-3">
                         <label className="block"><span className={etiqueta}>Caja NAP</span>
                             <select value={form.caja_nap_id} onChange={(e) => cambiar({ caja_nap_id: e.target.value, puerto_nap: '' })} className={campo}>
@@ -572,6 +617,7 @@ export default function TechActivar() {
                         elegidaId={form.caja_nap_id}
                         onElegir={(id) => cambiar({ caja_nap_id: String(id), puerto_nap: '' })}
                     />
+                    </>}
                 </div>
 
                 <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-xl dark:border-slate-800 dark:bg-[#11151f]/95">

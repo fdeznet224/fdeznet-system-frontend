@@ -34,7 +34,7 @@ interface ClientInstallation {
     nap_nombre?: string;
     suggested_user?: string;
     suggested_pass?: string;
-    tipo_seguridad?: 'pppoe' | 'dhcp';
+    tipo_seguridad?: 'pppoe' | 'dhcp' | 'estatica';
     mac_address?: string;
     plan_nombre: string;
 }
@@ -310,7 +310,17 @@ export default function TechInstallForm() {
                 {/* ACCESO EN EL MIKROTIK */}
                 <p className={`${TITULO_SECCION} flex items-center gap-1.5 pt-2`}><LockClosedIcon className="h-3.5 w-3.5" /> Datos MikroTik</p>
                 <section className={`${TARJETA} p-4`}>
-                    {cliente.tipo_seguridad === 'dhcp' ? (
+                    {cliente.tipo_seguridad === 'estatica' ? (
+                        <div>
+                            <p className="text-xs text-slate-500">IP fija: ponla en el equipo del cliente (no lleva usuario PPPoE)</p>
+                            <div className="flex items-center justify-between gap-3">
+                                <code className="block font-mono text-base font-bold text-slate-900 dark:text-white">{cliente.ip_asignada}</code>
+                                <button type="button" aria-label="Copiar IP" onClick={() => copiar(cliente.ip_asignada)} className={`${BOTON_SECUNDARIO} w-10 px-0`}>
+                                    <ClipboardDocumentIcon className="h-5 w-5" />
+                                </button>
+                            </div>
+                        </div>
+                    ) : cliente.tipo_seguridad === 'dhcp' ? (
                         <div>
                             <label className={ETIQUETA_CAMPO}>MAC WAN/CPE vista por MikroTik</label>
                             <input

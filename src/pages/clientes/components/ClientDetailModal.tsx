@@ -24,6 +24,7 @@ import { nombreFormaCobro } from '@/utils/formaCobro';
 import './client-detail-sheet.css';
 import { useDeslizarParaCerrar } from '@/components/ui/useDeslizarParaCerrar';
 import { apiErrorMessage } from '@/utils/apiError';
+import { NOMBRE_MODO, modoRouter } from '@/utils/accesoRed';
 import PotenciaEnVivo from './PotenciaEnVivo';
 import ConsumoCliente from './ConsumoCliente';
 import MiRedCliente from './MiRedCliente';
@@ -38,7 +39,7 @@ interface Props {
 interface NamedItem {
     id: number;
     nombre: string;
-    tipo_seguridad?: 'pppoe' | 'dhcp';
+    tipo_seguridad?: string;
 }
 
 interface NapItem extends NamedItem {
@@ -572,10 +573,10 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const tecOltActual = olts.find(o => o.id === formData.olt_id)?.tecnologia?.toUpperCase() || null;
     const equiposCompatibles = formData.olt_id ? equiposDisponibles.filter(eq => tecOltActual ? eq.tecnologia?.toUpperCase() === tecOltActual : true) : [];
     const routerSeleccionado = routers.find(r => r.id === formData.router_id);
-    const tipoAcceso = routerSeleccionado?.tipo_seguridad
-        || cliente?.router?.tipo_seguridad
-        || 'pppoe';
+    // Lo define el router: PPPoE, DHCP o IP fija.
+    const tipoAcceso = modoRouter(routerSeleccionado?.tipo_seguridad || cliente?.router?.tipo_seguridad);
     const isPPPoE = tipoAcceso === 'pppoe';
+    const esAntena = (isEditing ? formData.tipo_conexion : cliente?.tipo_conexion) === 'radio';
 
     const servicioActual = resumenComercial?.servicio_actual || null;
     const facturaActual = resumenComercial?.factura_actual || facturas.find((f) => ['pendiente', 'vencida'].includes(f.estado)) || facturas[0] || null;
@@ -884,7 +885,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                 </div>
                                             )}
                                         </div>
-                                        <div><label className={labelClass}>OLT Central</label><select name="olt_id" value={formData.olt_id} onChange={handleInputChange} className={flatInputClass}><option value={0}>Seleccionar OLT...</option>{olts.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}</select></div>
+                                        {!esAntena && <div><label className={labelClass}>OLT Central</label><select name="olt_id" value={formData.olt_id} onChange={handleInputChange} className={flatInputClass}><option value={0}>Seleccionar OLT...</option>{olts.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}</select></div>}
                                         
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
@@ -977,9 +978,14 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                 <div><label className={labelClass}>Pass PPPoE</label><input name="pass_pppoe" value={formData.pass_pppoe} onChange={handleInputChange} className={flatInputClass} /></div>
                                             </div>
                                         )}
-                                        {!isPPPoE && (
+                                        {tipoAcceso === 'estatica' && (
+                                            <p className="rounded-xl bg-blue-50 p-3 text-[11px] font-medium text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                                                IP fija: la IP va puesta en el equipo del cliente; el MikroTik solo le pone la velocidad con una cola.
+                                            </p>
+                                        )}
+                                        {(tipoAcceso === 'dhcp' || esAntena) && (
                                             <div>
-                                                <label className={labelClass}>MAC WAN/CPE vista por MikroTik</label>
+                                                <label className={labelClass}>{esAntena ? 'MAC de la WAN de la antena' : 'MAC WAN/CPE vista por MikroTik'}</label>
                                                 <input name="mac_address" value={formData.mac_address} onChange={handleInputChange} placeholder="AA:BB:CC:DD:EE:FF" className={flatInputClass} />
                                                 <p className="mt-2 text-[11px] text-blue-600 dark:text-blue-400">No uses aquí el serial GPON de la ONU.</p>
                                             </div>
@@ -991,6 +997,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             <DetailTile label="OLT" value={cliente?.olt?.nombre || 'N/A'} />
                                             <DetailTile label="Caja NAP" value={`${cliente?.caja_nap?.nombre || 'N/A'}${cliente?.puerto_nap ? ` (Pto. ${cliente.puerto_nap})` : ''}`} />
                                             <DetailTile label="Concentrador" value={cliente?.router?.nombre || 'N/A'} />
+                                            <DetailTile label="Acceso" value={NOMBRE_MODO[tipoAcceso]} />
                                         </div>
                                         {cliente?.id && cliente?.olt && cliente?.onu_asignada && (
                                             <PotenciaEnVivo clienteId={cliente.id} />
@@ -1001,8 +1008,8 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                                 <DetailTile label="Contraseña PPPoE" value={cliente?.pass_pppoe || 'N/A'} copy />
                                             </div>
                                         )}
-                                        {!isPPPoE && (
-                                            <DetailTile label="MAC WAN/CPE" value={cliente?.mac_address || 'N/A'} copy />
+                                        {(tipoAcceso === 'dhcp' || esAntena) && (
+                                            <DetailTile label={esAntena ? 'MAC WAN de la antena' : 'MAC WAN/CPE'} value={cliente?.mac_address || 'N/A'} copy />
                                         )}
                                     </div>
                                 )}
