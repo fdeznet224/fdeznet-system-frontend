@@ -424,14 +424,14 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
         if (!cliente || !swapData.nuevo_inventario_id) return;
         const load = toast.loading("Procesando...");
         try {
-            const { data } = await client.post<{ wifi: { red: string; clave: string; clave_nueva: boolean } | null }>(`/clientes/${cliente.id}/cambiar-onu`, {
+            const { data } = await client.post<{ wifi: { red: string; clave: string; clave_nueva: boolean; aviso?: boolean } | null }>(`/clientes/${cliente.id}/cambiar-onu`, {
                 nuevo_inventario_id: Number(swapData.nuevo_inventario_id),
                 estado_vieja_onu: swapData.estado_vieja_onu
             });
             // La ONU nueva se configura sola; si no se conocía su contraseña, va una nueva que hay que darle al cliente.
             toast.success(
                 data.wifi?.clave_nueva
-                    ? `ONU vinculada. WiFi nuevo para el cliente: ${data.wifi.red} · ${data.wifi.clave}`
+                    ? `ONU vinculada. WiFi nuevo para el cliente: ${data.wifi.red} · ${data.wifi.clave}${data.wifi.aviso ? ' (se le manda por WhatsApp al quedar)' : ''}`
                     : `ONU vinculada${data.wifi ? `; se configura sola con su WiFi ${data.wifi.red}` : ''}`,
                 { id: load, duration: data.wifi?.clave_nueva ? 20000 : 6000 },
             );

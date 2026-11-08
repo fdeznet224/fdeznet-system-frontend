@@ -233,7 +233,7 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
                         <p className="text-sm font-bold text-slate-900 dark:text-white">
                             {automatica.estado === 'guardado'
                                 ? 'WiFi del cliente'
-                                : `${automatica.cambio_onu ? 'ONU de reemplazo' : 'Configuración automática'} · ${{ pendiente: 'esperando a la ONU', aplicado: 'hecha', vencido: 'la ONU no se reportó', error: 'la ONU la rechazó', manual: 'a mano (ZTE)' }[automatica.estado]}`}
+                                : `${automatica.cambio_onu ? 'ONU de reemplazo' : 'Configuración automática'} · ${{ pendiente: 'configurando, esperando que la ONU confirme', aplicado: 'lista (confirmada en la ONU)', vencido: 'la ONU no se reportó', error: 'no se pudo configurar', manual: 'a mano (ZTE)' }[automatica.estado]}`}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                             WiFi {automatica.red} · contraseña {automatica.clave}

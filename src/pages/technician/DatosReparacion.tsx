@@ -10,6 +10,7 @@ import { apiErrorMessage } from '@/utils/apiError';
 import SelectorOnu, { type OnuDisponible } from './SelectorOnu';
 import { SERIE_MINIMA, normalizarSerie } from './onu';
 import { BOTON_EXITO, BOTON_SECUNDARIO, CAMPO } from './estilo';
+import EstadoOnuNueva from './EstadoOnuNueva';
 import FinalizarReparacion from './FinalizarReparacion';
 import RevisionFalla, { type CuentaCliente } from './RevisionFalla';
 import { numero, veredictoPotencia, type Diagnostico, type Revision } from './revision';
@@ -84,6 +85,7 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
     const [enVivo, setEnVivo] = useState(false);
     const [ocupado, setOcupado] = useState<string | null>(null);
     const [editando, setEditando] = useState<'telefono' | 'onu' | null>(null);
+    const [versionOnu, setVersionOnu] = useState(0);
     const [telefono, setTelefono] = useState('');
     const [onus, setOnus] = useState<OnuDisponible[]>([]);
     const [onu, setOnu] = useState('');
@@ -264,11 +266,8 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
                 ...(wifiRed.trim() ? { wifi_red: wifiRed.trim() } : {}),
                 ...(wifiClave ? { wifi_clave: wifiClave } : {}),
             });
-            if (data.wifi?.clave_nueva) {
-                toast.success(`ONU cambiada: ${data.onu}. WiFi nuevo para el cliente: ${data.wifi.red} · ${data.wifi.clave}`, { duration: 20000 });
-            } else {
-                toast.success(`ONU cambiada: ${data.onu}${data.wifi ? `. Se configura sola con su WiFi ${data.wifi.red}` : ''}`, { duration: 8000 });
-            }
+            toast.success(`ONU cambiada: ${data.onu}${data.wifi ? '. Abajo ves cuando quede configurada.' : ''}`, { duration: 6000 });
+            setVersionOnu((n) => n + 1);
             setEditando(null);
             await cargar();
         } catch (error) {
@@ -383,7 +382,7 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
                             <option value="DISPONIBLE">La ONU retirada funciona (vuelve a inventario)</option>
                         </select>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            WiFi que llevará la ONU nueva (sus equipos se conectan solos si es el mismo). Si falta, pregúntaselo al cliente; sin contraseña se pone una nueva.
+                            WiFi que llevará la ONU nueva (sus equipos se conectan solos si es el mismo). Si lo dejas vacío, el sistema pone FdezNet-CONTRATO con una contraseña nueva y se la manda al cliente por WhatsApp.
                         </p>
                         <input aria-label="Nombre del WiFi" value={wifiRed} onChange={(e) => setWifiRed(e.target.value)} maxLength={32} placeholder="Nombre del WiFi" className={CAMPO} />
                         <input aria-label="Contraseña del WiFi" value={wifiClave} onChange={(e) => setWifiClave(e.target.value)} maxLength={63} placeholder="Contraseña del WiFi" autoComplete="off" className={CAMPO} />
@@ -392,6 +391,7 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
                         </button>
                     </div>
                 )}
+                <EstadoOnuNueva ordenId={ordenId} version={versionOnu} />
             </section>
             {categoria && estado === 'trabajando' && (
                 <FinalizarReparacion

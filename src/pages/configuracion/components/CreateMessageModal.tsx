@@ -30,6 +30,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
     // 🔥 AQUÍ SE AGREGÓ EL RECORDATORIO AMIGABLE 🔥
     const tiposMensaje = [
         { id: 'bienvenida', label: '👋 Bienvenida (Instalación)' },
+        { id: 'wifi_nuevo', label: '📶 WiFi nuevo (cambio de ONU)' },
         { id: 'nueva_factura', label: '📄 Nueva Factura Generada' },
         { id: 'aviso_prorrateo', label: '🧾 Saldo de Prorrateo (lo paga después)' },
         { id: 'recordatorio_prorrateo', label: '⏰ Prorrateo: mañana se suma a su factura' },
