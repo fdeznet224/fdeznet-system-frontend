@@ -93,6 +93,9 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
     // El WiFi que llevará la ONU nueva: el que el sistema conoce, o el que dice el cliente.
     const [wifiRed, setWifiRed] = useState('');
     const [wifiClave, setWifiClave] = useState('');
+    // El WiFi que el sistema sabe del cliente (null: aún no se carga) y si el técnico pone otro.
+    const [wifiConocido, setWifiConocido] = useState<{ red: string | null; clave: string | null } | null>(null);
+    const [otroWifi, setOtroWifi] = useState(false);
 
     const cargar = useCallback(async () => {
         try {
@@ -239,12 +242,15 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
         setOnu('');
         setWifiRed('');
         setWifiClave('');
+        setWifiConocido(null);
+        setOtroWifi(false);
         try {
             const [{ data }, { data: wifi }] = await Promise.all([
                 client.get<OnuDisponible[]>(`/ordenes/${ordenId}/onus-disponibles`),
                 client.get<{ red: string | null; clave: string | null }>(`/ordenes/${ordenId}/wifi-cliente`),
             ]);
             setOnus(data);
+            setWifiConocido(wifi);
             setWifiRed(wifi.red || '');
             setWifiClave(wifi.clave || '');
         } catch (error) {
@@ -263,8 +269,9 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
             const { data } = await client.post<{ onu: string; wifi: { red: string; clave: string; clave_nueva: boolean } | null }>(`/ordenes/${ordenId}/cambiar-onu`, {
                 estado_vieja_onu: estadoVieja,
                 ...(elegida ? { onu_id: elegida.id } : { onu_identificador: onu.trim() }),
-                ...(wifiRed.trim() ? { wifi_red: wifiRed.trim() } : {}),
-                ...(wifiClave ? { wifi_clave: wifiClave } : {}),
+                // Solo si el técnico pone otro; si no, el sistema usa el que sabe o crea uno nuevo.
+                ...(otroWifi && wifiRed.trim() ? { wifi_red: wifiRed.trim() } : {}),
+                ...(otroWifi && wifiClave ? { wifi_clave: wifiClave } : {}),
             });
             toast.success(`ONU cambiada: ${data.onu}${data.wifi ? '. Abajo ves cuando quede configurada.' : ''}`, { duration: 6000 });
             setVersionOnu((n) => n + 1);
@@ -381,17 +388,35 @@ export default function DatosReparacion({ ordenId, contrato, online, categoria, 
                             <option value="CON_FALLA">La ONU retirada tiene falla</option>
                             <option value="DISPONIBLE">La ONU retirada funciona (vuelve a inventario)</option>
                         </select>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            WiFi que llevará la ONU nueva (sus equipos se conectan solos si es el mismo). Si lo dejas vacío, el sistema pone FdezNet-CONTRATO con una contraseña nueva y se la manda al cliente por WhatsApp.
-                        </p>
-                        <input aria-label="Nombre del WiFi" value={wifiRed} onChange={(e) => setWifiRed(e.target.value)} maxLength={32} placeholder="Nombre del WiFi" className={CAMPO} />
-                        <input aria-label="Contraseña del WiFi" value={wifiClave} onChange={(e) => setWifiClave(e.target.value)} maxLength={63} placeholder="Contraseña del WiFi" autoComplete="off" className={CAMPO} />
+                        <div className="rounded-lg bg-white p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300" data-testid="wifi-que-llevara">
+                            <p className="mb-1 font-bold text-slate-900 dark:text-white">WiFi que llevará la ONU nueva</p>
+                            {otroWifi ? (
+                                <p>El que escribas abajo. Si es distinto al que tenía, se le manda al cliente por WhatsApp.</p>
+                            ) : !wifiConocido ? (
+                                <p>Cargando…</p>
+                            ) : wifiConocido.red && wifiConocido.clave ? (
+                                <p>El mismo que ya tiene: <b>{wifiConocido.red}</b> · <b>{wifiConocido.clave}</b>. Sus equipos se conectan solos.</p>
+                            ) : wifiConocido.red ? (
+                                <p>Su misma red <b>{wifiConocido.red}</b> con una contraseña nueva (la de antes no se puede leer). Se le manda al cliente por WhatsApp.</p>
+                            ) : (
+                                <p>No sabemos su WiFi: se creará <b>FdezNet-{ficha.cedula}</b> con una contraseña nueva y se le manda al cliente por WhatsApp.</p>
+                            )}
+                            <button type="button" onClick={() => setOtroWifi((v) => !v)} className="mt-2 font-semibold text-blue-600 dark:text-blue-400">
+                                {otroWifi ? 'Usar el que dice el sistema' : 'El cliente quiere otro WiFi'}
+                            </button>
+                        </div>
+                        {otroWifi && (
+                            <>
+                                <input aria-label="Nombre del WiFi" value={wifiRed} onChange={(e) => setWifiRed(e.target.value)} maxLength={32} placeholder="Nombre del WiFi" className={CAMPO} />
+                                <input aria-label="Contraseña del WiFi" value={wifiClave} onChange={(e) => setWifiClave(e.target.value)} maxLength={63} placeholder="Contraseña (vacía: una nueva)" autoComplete="off" className={CAMPO} />
+                            </>
+                        )}
                         <button type="button" disabled={ocupado !== null} onClick={() => void cambiarOnu()} className={BOTON_EXITO}>
                             <CheckBadgeIcon className="h-4 w-4" /> {ocupado === 'onu' ? 'Guardando…' : 'Guardar cambio de ONU'}
                         </button>
                     </div>
                 )}
-                <EstadoOnuNueva ordenId={ordenId} version={versionOnu} />
+                <EstadoOnuNueva clienteId={ficha.id} version={versionOnu} soloCambio />
             </section>
             {categoria && estado === 'trabajando' && (
                 <FinalizarReparacion
