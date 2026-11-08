@@ -14,7 +14,8 @@ const initialState: RouterFormData = {
     ip_vpn: '',
     user_api: 'admin',
     pass_api: '',
-    port_api: 8728,
+    // API REST de RouterOS 7 (servicio www): puerto 80.
+    port_api: 80,
     tipo_seguridad: 'pppoe',
     tipo_control: 'colas_dinamicas',
     version_os: 'v7'
@@ -48,7 +49,8 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                     ip_vpn: routerToEdit.ip_vpn || '',
                     user_api: routerToEdit.user_api || 'admin',
                     pass_api: '', 
-                    port_api: routerToEdit.port_api || 8728,
+                    // 8728/8291 son de la API vieja y Winbox; el sistema usa REST (80).
+                    port_api: routerToEdit.port_api && ![8728, 8291].includes(routerToEdit.port_api) ? routerToEdit.port_api : 80,
                     tipo_seguridad: routerToEdit.tipo_seguridad || 'pppoe', 
                     tipo_control: routerToEdit.tipo_control || 'colas_dinamicas',
                     version_os: routerToEdit.version_os || 'v7'
@@ -150,7 +152,7 @@ export default function CreateRouterModal({ isOpen, onClose, onSuccess, routerTo
                                             value={formData.user_api} onChange={e => setFormData({...formData, user_api: e.target.value})}/>
                                     </div>
                                     <div>
-                                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Puerto</label>
+                                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Puerto REST (www)</label>
                                         <input type="number" className="w-full bg-white dark:bg-[#0b0d14] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-white font-mono focus:border-emerald-500 outline-none transition-colors text-center" required 
                                             value={formData.port_api} onChange={e => setFormData({...formData, port_api: Number(e.target.value)})}/>
                                     </div>
