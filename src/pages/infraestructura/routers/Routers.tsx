@@ -213,7 +213,6 @@ function LineaInternet({ router }: { router: RouterRecord }) {
     return (
         <div className={`mt-2 rounded-xl border px-2.5 py-1.5 text-xs ${estilos}`}>
             <span className="font-bold">{titulo}</span>
-            {router.wan_enlace && <span className="block truncate" title={router.wan_enlace}>{router.wan_enlace}</span>}
         </div>
     );
 }
