@@ -12,6 +12,10 @@ export interface RouterRecord {
     version_os: string;
     is_active: boolean;
     created_at: string;
+    is_online?: boolean | null;
+    wan_estado?: 'principal' | 'respaldo' | 'sin_internet' | null;
+    wan_enlace?: string | null;
+    wan_desde?: string | null;
 }
 
 export interface RouterFormData {

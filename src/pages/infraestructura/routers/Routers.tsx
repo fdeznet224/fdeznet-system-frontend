@@ -133,6 +133,7 @@ export default function Routers() {
                                                 {router.ip_vpn || 'SIN IP VPN'}
                                             </span>
                                         </div>
+                                        <LineaInternet router={router} />
                                     </div>
                                     <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl border border-blue-200 dark:border-blue-500/20">
                                         <CpuChipIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -196,6 +197,23 @@ export default function Routers() {
                 onSuccess={() => void fetchRouters()}
                 routerToEdit={selectedRouter}
             />
+        </div>
+    );
+}
+
+/** Por qué línea sale el internet del router (lo detecta el monitoreo). */
+function LineaInternet({ router }: { router: RouterRecord }) {
+    if (!router.wan_estado) return null;
+    const estilos = {
+        principal: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20',
+        respaldo: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20',
+        sin_internet: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/20',
+    }[router.wan_estado];
+    const titulo = { principal: 'Línea principal', respaldo: 'En respaldo', sin_internet: 'Sin internet' }[router.wan_estado];
+    return (
+        <div className={`mt-2 rounded-xl border px-2.5 py-1.5 text-xs ${estilos}`}>
+            <span className="font-bold">{titulo}</span>
+            {router.wan_enlace && <span className="block truncate" title={router.wan_enlace}>{router.wan_enlace}</span>}
         </div>
     );
 }
