@@ -242,7 +242,7 @@ export default function Dashboard() {
                         icono={GlobeAltIcon}
                         tono={r.estado === 'respaldo' ? 'ambar' : 'rojo'}
                         titulo={r.estado === 'respaldo' ? `${r.nombre}: en línea de respaldo` : `${r.nombre}: sin internet`}
-                        detalle={[r.estado === 'respaldo' && r.enlace ? `Sale por ${r.enlace}` : 'Ninguna línea activa', r.desde ? `desde ${desdeHora(r.desde)}` : ''].filter(Boolean).join(' · ')}
+                        detalle={[r.estado === 'respaldo' ? 'Salió de la línea principal' : 'Ninguna línea activa', r.desde ? `desde ${desdeHora(r.desde)}` : ''].filter(Boolean).join(' · ')}
                         a="/admin/routers"
                     />
                 ))}
