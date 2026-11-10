@@ -7,7 +7,7 @@ import {
     CpuChipIcon, ExclamationTriangleIcon, BanknotesIcon, UserPlusIcon,
     PauseIcon, CircleStackIcon, WifiIcon, ArrowUpRightIcon, DocumentTextIcon,
     WrenchScrewdriverIcon, SignalSlashIcon, UserMinusIcon, UserGroupIcon, QuestionMarkCircleIcon, ChevronRightIcon,
-    SignalIcon, BoltSlashIcon, CheckCircleIcon, XCircleIcon
+    SignalIcon, BoltSlashIcon, CheckCircleIcon, XCircleIcon, GlobeAltIcon
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 
@@ -75,6 +75,7 @@ interface DashboardData {
         ordenes_reparacion: number;
         routers_conectados: number;
         routers_desconectados: number;
+        routers_sin_linea_principal?: { nombre: string; estado: 'respaldo' | 'sin_internet'; enlace: string | null; desde: string | null }[];
         clientes_registrados: number;
         clientes_activos: number;
         clientes_suspendidos: number;
@@ -102,6 +103,14 @@ interface RouterSummary {
 
 interface DashboardDetailResponse {
     metricas: DashboardData['metricas'];
+}
+
+/** "hoy 3:15 p.m." o "8 nov 3:15 p.m." */
+function desdeHora(iso: string): string {
+    const fecha = new Date(iso);
+    const hora = fecha.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' });
+    if (fecha.toDateString() === new Date().toDateString()) return `hoy ${hora}`;
+    return `${fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} ${hora}`;
 }
 
 export default function Dashboard() {
@@ -227,6 +236,16 @@ export default function Dashboard() {
             <Rejilla titulo="Resumen del sistema" pie={pendientes ? `${pendientes.clientes_registrados} clientes registrados: activos, suspendidos y sin contrato suman el total.` : undefined}>
                 <FilaLista icono={ServerIcon} tono="verde" titulo="Routers activos" detalle="Responden al sistema" valor={pendientes?.routers_conectados ?? 0} a="/admin/routers" />
                 <FilaLista icono={SignalSlashIcon} tono={routersCaidos ? 'rojo' : 'neutro'} titulo="Routers desconectados" detalle={routersCaidos ? 'Sin respuesta: revisar' : 'Todos en línea'} valor={routersCaidos} tonoValor={routersCaidos ? 'rojo' : undefined} a="/admin/routers" />
+                {(pendientes?.routers_sin_linea_principal ?? []).map((r) => (
+                    <FilaLista
+                        key={r.nombre}
+                        icono={GlobeAltIcon}
+                        tono={r.estado === 'respaldo' ? 'ambar' : 'rojo'}
+                        titulo={r.estado === 'respaldo' ? `${r.nombre}: en línea de respaldo` : `${r.nombre}: sin internet`}
+                        detalle={[r.estado === 'respaldo' && r.enlace ? `Sale por ${r.enlace}` : 'Ninguna línea activa', r.desde ? `desde ${desdeHora(r.desde)}` : ''].filter(Boolean).join(' · ')}
+                        a="/admin/routers"
+                    />
+                ))}
                 <FilaLista icono={UserGroupIcon} tono={sinConexion ? 'rojo' : 'neutro'} titulo="Clientes offline" detalle={sinConexion ? 'Sin sesión en el MikroTik' : 'Todos conectados'} valor={sinConexion} tonoValor={sinConexion ? 'rojo' : undefined} a="/admin/clientes" />
                 <FilaLista icono={UsersIcon} tono="azul" titulo="Clientes activos" detalle="Con servicio activo" valor={pendientes?.clientes_activos ?? resumen.contratos_activos} a="/admin/clientes" />
                 <FilaLista icono={PauseIcon} tono="ambar" titulo="Clientes suspendidos" detalle="Por falta de pago" valor={pendientes?.clientes_suspendidos ?? (metricas.total_suspendidos || resumen.contratos_suspendidos || 0)} a="/admin/clientes" />
