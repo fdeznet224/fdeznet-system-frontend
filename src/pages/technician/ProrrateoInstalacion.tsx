@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { BanknotesIcon, CheckCircleIcon, ClockIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, BanknotesIcon, CheckCircleIcon, ClockIcon, DevicePhoneMobileIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 import client from '../../api/axios';
 import { useBrand } from '@/context/brand/useBrand';
@@ -34,13 +34,19 @@ export default function ProrrateoInstalacion({ ordenId, onDecidido }: { ordenId:
     const [eleccion, setEleccion] = useState<Eleccion>(null);
     const [enviando, setEnviando] = useState(false);
     const [confirmarEfectivo, setConfirmarEfectivo] = useState(false);
+    const [sinRespuesta, setSinRespuesta] = useState(false);
 
-    const cargar = useCallback(async () => {
+    /** Devuelve el estado leído, o null si el servidor no contestó. */
+    const cargar = useCallback(async (): Promise<EstadoProrrateo | null> => {
         try {
             const { data } = await client.get<EstadoProrrateo>(`/ordenes/${ordenId}/prorrateo`);
             setEstado(data);
+            setSinRespuesta(false);
+            return data;
         } catch {
-            setEstado({ hay: false });
+            // No se esconde: el técnico debe saber que no se pudo revisar.
+            setSinRespuesta(true);
+            return null;
         }
     }, [ordenId]);
 
@@ -55,8 +61,9 @@ export default function ProrrateoInstalacion({ ordenId, onDecidido }: { ordenId:
 
     const sinPendiente = !estado || !estado.hay || Boolean(estado.pagado);
     useEffect(() => {
-        onDecidido(estado !== null && (sinPendiente || eleccion === 'despues'));
-    }, [eleccion, estado, onDecidido, sinPendiente]);
+        // Si el servidor no contesta no se le traba la instalación al técnico.
+        onDecidido(sinRespuesta || (estado !== null && (sinPendiente || eleccion === 'despues')));
+    }, [eleccion, estado, onDecidido, sinPendiente, sinRespuesta]);
 
     const decidir = async (accion: 'efectivo' | 'despues') => {
         setEnviando(true);
@@ -69,13 +76,28 @@ export default function ProrrateoInstalacion({ ordenId, onDecidido }: { ordenId:
             if (accion === 'despues') setEleccion('despues');
             toast.success(accion === 'efectivo' ? 'Pago registrado a tu nombre' : 'Le avisamos por WhatsApp');
         } catch (error) {
-            toast.error(apiErrorMessage(error, 'No se pudo registrar'));
+            // Pudo quedar registrado aunque la respuesta fallara: se revisa antes de decir error.
+            const actual = await cargar();
+            if (accion === 'efectivo' && actual?.pagado) {
+                toast.success('Pago registrado a tu nombre');
+            } else {
+                toast.error(apiErrorMessage(error, 'No se pudo registrar'));
+            }
         } finally {
             setEnviando(false);
             setConfirmarEfectivo(false);
         }
     };
 
+    if (sinRespuesta && !estado?.hay) {
+        return (
+            <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+                <ExclamationTriangleIcon className="h-7 w-7 shrink-0" />
+                <p className="flex-1">No se pudo revisar el prorrateo. Revisa tu señal.</p>
+                <button type="button" onClick={() => void cargar()} className={`${BOTON_SECUNDARIO} h-10 px-3`}>Reintentar</button>
+            </div>
+        );
+    }
     if (!estado || !estado.hay) return null;
     const monto = pesos(estado.saldo || estado.total || 0);
     const dias = estado.desde && estado.hasta ? `del ${fechaCorta(estado.desde)} al ${fechaCorta(estado.hasta)}` : '';
@@ -127,9 +149,9 @@ export default function ProrrateoInstalacion({ ordenId, onDecidido }: { ordenId:
                 <div className="space-y-2 rounded-2xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
                     <p>Vas a recibir <b>{monto}</b> en efectivo. El cobro queda a tu nombre y lo entregas en tu corte.</p>
                     <div className="grid grid-cols-2 gap-2">
-                        <button type="button" onClick={() => setConfirmarEfectivo(false)} className={`${BOTON_SECUNDARIO} h-10`}>Cancelar</button>
+                        <button type="button" disabled={enviando} onClick={() => setConfirmarEfectivo(false)} className={`${BOTON_SECUNDARIO} h-10`}>Cancelar</button>
                         <button type="button" disabled={enviando} onClick={() => void decidir('efectivo')} className={`${BOTON_EXITO} h-10`}>
-                            {enviando ? 'Registrando…' : 'Ya lo recibí'}
+                            {enviando ? <><ArrowPathIcon className="h-5 w-5 animate-spin" /> Registrando…</> : 'Ya lo recibí'}
                         </button>
                     </div>
                 </div>

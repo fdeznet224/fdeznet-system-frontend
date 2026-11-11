@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
     ArrowLeftIcon,
+    ArrowPathIcon,
     CheckCircleIcon,
     ClipboardDocumentIcon,
     MapPinIcon,
@@ -310,7 +311,6 @@ export default function TechActivar() {
         }
 
         setActivando(true);
-        const aviso = toast.loading('Activando en el MikroTik...');
         try {
             // La versión más reciente: los avances guardados sin internet la cambian al sincronizar.
             const { data: fresco } = await cargarCatalogo(form.zona_id);
@@ -334,12 +334,12 @@ export default function TechActivar() {
                 tipo_conexion: conexion,
                 ip_antena: esAntena ? (form.ip_antena || '').trim() : null,
             });
-            toast.success('¡Cliente activado!', { id: aviso });
+            toast.success('¡Cliente activado!');
             await setCachedValue(claveBorrador, null);
             if (ordenId) await guardarActivacion(ordenId, data).catch(() => undefined);
             setResultado(data);
         } catch (error) {
-            toast.error(apiErrorMessage(error, 'No se pudo activar'), { id: aviso, duration: 8000 });
+            toast.error(apiErrorMessage(error, 'No se pudo activar'), { duration: 8000 });
             // Si el cliente quedó creado pero el MikroTik falló, el reintento lo reutiliza.
             void cargarCatalogo(form.zona_id).catch(() => undefined);
         } finally {
@@ -466,6 +466,7 @@ export default function TechActivar() {
     return (
         <div className="min-h-screen bg-slate-50 pb-28 text-slate-900 dark:bg-slate-950 dark:text-white">
             {encabezado('Activar instalación', form.nombre || `Solicitud #${catalogo.solicitud.id}`)}
+            {activando && <PantallaActivando esAntena={esAntena} conOlt={Boolean(infra?.olt)} />}
             <form onSubmit={activar} className="mx-auto max-w-lg space-y-4 p-4">
                 {catalogo.solicitud.cliente_id && (
                     <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
@@ -630,6 +631,41 @@ export default function TechActivar() {
                     </button>
                 </div>
             </form>
+        </div>
+    );
+}
+
+/** Mientras se activa: pantalla completa para que el técnico sepa que sigue trabajando. */
+function PantallaActivando({ esAntena, conOlt }: { esAntena: boolean; conOlt: boolean }) {
+    const [segundos, setSegundos] = useState(0);
+    useEffect(() => {
+        const inicio = Date.now();
+        const timer = window.setInterval(() => setSegundos(Math.floor((Date.now() - inicio) / 1000)), 1000);
+        return () => window.clearInterval(timer);
+    }, []);
+    const pasos = [
+        'Guardando al cliente y su contrato',
+        'Dándolo de alta en el MikroTik',
+        ...(!esAntena && conOlt ? ['Autorizando la ONU en la OLT'] : []),
+        'Generando su cobro',
+    ];
+    return (
+        <div role="alertdialog" aria-modal="true" aria-label="Activando cliente" className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/70 p-6 backdrop-blur-sm">
+            <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl dark:bg-slate-900">
+                <ArrowPathIcon className="mx-auto h-12 w-12 animate-spin text-blue-600" />
+                <p className="mt-4 text-lg font-bold text-slate-900 dark:text-white">Autorizando al cliente…</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    No cierres ni recargues la app. Puede tardar hasta un minuto.
+                </p>
+                <ul className="mt-4 space-y-1.5 text-left text-sm text-slate-600 dark:text-slate-300">
+                    {pasos.map((paso) => (
+                        <li key={paso} className="flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />{paso}
+                        </li>
+                    ))}
+                </ul>
+                <p className="mt-4 text-xs font-semibold tabular-nums text-slate-400">{segundos} s</p>
+            </div>
         </div>
     );
 }
