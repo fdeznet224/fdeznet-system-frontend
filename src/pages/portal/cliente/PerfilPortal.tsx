@@ -6,8 +6,9 @@ import portalClient from '@/api/portal';
 import { apiErrorMessage } from '@/utils/apiError';
 import CambiarClavePortal from './CambiarClavePortal';
 import InstalarApp from './InstalarApp';
+import { useInstalacion } from './instalacion';
 import {
-    activarNotificaciones, desactivarNotificaciones, estadoNotificaciones, type EstadoNotificaciones,
+    activarNotificaciones, desactivarNotificaciones, estadoNotificaciones, mensajeDeError, type EstadoNotificaciones,
 } from './notificaciones';
 import type { Resumen } from './tipos';
 import { BOTON, BOTON_SUAVE, CAMPO, ETIQUETA, TARJETA, TITULO, dinero, velocidad } from './ui';
@@ -101,13 +102,29 @@ export function Notificaciones({ color, compacta = false }: { color: string; com
     const [estado, setEstado] = useState<EstadoNotificaciones | null>(null);
     const [clave, setClave] = useState<string | null>(null);
     const [ocupado, setOcupado] = useState(false);
+    const { iphone } = useInstalacion();
 
     useEffect(() => {
         portalClient.get<{ disponible: boolean; clave_publica: string | null }>('/portal/notificaciones')
-            .then(async ({ data }) => { setClave(data.clave_publica); setEstado(await estadoNotificaciones(data.disponible)); })
+            .then(async ({ data }) => { setClave(data.clave_publica); setEstado(await estadoNotificaciones(data.disponible, data.clave_publica)); })
             .catch(() => setEstado('no_disponible'));
     }, []);
 
+    if (estado === 'no_disponible' && iphone && !compacta) {
+        return (
+            <section className={`${TARJETA} flex items-center gap-4`}>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ background: `${color}1a`, color }}>
+                    <BellAlertIcon className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">Notificaciones</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                        En iPhone instala la app para recibir tus avisos: en Safari toca <strong>Compartir</strong> y luego <strong>Agregar a inicio</strong>, y ábrela desde ahí.
+                    </p>
+                </div>
+            </section>
+        );
+    }
     if (!estado || estado === 'no_disponible' || (compacta && estado !== 'apagadas')) return null;
 
     const cambiar = async () => {
@@ -117,11 +134,12 @@ export function Notificaciones({ color, compacta = false }: { color: string; com
             else {
                 const nuevo = await activarNotificaciones(clave!);
                 setEstado(nuevo);
-                if (nuevo === 'activas') await portalClient.post('/portal/notificaciones/prueba').catch(() => undefined);
+                if (nuevo === 'activas') toast.success('Listo, te enviamos una notificación de prueba.');
                 if (nuevo === 'bloqueadas') toast.error('Las bloqueaste en tu navegador; actívalas en sus ajustes.');
             }
         } catch (e) {
-            toast.error(apiErrorMessage(e, 'No se pudieron activar'));
+            setEstado('apagadas');
+            toast.error(mensajeDeError(e, apiErrorMessage(e, 'No se pudieron activar')));
         } finally {
             setOcupado(false);
         }

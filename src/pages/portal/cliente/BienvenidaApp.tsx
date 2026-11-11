@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import portalClient from '@/api/portal';
 import { apiErrorMessage } from '@/utils/apiError';
 import { useInstalacion } from './instalacion';
-import { activarNotificaciones, estadoNotificaciones, type EstadoNotificaciones } from './notificaciones';
+import { activarNotificaciones, estadoNotificaciones, mensajeDeError, type EstadoNotificaciones } from './notificaciones';
 import { BOTON, BOTON_SUAVE, TARJETA } from './ui';
 
 const VISTA = 'portal_bienvenida_vista';
@@ -31,7 +31,7 @@ export default function BienvenidaApp({ color }: { color: string }) {
     useEffect(() => {
         if (cerrada) return;
         portalClient.get<{ disponible: boolean; clave_publica: string | null }>('/portal/notificaciones')
-            .then(async ({ data }) => { setClave(data.clave_publica); setEstado(await estadoNotificaciones(data.disponible)); })
+            .then(async ({ data }) => { setClave(data.clave_publica); setEstado(await estadoNotificaciones(data.disponible, data.clave_publica)); })
             .catch(() => setEstado('no_disponible'));
     }, [cerrada]);
 
@@ -48,12 +48,10 @@ export default function BienvenidaApp({ color }: { color: string }) {
         try {
             const nuevo = await activarNotificaciones(clave!);
             setEstado(nuevo);
-            if (nuevo === 'activas') {
-                await portalClient.post('/portal/notificaciones/prueba').catch(() => undefined);
-                toast.success('Listo, te avisaremos aquí.');
-            }
+            if (nuevo === 'activas') toast.success('Listo, te avisaremos aquí.');
         } catch (e) {
-            toast.error(apiErrorMessage(e, 'No se pudieron activar'));
+            setEstado('apagadas');
+            toast.error(mensajeDeError(e, apiErrorMessage(e, 'No se pudieron activar')));
         } finally {
             setOcupado(false);
         }
