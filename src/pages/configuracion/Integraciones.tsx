@@ -6,6 +6,7 @@ import { BellAlertIcon, ChatBubbleLeftRightIcon, CpuChipIcon, ServerStackIcon, S
 
 import client from '@/api/axios';
 import PagosCapturaConfig from './components/PagosCapturaConfig';
+import PagosCodiConfig from './components/PagosCodiConfig';
 import { EncabezadoPagina } from '@/components/ui/Pagina';
 
 interface ConexionIA {
@@ -236,6 +237,7 @@ export default function Integraciones() {
       <EncabezadoPagina volver={{ a: '/admin/configuracion', texto: 'Configuración' }} titulo="Integraciones y claves" descripcion="Conexiones con servicios externos. Las claves se guardan cifradas y nunca se vuelven a mostrar." />
 
       <section className={tarjeta}><PagosCapturaConfig /></section>
+      <section className={tarjeta}><PagosCodiConfig /></section>
       <section className={tarjeta}><SeccionIA /></section>
       <section className={tarjeta}><SeccionAlertas /></section>
 

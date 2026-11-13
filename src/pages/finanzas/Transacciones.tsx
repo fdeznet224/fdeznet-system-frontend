@@ -64,6 +64,7 @@ const NOMBRE_METODO: Record<string, string> = {
     efectivo: 'Efectivo',
     transferencia: 'Transferencia',
     autovalidado: 'Captura (bot)',
+    codi: 'CoDi',
     tarjeta: 'Tarjeta',
     deposito: 'Depósito',
 };
