@@ -46,6 +46,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
         { id: 'reporte_registrado', label: '🛠️ Reporte de Falla Registrado' },
         { id: 'reporte_tecnico_asignado', label: '👷 Técnico Asignado al Reporte' },
         { id: 'tecnico_en_camino', label: '🚗 Técnico en Camino' },
+        { id: 'orden_terminada', label: '✅ Servicio Restablecido (orden terminada)' },
     ];
 
     const categoriasVariables = [
@@ -100,6 +101,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSuccess, initial
                 { name: 'folio', label: 'Folio', desc: 'Número del reporte (Ej: 123)' },
                 { name: 'falla', label: 'Falla', desc: 'Lo reportado (Ej: sin internet)' },
                 { name: 'tecnico', label: 'Técnico', desc: 'Nombre del técnico asignado' },
+                { name: 'solucion', label: 'Solución', desc: 'Lo que hizo el técnico al terminar la orden' },
             ]
         },
         {

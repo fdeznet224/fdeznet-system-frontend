@@ -59,7 +59,8 @@ export default function Plantillas() {
         'datos_pago': '🏦 Datos para Depósito o Transferencia',
         'reporte_registrado': '🛠️ Reporte de Falla Registrado',
         'reporte_tecnico_asignado': '👷 Técnico Asignado al Reporte',
-        'tecnico_en_camino': '🚗 Técnico en Camino'
+        'tecnico_en_camino': '🚗 Técnico en Camino',
+        'orden_terminada': '✅ Servicio Restablecido (orden terminada)'
     };
 
     // Colección visual para el pie de página
@@ -78,7 +79,8 @@ export default function Plantillas() {
         { tag: '{monto_servicio_original}', desc: 'Servicio antes del ajuste' }, { tag: '{cargos_adicionales}', desc: 'Otros cargos' },
         { tag: '{total_factura}', desc: 'Total de la factura' },
         { tag: '{folio}', desc: 'Número del reporte' }, { tag: '{falla}', desc: 'Falla reportada' },
-        { tag: '{tecnico}', desc: 'Nombre del técnico' }
+        { tag: '{tecnico}', desc: 'Nombre del técnico' },
+        { tag: '{solucion}', desc: 'Lo que hizo el técnico' }
     ];
 
     return (

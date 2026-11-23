@@ -908,7 +908,8 @@ export default function CreateClientModal({
                             onChange={(e) =>
                               setFormData({ ...formData, telefono: e.target.value })
                             }
-                            placeholder="Número de contacto"
+                            inputMode="tel"
+                            placeholder="10 dígitos (ej. 9611234567)"
                           />
                         </div>
                       </div>
