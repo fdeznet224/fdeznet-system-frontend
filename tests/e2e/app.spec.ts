@@ -2554,7 +2554,7 @@ test('portal del cliente: paga con la app de su banco (CoDi) desde Inicio y Mis 
   await formulario.getByLabel('Celular registrado en la app de tu banco').fill('961 999 8877')
   await formulario.getByRole('button', { name: 'Pagar $350.00 con mi banco' }).click()
   await expect(page.getByTestId('codi-enviado')).toContainText('al 961 999 8877')
-  expect(cobros).toEqual([{ telefono: '9619998877' }])
+  expect(cobros).toEqual([{ telefono: '9619998877', meses_adelanto: 0 }])
   if (capturas) await page.screenshot({ path: `${capturas}/3-cobro-enviado.png` })
 
   // Al aceptarlo en su banco, el portal le avisa solo.
@@ -2592,4 +2592,57 @@ test('el técnico cobra en campo con un QR CoDi y ve cuando se paga', async ({ p
   await expect(page.getByRole('img', { name: 'QR para cobrar $350.00' })).toBeVisible()
   if (capturas) await page.getByTestId('qr-codi-tecnico').screenshot({ path: `${capturas}/5-tecnico-qr.png` })
   await expect(page.getByTestId('qr-codi-pagado')).toContainText('Pago recibido', { timeout: 10000 })
+})
+
+test('portal del cliente: al corriente adelanta meses con la app de su banco', async ({ page }) => {
+  await mockApi(page)
+  const cobros: unknown[] = []
+  await page.route('**/api/portal/sesion', (route) => route.fulfill({ json: { debe_cambiar: false } }))
+  await page.route('**/api/portal/resumen', (route) => route.fulfill({ json: {
+    nombre: 'Francisca De la Cruz', contrato: 'F1C8', direccion: 'Paraíso', conectado: true,
+    plan: { nombre: 'Hogar 20', bajada_kbps: 20480, subida_kbps: 5120, precio: 350 }, saldo_a_favor: 0,
+    cuenta: { estado_servicio: 'activo', explicacion: 'Al corriente.', adeudos: [], promesa: null },
+    pagos: [], datos_pago: null, tiene_onu: false, telefono: '9930000000', correo: null, zona: null, pago_efectivo: null,
+    calendario: { tipo: 'al_corriente', fecha: null, dias: null }, codi: { celular: '9611234567', confirmado: true },
+  } }))
+  await page.route('**/api/portal/facturas', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/portal/promesa', (route) => route.fulfill({ json: { puede: false } }))
+  await page.route('**/api/portal/adelanto?**', (route) => {
+    const meses = Number(new URL(route.request().url()).searchParams.get('meses'))
+    const nombres = ['Diciembre 2026', 'Enero 2027', 'Febrero 2027', 'Marzo 2027', 'Abril 2027', 'Mayo 2027']
+    return route.fulfill({ json: { meses: nombres.slice(0, meses).map((mes) => ({ mes, total: 350 })), total: 350 * meses } })
+  })
+  await page.route('**/api/portal/pago-codi', (route) => {
+    cobros.push(route.request().postDataJSON())
+    return route.fulfill({ json: { enviado: true, cobro_id: 3, monto: '700.00', celular: '9611234567', vence_en_minutos: 15 } })
+  })
+
+  await page.goto('/cliente')
+  await page.getByRole('button', { name: 'Mis facturas' }).click()
+  await page.getByTestId('adelantar-pagos').click()
+  await page.getByRole('radio', { name: '2 meses' }).click()
+  await expect(page.getByTestId('adelanto-detalle')).toContainText('Diciembre 2026 $350.00 · Enero 2027 $350.00')
+  await page.getByRole('button', { name: 'Pagar $700.00 con mi banco' }).click()
+  await expect(page.getByTestId('codi-enviado')).toContainText('$700.00')
+  expect(cobros).toEqual([{ telefono: '9611234567', meses_adelanto: 2 }])
+})
+
+test('finanzas: cobros CoDi con los que no se aplicaron primero', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  const cobros = [
+    { id: 4, cliente_id: 9, cliente_nombre: 'Rosa Pérez', cliente_cedula: 'R2D2', canal: 'QR · Portal', celular: null, monto: 350,
+      monto_pagado: 350, meses_adelanto: 0, estado: 'sin_aplicar', detalle: 'El cliente no tiene saldo pendiente',
+      creado_en: '2026-11-25T10:00:00', pagado_en: '2026-11-25T11:00:00', pago_ids: [] },
+    { id: 3, cliente_id: 327, cliente_nombre: 'Cliente de Demostración', cliente_cedula: '187B', canal: 'WhatsApp',
+      celular: '9613699652', monto: 1, monto_pagado: 1, meses_adelanto: 0, estado: 'aplicado', detalle: null,
+      creado_en: '2026-11-24T20:10:00', pagado_en: '2026-11-24T20:11:00', pago_ids: [1381] },
+  ]
+  await page.route('**/api/finanzas/cobros-codi**', (route) => route.fulfill({ json: cobros }))
+  await page.goto('/admin/transacciones')
+  await page.getByRole('button', { name: 'Cobros CoDi' }).click()
+  await expect(page.getByTestId('codi-sin-aplicar')).toContainText('1 pago CoDi llegó y no se pudo aplicar solo')
+  await expect(page.getByTestId('cobros-codi')).toContainText('WhatsApp · 961 369 9652')
+  await expect(page.getByTestId('cobros-codi')).toContainText('Pago #1381')
+  await expect(page.getByTestId('cobros-codi')).toContainText('Sin aplicar')
 })

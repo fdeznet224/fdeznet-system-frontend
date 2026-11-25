@@ -7,6 +7,7 @@ import {
     BotonAccion, Buscador, Campo, Cifra, Encabezado, Etiqueta, Lista, PaginaFinanzas, PanelFiltros, Pestanas, Vacio,
 } from './components/FinanzasUI';
 import { claseControl, dinero, fechaLocal } from './components/formato';
+import CobrosCodi from './components/CobrosCodi';
 
 interface PaymentReportItem {
     id: number;
@@ -21,6 +22,8 @@ interface PaymentReportItem {
     monto: number | string;
     zona_nombre?: string;
     router_nombre?: string;
+    /** Solo pagos CoDi: por dónde entró y a qué celular se mandó el cobro. */
+    codi?: { canal: string; celular: string | null; meses_adelanto: number } | null;
 }
 
 interface UserCatalog {
@@ -58,6 +61,7 @@ interface TransactionFilters {
     usuarioId: string;
     routerId: string;
     zonaId: string;
+    metodo: string;
 }
 
 const NOMBRE_METODO: Record<string, string> = {
@@ -97,10 +101,14 @@ const fechaHora = (fecha: string) => new Date(fecha).toLocaleString('es-MX', {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
 });
 
+const celularLegible = (n: string) => (n.length === 10 ? `${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}` : n);
+
 const detallePago = (pago: PaymentReportItem) => [
     pago.cliente_cedula && `Contrato ${pago.cliente_cedula}`,
     `Pago #${pago.id}`,
     `Factura #${pago.factura_id}`,
+    pago.codi && `CoDi por ${pago.codi.canal}${pago.codi.celular ? ` al ${celularLegible(pago.codi.celular)}` : ''}`,
+    pago.codi?.meses_adelanto ? `adelantó ${pago.codi.meses_adelanto} mes${pago.codi.meses_adelanto === 1 ? '' : 'es'}` : null,
     pago.referencia && `Ref. ${pago.referencia}`,
 ].filter(Boolean).join(' · ');
 
@@ -117,13 +125,17 @@ export default function Transacciones() {
     const [correctionReason, setCorrectionReason] = useState('');
     const [correcting, setCorrecting] = useState(false);
     const [mostrarFiltros, setMostrarFiltros] = useState(false);
+    // "Cobros CoDi" solo aparece si este ISP ya mandó alguno.
+    const [vista, setVista] = useState<'pagos' | 'codi'>('pagos');
+    const [hayCodi, setHayCodi] = useState(false);
 
     const [filtros, setFiltros] = useState<TransactionFilters>({
         fechaInicio: fechaLocal(),
         fechaFin: fechaLocal(),
         usuarioId: '',
         routerId: '',
-        zonaId: ''
+        zonaId: '',
+        metodo: '',
     });
     // Nombre, contrato, folio o referencia: busca en todas las fechas.
     const [busqueda, setBusqueda] = useState('');
@@ -142,6 +154,7 @@ export default function Transacciones() {
                     usuario_id: activos.usuarioId || undefined,
                     router_id: activos.routerId || undefined,
                     zona_id: activos.zonaId || undefined,
+                    metodo: activos.metodo || undefined,
                 },
             });
             setPagos(res.data.detalles ?? []);
@@ -163,6 +176,7 @@ export default function Transacciones() {
             setRouters(r.data);
             setZonas(z.data);
         }).catch((e) => console.error("Error metadatos", e));
+        client.get<unknown[]>('/finanzas/cobros-codi').then(({ data }) => setHayCodi(data.length > 0)).catch(() => undefined);
     }, []);
 
     // Los filtros se aplican solos; la búsqueda espera a que se deje de escribir.
@@ -278,11 +292,21 @@ export default function Transacciones() {
     };
 
     const periodoActual = periodoDe(filtros);
-    const filtrosActivos = [filtros.usuarioId, filtros.zonaId, filtros.routerId].filter(Boolean).length;
+    const filtrosActivos = [filtros.usuarioId, filtros.zonaId, filtros.routerId, filtros.metodo].filter(Boolean).length;
 
     return (
         <PaginaFinanzas>
             <Encabezado titulo="Corte de Cobranza" subtitulo="Pagos registrados por día, cajero y zona" />
+
+            {hayCodi && (
+                <Pestanas
+                    opciones={[{ valor: 'pagos' as const, etiqueta: 'Pagos' }, { valor: 'codi' as const, etiqueta: 'Cobros CoDi' }]}
+                    valor={vista}
+                    onCambio={setVista}
+                />
+            )}
+
+            {vista === 'codi' ? <CobrosCodi /> : (<>
 
             <Buscador
                 valor={busqueda}
@@ -324,6 +348,12 @@ export default function Transacciones() {
                         <select name="zonaId" value={filtros.zonaId} onChange={handleFilterChange} className={claseControl}>
                             <option value="">Todas</option>
                             {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
+                        </select>
+                    </Campo>
+                    <Campo etiqueta="Método">
+                        <select name="metodo" value={filtros.metodo} onChange={handleFilterChange} className={claseControl}>
+                            <option value="">Todos</option>
+                            {Object.entries(NOMBRE_METODO).map(([valor, nombre]) => <option key={valor} value={valor}>{nombre}</option>)}
                         </select>
                     </Campo>
                     <Campo etiqueta="Router">
@@ -412,6 +442,7 @@ export default function Transacciones() {
                     </>
                 )}
             </Lista>
+            </>)}
 
             {paymentToCorrect && (
                 <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">

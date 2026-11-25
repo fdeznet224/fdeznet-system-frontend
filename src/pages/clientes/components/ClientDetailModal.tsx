@@ -205,7 +205,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
     const [activando, setActivando] = useState(false);
 
     const [formData, setFormData] = useState({
-        nombre: '', cedula: '', telefono: '', direccion: '',
+        nombre: '', cedula: '', telefono: '', telefono_codi: '', direccion: '',
         plantilla_id: 0, zona_id: 0, router_id: 0, plan_id: 0,
         ip_asignada: '', mac_address: '', user_pppoe: '', pass_pppoe: '',
         olt_id: 0, caja_nap_id: 0, puerto_nap: 0,
@@ -305,7 +305,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
             cargarCatalogos();
             setFormData({
                 nombre: cliente.nombre || '', cedula: cliente.cedula || '',
-                telefono: cliente.telefono || '', direccion: cliente.direccion || '',
+                telefono: cliente.telefono || '', telefono_codi: cliente.telefono_codi || '', direccion: cliente.direccion || '',
                 plantilla_id: cliente.plantilla?.id || 0, zona_id: cliente.zona?.id || 0,
                 router_id: cliente.router?.id || 0, plan_id: cliente.plan?.id || 0,
                 ip_asignada: cliente.ip_asignada || '', user_pppoe: cliente.user_pppoe || '', pass_pppoe: cliente.pass_pppoe || '',
@@ -821,6 +821,10 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                             <label className={labelClass}>Teléfono</label>
                                             <input name="telefono" value={formData.telefono} onChange={handleInputChange} className={flatInputClass} type="tel" />
                                         </div>
+                                        <div>
+                                            <label className={labelClass}>Celular CoDi (app de su banco)</label>
+                                            <input name="telefono_codi" value={formData.telefono_codi} onChange={handleInputChange} className={flatInputClass} type="tel" inputMode="numeric" placeholder="Se llena solo al pagar por CoDi" />
+                                        </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label className={labelClass}>Zona</label>
@@ -850,6 +854,7 @@ export default function ClientDetailModal({ isOpen, onClose, cliente: clienteIni
                                     <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
                                         <InfoRow label="Número de contrato" value={cliente?.cedula || 'N/A'} copy />
                                         <InfoRow label="Teléfono" value={cliente?.telefono || 'N/A'} copy />
+                                        {cliente?.telefono_codi && <InfoRow label="Celular CoDi" value={cliente.telefono_codi} copy />}
                                         <InfoRow label="Zona" value={cliente?.zona?.nombre || 'N/A'} />
                                         <InfoRow label="Dirección" value={cliente?.direccion || 'N/A'} />
                                         {((cliente?.latitud != null && cliente?.longitud != null) || cliente?.direccion) && (

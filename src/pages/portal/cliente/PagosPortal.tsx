@@ -23,6 +23,7 @@ export default function PagosPortal({ resumen, color, onCambio }: { resumen: Res
     const [facturas, setFacturas] = useState<Factura[] | null>(null);
     const [promesa, setPromesa] = useState<OpcionesPromesa | null>(null);
     const [verPago, setVerPago] = useState(false);
+    const [adelantar, setAdelantar] = useState(false);
     const [fecha, setFecha] = useState('');
     const [ocupado, setOcupado] = useState<string | null>(null);
     const total = resumen.cuenta.adeudos.reduce((suma, a) => suma + a.monto, 0);
@@ -86,6 +87,13 @@ export default function PagosPortal({ resumen, color, onCambio }: { resumen: Res
                         <p className="text-lg font-semibold">Estás al corriente</p>
                     </div>
                 )}
+                {total <= 0 && resumen.codi && (adelantar
+                    ? <PagarCodi total={0} celular={resumen.codi.celular} color={color} onPagado={onCambio} />
+                    : (
+                        <button type="button" onClick={() => setAdelantar(true)} className={`${BOTON_SUAVE} w-full`} data-testid="adelantar-pagos">
+                            Adelantar pagos con mi banco
+                        </button>
+                    ))}
                 {total > 0 && resumen.codi && <PagarCodi total={total} celular={resumen.codi.celular} color={color} onPagado={onCambio} />}
                 {resumen.saldo_a_favor > 0 && <p className="text-sm text-emerald-700 dark:text-emerald-300">Tienes {dinero(resumen.saldo_a_favor)} a favor.</p>}
                 {(resumen.datos_pago || resumen.pago_efectivo) && (

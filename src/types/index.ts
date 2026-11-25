@@ -79,6 +79,8 @@ export interface Cliente {
     nombre: string;
     cedula?: string;
     telefono: string;
+    /** Celular de la app de su banco: con el que pagó por CoDi. */
+    telefono_codi?: string | null;
     correo?: string;
     direccion?: string;
     

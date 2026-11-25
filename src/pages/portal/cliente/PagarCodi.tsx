@@ -36,8 +36,21 @@ function usePagado(cobroId: number | null, onPagado: () => void) {
 }
 
 /** Cobro CoDi: le llega a la app de su banco, lo acepta y el pago se aplica solo. */
-export default function PagarCodi({ total, celular, color, onPagado }: { total: number; celular: string | null; color: string; onPagado: () => void }) {
+export default function PagarCodi({ total: debe, celular, color, onPagado }: { total: number; celular: string | null; color: string; onPagado: () => void }) {
     const [numero, setNumero] = useState(legible(celular ?? ''));
+    // Meses por adelantado: al corriente, al menos uno.
+    const [meses, setMeses] = useState(debe > 0 ? 0 : 1);
+    const [adelanto, setAdelanto] = useState<{ meses: { mes: string; total: number }[]; total: number } | null>(null);
+    useEffect(() => {
+        if (!meses) return undefined;
+        let vigente = true;
+        portalClient.get<{ meses: { mes: string; total: number }[]; total: number }>('/portal/adelanto', { params: { meses } })
+            .then(({ data }) => { if (vigente) setAdelanto(data); })
+            .catch(() => { if (vigente) setAdelanto(null); });
+        return () => { vigente = false; };
+    }, [meses]);
+    const cotizado = meses > 0 && adelanto && adelanto.meses.length > 0 ? adelanto : null;
+    const total = debe + (cotizado ? cotizado.total : 0);
     const [enviando, setEnviando] = useState(false);
     const [enviado, setEnviado] = useState<{ cobro: number; celular: string; minutos: number } | null>(null);
     const [qr, setQr] = useState<Qr | null>(null);
@@ -49,7 +62,7 @@ export default function PagarCodi({ total, celular, color, onPagado }: { total: 
     const pagar = async () => {
         setEnviando(true);
         try {
-            const { data } = await portalClient.post<{ cobro_id: number; celular: string; vence_en_minutos: number }>('/portal/pago-codi', { telefono: limpio });
+            const { data } = await portalClient.post<{ cobro_id: number; celular: string; vence_en_minutos: number }>('/portal/pago-codi', { telefono: limpio, meses_adelanto: cotizado ? meses : 0 });
             setEnviado({ cobro: data.cobro_id, celular: data.celular, minutos: data.vence_en_minutos });
         } catch (e) {
             toast.error(apiErrorMessage(e, 'No se pudo mandar el cobro'));
@@ -61,7 +74,7 @@ export default function PagarCodi({ total, celular, color, onPagado }: { total: 
     const pedirQr = async () => {
         setPidiendoQr(true);
         try {
-            const { data } = await portalClient.post<Qr>('/portal/pago-codi/qr');
+            const { data } = await portalClient.post<Qr>('/portal/pago-codi/qr', { meses_adelanto: cotizado ? meses : 0 });
             setQr(data);
         } catch (e) {
             toast.error(apiErrorMessage(e, 'No se pudo generar el QR'));
@@ -130,12 +143,29 @@ export default function PagarCodi({ total, celular, color, onPagado }: { total: 
 
     return (
         <div className="space-y-3" data-testid="pagar-codi">
+            <div>
+                <span className={ETIQUETA}>{debe > 0 ? '¿Quieres adelantar meses?' : '¿Cuántos meses quieres adelantar?'}</span>
+                <div className="mt-1.5 flex gap-1.5" role="radiogroup" aria-label="Meses por adelantado">
+                    {(debe > 0 ? [0, 1, 2, 3] : [1, 2, 3, 6]).map((n) => (
+                        <button key={n} type="button" role="radio" aria-checked={meses === n} onClick={() => setMeses(n)}
+                            className={`flex-1 rounded-xl px-2 py-2 text-sm font-semibold transition ${meses === n ? 'text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}
+                            style={meses === n ? { background: color } : undefined}>
+                            {n === 0 ? 'No' : `${debe > 0 ? '+' : ''}${n} ${n === 1 ? 'mes' : 'meses'}`}
+                        </button>
+                    ))}
+                </div>
+                {cotizado && (
+                    <p className="mt-1.5 px-1 text-xs text-slate-500 dark:text-slate-400" data-testid="adelanto-detalle">
+                        {cotizado.meses.map((m) => `${m.mes} ${dinero(m.total)}`).join(' · ')}{debe > 0 ? ` · más lo que debes ${dinero(debe)}` : ''}
+                    </p>
+                )}
+            </div>
             <label className="block">
                 <span className={ETIQUETA}>Celular registrado en la app de tu banco</span>
                 <input type="tel" inputMode="numeric" autoComplete="tel" maxLength={14} value={numero}
                     onChange={(e) => setNumero(e.target.value)} placeholder="10 dígitos" className={`${CAMPO} mt-1.5`} />
             </label>
-            <button type="button" onClick={() => void pagar()} disabled={limpio.length !== 10 || enviando} className={BOTON} style={{ background: color }}>
+            <button type="button" onClick={() => void pagar()} disabled={limpio.length !== 10 || enviando || total <= 0} className={BOTON} style={{ background: color }}>
                 <DevicePhoneMobileIcon className="h-5 w-5" />
                 {enviando ? 'Mandando…' : `Pagar ${dinero(total)} con mi banco`}
             </button>
