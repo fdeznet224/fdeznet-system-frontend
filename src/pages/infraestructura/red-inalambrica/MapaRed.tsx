@@ -6,9 +6,11 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 import client from '@/api/axios';
 import { abrirAntena, abrirEquipo, abrirEquipoRed } from '@/utils/accesoRemoto';
+import { apiErrorMessage } from '@/utils/apiError';
 import type { Arbol, ClienteFibra, ClienteRadio, EquipoRed, OltArbol, RouterArbol } from './tipos';
 
 const ANCHO = 220;
@@ -49,8 +51,6 @@ interface Nodo {
     caidos: number;
     filas: Fila[];
     equipo?: EquipoRed;
-    /** Enlace PtP: la otra punta (se dibuja como una sola caja). */
-    pareja?: EquipoRed;
     router?: RouterArbol;
     olt?: OltArbol;
     hijos: Nodo[];
@@ -67,13 +67,6 @@ interface Colocado {
     cerrado: boolean;
 }
 
-const sinPunta = (nombre: string) => nombre.replace(/\s*\((salida|llegada|nodo principal|nodo|base|estación|estacion)\)\s*$/i, '').trim();
-const ultimo = (ip: string) => `.${ip.split('.').pop()}`;
-
-function ambos(a: boolean | null, b: boolean | null): boolean | null {
-    if (a === false || b === false) return false;
-    return a == null || b == null ? null : true;
-}
 
 const deRadio = (c: ClienteRadio): Fila => ({ id: c.id, contrato: c.contrato, nombre: c.nombre, responde: c.responde, valor: c.senal, medida: 'senal' });
 const deFibra = (c: ClienteFibra): Fila => ({ id: c.id, contrato: c.contrato, nombre: c.nombre, responde: c.responde, valor: c.potencia, medida: 'potencia' });
@@ -88,32 +81,23 @@ function grupo(clave: string, titulo: string, filas: Fila[]): Nodo {
     };
 }
 
+/** Cada equipo es su propia caja (también las dos puntas de un PtP), para ver cuál falla. */
 function deEquipo(equipo: EquipoRed): Nodo {
-    // Un PtP base con su única estación: una sola caja "enlace" con las dos puntas.
-    const estacion = equipo.tipo === 'ptp_base' && equipo.hijos.length === 1 && equipo.hijos[0].tipo === 'ptp_estacion' && !equipo.router
-        ? equipo.hijos[0] : null;
-    const punta = estacion ?? equipo;
-    const hijos = punta.hijos.map(deEquipo);
-    if (punta.router) hijos.push(deRouter(punta.router));
-    const clientes = [...equipo.clientes, ...(estacion ? estacion.clientes : [])];
-    if (clientes.length) hijos.push(grupo(`g${equipo.id}`, `Clientes de ${sinPunta(equipo.nombre)}`, clientes.map(deRadio)));
-    const latencia = estacion ? (estacion.latencia_ms ?? equipo.latencia_ms) : equipo.latencia_ms;
-    const responde = estacion ? ambos(equipo.responde, estacion.responde) : equipo.responde;
+    const hijos = equipo.hijos.map(deEquipo);
+    hijos.push(...(equipo.olts ?? []).map(deOlt));
+    if (equipo.router) hijos.push(deRouter(equipo.router));
+    if (equipo.clientes.length) hijos.push(grupo(`g${equipo.id}`, `Clientes de ${equipo.nombre}`, equipo.clientes.map(deRadio)));
     return {
         clave: `e${equipo.id}`,
         tipo: 'equipo',
-        titulo: estacion ? sinPunta(equipo.nombre) : equipo.nombre,
-        detalle: [
-            estacion ? `${ultimo(equipo.ip)} ⇄ ${ultimo(estacion.ip)}` : equipo.ip,
-            latencia != null ? `${latencia} ms` : responde === false ? 'no responde' : null,
-        ].filter(Boolean).join(' · '),
-        responde,
-        senal: estacion ? (estacion.senal ?? equipo.senal) : equipo.senal,
-        clientes: clientes.length,
-        caidos: clientes.filter((c) => c.responde === false).length,
+        titulo: equipo.nombre,
+        detalle: [equipo.ip, equipo.latencia_ms != null ? `${equipo.latencia_ms} ms` : equipo.responde === false ? 'no responde' : null].filter(Boolean).join(' · '),
+        responde: equipo.responde,
+        senal: equipo.senal,
+        clientes: equipo.clientes.length,
+        caidos: equipo.clientes.filter((c) => c.responde === false).length,
         filas: [],
         equipo,
-        pareja: estacion ?? undefined,
         hijos,
     };
 }
@@ -125,7 +109,7 @@ function deOlt(olt: OltArbol): Nodo {
         tipo: 'olt',
         titulo: `OLT ${olt.nombre}`,
         detalle: `${olt.tecnologia} · ${olt.ip}`,
-        responde: null,
+        responde: olt.responde ?? null,
         senal: null,
         clientes: todos.length,
         caidos: todos.filter((c) => c.responde === false).length,
@@ -258,7 +242,7 @@ function Caja({ nodo, seleccionado, llega, onClick }: { nodo: Nodo; seleccionado
             <span className="flex items-center gap-2">
                 <IconoNodo nodo={nodo} />
                 <span className="min-w-0 flex-1">
-                    <span className="block text-[9px] font-bold uppercase tracking-wide text-slate-400">{tipoVista(nodo).etiqueta}{nodo.pareja ? ` · ${nodo.equipo?.marca === 'mimosa' ? 'Mimosa' : nodo.equipo?.marca === 'ubiquiti' ? 'Ubiquiti' : ''}` : ''}</span>
+                    <span className="block text-[9px] font-bold uppercase tracking-wide text-slate-400">{tipoVista(nodo).etiqueta}{nodo.equipo?.tipo === 'ptp_base' ? ' · base' : nodo.equipo?.tipo === 'ptp_estacion' ? ' · estación' : ''}{nodo.equipo?.marca === 'mimosa' ? ' · Mimosa' : ''}</span>
                     <span className="line-clamp-2 text-[13px] font-bold leading-tight text-slate-900 dark:text-white" title={nodo.titulo}>{nodo.titulo}</span>
                 </span>
             </span>
@@ -352,7 +336,7 @@ function PanelCliente({ fila, onCerrar }: { fila: Fila; onCerrar: () => void }) 
         [radio ? 'Antena' : 'ONU', ficha.identificador_onu],
     ] : [];
     return (
-        <aside className="fixed inset-x-0 bottom-0 z-40 max-h-[75vh] overflow-y-auto rounded-t-3xl bg-white p-4 shadow-2xl sm:inset-x-auto sm:right-4 sm:top-24 sm:bottom-auto sm:w-96 sm:rounded-3xl dark:bg-slate-900" data-testid="mapa-panel-cliente">
+        <aside className="fixed inset-x-0 bottom-0 z-[60] max-h-[75vh] overflow-y-auto rounded-t-3xl bg-white p-4 shadow-2xl sm:inset-x-auto sm:right-4 sm:top-24 sm:bottom-auto sm:w-96 sm:rounded-3xl dark:bg-slate-900" data-testid="mapa-panel-cliente">
             <div className="mb-3 flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-1 font-mono text-xs text-slate-500"><IconoCliente medida={fila.medida} /> {radio ? 'Radio' : 'Fibra'} · {fila.contrato}</p>
@@ -381,12 +365,54 @@ function PanelCliente({ fila, onCerrar }: { fila: Fila; onCerrar: () => void }) 
     );
 }
 
-function Panel({ nodo, onCerrar, onEditar, onRevisar, revisando }: {
+/** De qué equipo cuelga un MikroTik o una OLT en la topología. */
+function CuelgaDe({ nodo, equipos, onCambio }: { nodo: Nodo; equipos: EquipoRed[]; onCambio: () => void }) {
+    const esRouter = nodo.tipo === 'router';
+    const id = esRouter ? nodo.router?.id : nodo.olt?.id;
+    const actual = esRouter
+        ? equipos.find((e) => e.router_hijo_id === id)?.id ?? null
+        : nodo.olt?.equipo_padre_id ?? null;
+    const [valor, setValor] = useState(actual ? String(actual) : '');
+    const [guardando, setGuardando] = useState(false);
+    // Un MikroTik no puede colgar de lo que está dentro de él.
+    const opciones = esRouter ? equipos.filter((e) => e.troncal || e.router_id !== id) : equipos;
+    if (id == null) return null;
+    const guardar = async () => {
+        setGuardando(true);
+        try {
+            await client.put(`/red-inalambrica/${esRouter ? 'routers' : 'olts'}/${id}/padre`, { equipo_id: valor ? Number(valor) : null });
+            toast.success('Topología actualizada');
+            onCambio();
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'No se pudo cambiar'));
+        } finally {
+            setGuardando(false);
+        }
+    };
+    return (
+        <div className="mt-3 rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60" data-testid="mapa-cuelga-de">
+            <label className="block text-xs font-semibold text-slate-500">Cuelga de
+                <select value={valor} onChange={(e) => setValor(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <option value="">{esRouter ? 'Nada (arriba, suelto)' : 'Directo de su MikroTik'}</option>
+                    {opciones.map((e) => <option key={e.id} value={e.id}>{e.nombre} · {e.tipo_nombre}</option>)}
+                </select>
+            </label>
+            <button type="button" onClick={() => void guardar()} disabled={guardando || valor === (actual ? String(actual) : '')}
+                className="mt-2 w-full rounded-lg bg-blue-600 py-1.5 text-xs font-bold text-white disabled:opacity-40">
+                {guardando ? 'Guardando…' : 'Guardar'}
+            </button>
+        </div>
+    );
+}
+
+function Panel({ nodo, onCerrar, onEditar, onRevisar, revisando, equipos, onCambio }: {
     nodo: Nodo;
     onCerrar: () => void;
     onEditar: (equipo: EquipoRed) => void;
     onRevisar: (equipo: EquipoRed) => void;
     revisando: number | null;
+    equipos: EquipoRed[];
+    onCambio: () => void;
 }) {
     const e = nodo.equipo;
     const filas: [string, string | null][] = e ? [
@@ -402,13 +428,14 @@ function Panel({ nodo, onCerrar, onEditar, onRevisar, revisando }: {
         ['Clientes', nodo.clientes ? `${nodo.clientes}${nodo.caidos ? ` · ${nodo.caidos} sin responder` : ''}` : null],
         ['Firmware', e.firmware],
     ] : nodo.olt ? [
+        ['Estado', nodo.responde == null ? 'Sin datos' : nodo.responde ? 'En línea (sus clientes conectan)' : 'Sin clientes conectados'],
         ['Tecnología', nodo.olt.tecnologia],
         ['IP', nodo.olt.ip],
         ['PON con clientes', String(nodo.olt.pons.length)],
         ['Clientes', `${nodo.clientes}${nodo.caidos ? ` · ${nodo.caidos} sin conexión` : ''}`],
     ] : [['MikroTik', nodo.router?.ip ?? null], ['Estado', nodo.responde ? 'En línea' : 'Sin respuesta']];
     return (
-        <aside className="fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto rounded-t-3xl bg-white p-4 shadow-2xl sm:inset-x-auto sm:right-4 sm:top-24 sm:bottom-auto sm:w-96 sm:rounded-3xl dark:bg-slate-900" data-testid="mapa-panel">
+        <aside className="fixed inset-x-0 bottom-0 z-[60] max-h-[70vh] overflow-y-auto rounded-t-3xl bg-white p-4 shadow-2xl sm:inset-x-auto sm:right-4 sm:top-24 sm:bottom-auto sm:w-96 sm:rounded-3xl dark:bg-slate-900" data-testid="mapa-panel">
             <div className="mb-3 flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                     <h3 className="truncate text-lg font-bold text-slate-900 dark:text-white">{nodo.titulo}</h3>
@@ -421,20 +448,7 @@ function Panel({ nodo, onCerrar, onEditar, onRevisar, revisando }: {
                     <div key={k} className="flex justify-between gap-3 py-1.5"><dt className="text-slate-500">{k}</dt><dd className="text-right font-medium text-slate-800 dark:text-slate-100">{v}</dd></div>
                 ))}
             </dl>
-            {nodo.pareja && (
-                <div className="mt-3 rounded-xl bg-slate-50 p-2.5 text-sm dark:bg-slate-800/60" data-testid="mapa-pareja">
-                    <p className="font-semibold text-slate-800 dark:text-slate-100">{nodo.pareja.nombre}</p>
-                    <p className="text-xs text-slate-500">
-                        {nodo.pareja.ip} · {nodo.pareja.responde == null ? 'sin revisar' : nodo.pareja.responde ? `${nodo.pareja.latencia_ms} ms` : 'no responde'}
-                        {nodo.pareja.senal != null ? ` · ${nodo.pareja.senal} dBm` : ''}
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                        <button type="button" onClick={() => onRevisar(nodo.pareja!)} className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold ring-1 ring-black/5 dark:bg-slate-900">Revisar</button>
-                        <button type="button" onClick={() => void abrirEquipoRed(nodo.pareja!.id)} className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold ring-1 ring-black/5 dark:bg-slate-900">Abrir</button>
-                        <button type="button" onClick={() => onEditar(nodo.pareja!)} className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold ring-1 ring-black/5 dark:bg-slate-900">Editar</button>
-                    </div>
-                </div>
-            )}
+            {(nodo.tipo === 'router' || nodo.tipo === 'olt') && <CuelgaDe key={nodo.clave} nodo={nodo} equipos={equipos} onCambio={onCambio} />}
             {e && (
                 <div className="mt-3 grid grid-cols-3 gap-2">
                     <button type="button" onClick={() => onRevisar(e)} disabled={revisando === e.id} className="flex flex-col items-center gap-1 rounded-xl bg-slate-100 py-2 text-xs font-semibold dark:bg-slate-800">
@@ -465,10 +479,12 @@ function vistaQueCabe(caja: HTMLDivElement | null, ancho: number, alto: number, 
  * MikroTik de cada zona, sus AP y OLT, y hasta cada cliente (radio bajo su AP,
  * fibra bajo su PON). La línea es verde si el equipo de abajo responde y roja si no.
  */
-export default function MapaRed({ arbol, onEditar, onRevisar, revisando }: {
+export default function MapaRed({ arbol, equipos, onEditar, onRevisar, onCambio, revisando }: {
     arbol: Arbol;
+    equipos: EquipoRed[];
     onEditar: (equipo: EquipoRed) => void;
     onRevisar: (equipo: EquipoRed) => void;
+    onCambio: () => void;
     revisando: number | null;
 }) {
     const raices = useMemo(() => [...arbol.troncal.map(deEquipo), ...arbol.routers.map(deRouter)], [arbol]);
@@ -636,7 +652,7 @@ export default function MapaRed({ arbol, onEditar, onRevisar, revisando }: {
                 </div>
             </div>
             {clienteElegido && <PanelCliente key={clienteElegido.id} fila={clienteElegido} onCerrar={() => setClienteElegido(null)} />}
-            {nodo && <Panel nodo={nodo} onCerrar={() => setElegido(null)} onEditar={onEditar} onRevisar={onRevisar} revisando={revisando} />}
+            {nodo && <Panel nodo={nodo} onCerrar={() => setElegido(null)} onEditar={onEditar} onRevisar={onRevisar} revisando={revisando} equipos={equipos} onCambio={onCambio} />}
         </div>
     );
 }

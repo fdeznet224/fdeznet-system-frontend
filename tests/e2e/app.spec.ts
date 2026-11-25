@@ -2722,6 +2722,14 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
   await expect(page.getByTestId('mapa-panel-cliente').getByRole('link', { name: 'Ver ficha completa' })).toHaveAttribute('href', '/admin/clientes?revisar=11')
   await page.getByTestId('mapa-panel-cliente').getByRole('button', { name: 'Cerrar' }).click()
   await expect(page.getByTestId('mapa-leyenda')).toContainText('Cliente fibra')
+  // La OLT se puede colgar de otro equipo (p. ej. el enlace que le llega).
+  const colgados: unknown[] = []
+  await page.route('**/api/red-inalambrica/olts/8/padre', (route) => { colgados.push(route.request().postDataJSON()); return route.fulfill({ json: { ok: true } }) })
+  await page.getByTestId('mapa-o8').dispatchEvent('click')
+  await page.getByTestId('mapa-cuelga-de').getByLabel('Cuelga de').selectOption('8')
+  await page.getByTestId('mapa-cuelga-de').getByRole('button', { name: 'Guardar' }).click()
+  await expect.poll(() => colgados).toEqual([{ equipo_id: 8 }])
+  await page.getByTestId('mapa-panel').getByRole('button', { name: 'Cerrar' }).click()
   // Se mueve libre: arrastrar desplaza el mapa y la rueda lo acerca (con mouse, en escritorio).
   if (!test.info().project.name.includes('mobile')) {
     const lienzo = page.getByTestId('mapa-red')

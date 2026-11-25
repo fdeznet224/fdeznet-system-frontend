@@ -66,7 +66,7 @@ export default function RedInalambrica() {
     const clientes = [
         ...routers.flatMap((r) => r.clientes_sin_ap),
         ...equipos.flatMap((e) => e.clientes),
-        ...routers.flatMap((r) => (r.olts ?? []).flatMap((o) => o.pons.flatMap((p) => p.clientes))),
+        ...[...routers.flatMap((r) => r.olts ?? []), ...equipos.flatMap((e) => e.olts ?? [])].flatMap((o) => o.pons.flatMap((p) => p.clientes)),
     ];
     const sinConexion = clientes.filter((c) => c.responde === false).length;
     const vacio = !arbol || (arbol.routers.length === 0 && arbol.troncal.length === 0);
@@ -91,7 +91,7 @@ export default function RedInalambrica() {
             ) : vacio || !arbol ? (
                 <Vacio icono={WifiIcon} titulo="Aún no hay equipos de red" detalle="Agrega tus enlaces y AP; los clientes se acomodan solos en su AP al leer los Ubiquiti." />
             ) : (
-                <MapaRed arbol={arbol} onEditar={setEditando} onRevisar={(e) => void revisar(e)} revisando={revisando} />
+                <MapaRed arbol={arbol} equipos={equipos} onEditar={setEditando} onRevisar={(e) => void revisar(e)} onCambio={() => void cargar()} revisando={revisando} />
             )}
 
             {editando && arbol && (

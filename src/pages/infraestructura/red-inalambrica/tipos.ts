@@ -53,6 +53,8 @@ export interface EquipoRed {
     clientes: ClienteRadio[];
     /** El MikroTik de zona que cuelga de este enlace (red troncal). */
     router?: RouterArbol | null;
+    /** OLT que cuelgan de este equipo (p. ej. el PtP que les llega). */
+    olts?: OltArbol[];
 }
 
 export interface ClienteFibra {
@@ -70,6 +72,9 @@ export interface OltArbol {
     ip: string;
     tecnologia: string;
     router_id: number | null;
+    equipo_padre_id?: number | null;
+    /** En línea si alguno de sus clientes está conectado. */
+    responde?: boolean | null;
     pons: { pon: number | null; clientes: ClienteFibra[] }[];
 }
 
