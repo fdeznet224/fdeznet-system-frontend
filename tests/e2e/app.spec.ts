@@ -2668,6 +2668,12 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
   const mimosa = equipo(7, 'Mimosa Flores Magón', 'ptp_estacion', { troncal: true, marca: 'mimosa', senal: null, router: {
     id: 4, nombre: 'Flores Magon', ip: '10.8.0.4', en_linea: true, clientes_sin_ap: [],
     equipos: [equipo(8, 'FdezNet-90-sec2', 'ap', { clientes: [{ id: 11, contrato: '3067', nombre: 'Ximena Zuñiga', estado: 'activo', ip_antena: '13.13.13.26', responde: true, latencia_ms: 3, senal: -63 }] })],
+    olts: [{ id: 8, nombre: 'Flores Magon', ip: '13.13.13.2', tecnologia: 'GPON', router_id: 4, pons: [
+      { pon: 1, clientes: [
+        { id: 20, contrato: '1E76', nombre: 'Florisela Alfaro', estado: 'activo', responde: true, potencia: -21.3 },
+        { id: 21, contrato: '9AB4', nombre: 'Ana María Mazariegos', estado: 'activo', responde: false, potencia: -28.4 },
+      ] },
+    ] }],
   } })
   await page.route('**/api/red-inalambrica/arbol', (route) => route.fulfill({ json: {
     troncal: [equipo(5, 'RB-ADMINISTRADOR-20DENOVIEMBRE', 'router', { troncal: true, marca: 'mikrotik', senal: null, hijos: [mimosa] })],
@@ -2690,21 +2696,19 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
   await expect(page.getByTestId('mapa-e8')).toContainText('1 cliente')
   if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/7-mapa-red.png`, fullPage: true })
   await page.getByTestId('mapa-e8').click()
-  await expect(page.getByTestId('mapa-panel')).toContainText('Ximena Zuñiga')
+  await expect(page.getByTestId('mapa-panel')).toContainText('Capacidad180 / 120 Mbps')
   if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/8-mapa-panel.png`, fullPage: true })
   await page.getByTestId('mapa-panel').getByRole('button', { name: 'Cerrar' }).click()
-  await page.getByRole('tab', { name: 'Lista' }).click()
-  await expect(page.getByTestId('router-2')).toContainText('Vicente Guerrero')
-  await expect(page.getByTestId('equipo-1')).toContainText('PtP VG Sagrado')
-  await expect(page.getByTestId('equipo-3')).toContainText('AP Sagrado Norte')
-  await expect(page.getByTestId('equipo-3')).toContainText('Juan Pérez')
-  await expect(page.getByTestId('equipo-3')).toContainText('-61 dBm')
-  await expect(page.getByText('1 cliente de radio sin AP detectado')).toBeVisible()
-  await expect(page.getByTestId('troncal')).toContainText('RB-ADMINISTRADOR-20DENOVIEMBRE')
-  await expect(page.getByTestId('equipo-7').getByTestId('router-4')).toContainText('FdezNet-90-sec2')
-  await expect(page.getByTestId('equipo-8')).toContainText('Ximena Zuñiga')
-  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/6-red-inalambrica.png`, fullPage: true })
-
+  // Hasta cada cliente: radio bajo su AP y fibra bajo su PON (los que no responden, arriba).
+  await expect(page.getByTestId('mapa-g8')).toContainText('Ximena Zuñiga')
+  await expect(page.getByTestId('mapa-g3')).toContainText('Juan Pérez')
+  await expect(page.getByTestId('mapa-g3')).toContainText('-61')
+  await expect(page.getByTestId('mapa-s2')).toContainText('Ana López')
+  await expect(page.getByTestId('mapa-o8')).toContainText('OLT Flores Magon')
+  await expect(page.getByTestId('mapa-o8p1')).toContainText('PON 1')
+  await expect(page.getByTestId('mapa-o8p1').locator('li').first()).toContainText('Ana María Mazariegos')
+  await expect(page.getByTestId('mapa-r2')).toContainText('Vicente Guerrero')
+  await expect(page.getByRole('tab', { name: 'Lista' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Agregar equipo' }).click()
   await page.getByPlaceholder('AP Sagrado Norte').fill('AP Sagrado Sur')
   await page.getByPlaceholder('10.20.30.2').fill('10.1.0.4')

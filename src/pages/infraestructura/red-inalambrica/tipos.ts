@@ -55,6 +55,24 @@ export interface EquipoRed {
     router?: RouterArbol | null;
 }
 
+export interface ClienteFibra {
+    id: number;
+    contrato: string | null;
+    nombre: string;
+    estado: string;
+    responde: boolean | null;
+    potencia: number | null;
+}
+
+export interface OltArbol {
+    id: number;
+    nombre: string;
+    ip: string;
+    tecnologia: string;
+    router_id: number | null;
+    pons: { pon: number | null; clientes: ClienteFibra[] }[];
+}
+
 export interface RouterArbol {
     id: number | null;
     nombre: string;
@@ -62,6 +80,7 @@ export interface RouterArbol {
     en_linea: boolean | null;
     equipos: EquipoRed[];
     clientes_sin_ap: ClienteRadio[];
+    olts?: OltArbol[];
 }
 
 export interface Arbol {
