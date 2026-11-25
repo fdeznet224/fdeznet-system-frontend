@@ -2542,6 +2542,8 @@ test('portal del cliente: paga con la app de su banco (CoDi) desde Inicio y Mis 
   const formulario = page.getByTestId('pagar-codi')
   await expect(formulario.getByLabel('Celular registrado en la app de tu banco')).toHaveValue('961 123 4567')
   if (capturas) await page.screenshot({ path: `${capturas}/2-mis-facturas.png` })
+  await formulario.getByText('¿Qué es CoDi?').click()
+  await expect(page.getByTestId('que-es-codi')).toContainText('Cobro Digital')
 
   // Si le paga otra persona: el QR para compartir.
   await formulario.getByRole('button', { name: '¿Te paga alguien más? Mostrar QR' }).click()

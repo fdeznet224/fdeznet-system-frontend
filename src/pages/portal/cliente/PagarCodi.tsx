@@ -40,11 +40,11 @@ export default function PagarCodi({ total: debe, celular, color, onPagado }: { t
     const [numero, setNumero] = useState(legible(celular ?? ''));
     // Meses por adelantado: al corriente, al menos uno.
     const [meses, setMeses] = useState(debe > 0 ? 0 : 1);
-    const [adelanto, setAdelanto] = useState<{ meses: { mes: string; total: number }[]; total: number } | null>(null);
+    const [adelanto, setAdelanto] = useState<{ meses: { mes: string; total: number; incluye?: string[] }[]; total: number } | null>(null);
     useEffect(() => {
         if (!meses) return undefined;
         let vigente = true;
-        portalClient.get<{ meses: { mes: string; total: number }[]; total: number }>('/portal/adelanto', { params: { meses } })
+        portalClient.get<{ meses: { mes: string; total: number; incluye?: string[] }[]; total: number }>('/portal/adelanto', { params: { meses } })
             .then(({ data }) => { if (vigente) setAdelanto(data); })
             .catch(() => { if (vigente) setAdelanto(null); });
         return () => { vigente = false; };
@@ -156,7 +156,7 @@ export default function PagarCodi({ total: debe, celular, color, onPagado }: { t
                 </div>
                 {cotizado && (
                     <p className="mt-1.5 px-1 text-xs text-slate-500 dark:text-slate-400" data-testid="adelanto-detalle">
-                        {cotizado.meses.map((m) => `${m.mes} ${dinero(m.total)}`).join(' · ')}{debe > 0 ? ` · más lo que debes ${dinero(debe)}` : ''}
+                        {cotizado.meses.map((m) => `${m.mes} ${dinero(m.total)}${m.incluye?.length ? ` (incluye ${m.incluye.join(', ')})` : ''}`).join(' · ')}{debe > 0 ? ` · más lo que debes ${dinero(debe)}` : ''}
                     </p>
                 )}
             </div>
@@ -170,6 +170,20 @@ export default function PagarCodi({ total: debe, celular, color, onPagado }: { t
                 {enviando ? 'Mandando…' : `Pagar ${dinero(total)} con mi banco`}
             </button>
             <p className="px-1 text-xs text-slate-500 dark:text-slate-400">Sin captura: aceptas el cobro (CoDi) en tu banco y tu pago queda aplicado al momento.</p>
+            <details className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800/60 dark:text-slate-300" data-testid="que-es-codi">
+                <summary className="cursor-pointer font-semibold text-slate-800 dark:text-slate-100">¿Qué es CoDi?</summary>
+                <div className="mt-2 space-y-2 leading-relaxed">
+                    <p>Es el pago digital del Banco de México. El cobro te llega a la app de tu banco, lo aceptas y el dinero pasa al momento, cualquier día y a cualquier hora.</p>
+                    <p><span className="font-semibold">Sin comisión y seguro:</span> no das tu tarjeta ni contraseñas; todo pasa dentro de la app de tu banco.</p>
+                    <p className="font-semibold">Si no te llega el cobro, actívalo una sola vez:</p>
+                    <ol className="list-decimal space-y-1 pl-5">
+                        <li>Abre la app de tu banco.</li>
+                        <li>Busca la opción <span className="font-semibold">CoDi</span> o <span className="font-semibold">Cobro Digital</span>.</li>
+                        <li>Regístrala con tu número de celular.</li>
+                    </ol>
+                    <p>Si tu banco no lo tiene, puedes seguir pagando como siempre en “Otras formas de pago”.</p>
+                </div>
+            </details>
             <button type="button" onClick={() => void pedirQr()} disabled={pidiendoQr} className={`${BOTON_SUAVE} w-full`}>
                 <QrCodeIcon className="h-4 w-4" /> {pidiendoQr ? 'Generando…' : '¿Te paga alguien más? Mostrar QR'}
             </button>
