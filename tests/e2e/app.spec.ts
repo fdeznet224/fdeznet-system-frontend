@@ -2526,8 +2526,12 @@ test('portal del cliente: paga con la app de su banco (CoDi) desde Inicio y Mis 
   await page.route('**/api/portal/promesa', (route) => route.fulfill({ json: { puede: false } }))
   await page.route('**/api/portal/pago-codi', (route) => {
     cobros.push(route.request().postDataJSON())
-    return route.fulfill({ json: { enviado: true, monto: '350.00', celular: '9619998877', vence_en_minutos: 15 } })
+    return route.fulfill({ json: { enviado: true, cobro_id: 7, monto: '350.00', celular: '9619998877', vence_en_minutos: 15 } })
   })
+  // 1x1 PNG
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+  await page.route('**/api/portal/pago-codi/qr', (route) => route.fulfill({ json: { cobro_id: 8, monto: '350.00', vence_en: '2026-11-26T10:00', qr_png: png } }))
+  await page.route('**/api/portal/pago-codi/7', (route) => route.fulfill({ json: { cobro_id: 7, estado: 'pagado', monto: '350.00' } }))
 
   await page.goto('/cliente')
   const enInicio = page.getByTestId('pagar-codi-inicio')
@@ -2539,10 +2543,53 @@ test('portal del cliente: paga con la app de su banco (CoDi) desde Inicio y Mis 
   await expect(formulario.getByLabel('Celular registrado en la app de tu banco')).toHaveValue('961 123 4567')
   if (capturas) await page.screenshot({ path: `${capturas}/2-mis-facturas.png` })
 
+  // Si le paga otra persona: el QR para compartir.
+  await formulario.getByRole('button', { name: '¿Te paga alguien más? Mostrar QR' }).click()
+  await expect(page.getByTestId('codi-qr')).toContainText('Que lo escanee quien te paga')
+  await expect(page.getByRole('img', { name: 'QR para pagar $350.00' })).toBeVisible()
+  if (capturas) await page.screenshot({ path: `${capturas}/2b-qr.png` })
+  await page.getByTestId('codi-qr').getByRole('button', { name: 'Regresar' }).click()
+
   // Lo puede cambiar por el de su banco antes de mandar.
   await formulario.getByLabel('Celular registrado en la app de tu banco').fill('961 999 8877')
   await formulario.getByRole('button', { name: 'Pagar $350.00 con mi banco' }).click()
   await expect(page.getByTestId('codi-enviado')).toContainText('al 961 999 8877')
   expect(cobros).toEqual([{ telefono: '9619998877' }])
   if (capturas) await page.screenshot({ path: `${capturas}/3-cobro-enviado.png` })
+
+  // Al aceptarlo en su banco, el portal le avisa solo.
+  await expect(page.getByTestId('codi-pagado')).toContainText('¡Pago recibido!', { timeout: 10000 })
+  if (capturas) await page.screenshot({ path: `${capturas}/4-pagado.png` })
+})
+
+test('el técnico cobra en campo con un QR CoDi y ve cuando se paga', async ({ page }) => {
+  const capturas = process.env.CAPTURAS
+  await page.setViewportSize({ width: 390, height: 844 })
+  await authenticateAs(page, 'tecnico')
+  await mockApi(page)
+  let pagado = false
+  await page.route('**/api/clientes/QR01/portal', (route) => route.fulfill({ json: {
+    id: 61, nombre: 'Cliente Con Deuda', cedula: 'QR01', telefono: '5550000001', direccion: 'Calle 3', estado: 'activo',
+    ip_asignada: '10.0.0.9', is_online: true, plan_nombre: 'Hogar 20', precio_plan: 350, velocidad_bajada: 20480,
+    velocidad_subida: 5120, total_deuda: pagado ? 0 : 350, facturas_pendientes: pagado ? 0 : 1,
+    cuenta: { estado_servicio: 'activo', explicacion: pagado ? 'Al corriente.' : 'Debe noviembre.',
+      adeudos: pagado ? [] : [{ concepto: 'Noviembre 2026', monto: 350, vence: '01/12/2026', vencido: false }],
+      ultimo_pago: null, promesa: null },
+  } }))
+  await page.route('**/api/pagos/codi/clientes/61', (route) => route.fulfill({ json: { disponible: true } }))
+  await page.route('**/api/pagos/codi/clientes/61/qr', (route) => route.fulfill({ json: {
+    cobro_id: 9, monto: '350.00', vence_en: '2026-11-25T10:30',
+    qr_png: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  } }))
+  await page.route('**/api/pagos/codi/cobros/9', (route) => {
+    pagado = true
+    return route.fulfill({ json: { cobro_id: 9, estado: 'pagado', monto: '350.00' } })
+  })
+
+  await page.goto('/tech/cliente/QR01')
+  await page.getByTestId('cobrar-qr-codi').click()
+  await expect(page.getByTestId('qr-codi-tecnico')).toContainText('Esperando el pago')
+  await expect(page.getByRole('img', { name: 'QR para cobrar $350.00' })).toBeVisible()
+  if (capturas) await page.getByTestId('qr-codi-tecnico').screenshot({ path: `${capturas}/5-tecnico-qr.png` })
+  await expect(page.getByTestId('qr-codi-pagado')).toContainText('Pago recibido', { timeout: 10000 })
 })

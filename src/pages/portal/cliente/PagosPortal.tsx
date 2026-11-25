@@ -86,7 +86,7 @@ export default function PagosPortal({ resumen, color, onCambio }: { resumen: Res
                         <p className="text-lg font-semibold">Estás al corriente</p>
                     </div>
                 )}
-                {total > 0 && resumen.codi && <PagarCodi total={total} celular={resumen.codi.celular} color={color} />}
+                {total > 0 && resumen.codi && <PagarCodi total={total} celular={resumen.codi.celular} color={color} onPagado={onCambio} />}
                 {resumen.saldo_a_favor > 0 && <p className="text-sm text-emerald-700 dark:text-emerald-300">Tienes {dinero(resumen.saldo_a_favor)} a favor.</p>}
                 {(resumen.datos_pago || resumen.pago_efectivo) && (
                     <div>

@@ -1,31 +1,117 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, DevicePhoneMobileIcon, QrCodeIcon, ShareIcon } from '@heroicons/react/24/outline';
 
 import portalClient from '@/api/portal';
 import { apiErrorMessage } from '@/utils/apiError';
-import { BOTON, CAMPO, ETIQUETA, dinero } from './ui';
+import { BOTON, BOTON_SUAVE, CAMPO, ETIQUETA, dinero } from './ui';
 
 const legible = (n: string) => (n.length === 10 ? `${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}` : n);
+const hora = (iso: string) => new Date(iso).toLocaleString('es-MX', { weekday: 'long', hour: 'numeric', minute: '2-digit' });
+
+interface Qr { cobro_id: number; monto: string; vence_en: string | null; qr_png: string }
+
+/** Mientras espera, pregunta cada 5 s si ya se pagó (el pago se aplica solo). */
+function usePagado(cobroId: number | null, onPagado: () => void) {
+    const [pagado, setPagado] = useState<number | null>(null);
+    useEffect(() => {
+        if (!cobroId) return undefined;
+        let vigente = true;
+        const cada = window.setInterval(() => {
+            if (document.visibilityState !== 'visible') return;
+            portalClient.get<{ estado: string }>(`/portal/pago-codi/${cobroId}`)
+                .then(({ data }) => {
+                    if (vigente && data.estado === 'pagado') {
+                        setPagado(cobroId);
+                        window.clearInterval(cada);
+                        // Que alcance a ver el aviso antes de que se recargue su cuenta.
+                        window.setTimeout(onPagado, 4000);
+                    }
+                })
+                .catch(() => undefined);
+        }, 5000);
+        return () => { vigente = false; window.clearInterval(cada); };
+    }, [cobroId, onPagado]);
+    return pagado !== null && pagado === cobroId;
+}
 
 /** Cobro CoDi: le llega a la app de su banco, lo acepta y el pago se aplica solo. */
-export default function PagarCodi({ total, celular, color }: { total: number; celular: string | null; color: string }) {
+export default function PagarCodi({ total, celular, color, onPagado }: { total: number; celular: string | null; color: string; onPagado: () => void }) {
     const [numero, setNumero] = useState(legible(celular ?? ''));
     const [enviando, setEnviando] = useState(false);
-    const [enviado, setEnviado] = useState<{ celular: string; minutos: number } | null>(null);
+    const [enviado, setEnviado] = useState<{ cobro: number; celular: string; minutos: number } | null>(null);
+    const [qr, setQr] = useState<Qr | null>(null);
+    const [pidiendoQr, setPidiendoQr] = useState(false);
     const limpio = numero.replace(/\D/g, '');
+    const pagadoCelular = usePagado(enviado?.cobro ?? null, onPagado);
+    const pagadoQr = usePagado(qr?.cobro_id ?? null, onPagado);
 
     const pagar = async () => {
         setEnviando(true);
         try {
-            const { data } = await portalClient.post<{ celular: string; vence_en_minutos: number }>('/portal/pago-codi', { telefono: limpio });
-            setEnviado({ celular: data.celular, minutos: data.vence_en_minutos });
+            const { data } = await portalClient.post<{ cobro_id: number; celular: string; vence_en_minutos: number }>('/portal/pago-codi', { telefono: limpio });
+            setEnviado({ cobro: data.cobro_id, celular: data.celular, minutos: data.vence_en_minutos });
         } catch (e) {
             toast.error(apiErrorMessage(e, 'No se pudo mandar el cobro'));
         } finally {
             setEnviando(false);
         }
     };
+
+    const pedirQr = async () => {
+        setPidiendoQr(true);
+        try {
+            const { data } = await portalClient.post<Qr>('/portal/pago-codi/qr');
+            setQr(data);
+        } catch (e) {
+            toast.error(apiErrorMessage(e, 'No se pudo generar el QR'));
+        } finally {
+            setPidiendoQr(false);
+        }
+    };
+
+    const compartirQr = async () => {
+        if (!qr) return;
+        const archivo = new File([Uint8Array.from(atob(qr.qr_png), (c) => c.charCodeAt(0))], 'qr-pago.png', { type: 'image/png' });
+        const texto = `QR para pagar ${dinero(Number(qr.monto))} de mi internet. Escanéalo desde la app de tu banco (CoDi).`;
+        if (navigator.canShare?.({ files: [archivo] })) {
+            try {
+                await navigator.share({ files: [archivo], text: texto });
+            } catch {
+                // Canceló compartir.
+            }
+            return;
+        }
+        const enlace = document.createElement('a');
+        enlace.href = `data:image/png;base64,${qr.qr_png}`;
+        enlace.download = 'qr-pago.png';
+        enlace.click();
+    };
+
+    if (pagadoCelular || pagadoQr) {
+        return (
+            <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200" data-testid="codi-pagado">
+                <CheckCircleIcon className="h-8 w-8 shrink-0 text-emerald-500" />
+                <p><span className="block font-semibold">¡Pago recibido!</span>Ya quedó aplicado; te llega tu recibo por WhatsApp.</p>
+            </div>
+        );
+    }
+
+    if (qr) {
+        return (
+            <div className="space-y-3 rounded-2xl bg-slate-50 p-4 text-center text-sm dark:bg-slate-800/60" data-testid="codi-qr">
+                <p className="font-semibold">Que lo escanee quien te paga</p>
+                <img src={`data:image/png;base64,${qr.qr_png}`} alt={`QR para pagar ${dinero(Number(qr.monto))}`} className="mx-auto w-56 rounded-xl bg-white p-2" />
+                <p className="text-slate-600 dark:text-slate-300">
+                    {dinero(Number(qr.monto))} · desde la app de su banco (CoDi o “Pagar con QR”).{qr.vence_en ? ` Vale hasta el ${hora(qr.vence_en)}.` : ''}
+                </p>
+                <button type="button" onClick={() => void compartirQr()} className={`${BOTON_SUAVE} w-full`}>
+                    <ShareIcon className="h-4 w-4" /> Compartir QR
+                </button>
+                <button type="button" onClick={() => setQr(null)} className="text-xs font-semibold" style={{ color }}>Regresar</button>
+            </div>
+        );
+    }
 
     if (enviado) {
         return (
@@ -54,6 +140,9 @@ export default function PagarCodi({ total, celular, color }: { total: number; ce
                 {enviando ? 'Mandando…' : `Pagar ${dinero(total)} con mi banco`}
             </button>
             <p className="px-1 text-xs text-slate-500 dark:text-slate-400">Sin captura: aceptas el cobro (CoDi) en tu banco y tu pago queda aplicado al momento.</p>
+            <button type="button" onClick={() => void pedirQr()} disabled={pidiendoQr} className={`${BOTON_SUAVE} w-full`}>
+                <QrCodeIcon className="h-4 w-4" /> {pidiendoQr ? 'Generando…' : '¿Te paga alguien más? Mostrar QR'}
+            </button>
         </div>
     );
 }

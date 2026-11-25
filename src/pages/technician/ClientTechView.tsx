@@ -10,6 +10,7 @@ import {
 import { rutaEnMaps } from '@/utils/mapas';
 import { apiErrorMessage } from '@/utils/apiError';
 import { BOTON_EXITO, BOTON_PRIMARIO, BOTON_SECUNDARIO, TARJETA, TITULO_SECCION } from './estilo';
+import CobrarQrCodi from './CobrarQrCodi';
 
 interface TechData {
     id: number;
@@ -108,6 +109,8 @@ export default function ClientTechView() {
     const [isSending, setIsSending] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const clienteId = data?.id;
+    const [recarga, setRecarga] = useState(0);
+    const recargar = useCallback(() => setRecarga((n) => n + 1), []);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -123,7 +126,7 @@ export default function ClientTechView() {
             }
         };
         fetchData();
-    }, [cedula, navigate]);
+    }, [cedula, navigate, recarga]);
 
     const revisarConexion = useCallback(async (clienteIdConexion: number) => {
         setRevisandoConexion(true);
@@ -363,6 +366,7 @@ export default function ClientTechView() {
                                     ))}
                                 </ul>
                             )}
+                            <CobrarQrCodi clienteId={data.id} deuda={deuda} onPagado={recargar} />
                             <div className="divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800">
                                 <Fila etiqueta="Último pago">{cuenta.ultimo_pago ? `$${cuenta.ultimo_pago.monto.toLocaleString('es-MX')} · ${cuenta.ultimo_pago.fecha}` : 'Sin pagos'}</Fila>
                                 <Fila etiqueta="Promesa de pago">{cuenta.promesa ? `Para el ${cuenta.promesa.fecha}` : 'Ninguna activa'}</Fila>
