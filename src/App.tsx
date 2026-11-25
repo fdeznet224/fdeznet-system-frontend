@@ -30,6 +30,7 @@ const MasSecciones = lazy(() => import('@/components/layout/MasSecciones'));
 const Clientes = lazy(() => import('@/pages/clientes/Clientes'));
 const Planes = lazy(() => import('@/pages/infraestructura/planes/Planes'));
 const Routers = lazy(() => import('@/pages/infraestructura/routers/Routers'));
+const RedInalambrica = lazy(() => import('@/pages/infraestructura/red-inalambrica/RedInalambrica'));
 const Redes = lazy(() => import('@/pages/infraestructura/redes/Redes'));
 const Configuracion = lazy(() => import('@/pages/configuracion/Configuracion'));
 const Orders = lazy(() => import('@/pages/admin/orders/Orders'));
@@ -230,6 +231,7 @@ function App() {
                 
                 {/* Infraestructura */}
                 <Route path="/admin/routers" element={protectedPage(<Routers />, ['admin'])} />
+                <Route path="/admin/red-inalambrica" element={protectedPage(<RedInalambrica />, ['admin'])} />
                 <Route path="/admin/naps" element={protectedPage(<CajasNap />, ['admin'])} />
                 <Route path="/admin/tr069" element={protectedPage(<EquiposTr069 />, ['admin'])} />
                 <Route path="/admin/tr069/plantillas" element={protectedPage(<PlantillasTr069 />, ['admin'])} />

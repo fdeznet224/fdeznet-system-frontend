@@ -46,3 +46,19 @@ export async function abrirAntena(clienteId: number) {
         toast.error(apiErrorMessage(error, 'No se pudo abrir la antena'));
     }
 }
+
+/** AP, PtP o switch: directo por la VPN o por un puente temporal en su MikroTik. */
+export async function abrirEquipoRed(equipoId: number) {
+    const ventana = ventanaEnBlanco();
+    try {
+        const { data } = await client.post<{ url: string; router: string; puente: boolean; expira: string | null }>(`/red-inalambrica/equipos/${equipoId}/abrir`);
+        if (data.puente && data.expira) {
+            const hora = new Date(data.expira).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+            toast.success(`Abierto por ${data.router} hasta las ${hora}`);
+        }
+        llevar(ventana, data.url);
+    } catch (error) {
+        ventana?.close();
+        toast.error(apiErrorMessage(error, 'No se pudo abrir el equipo'));
+    }
+}

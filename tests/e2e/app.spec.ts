@@ -2648,3 +2648,52 @@ test('finanzas: cobros CoDi con los que no se aplicaron primero', async ({ page 
   await expect(page.getByTestId('cobros-codi')).toContainText('Pago #1381')
   await expect(page.getByTestId('cobros-codi')).toContainText('Sin aplicar')
 })
+
+test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un AP', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  const equipo = (id: number, nombre: string, tipo: string, extra: Record<string, unknown> = {}) => ({
+    id, nombre, tipo, tipo_nombre: tipo === 'ap' ? 'AP / sectorial' : 'PtP (base)', marca: 'ubiquiti', modelo: null,
+    ip: `10.1.0.${id}`, router_id: 2, padre_id: null, zona_id: null, ubicacion: null, latitud: null, longitud: null,
+    usuario: 'ubnt', tiene_clave: true, puerto_web: '443', activo: true, responde: true, latencia_ms: 2.1, perdida: 0,
+    revisado_en: null, senal: -55, ruido: -94, ccq: 92, capacidad_tx: 180000, capacidad_rx: 120000, frecuencia: '5745 MHz',
+    ancho_canal: '40', ssid: null, modo: null, estaciones: 2, firmware: null, uptime_s: null, airos_error: null,
+    airos_leido_en: null, hijos: [], clientes: [], ...extra,
+  })
+  const ap = equipo(3, 'AP Sagrado Norte', 'ap', {
+    padre_id: 1, responde: false, latencia_ms: null,
+    clientes: [{ id: 9, contrato: '4A1B', nombre: 'Juan Pérez', estado: 'activo', ip_antena: '10.50.0.11', responde: true, latencia_ms: 4, senal: -61 }],
+  })
+  const enviados: unknown[] = []
+  await page.route('**/api/red-inalambrica/arbol', (route) => route.fulfill({ json: {
+    routers: [{ id: 2, nombre: 'Vicente Guerrero', ip: '10.8.0.2', en_linea: true,
+      equipos: [equipo(1, 'PtP VG Sagrado', 'ptp_base', { hijos: [ap] })],
+      clientes_sin_ap: [{ id: 10, contrato: '7C2D', nombre: 'Ana López', estado: 'activo', ip_antena: '10.50.0.13', responde: false, latencia_ms: null, senal: null }] }],
+    tipos: { ptp_base: 'PtP (base)', ptp_estacion: 'PtP (estación)', ap: 'AP / sectorial', switch: 'Switch', otro: 'Otro' },
+    marcas: { ubiquiti: 'Ubiquiti', mikrotik: 'MikroTik', otra: 'Otra' },
+  } }))
+  await page.route('**/api/network/routers/', (route) => route.fulfill({ json: [{ id: 2, nombre: 'Vicente Guerrero' }] }))
+  await page.route('**/api/red-inalambrica/equipos', (route) => {
+    enviados.push(route.request().postDataJSON())
+    return route.fulfill({ status: 201, json: equipo(4, 'AP Sagrado Sur', 'ap') })
+  })
+
+  await page.goto('/admin/red-inalambrica')
+  await expect(page.getByTestId('router-2')).toContainText('Vicente Guerrero')
+  await expect(page.getByTestId('equipo-1')).toContainText('PtP VG Sagrado')
+  await expect(page.getByTestId('equipo-3')).toContainText('AP Sagrado Norte')
+  await expect(page.getByTestId('equipo-3')).toContainText('Juan Pérez')
+  await expect(page.getByTestId('equipo-3')).toContainText('-61 dBm')
+  await expect(page.getByText('1 cliente de radio sin AP detectado')).toBeVisible()
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/6-red-inalambrica.png`, fullPage: true })
+
+  await page.getByRole('button', { name: 'Agregar equipo' }).click()
+  await page.getByPlaceholder('AP Sagrado Norte').fill('AP Sagrado Sur')
+  await page.getByPlaceholder('10.20.30.2').fill('10.1.0.4')
+  await page.getByLabel('MikroTik por el que se llega').selectOption('2')
+  await page.getByLabel('Cuelga de').selectOption('1')
+  await page.getByPlaceholder('ubnt').fill('ubnt')
+  await page.getByRole('button', { name: 'Guardar' }).click()
+  await expect.poll(() => enviados.length).toBe(1)
+  expect(enviados[0]).toMatchObject({ nombre: 'AP Sagrado Sur', tipo: 'ap', ip: '10.1.0.4', router_id: 2, padre_id: 1, usuario: 'ubnt' })
+})

@@ -140,7 +140,10 @@ export function ReiniciarOnu({ clienteId, onListo }: { clienteId: number; onList
     );
 }
 
-interface EstadoAntenaData { ip: string | null; responde: boolean | null; latencia_ms: number | null; perdida: number | null; fecha: string | null }
+interface EstadoAntenaData {
+    ip: string | null; responde: boolean | null; latencia_ms: number | null; perdida: number | null; fecha: string | null;
+    ap?: { id: number; nombre: string; responde: boolean | null } | null; senal?: number | null;
+}
 
 /** Antena del cliente por radioenlace: ping desde su MikroTik al momento. */
 export function EstadoAntena({ clienteId }: { clienteId: number }) {
@@ -203,6 +206,10 @@ export function EstadoAntena({ clienteId }: { clienteId: number }) {
                 <div className={fila}><span className={etiqueta}>IP de la antena</span><span className={`${valor} font-mono`}>{estado.ip}</span></div>
                 <div className={fila}><span className={etiqueta}>Latencia</span><span className={valor}>{estado.latencia_ms != null ? `${estado.latencia_ms} ms` : '--'}</span></div>
                 <div className={fila}><span className={etiqueta}>Pérdida</span><span className={valor}>{estado.perdida != null ? `${estado.perdida}%` : '--'}</span></div>
+                <div className={fila}><span className={etiqueta}>Conectada al AP</span><span className={valor}>{estado.ap ? `${estado.ap.nombre}${estado.ap.responde === false ? ' (caído)' : ''}` : 'Sin detectar'}</span></div>
+                {estado.senal != null && (
+                    <div className={fila}><span className={etiqueta}>Señal (vista por el AP)</span><span className={`${valor} ${estado.senal < -75 ? 'text-rose-600' : estado.senal < -65 ? 'text-amber-600' : ''}`}>{estado.senal} dBm</span></div>
+                )}
             </div>
             {estado.ip && (
                 <button type="button" onClick={() => void abrirAntena(clienteId)} className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-black text-slate-700 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
