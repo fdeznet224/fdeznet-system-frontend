@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import {
-    ArrowPathIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, CircleStackIcon, MagnifyingGlassMinusIcon,
-    MagnifyingGlassPlusIcon, PencilSquareIcon, ServerStackIcon, SignalIcon, Squares2X2Icon, WifiIcon, XMarkIcon,
+    ArrowPathIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, BoltIcon, ChevronDownIcon, ChevronRightIcon, CircleStackIcon,
+    MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, MinusIcon, PencilSquareIcon, PlusIcon, ServerStackIcon, SignalIcon,
+    Squares2X2Icon, WifiIcon, XMarkIcon,
 } from '@heroicons/react/24/outline';
 
-import { abrirEquipoRed } from '@/utils/accesoRemoto';
+import { Link } from 'react-router-dom';
+
+import client from '@/api/axios';
+import { abrirAntena, abrirEquipo, abrirEquipoRed } from '@/utils/accesoRemoto';
 import type { Arbol, ClienteFibra, ClienteRadio, EquipoRed, OltArbol, RouterArbol } from './tipos';
 
 const ANCHO = 220;
@@ -13,7 +17,16 @@ const SEPARACION_X = 24;
 const SEPARACION_Y = 64;
 const FILA = 22;
 const CABEZA_GRUPO = 34;
-const VISIBLES = 12;
+const BOTON_NODO = 22;
+
+/** El flujo que baja por las líneas: la señal llega hasta ahí. */
+const ESTILO_FLUJO = `
+.mapa-flujo { stroke-dasharray: 7 7; animation: mapa-flujo 0.9s linear infinite; }
+@keyframes mapa-flujo { to { stroke-dashoffset: -14; } }
+.mapa-tronco { background-image: repeating-linear-gradient(to bottom, currentColor 0 6px, transparent 6px 12px); background-size: 2px 12px; animation: mapa-tronco 0.9s linear infinite; }
+@keyframes mapa-tronco { to { background-position-y: 12px; } }
+@media (prefers-reduced-motion: reduce) { .mapa-flujo, .mapa-tronco { animation: none; } }
+`;
 
 /** Un cliente dentro de una lista (bajo su AP o su PON). */
 interface Fila {
@@ -43,7 +56,16 @@ interface Nodo {
     hijos: Nodo[];
 }
 
-interface Colocado { nodo: Nodo; x: number; y: number; alto: number }
+interface Colocado {
+    nodo: Nodo;
+    x: number;
+    y: number;
+    alto: number;
+    /** La señal llega hasta aquí (ningún equipo de arriba está caído). */
+    llega: boolean;
+    /** Tiene cosas colgando aunque estén cerradas. */
+    cerrado: boolean;
+}
 
 const sinPunta = (nombre: string) => nombre.replace(/\s*\((salida|llegada|nodo principal|nodo|base|estación|estacion)\)\s*$/i, '').trim();
 const ultimo = (ip: string) => `.${ip.split('.').pop()}`;
@@ -131,19 +153,19 @@ function deRouter(router: RouterArbol): Nodo {
     };
 }
 
-function altoDe(nodo: Nodo, abiertos: Set<string>): number {
+function altoDe(nodo: Nodo, cerrados: Set<string>): number {
     if (nodo.tipo !== 'grupo') return ALTO;
-    const visibles = abiertos.has(nodo.clave) ? nodo.filas.length : Math.min(nodo.filas.length, VISIBLES);
-    return CABEZA_GRUPO + visibles * FILA + (nodo.filas.length > VISIBLES ? 26 : 6);
+    return cerrados.has(nodo.clave) ? CABEZA_GRUPO : CABEZA_GRUPO + nodo.filas.length * FILA + 6;
 }
 
 /** Árbol de arriba hacia abajo: cada hoja ocupa una columna, el padre va centrado sobre sus
  *  hijos y cada nivel mide lo que su caja más alta (las listas de clientes son altas). */
-function acomodar(raices: Nodo[], abiertos: Set<string>) {
+function acomodar(raices: Nodo[], cerrados: Set<string>) {
     const niveles: number[] = [];
+    const visibles = (nodo: Nodo) => (nodo.tipo !== 'grupo' && cerrados.has(nodo.clave) ? [] : nodo.hijos);
     const medir = (nodo: Nodo, nivel: number) => {
-        niveles[nivel] = Math.max(niveles[nivel] ?? 0, altoDe(nodo, abiertos));
-        nodo.hijos.forEach((h) => medir(h, nivel + 1));
+        niveles[nivel] = Math.max(niveles[nivel] ?? 0, altoDe(nodo, cerrados) + (nodo.hijos.length && nodo.tipo !== 'grupo' ? BOTON_NODO : 0));
+        visibles(nodo).forEach((h) => medir(h, nivel + 1));
     };
     raices.forEach((r) => medir(r, 0));
     const inicio = niveles.reduce<number[]>((acc, alto, i) => [...acc, i === 0 ? 0 : acc[i - 1] + niveles[i - 1] + SEPARACION_Y], []);
@@ -151,8 +173,9 @@ function acomodar(raices: Nodo[], abiertos: Set<string>) {
     const colocados: Colocado[] = [];
     const lineas: [Colocado, Colocado][] = [];
     let columna = 0;
-    const colocar = (nodo: Nodo, nivel: number): Colocado => {
-        const hijos = nodo.hijos.map((h) => colocar(h, nivel + 1));
+    const colocar = (nodo: Nodo, nivel: number, llegaArriba: boolean): Colocado => {
+        const llega = llegaArriba && (nodo.tipo === 'grupo' || nodo.responde !== false);
+        const hijos = visibles(nodo).map((h) => colocar(h, nivel + 1, llega));
         let x: number;
         if (hijos.length) {
             x = (hijos[0].x + hijos[hijos.length - 1].x) / 2;
@@ -160,12 +183,15 @@ function acomodar(raices: Nodo[], abiertos: Set<string>) {
             x = columna * (ANCHO + SEPARACION_X);
             columna += 1;
         }
-        const propio = { nodo, x, y: inicio[nivel], alto: altoDe(nodo, abiertos) };
+        const propio = {
+            nodo, x, y: inicio[nivel], alto: altoDe(nodo, cerrados), llega,
+            cerrado: nodo.tipo !== 'grupo' && nodo.hijos.length > 0 && cerrados.has(nodo.clave),
+        };
         colocados.push(propio);
         hijos.forEach((h) => lineas.push([propio, h]));
         return propio;
     };
-    raices.forEach((r) => colocar(r, 0));
+    raices.forEach((r) => colocar(r, 0, true));
     const ultimoNivel = niveles.length - 1;
     return {
         colocados,
@@ -175,17 +201,46 @@ function acomodar(raices: Nodo[], abiertos: Set<string>) {
     };
 }
 
-const COLOR_LINEA = (responde: boolean | null) => (responde == null ? '#cbd5e1' : responde ? '#10b981' : '#f43f5e');
+/** Hijo caído: rojo. Arriba hay algo caído: gris sin flujo. Si no: verde con la señal bajando. */
+function estiloLinea(llegaPadre: boolean, hijo: Colocado) {
+    if (!llegaPadre) return { color: '#cbd5e1', flujo: false, roto: false };
+    if (hijo.nodo.tipo !== 'grupo' && hijo.nodo.responde === false) return { color: '#f43f5e', flujo: false, roto: true };
+    return { color: hijo.nodo.responde == null && hijo.nodo.tipo !== 'grupo' ? '#94a3b8' : '#10b981', flujo: true, roto: false };
+}
 
-const ICONOS: Record<string, ComponentType<{ className?: string }>> = {
-    router: ServerStackIcon, ap: WifiIcon, ptp_base: ArrowsRightLeftIcon, ptp_estacion: ArrowsRightLeftIcon, switch: Squares2X2Icon, olt: CircleStackIcon,
+/** Cada tipo con su ícono, su color y su nombre corto, para distinguirlos de un vistazo. */
+const TIPOS_VISTA: Record<string, { icono: ComponentType<{ className?: string }>; color: string; etiqueta: string }> = {
+    router: { icono: ServerStackIcon, color: 'bg-blue-600 text-white', etiqueta: 'MikroTik' },
+    ap: { icono: WifiIcon, color: 'bg-sky-500 text-white', etiqueta: 'AP' },
+    ptp: { icono: ArrowsRightLeftIcon, color: 'bg-amber-500 text-white', etiqueta: 'Enlace PtP' },
+    olt: { icono: CircleStackIcon, color: 'bg-violet-600 text-white', etiqueta: 'OLT' },
+    switch: { icono: Squares2X2Icon, color: 'bg-slate-600 text-white', etiqueta: 'Switch' },
+    otro: { icono: SignalIcon, color: 'bg-slate-500 text-white', etiqueta: 'Equipo' },
 };
 
+function tipoVista(nodo: Nodo) {
+    if (nodo.tipo === 'router' || nodo.equipo?.tipo === 'router') return TIPOS_VISTA.router;
+    if (nodo.tipo === 'olt') return TIPOS_VISTA.olt;
+    const tipo = nodo.equipo?.tipo ?? '';
+    if (tipo.startsWith('ptp')) return TIPOS_VISTA.ptp;
+    return TIPOS_VISTA[tipo] ?? TIPOS_VISTA.otro;
+}
+
 function IconoNodo({ nodo }: { nodo: Nodo }) {
-    const clase = `h-5 w-5 shrink-0 ${nodo.tipo === 'router' ? 'text-blue-600' : nodo.tipo === 'olt' ? 'text-violet-600' : 'text-slate-500'}`;
-    const tipo = nodo.tipo === 'router' || nodo.tipo === 'olt' ? nodo.tipo : nodo.equipo?.tipo ?? '';
-    const Icono = ICONOS[tipo] ?? SignalIcon;
-    return <Icono className={clase} />;
+    const vista = tipoVista(nodo);
+    const Icono = vista.icono;
+    return (
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${vista.color}`}>
+            <Icono className="h-4 w-4" />
+        </span>
+    );
+}
+
+/** Cliente de radio (antena CPE) o de fibra (ONU). */
+function IconoCliente({ medida, className = 'h-3.5 w-3.5' }: { medida: 'senal' | 'potencia'; className?: string }) {
+    return medida === 'senal'
+        ? <SignalIcon className={`${className} shrink-0 text-sky-500`} aria-label="Radio" />
+        : <BoltIcon className={`${className} shrink-0 text-amber-500`} aria-label="Fibra" />;
 }
 
 /** Radio: buena > -65, regular hasta -75. Fibra: buena > -25, regular hasta -27. */
@@ -194,15 +249,18 @@ function colorValor(valor: number, medida: 'senal' | 'potencia') {
     return valor >= bueno ? 'text-emerald-600 dark:text-emerald-400' : valor >= regular ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400';
 }
 
-function Caja({ nodo, seleccionado, onClick }: { nodo: Nodo; seleccionado: boolean; onClick: () => void }) {
+function Caja({ nodo, seleccionado, llega, onClick }: { nodo: Nodo; seleccionado: boolean; llega: boolean; onClick: () => void }) {
     const borde = nodo.responde == null ? 'border-slate-300 dark:border-slate-600' : nodo.responde ? 'border-emerald-400' : 'border-rose-500';
     const fondo = nodo.tipo === 'router' ? 'bg-blue-50 dark:bg-blue-500/10' : nodo.tipo === 'olt' ? 'bg-violet-50 dark:bg-violet-500/10' : 'bg-white dark:bg-slate-900';
     return (
         <button type="button" onClick={onClick} data-testid={`mapa-${nodo.clave}`}
-            className={`flex h-full w-full flex-col justify-between rounded-2xl border-2 ${borde} ${fondo} p-2.5 text-left shadow-sm transition hover:shadow-md ${seleccionado ? 'ring-4 ring-blue-500/30' : ''}`}>
+            className={`flex h-full w-full flex-col justify-between rounded-2xl border-2 ${borde} ${fondo} p-2.5 text-left shadow-sm transition hover:shadow-md ${seleccionado ? 'ring-4 ring-blue-500/30' : ''} ${llega || nodo.responde === false ? '' : 'opacity-50 grayscale'}`}>
             <span className="flex items-center gap-2">
                 <IconoNodo nodo={nodo} />
-                <span className="line-clamp-2 min-w-0 flex-1 text-[13px] font-bold leading-tight text-slate-900 dark:text-white" title={nodo.titulo}>{nodo.titulo}</span>
+                <span className="min-w-0 flex-1">
+                    <span className="block text-[9px] font-bold uppercase tracking-wide text-slate-400">{tipoVista(nodo).etiqueta}{nodo.pareja ? ` · ${nodo.equipo?.marca === 'mimosa' ? 'Mimosa' : nodo.equipo?.marca === 'ubiquiti' ? 'Ubiquiti' : ''}` : ''}</span>
+                    <span className="line-clamp-2 text-[13px] font-bold leading-tight text-slate-900 dark:text-white" title={nodo.titulo}>{nodo.titulo}</span>
+                </span>
             </span>
             <span className="truncate text-[11px] text-slate-500">{nodo.detalle}</span>
             <span className="flex items-center gap-2 text-[11px]">
@@ -218,31 +276,108 @@ function Caja({ nodo, seleccionado, onClick }: { nodo: Nodo; seleccionado: boole
     );
 }
 
-/** Lista de clientes bajo su AP o su PON, con su estado y su señal o potencia. */
-function Lista({ nodo, abierta, onAlternar }: { nodo: Nodo; abierta: boolean; onAlternar: () => void }) {
-    const filas = abierta ? nodo.filas : nodo.filas.slice(0, VISIBLES);
+/** Lista de clientes bajo su AP o su PON: una ramita por cliente con la señal bajando
+ *  si está conectado (roja si se desconectó). Se cierra a solo el título. */
+function Lista({ nodo, cerrada, llega, onAlternar, onCliente }: { nodo: Nodo; cerrada: boolean; llega: boolean; onAlternar: () => void; onCliente: (fila: Fila) => void }) {
     return (
-        <div className="h-full overflow-hidden rounded-2xl border border-slate-200 bg-white text-[12px] shadow-sm dark:border-slate-700 dark:bg-slate-900" data-testid={`mapa-${nodo.clave}`}>
-            <div className="flex items-center gap-2 border-b border-slate-100 px-2.5 py-2 dark:border-slate-800" style={{ height: CABEZA_GRUPO - 2 }}>
+        <div className={`h-full overflow-hidden rounded-2xl border border-slate-200 bg-white text-[12px] shadow-sm dark:border-slate-700 dark:bg-slate-900 ${llega ? '' : 'opacity-60'}`} data-testid={`mapa-${nodo.clave}`}>
+            <button type="button" onClick={onAlternar} aria-expanded={!cerrada} aria-label={`${cerrada ? 'Abrir' : 'Cerrar'} ${nodo.titulo}`}
+                className="flex w-full items-center gap-1.5 border-b border-slate-100 px-2 text-left hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60" style={{ height: CABEZA_GRUPO - 2 }}>
+                {cerrada ? <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" /> : <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
+                {nodo.filas[0] && <IconoCliente medida={nodo.filas[0].medida} className="h-4 w-4" />}
                 <span className="min-w-0 flex-1 truncate font-bold text-slate-800 dark:text-slate-100">{nodo.titulo}</span>
                 <span className="shrink-0 text-slate-500">{nodo.clientes}{nodo.caidos ? <span className="text-rose-600"> · {nodo.caidos}✕</span> : null}</span>
-            </div>
-            <ul className="px-2.5">
-                {filas.map((f) => (
-                    <li key={f.id} className="flex items-center gap-1.5" style={{ height: FILA }}>
-                        <span className={`h-2 w-2 shrink-0 rounded-full ${f.responde == null ? 'bg-slate-300' : f.responde ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                        <span className="w-9 shrink-0 font-mono text-[10px] text-slate-400">{f.contrato}</span>
-                        <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-200" title={f.nombre}>{f.nombre}</span>
-                        {f.valor != null && <span className={`shrink-0 font-mono text-[10px] font-semibold ${colorValor(f.valor, f.medida)}`}>{f.valor}</span>}
-                    </li>
-                ))}
-            </ul>
-            {nodo.filas.length > VISIBLES && (
-                <button type="button" onClick={onAlternar} className="w-full py-1 text-[11px] font-semibold text-blue-600 hover:underline dark:text-blue-400">
-                    {abierta ? 'Ver menos' : `Ver los ${nodo.filas.length}`}
-                </button>
+            </button>
+            {!cerrada && (
+                <ul className="relative pl-5 pr-2">
+                    {/* Tronco: la señal baja por la lista. */}
+                    <span className={`absolute bottom-3 left-2 top-0 w-0.5 ${llega ? 'mapa-tronco text-emerald-500' : 'bg-slate-300'}`} />
+                    {nodo.filas.map((f) => {
+                        const conectado = llega && f.responde !== false;
+                        return (
+                            <li key={f.id} className="relative flex cursor-pointer items-center gap-1.5 rounded hover:bg-blue-50 dark:hover:bg-slate-800" style={{ height: FILA }}
+                                onClick={() => onCliente(f)} data-testid={`mapa-cliente-${f.id}`}>
+                                <span className={`absolute -left-3 top-1/2 h-0.5 w-2.5 ${!llega ? 'bg-slate-300' : f.responde === false ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                                <span className={`h-2 w-2 shrink-0 rounded-full ${f.responde == null ? 'bg-slate-300' : f.responde ? 'bg-emerald-500' : 'bg-rose-500'} ${conectado && f.responde ? 'animate-pulse' : ''}`} />
+                                <IconoCliente medida={f.medida} className="h-3 w-3" />
+                                <span className="w-9 shrink-0 font-mono text-[10px] text-slate-400">{f.contrato}</span>
+                                <span className={`min-w-0 flex-1 truncate ${f.responde === false ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-200'}`} title={f.nombre}>{f.nombre}</span>
+                                {f.valor != null && <span className={`shrink-0 font-mono text-[10px] font-semibold ${colorValor(f.valor, f.medida)}`}>{f.valor}</span>}
+                            </li>
+                        );
+                    })}
+                </ul>
             )}
         </div>
+    );
+}
+
+interface FichaCliente {
+    id: number; nombre: string; cedula: string | null; telefono: string | null; direccion: string | null;
+    ip_asignada: string | null; suggested_user: string | null; identificador_onu: string | null; router_nombre: string;
+    estado: string; is_online: boolean; olt_nombre: string | null; nap_nombre: string | null; puerto_nap: number | null;
+    plan_nombre: string; velocidad_bajada: number; velocidad_subida: number; precio_plan: number | string;
+    total_deuda: number | string; facturas_pendientes: number; saldo_a_favor: number | string;
+    cuenta?: { explicacion?: string } | null;
+}
+
+const megas = (kbps: number) => (kbps >= 1024 ? `${Math.round(kbps / 1024)} Mb` : `${kbps} Kb`);
+const pesos = (valor: number | string) => Number(valor || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+
+/** Al tocar un cliente en el mapa: sus datos (plan, cuenta, red) sin salir de la topología. */
+function PanelCliente({ fila, onCerrar }: { fila: Fila; onCerrar: () => void }) {
+    const [ficha, setFicha] = useState<FichaCliente | null>(null);
+    const [error, setError] = useState(false);
+    useEffect(() => {
+        let vigente = true;
+        client.get<FichaCliente>(`/clientes/${encodeURIComponent(fila.contrato || String(fila.id))}/portal`)
+            .then(({ data }) => { if (vigente) setFicha(data); })
+            .catch(() => { if (vigente) setError(true); });
+        return () => { vigente = false; };
+    }, [fila]);
+    const radio = fila.medida === 'senal';
+    const filas: [string, string | null][] = ficha ? [
+        ['Estado', `${ficha.estado}${ficha.is_online ? ' · conectado' : ' · sin conexión'}`],
+        ['Plan', `${ficha.plan_nombre} · ${megas(ficha.velocidad_bajada)}/${megas(ficha.velocidad_subida)} · ${pesos(ficha.precio_plan)}`],
+        ['Debe', Number(ficha.total_deuda) > 0 ? `${pesos(ficha.total_deuda)} (${ficha.facturas_pendientes} factura${ficha.facturas_pendientes === 1 ? '' : 's'})` : 'Al corriente'],
+        ['Saldo a favor', Number(ficha.saldo_a_favor) > 0 ? pesos(ficha.saldo_a_favor) : null],
+        [radio ? 'Señal (vista por el AP)' : 'Potencia', fila.valor != null ? `${fila.valor} dBm` : null],
+        ['Teléfono', ficha.telefono],
+        ['Dirección', ficha.direccion],
+        ['IP', ficha.ip_asignada],
+        ['PPPoE', ficha.suggested_user],
+        ['MikroTik', ficha.router_nombre],
+        ['OLT', radio ? null : ficha.olt_nombre],
+        ['Caja NAP', ficha.nap_nombre ? `${ficha.nap_nombre}${ficha.puerto_nap ? ` · puerto ${ficha.puerto_nap}` : ''}` : null],
+        [radio ? 'Antena' : 'ONU', ficha.identificador_onu],
+    ] : [];
+    return (
+        <aside className="fixed inset-x-0 bottom-0 z-40 max-h-[75vh] overflow-y-auto rounded-t-3xl bg-white p-4 shadow-2xl sm:inset-x-auto sm:right-4 sm:top-24 sm:bottom-auto sm:w-96 sm:rounded-3xl dark:bg-slate-900" data-testid="mapa-panel-cliente">
+            <div className="mb-3 flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-1 font-mono text-xs text-slate-500"><IconoCliente medida={fila.medida} /> {radio ? 'Radio' : 'Fibra'} · {fila.contrato}</p>
+                    <h3 className="text-lg font-bold leading-tight text-slate-900 dark:text-white">{fila.nombre}</h3>
+                    {ficha?.cuenta?.explicacion && <p className="mt-1 text-xs text-slate-500">{ficha.cuenta.explicacion}</p>}
+                </div>
+                <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700"><XMarkIcon className="h-5 w-5" /></button>
+            </div>
+            {error ? <p className="text-sm text-rose-600">No se pudieron cargar sus datos.</p> : !ficha ? <p className="text-sm text-slate-500">Cargando…</p> : (
+                <dl className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
+                    {filas.filter(([, v]) => v).map(([k, v]) => (
+                        <div key={k} className="flex justify-between gap-3 py-1.5"><dt className="shrink-0 text-slate-500">{k}</dt><dd className="text-right font-medium text-slate-800 dark:text-slate-100">{v}</dd></div>
+                    ))}
+                </dl>
+            )}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+                <Link to={`/admin/clientes?revisar=${fila.id}`} className="flex items-center justify-center rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white">Ver ficha completa</Link>
+                {radio ? (
+                    <button type="button" onClick={() => void abrirAntena(fila.id)} className="rounded-xl bg-slate-100 py-2.5 text-xs font-bold dark:bg-slate-800">Abrir antena</button>
+                ) : ficha?.ip_asignada ? (
+                    <button type="button" onClick={() => void abrirEquipo(ficha.ip_asignada!)} className="rounded-xl bg-slate-100 py-2.5 text-xs font-bold dark:bg-slate-800">Abrir su equipo</button>
+                ) : null}
+                {ficha?.telefono && <a href={`tel:${ficha.telefono}`} className="flex items-center justify-center rounded-xl bg-slate-100 py-2.5 text-xs font-bold dark:bg-slate-800">Llamar</a>}
+            </div>
+        </aside>
     );
 }
 
@@ -317,6 +452,14 @@ function Panel({ nodo, onCerrar, onEditar, onRevisar, revisando }: {
     );
 }
 
+/** Al abrir cabe a lo ancho (se lee); "Ver todo" mete también lo alto. */
+function vistaQueCabe(caja: HTMLDivElement | null, ancho: number, alto: number, completo = false) {
+    if (!caja) return { x: 0, y: 0, z: 1 };
+    const aLoAncho = (caja.clientWidth - 32) / ancho;
+    const z = Math.min(1, Math.max(completo ? 0.15 : 0.4, completo ? Math.min(aLoAncho, (caja.clientHeight - 32) / alto) : aLoAncho));
+    return { z, x: (caja.clientWidth - ancho * z) / 2, y: 16 };
+}
+
 /**
  * Mapa de toda la red: nodo principal arriba y hacia abajo troncal, enlaces,
  * MikroTik de cada zona, sus AP y OLT, y hasta cada cliente (radio bajo su AP,
@@ -329,69 +472,170 @@ export default function MapaRed({ arbol, onEditar, onRevisar, revisando }: {
     revisando: number | null;
 }) {
     const raices = useMemo(() => [...arbol.troncal.map(deEquipo), ...arbol.routers.map(deRouter)], [arbol]);
-    const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
-    const { colocados, lineas, ancho, alto } = useMemo(() => acomodar(raices, abiertos), [raices, abiertos]);
+    const [cerrados, setCerrados] = useState<Set<string>>(new Set());
+    const { colocados, lineas, ancho, alto } = useMemo(() => acomodar(raices, cerrados), [raices, cerrados]);
     const [elegido, setElegido] = useState<string | null>(null);
+    const [clienteElegido, setClienteElegido] = useState<Fila | null>(null);
     const contenedor = useRef<HTMLDivElement>(null);
-    const [zoom, setZoom] = useState(1);
+    // Vista libre como un mapa: arrastrar para mover, rueda o dos dedos para acercar.
+    const [vista, setVista] = useState({ x: 0, y: 0, z: 1 });
+    const punteros = useRef(new Map<number, { x: number; y: number }>());
+    const gesto = useRef<{ x: number; y: number; distancia: number; movido: boolean }>({ x: 0, y: 0, distancia: 0, movido: false });
 
-    const alternar = (clave: string) => setAbiertos((actual) => {
+    const alternar = (clave: string) => setCerrados((actual) => {
         const nuevo = new Set(actual);
         if (nuevo.has(clave)) nuevo.delete(clave); else nuevo.add(clave);
         return nuevo;
     });
+    const todasLasListas = useMemo(() => {
+        const claves: string[] = [];
+        const recorrer = (n: Nodo) => { if (n.tipo === 'grupo') claves.push(n.clave); n.hijos.forEach(recorrer); };
+        raices.forEach(recorrer);
+        return claves;
+    }, [raices]);
 
-    // Al abrir: que quepa a lo ancho (sin bajar de 55%) y, si no cabe, centrado en el nodo principal.
-    const raizX = colocados.find((c) => c.y === 0)?.x ?? 0;
+    /** Acercar o alejar dejando quieto el punto (px, py) de la pantalla. */
+    const acercar = (factor: number, px?: number, py?: number) => setVista((v) => {
+        const caja = contenedor.current;
+        const cx = px ?? (caja ? caja.clientWidth / 2 : 0);
+        const cy = py ?? (caja ? caja.clientHeight / 2 : 0);
+        const z = Math.min(2, Math.max(0.15, v.z * factor));
+        return { z, x: cx - (cx - v.x) * (z / v.z), y: cy - (cy - v.y) * (z / v.z) };
+    });
+
+    /** Todo el mapa a la vista, centrado. */
+    const ajustar = () => setVista(vistaQueCabe(contenedor.current, ancho, alto, true));
+
+    // Al abrir, el mapa completo a la vista (después se mueve libre; no se reacomoda solo).
+    const ajustado = useRef(false);
     useEffect(() => {
-        let centrar = 0;
-        const ajustar = window.setTimeout(() => {
-            const caja = contenedor.current;
-            const visible = caja?.clientWidth ?? ancho;
-            const nuevo = Math.min(1, Math.max(0.55, (visible - 24) / ancho));
-            setZoom(nuevo);
-            centrar = window.requestAnimationFrame(() => {
-                if (caja && caja.scrollWidth > caja.clientWidth) caja.scrollLeft = (raizX + ANCHO / 2) * nuevo - caja.clientWidth / 2 + 12;
-            });
+        if (ajustado.current) return undefined;
+        const espera = window.setTimeout(() => {
+            setVista(vistaQueCabe(contenedor.current, ancho, alto));
+            ajustado.current = true;
         }, 0);
-        return () => { window.clearTimeout(ajustar); window.cancelAnimationFrame(centrar); };
-    }, [ancho, raizX]);
+        return () => window.clearTimeout(espera);
+    }, [ancho, alto]);
+
+    // La rueda del mouse acerca y aleja (sin mover la página).
+    useEffect(() => {
+        const caja = contenedor.current;
+        if (!caja) return undefined;
+        const rueda = (evento: WheelEvent) => {
+            evento.preventDefault();
+            const borde = caja.getBoundingClientRect();
+            acercar(Math.exp(-evento.deltaY * 0.0015), evento.clientX - borde.left, evento.clientY - borde.top);
+        };
+        caja.addEventListener('wheel', rueda, { passive: false });
+        return () => caja.removeEventListener('wheel', rueda);
+    }, []);
+
+    const alPresionar = (evento: React.PointerEvent) => {
+        punteros.current.set(evento.pointerId, { x: evento.clientX, y: evento.clientY });
+        const lista = [...punteros.current.values()];
+        gesto.current = {
+            x: evento.clientX, y: evento.clientY, movido: false,
+            distancia: lista.length === 2 ? Math.hypot(lista[0].x - lista[1].x, lista[0].y - lista[1].y) : 0,
+        };
+    };
+    const alMover = (evento: React.PointerEvent) => {
+        if (!punteros.current.has(evento.pointerId)) return;
+        punteros.current.set(evento.pointerId, { x: evento.clientX, y: evento.clientY });
+        const lista = [...punteros.current.values()];
+        if (lista.length === 2) {
+            // Dos dedos: pellizcar para acercar o alejar.
+            const distancia = Math.hypot(lista[0].x - lista[1].x, lista[0].y - lista[1].y);
+            const borde = contenedor.current!.getBoundingClientRect();
+            if (gesto.current.distancia) acercar(distancia / gesto.current.distancia, (lista[0].x + lista[1].x) / 2 - borde.left, (lista[0].y + lista[1].y) / 2 - borde.top);
+            gesto.current.distancia = distancia;
+            gesto.current.movido = true;
+            return;
+        }
+        const dx = evento.clientX - gesto.current.x;
+        const dy = evento.clientY - gesto.current.y;
+        if (!gesto.current.movido && Math.hypot(dx, dy) < 5) return;
+        if (!gesto.current.movido) contenedor.current?.setPointerCapture(evento.pointerId);
+        gesto.current = { ...gesto.current, x: evento.clientX, y: evento.clientY, movido: true };
+        setVista((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
+    };
+    const alSoltar = (evento: React.PointerEvent) => {
+        punteros.current.delete(evento.pointerId);
+        if (punteros.current.size === 1) {
+            const [resto] = [...punteros.current.values()];
+            gesto.current = { ...gesto.current, x: resto.x, y: resto.y, distancia: 0 };
+        }
+    };
 
     const nodo = colocados.find((c) => c.nodo.clave === elegido)?.nodo ?? null;
     return (
         <div className="relative">
-            <div className="absolute right-2 top-2 z-10 flex gap-1">
-                <button type="button" aria-label="Alejar" onClick={() => setZoom((z) => Math.max(0.3, z - 0.15))} className="rounded-lg bg-white p-1.5 shadow ring-1 ring-black/5 dark:bg-slate-800"><MagnifyingGlassMinusIcon className="h-5 w-5" /></button>
-                <button type="button" aria-label="Acercar" onClick={() => setZoom((z) => Math.min(1.6, z + 0.15))} className="rounded-lg bg-white p-1.5 shadow ring-1 ring-black/5 dark:bg-slate-800"><MagnifyingGlassPlusIcon className="h-5 w-5" /></button>
+            <style>{ESTILO_FLUJO}</style>
+            <div className="absolute right-2 top-2 z-10 flex flex-wrap justify-end gap-1">
+                <button type="button" onClick={() => setCerrados(new Set())} className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold shadow ring-1 ring-black/5 dark:bg-slate-800">Abrir todo</button>
+                <button type="button" onClick={() => setCerrados(new Set(todasLasListas))} className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold shadow ring-1 ring-black/5 dark:bg-slate-800">Cerrar clientes</button>
+                <button type="button" onClick={ajustar} className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold shadow ring-1 ring-black/5 dark:bg-slate-800">Ver todo</button>
+                <button type="button" aria-label="Alejar" onClick={() => acercar(1 / 1.25)} className="rounded-lg bg-white p-1.5 shadow ring-1 ring-black/5 dark:bg-slate-800"><MagnifyingGlassMinusIcon className="h-5 w-5" /></button>
+                <button type="button" aria-label="Acercar" onClick={() => acercar(1.25)} className="rounded-lg bg-white p-1.5 shadow ring-1 ring-black/5 dark:bg-slate-800"><MagnifyingGlassPlusIcon className="h-5 w-5" /></button>
             </div>
-            <div ref={contenedor} className="overflow-x-auto rounded-2xl bg-slate-50 p-3 ring-1 ring-black/[0.04] dark:bg-slate-950/40" data-testid="mapa-red">
-                <div style={{ width: ancho * zoom, height: alto * zoom }} className="mx-auto">
-                    <div style={{ width: ancho, height: alto, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'relative' }}>
+            <div className="pointer-events-none absolute bottom-2 left-3 right-3 z-10 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-white/90 px-2.5 py-1.5 text-[11px] text-slate-600 shadow-sm dark:bg-slate-900/90 dark:text-slate-300" data-testid="mapa-leyenda">
+                {[TIPOS_VISTA.router, TIPOS_VISTA.ptp, TIPOS_VISTA.ap, TIPOS_VISTA.olt].map((t) => {
+                    const Icono = t.icono;
+                    return <span key={t.etiqueta} className="flex items-center gap-1"><span className={`flex h-4 w-4 items-center justify-center rounded ${t.color}`}><Icono className="h-3 w-3" /></span>{t.etiqueta}</span>;
+                })}
+                <span className="flex items-center gap-1"><IconoCliente medida="senal" /> Cliente radio (CPE)</span>
+                <span className="flex items-center gap-1"><IconoCliente medida="potencia" /> Cliente fibra</span>
+                <span className="ml-auto hidden text-slate-400 sm:inline">Arrastra para moverte · rueda o dos dedos para acercar</span>
+            </div>
+            <div
+                ref={contenedor}
+                data-testid="mapa-red"
+                className="relative h-[75vh] min-h-[420px] cursor-grab touch-none select-none overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-black/[0.04] active:cursor-grabbing dark:bg-slate-950/40"
+                onPointerDown={alPresionar}
+                onPointerMove={alMover}
+                onPointerUp={alSoltar}
+                onPointerCancel={alSoltar}
+                onClickCapture={(evento) => {
+                    // Un arrastre no cuenta como clic en la caja donde terminó.
+                    if (gesto.current.movido) { evento.stopPropagation(); evento.preventDefault(); gesto.current.movido = false; }
+                }}
+            >
+                <div style={{ width: ancho, height: alto, transform: `translate(${vista.x}px, ${vista.y}px) scale(${vista.z})`, transformOrigin: '0 0', position: 'absolute', left: 0, top: 0 }}>
                         <svg width={ancho} height={alto} className="absolute inset-0" aria-hidden="true">
                             {lineas.map(([padre, hijo]) => {
                                 const x1 = padre.x + ANCHO / 2;
-                                const y1 = padre.y + padre.alto;
+                                const y1 = padre.y + padre.alto + BOTON_NODO;
                                 const x2 = hijo.x + ANCHO / 2;
                                 const y2 = hijo.y;
                                 const medio = y2 - SEPARACION_Y / 2;
-                                const responde = hijo.nodo.tipo === 'grupo' ? null : hijo.nodo.responde;
+                                const linea = estiloLinea(padre.llega, hijo);
+                                const d = `M${x1},${y1} V${medio} H${x2} V${y2}`;
                                 return (
-                                    <path key={`${padre.nodo.clave}-${hijo.nodo.clave}`} d={`M${x1},${y1} V${medio} H${x2} V${y2}`}
-                                        fill="none" stroke={COLOR_LINEA(responde)} strokeWidth={responde === false ? 3 : 2}
-                                        strokeDasharray={responde === false ? '6 4' : undefined} />
+                                    <g key={`${padre.nodo.clave}-${hijo.nodo.clave}`}>
+                                        <path d={d} fill="none" stroke={linea.color} strokeOpacity={linea.flujo ? 0.35 : 1} strokeWidth={linea.roto ? 3 : 2}
+                                            strokeDasharray={linea.roto ? '6 4' : undefined} />
+                                        {linea.flujo && <path d={d} fill="none" stroke={linea.color} strokeWidth={2.5} className="mapa-flujo" />}
+                                    </g>
                                 );
                             })}
                         </svg>
-                        {colocados.map(({ nodo: n, x, y, alto: altoCaja }) => (
+                        {colocados.map(({ nodo: n, x, y, alto: altoCaja, llega, cerrado }) => (
                             <div key={n.clave} style={{ position: 'absolute', left: x, top: y, width: ANCHO, height: altoCaja }}>
                                 {n.tipo === 'grupo'
-                                    ? <Lista nodo={n} abierta={abiertos.has(n.clave)} onAlternar={() => alternar(n.clave)} />
-                                    : <Caja nodo={n} seleccionado={elegido === n.clave} onClick={() => setElegido(n.clave)} />}
+                                    ? <Lista nodo={n} cerrada={cerrados.has(n.clave)} llega={llega} onAlternar={() => alternar(n.clave)} onCliente={(f) => { setElegido(null); setClienteElegido(f); }} />
+                                    : <Caja nodo={n} seleccionado={elegido === n.clave} llega={llega} onClick={() => { setClienteElegido(null); setElegido(n.clave); }} />}
+                                {n.tipo !== 'grupo' && n.hijos.length > 0 && (
+                                    <button type="button" onClick={() => alternar(n.clave)} aria-label={`${cerrado ? 'Abrir' : 'Cerrar'} lo que cuelga de ${n.titulo}`}
+                                        data-testid={`mapa-alternar-${n.clave}`}
+                                        className="absolute left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 shadow ring-1 ring-black/10 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-300"
+                                        style={{ top: altoCaja + 2 }}>
+                                        {cerrado ? <><PlusIcon className="h-3 w-3" />{n.hijos.length}</> : <MinusIcon className="h-3 w-3" />}
+                                    </button>
+                                )}
                             </div>
                         ))}
-                    </div>
                 </div>
             </div>
+            {clienteElegido && <PanelCliente key={clienteElegido.id} fila={clienteElegido} onCerrar={() => setClienteElegido(null)} />}
             {nodo && <Panel nodo={nodo} onCerrar={() => setElegido(null)} onEditar={onEditar} onRevisar={onRevisar} revisando={revisando} />}
         </div>
     );

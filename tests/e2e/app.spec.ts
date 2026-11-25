@@ -2709,11 +2709,52 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
   await expect(page.getByTestId('mapa-o8p1').locator('li').first()).toContainText('Ana María Mazariegos')
   await expect(page.getByTestId('mapa-r2')).toContainText('Vicente Guerrero')
   await expect(page.getByRole('tab', { name: 'Lista' })).toHaveCount(0)
+  // Al tocar un cliente se ven sus datos.
+  await page.route('**/api/clientes/3067/portal', (route) => route.fulfill({ json: {
+    id: 11, nombre: 'Ximena Zuñiga', cedula: '3067', telefono: '9611112222', direccion: 'Flores Magón', ip_asignada: '10.10.11.20',
+    suggested_user: 'ximena', identificador_onu: null, router_nombre: 'Flores Magon', estado: 'activo', is_online: true,
+    olt_nombre: null, nap_nombre: null, puerto_nap: null, plan_nombre: 'Hogar 20', velocidad_bajada: 20480, velocidad_subida: 5120,
+    precio_plan: 350, total_deuda: 350, facturas_pendientes: 1, saldo_a_favor: 0, cuenta: null,
+  } }))
+  await page.getByTestId('mapa-cliente-11').click()
+  await expect(page.getByTestId('mapa-panel-cliente')).toContainText('Hogar 20 · 20 Mb/5 Mb')
+  await expect(page.getByTestId('mapa-panel-cliente')).toContainText('-63 dBm')
+  await expect(page.getByTestId('mapa-panel-cliente').getByRole('link', { name: 'Ver ficha completa' })).toHaveAttribute('href', '/admin/clientes?revisar=11')
+  await page.getByTestId('mapa-panel-cliente').getByRole('button', { name: 'Cerrar' }).click()
+  await expect(page.getByTestId('mapa-leyenda')).toContainText('Cliente fibra')
+  // Se mueve libre: arrastrar desplaza el mapa y la rueda lo acerca (con mouse, en escritorio).
+  if (!test.info().project.name.includes('mobile')) {
+    const lienzo = page.getByTestId('mapa-red')
+    const capa = lienzo.locator(':scope > div').first()
+    const antes = await capa.getAttribute('style')
+    const caja = (await lienzo.boundingBox())!
+    await page.mouse.move(caja.x + 30, caja.y + caja.height - 40)
+    await page.mouse.down()
+    await page.mouse.move(caja.x + 130, caja.y + caja.height - 90, { steps: 5 })
+    await page.mouse.up()
+    expect(await capa.getAttribute('style')).not.toBe(antes)
+    const movido = await capa.getAttribute('style')
+    await page.mouse.move(caja.x + caja.width / 2, caja.y + caja.height / 2)
+    await page.mouse.wheel(0, -300)
+    await expect.poll(() => capa.getAttribute('style')).not.toBe(movido)
+  }
+  await page.getByRole('button', { name: 'Ver todo' }).click()
+  // Minimizar y maximizar: el MikroTik de Flores Magón cierra todo lo que cuelga de él.
+  await page.getByTestId('mapa-alternar-r4').click()
+  await expect(page.getByTestId('mapa-e8')).toHaveCount(0)
+  await expect(page.getByTestId('mapa-alternar-r4')).toContainText('2')
+  await page.getByTestId('mapa-alternar-r4').click()
+  await expect(page.getByTestId('mapa-e8')).toBeVisible()
+  // Las listas se cierran a solo el título.
+  await page.getByRole('button', { name: 'Cerrar clientes', exact: true }).click()
+  await expect(page.getByTestId('mapa-o8p1').locator('li')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Abrir PON 1', exact: true }).click()
+  await expect(page.getByTestId('mapa-o8p1').locator('li')).toHaveCount(2)
   await page.getByRole('button', { name: 'Agregar equipo' }).click()
   await page.getByPlaceholder('AP Sagrado Norte').fill('AP Sagrado Sur')
   await page.getByPlaceholder('10.20.30.2').fill('10.1.0.4')
   await page.getByLabel('MikroTik desde el que se revisa').selectOption('2')
-  await page.getByLabel('Cuelga de').selectOption('1')
+  await page.getByRole('dialog').getByLabel('Cuelga de').selectOption('1')
   await page.getByPlaceholder('ubnt').fill('ubnt')
   await page.getByRole('button', { name: 'Guardar' }).click()
   await expect.poll(() => enviados.length).toBe(1)
