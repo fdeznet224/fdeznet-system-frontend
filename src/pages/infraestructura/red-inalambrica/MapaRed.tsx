@@ -108,7 +108,7 @@ function deOlt(olt: OltArbol): Nodo {
         clave: `o${olt.id}`,
         tipo: 'olt',
         titulo: `OLT ${olt.nombre}`,
-        detalle: `${olt.tecnologia} · ${olt.ip}`,
+        detalle: [olt.tecnologia, olt.ip, olt.latencia_ms != null ? `${olt.latencia_ms} ms` : olt.responde === false ? 'no responde' : null].filter(Boolean).join(' · '),
         responde: olt.responde ?? null,
         senal: null,
         clientes: todos.length,
@@ -428,7 +428,7 @@ function Panel({ nodo, onCerrar, onEditar, onRevisar, revisando, equipos, onCamb
         ['Clientes', nodo.clientes ? `${nodo.clientes}${nodo.caidos ? ` · ${nodo.caidos} sin responder` : ''}` : null],
         ['Firmware', e.firmware],
     ] : nodo.olt ? [
-        ['Estado', nodo.responde == null ? 'Sin datos' : nodo.responde ? 'En línea (sus clientes conectan)' : 'Sin clientes conectados'],
+        ['Ping', nodo.responde == null ? 'Sin datos' : nodo.responde ? (nodo.olt.latencia_ms != null ? `${nodo.olt.latencia_ms} ms` : 'En línea') : 'No responde'],
         ['Tecnología', nodo.olt.tecnologia],
         ['IP', nodo.olt.ip],
         ['PON con clientes', String(nodo.olt.pons.length)],
@@ -479,9 +479,10 @@ function vistaQueCabe(caja: HTMLDivElement | null, ancho: number, alto: number, 
  * MikroTik de cada zona, sus AP y OLT, y hasta cada cliente (radio bajo su AP,
  * fibra bajo su PON). La línea es verde si el equipo de abajo responde y roja si no.
  */
-export default function MapaRed({ arbol, equipos, onEditar, onRevisar, onCambio, revisando }: {
+export default function MapaRed({ arbol, equipos, enfoque, onEditar, onRevisar, onCambio, revisando }: {
     arbol: Arbol;
     equipos: EquipoRed[];
+    enfoque?: { clave: string; vez: number } | null;
     onEditar: (equipo: EquipoRed) => void;
     onRevisar: (equipo: EquipoRed) => void;
     onCambio: () => void;
@@ -532,6 +533,23 @@ export default function MapaRed({ arbol, equipos, onEditar, onRevisar, onCambio,
         }, 0);
         return () => window.clearTimeout(espera);
     }, [ancho, alto]);
+
+    // Llevar la vista a un equipo (aviso de falla): se abre todo, se centra y se abre su panel.
+    const colocadosRef = useRef(colocados);
+    useEffect(() => { colocadosRef.current = colocados; }, [colocados]);
+    useEffect(() => {
+        if (!enfoque) return undefined;
+        const abrir = window.setTimeout(() => setCerrados(new Set()), 0);
+        const centrar = window.setTimeout(() => {
+            const destino = colocadosRef.current.find((c) => c.nodo.clave === enfoque.clave);
+            const caja = contenedor.current;
+            if (!destino || !caja) return;
+            const z = 0.9;
+            setVista({ z, x: caja.clientWidth / 2 - (destino.x + ANCHO / 2) * z, y: caja.clientHeight / 3 - destino.y * z });
+            setElegido(destino.nodo.clave);
+        }, 60);
+        return () => { window.clearTimeout(abrir); window.clearTimeout(centrar); };
+    }, [enfoque]);
 
     // La rueda del mouse acerca y aleja (sin mover la página).
     useEffect(() => {

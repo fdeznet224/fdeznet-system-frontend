@@ -2676,6 +2676,7 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
     ] }],
   } })
   await page.route('**/api/red-inalambrica/arbol', (route) => route.fulfill({ json: {
+    fallas: [{ clave: 'e3', tipo: 'equipo', id: 3, nombre: 'AP Sagrado Norte', ip: '10.1.0.3', tipo_nombre: 'AP / sectorial', desde: new Date(Date.now() - 4 * 60000).toISOString(), clientes_afectados: 1 }],
     troncal: [equipo(5, 'RB-ADMINISTRADOR-20DENOVIEMBRE', 'router', { troncal: true, marca: 'mikrotik', senal: null, hijos: [mimosa] })],
     routers: [{ id: 2, nombre: 'Vicente Guerrero', ip: '10.8.0.2', en_linea: true,
       equipos: [equipo(1, 'PtP VG Sagrado', 'ptp_base', { hijos: [ap] })],
@@ -2709,6 +2710,12 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
   await expect(page.getByTestId('mapa-o8p1').locator('li').first()).toContainText('Ana María Mazariegos')
   await expect(page.getByTestId('mapa-r2')).toContainText('Vicente Guerrero')
   await expect(page.getByRole('tab', { name: 'Lista' })).toHaveCount(0)
+  // El punto de falla sale arriba; al tocarlo, el mapa va a ese equipo y abre su panel.
+  await expect(page.getByTestId('aviso-fallas')).toContainText('Sin respuesta: AP / sectorial AP Sagrado Norte')
+  await expect(page.getByTestId('aviso-fallas')).toContainText('1 clientes afectados')
+  await page.getByTestId('aviso-fallas').getByRole('button').first().click()
+  await expect(page.getByTestId('mapa-panel')).toContainText('AP Sagrado Norte')
+  await page.getByTestId('mapa-panel').getByRole('button', { name: 'Cerrar' }).click()
   // Al tocar un cliente se ven sus datos.
   await page.route('**/api/clientes/3067/portal', (route) => route.fulfill({ json: {
     id: 11, nombre: 'Ximena Zuñiga', cedula: '3067', telefono: '9611112222', direccion: 'Flores Magón', ip_asignada: '10.10.11.20',
@@ -2716,7 +2723,7 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
     olt_nombre: null, nap_nombre: null, puerto_nap: null, plan_nombre: 'Hogar 20', velocidad_bajada: 20480, velocidad_subida: 5120,
     precio_plan: 350, total_deuda: 350, facturas_pendientes: 1, saldo_a_favor: 0, cuenta: null,
   } }))
-  await page.getByTestId('mapa-cliente-11').click()
+  await page.getByTestId('mapa-cliente-11').dispatchEvent('click')
   await expect(page.getByTestId('mapa-panel-cliente')).toContainText('Hogar 20 · 20 Mb/5 Mb')
   await expect(page.getByTestId('mapa-panel-cliente')).toContainText('-63 dBm')
   await expect(page.getByTestId('mapa-panel-cliente').getByRole('link', { name: 'Ver ficha completa' })).toHaveAttribute('href', '/admin/clientes?revisar=11')

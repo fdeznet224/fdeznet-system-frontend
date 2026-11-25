@@ -17,6 +17,8 @@ import RegistrarPago from '@/pages/finanzas/components/RegistrarPago';
 import CreateClientModal from '@/pages/clientes/components/CreateClientModal';
 import { useBrand } from '@/context/brand/useBrand';
 import { usaFibra } from '@/components/layout/navegacion';
+import AvisoFallas from '@/pages/infraestructura/red-inalambrica/AvisoFallas';
+import type { Falla } from '@/pages/infraestructura/red-inalambrica/tipos';
 
 interface DashboardData {
     inventario?: { disponibles: number; minimo: number; bajo: boolean };
@@ -152,6 +154,15 @@ export default function Dashboard() {
         return () => clearInterval(intervalo);
     }, [conFibra]);
 
+    // Puntos de falla de la red (AP, PtP, OLT caídos): el ping corre cada minuto.
+    const [fallasRed, setFallasRed] = useState<Falla[]>([]);
+    useEffect(() => {
+        const leer = () => client.get<Falla[]>('/red-inalambrica/fallas').then(({ data: lista }) => setFallasRed(lista)).catch(() => undefined);
+        const primera = window.setTimeout(() => void leer(), 0);
+        const intervalo = setInterval(leer, 60000);
+        return () => { window.clearTimeout(primera); clearInterval(intervalo); };
+    }, []);
+
     useEffect(() => {
         const initialLoad = window.setTimeout(() => void fetchData(), 0);
         const interval = setInterval(fetchData, 10000);
@@ -190,6 +201,8 @@ export default function Dashboard() {
                     </>
                 }
             />
+
+            <AvisoFallas fallas={fallasRed} enlace />
 
             {data.inventario?.bajo && (
                 <Link

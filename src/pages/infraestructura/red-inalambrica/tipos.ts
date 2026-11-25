@@ -75,6 +75,7 @@ export interface OltArbol {
     equipo_padre_id?: number | null;
     /** En línea si alguno de sus clientes está conectado. */
     responde?: boolean | null;
+    latencia_ms?: number | null;
     pons: { pon: number | null; clientes: ClienteFibra[] }[];
 }
 
@@ -88,7 +89,20 @@ export interface RouterArbol {
     olts?: OltArbol[];
 }
 
+/** Equipo u OLT caído cuyo equipo de arriba sí responde: ahí está la falla. */
+export interface Falla {
+    clave: string;
+    tipo: 'equipo' | 'olt';
+    id: number;
+    nombre: string;
+    ip: string | null;
+    tipo_nombre: string;
+    desde: string;
+    clientes_afectados: number;
+}
+
 export interface Arbol {
+    fallas?: Falla[];
     troncal: EquipoRed[];
     routers: RouterArbol[];
     tipos: Record<string, string>;
