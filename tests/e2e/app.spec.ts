@@ -2496,3 +2496,53 @@ test('activa la huella al entrar y la siguiente vez entra con ella', async ({ pa
   expect(entrada?.credencial?.response?.signature).toBeTruthy()
   expect(entrada?.credencial?.response?.userHandle).toBe('MQ')
 })
+
+test('portal del cliente: paga con la app de su banco (CoDi) desde Inicio y Mis facturas', async ({ page }) => {
+  const capturas = process.env.CAPTURAS
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockApi(page)
+  const cobros: unknown[] = []
+  await page.route('**/api/portal/sesion', (route) => route.fulfill({ json: { debe_cambiar: false } }))
+  await page.route('**/api/public/marca', (route) => route.fulfill({ json: {
+    empresa_nombre: 'FdezNet', sistema_nombre: 'FdezPay', logo_url: null, favicon_url: null, color_primario: '#2563eb',
+    color_secundario: '#4f46e5', empresa_telefono: '9930001111', empresa_email: null, empresa_direccion: null, pie_recibo: null,
+  } }))
+  await page.route('**/api/portal/resumen', (route) => route.fulfill({ json: {
+    nombre: 'Francisca De la Cruz', contrato: 'F1C8', direccion: 'Paraíso', conectado: true,
+    plan: { nombre: 'Hogar 20', bajada_kbps: 20480, subida_kbps: 5120, precio: 350 },
+    saldo_a_favor: 0,
+    cuenta: { estado_servicio: 'activo', explicacion: 'Al corriente.',
+      adeudos: [{ concepto: 'Noviembre 2026', monto: 350, vence: '01/12/2026', vencido: false }], promesa: null },
+    pagos: [], datos_pago: 'Transferencia a *BBVA* con concepto F1C8', tiene_onu: true,
+    telefono: '9930000000', correo: null, zona: 'Paraíso', pago_efectivo: null,
+    calendario: { tipo: 'por_vencer', fecha: '2026-12-01', dias: 3, vence: '2026-12-01', corte: '2026-12-03' },
+    codi: { celular: '9611234567', confirmado: true },
+  } }))
+  await page.route('**/api/portal/consumo?**', (route) => route.fulfill({ json: { mes: '2026-11', dias: [], total_bajada: 0, total_subida: 0, dias_con_uso: 0, registro_desde: null } }))
+  await page.route('**/api/portal/trafico', (route) => route.fulfill({ json: { disponible: false } }))
+  await page.route('**/api/portal/facturas', (route) => route.fulfill({ json: [
+    { id: 41, concepto: 'Noviembre 2026', total: 350, saldo: 350, estado: 'pendiente', emitida: '2026-11-25', vence: '2026-12-01', pagada: null },
+  ] }))
+  await page.route('**/api/portal/promesa', (route) => route.fulfill({ json: { puede: false } }))
+  await page.route('**/api/portal/pago-codi', (route) => {
+    cobros.push(route.request().postDataJSON())
+    return route.fulfill({ json: { enviado: true, monto: '350.00', celular: '9619998877', vence_en_minutos: 15 } })
+  })
+
+  await page.goto('/cliente')
+  const enInicio = page.getByTestId('pagar-codi-inicio')
+  await expect(enInicio).toContainText('Pagar $350.00 con mi banco')
+  if (capturas) await page.screenshot({ path: `${capturas}/1-inicio.png` })
+
+  await enInicio.click()
+  const formulario = page.getByTestId('pagar-codi')
+  await expect(formulario.getByLabel('Celular registrado en la app de tu banco')).toHaveValue('961 123 4567')
+  if (capturas) await page.screenshot({ path: `${capturas}/2-mis-facturas.png` })
+
+  // Lo puede cambiar por el de su banco antes de mandar.
+  await formulario.getByLabel('Celular registrado en la app de tu banco').fill('961 999 8877')
+  await formulario.getByRole('button', { name: 'Pagar $350.00 con mi banco' }).click()
+  await expect(page.getByTestId('codi-enviado')).toContainText('al 961 999 8877')
+  expect(cobros).toEqual([{ telefono: '9619998877' }])
+  if (capturas) await page.screenshot({ path: `${capturas}/3-cobro-enviado.png` })
+})

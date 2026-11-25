@@ -4,6 +4,7 @@ import { ArrowDownTrayIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon }
 
 import portalClient from '@/api/portal';
 import { apiErrorMessage } from '@/utils/apiError';
+import PagarCodi from './PagarCodi';
 import SemanaPago from './SemanaPago';
 import type { Factura, OpcionesPromesa, Resumen } from './tipos';
 import { BOTON, BOTON_SUAVE, CAMPO, ETIQUETA, TARJETA, TITULO, dinero } from './ui';
@@ -85,11 +86,12 @@ export default function PagosPortal({ resumen, color, onCambio }: { resumen: Res
                         <p className="text-lg font-semibold">Estás al corriente</p>
                     </div>
                 )}
+                {total > 0 && resumen.codi && <PagarCodi total={total} celular={resumen.codi.celular} color={color} />}
                 {resumen.saldo_a_favor > 0 && <p className="text-sm text-emerald-700 dark:text-emerald-300">Tienes {dinero(resumen.saldo_a_favor)} a favor.</p>}
                 {(resumen.datos_pago || resumen.pago_efectivo) && (
                     <div>
                         <button type="button" onClick={() => setVerPago((v) => !v)} className={`${BOTON_SUAVE} w-full justify-between`} aria-expanded={verPago}>
-                            ¿Cómo y dónde pago?
+                            {total > 0 && resumen.codi ? 'Otras formas de pago' : '¿Cómo y dónde pago?'}
                             <ChevronDownIcon className={`h-4 w-4 transition ${verPago ? 'rotate-180' : ''}`} />
                         </button>
                         {verPago && (

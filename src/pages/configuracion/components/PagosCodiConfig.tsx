@@ -10,6 +10,7 @@ interface PagosCodi {
   tiene_api_key: boolean;
   tiene_webhook_secreto: boolean;
   url_webhook: string | null;
+  solo_contratos: string;
 }
 
 const inputClass = 'mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
@@ -22,11 +23,12 @@ export default function PagosCodiConfig() {
   const [config, setConfig] = useState<PagosCodi | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [secreto, setSecreto] = useState('');
+  const [soloContratos, setSoloContratos] = useState('');
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     client.get<PagosCodi>('/configuracion/pagos-codi')
-      .then(({ data }) => setConfig(data))
+      .then(({ data }) => { setConfig(data); setSoloContratos(data.solo_contratos); })
       .catch(() => toast.error('No se pudo cargar el cobro por CoDi'));
   }, []);
 
@@ -37,11 +39,13 @@ export default function PagosCodiConfig() {
         activo,
         api_key: apiKey.trim() || null,
         webhook_secreto: secreto.trim() || null,
+        solo_contratos: soloContratos,
       });
       setConfig(data);
       setApiKey('');
       setSecreto('');
-      toast.success(data.activo ? 'Cobro por CoDi activo' : 'Cobro por CoDi guardado (apagado)');
+      setSoloContratos(data.solo_contratos);
+      toast.success(!data.activo ? 'Cobro por CoDi guardado (apagado)' : data.solo_contratos ? `CoDi en prueba: solo ${data.solo_contratos}` : 'Cobro por CoDi activo para todos');
     } catch (error) {
       toast.error(apiErrorMessage(error, 'No se pudo guardar'));
     } finally {
@@ -74,7 +78,7 @@ export default function PagosCodiConfig() {
           </span>
         </span>
         <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${config.activo ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-slate-500/10 text-slate-500'}`}>
-          {config.activo ? 'Activo' : 'Apagado'}
+          {!config.activo ? 'Apagado' : config.solo_contratos ? 'En prueba' : 'Activo'}
         </span>
       </div>
 
@@ -95,6 +99,12 @@ export default function PagosCodiConfig() {
         </label>
       </div>
 
+      <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">Probar solo con estos contratos
+        <input value={soloContratos} onChange={(e) => setSoloContratos(e.target.value)} placeholder="Vacío = todos los clientes · ej. 187B, 329B"
+          className={inputClass} />
+        <span className="mt-1 block font-normal text-slate-500">Mientras pruebas, solo estos clientes ven el cobro por CoDi (WhatsApp, avisos y portal).</span>
+      </label>
+
       <div className="text-xs font-bold text-slate-600 dark:text-slate-300">Dirección del webhook
         {config.url_webhook ? (
           <div className="mt-1.5 flex items-center gap-2">
@@ -114,10 +124,10 @@ export default function PagosCodiConfig() {
           className={`w-full rounded-xl px-4 py-3 text-sm font-black text-white shadow-sm transition disabled:opacity-50 sm:w-auto ${config.activo ? 'bg-slate-600 hover:bg-slate-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
           {guardando ? 'Guardando…' : config.activo ? 'Apagar cobro por CoDi' : 'Guardar y activar'}
         </button>
-        {config.activo && (apiKey || secreto) && (
+        {config.activo && (apiKey || secreto || soloContratos !== config.solo_contratos) && (
           <button type="button" onClick={() => void guardar(true)} disabled={guardando}
             className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 sm:w-auto dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
-            Guardar llaves
+            Guardar cambios
           </button>
         )}
       </div>

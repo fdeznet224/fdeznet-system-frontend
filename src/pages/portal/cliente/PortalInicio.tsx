@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    ArrowLeftIcon, ChevronRightIcon, DocumentTextIcon, HomeIcon, MoonIcon, SignalIcon, SunIcon, UserCircleIcon, WifiIcon,
+    ArrowLeftIcon, ChevronRightIcon, DocumentTextIcon, HomeIcon, MoonIcon, SignalIcon, SunIcon, UserCircleIcon, WifiIcon, DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
 
 import portalClient from '@/api/portal';
@@ -18,7 +18,7 @@ import PerfilPortal, { Notificaciones } from './PerfilPortal';
 import RedPortal from './RedPortal';
 import ServiciosPortal from './ServiciosPortal';
 import type { Pestana, Resumen } from './tipos';
-import { ERROR, ETIQUETA, FONDO, TARJETA, cambiarTema, dinero, velocidad } from './ui';
+import { BOTON, ERROR, ETIQUETA, FONDO, TARJETA, cambiarTema, dinero, velocidad } from './ui';
 
 const BARRA: { id: Exclude<Pestana, 'consumo'>; texto: string; icono: typeof HomeIcon }[] = [
     { id: 'inicio', texto: 'Inicio', icono: HomeIcon },
@@ -140,6 +140,7 @@ function Inicio({ resumen, color, ir, telefonoEmpresa, onCambio }: { resumen: Re
     const bajada = resumen.plan ? velocidad(resumen.plan.bajada_kbps) : null;
     const subida = resumen.plan ? velocidad(resumen.plan.subida_kbps) : null;
     const pago = mensajeCalendario(resumen.calendario);
+    const debe = resumen.cuenta.adeudos.reduce((suma, a) => suma + a.monto, 0);
 
     useEffect(() => {
         let vigente = true;
@@ -184,6 +185,12 @@ function Inicio({ resumen, color, ir, telefonoEmpresa, onCambio }: { resumen: Re
                             </span>
                             <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-400" />
                         </button>
+                        {debe > 0 && resumen.codi && (
+                            <button type="button" onClick={() => ir('facturas')} className={`${BOTON} mt-3`} style={{ background: color }} data-testid="pagar-codi-inicio">
+                                <DevicePhoneMobileIcon className="h-5 w-5" />
+                                Pagar {dinero(debe)} con mi banco
+                            </button>
+                        )}
                     </>
                 ) : <p className="mt-2 text-sm text-slate-500">{resumen.cuenta.explicacion}</p>}
             </section>

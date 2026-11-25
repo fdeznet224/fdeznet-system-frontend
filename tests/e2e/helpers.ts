@@ -37,6 +37,9 @@ export async function mockApi(page: Page) {
         token_type: 'bearer',
         user: { id: 1, usuario: 'admin-e2e', rol: 'admin' },
       }
+    } else if (url.pathname.endsWith('/public/marca')) {
+      // Con tipo de red ya elegido: si no, la pregunta tapa todo el admin.
+      body = { empresa_nombre: 'FdezNet', sistema_nombre: 'FdezPay', color_primario: '#2563eb', tipo_red: 'hibrido' }
     } else if (url.pathname.endsWith('/olts/2/monitoreo-api')) {
       body = {
         status: 'success',

@@ -26,6 +26,8 @@ export interface Resumen {
     calendario: Calendario;
     zona: string | null;
     pago_efectivo: string | null;
+    /** Solo si el ISP cobra por CoDi: el celular sugerido (el que ya funcionó o el registrado). */
+    codi: { celular: string | null; confirmado: boolean } | null;
 }
 
 export interface Factura {
