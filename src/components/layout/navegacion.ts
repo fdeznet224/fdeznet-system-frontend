@@ -4,7 +4,7 @@ import {
     ClipboardDocumentListIcon, Cog6ToothIcon, ComputerDesktopIcon, CubeIcon,
     DocumentTextIcon, GlobeAltIcon, HomeIcon, MapIcon, ServerStackIcon,
     ShieldCheckIcon, SignalIcon, SparklesIcon, UsersIcon, ArrowDownTrayIcon,
-    QrCodeIcon, BoltIcon, CircleStackIcon, CommandLineIcon, WifiIcon, CpuChipIcon,
+    QrCodeIcon, BoltIcon, CircleStackIcon, CommandLineIcon, WifiIcon, CpuChipIcon, ShareIcon,
 } from '@heroicons/react/24/outline';
 
 import type { Tono } from '@/components/ui/estilo';
@@ -42,7 +42,6 @@ export const RUTA_MAS = '/admin/mas';
 const ADMIN: AppRole[] = ['admin'];
 const AMBOS: AppRole[] = ['admin', 'supervisor'];
 const CON_FIBRA: TipoRed[] = ['fibra', 'hibrido'];
-const CON_RADIO: TipoRed[] = ['wisp', 'hibrido'];
 
 /** El primer grupo no lleva título: es lo de todos los días. */
 export const GRUPOS: GrupoNav[] = [
@@ -72,7 +71,7 @@ export const GRUPOS: GrupoNav[] = [
             { nombre: 'Mapa de Red', ruta: '/admin/mapa', icono: MapIcon, tono: 'verde', roles: ADMIN, palabras: 'ubicaciones' },
             { nombre: 'Cajas NAP (Fibra)', ruta: '/admin/naps', icono: CubeIcon, tono: 'verde', roles: ADMIN, redes: CON_FIBRA, palabras: 'nap mangas puertos kml' },
             { nombre: 'Nodos / Routers', ruta: '/admin/routers', icono: ServerStackIcon, tono: 'neutro', roles: ADMIN, palabras: 'mikrotik' },
-            { nombre: 'Red inalámbrica', corto: 'Radio', ruta: '/admin/red-inalambrica', icono: WifiIcon, tono: 'azul', roles: ADMIN, redes: CON_RADIO, palabras: 'ap ptp antena ubiquiti airos sectorial enlace radio arbol topologia señal' },
+            { nombre: 'Topología de Red', corto: 'Topología', ruta: '/admin/topologia', icono: ShareIcon, tono: 'azul', roles: ADMIN, palabras: 'mapa arbol red inalambrica ap ptp antena ubiquiti airos sectorial enlace troncal radio olt pon fibra señal potencia' },
             { nombre: 'Redes IP (Pools)', ruta: '/admin/redes', icono: GlobeAltIcon, tono: 'azul', roles: ADMIN, palabras: 'ipam direcciones' },
             { nombre: 'Planes de Internet', ruta: '/admin/planes', icono: WifiIcon, tono: 'violeta', roles: ADMIN, palabras: 'velocidad precios' },
         ],

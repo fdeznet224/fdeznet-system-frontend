@@ -74,8 +74,8 @@ export default function RedInalambrica() {
     return (
         <div className="mx-auto flex max-w-7xl flex-col gap-4">
             <EncabezadoPagina
-                titulo="Red inalámbrica"
-                descripcion="Mapa de la red hasta cada cliente. Se revisa solo cada 10 minutos."
+                titulo="Topología de Red"
+                descripcion="Del nodo principal hasta cada cliente, radio y fibra. Se revisa solo cada 10 minutos."
                 acciones={<button type="button" onClick={() => setEditando('nuevo')} className={BOTON_ACCION_PRIMARIO}><PlusIcon className="h-5 w-5" /> Agregar equipo</button>}
             />
 

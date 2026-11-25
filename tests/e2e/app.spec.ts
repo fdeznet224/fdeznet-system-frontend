@@ -2689,7 +2689,7 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
     return route.fulfill({ status: 201, json: equipo(4, 'AP Sagrado Sur', 'ap') })
   })
 
-  await page.goto('/admin/red-inalambrica')
+  await page.goto('/admin/topologia')
   // Mapa: el nodo principal arriba y el MikroTik colgado de su Mimosa; al tocar el AP se ven sus clientes.
   await expect(page.getByTestId('mapa-e5')).toContainText('RB-ADMINISTRADOR-20DENOVIEMBRE')
   await expect(page.getByTestId('mapa-r4')).toContainText('Flores Magon')

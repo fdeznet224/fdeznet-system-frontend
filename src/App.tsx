@@ -231,7 +231,8 @@ function App() {
                 
                 {/* Infraestructura */}
                 <Route path="/admin/routers" element={protectedPage(<Routers />, ['admin'])} />
-                <Route path="/admin/red-inalambrica" element={protectedPage(<RedInalambrica />, ['admin'])} />
+                <Route path="/admin/topologia" element={protectedPage(<RedInalambrica />, ['admin'])} />
+                <Route path="/admin/red-inalambrica" element={<Navigate to="/admin/topologia" replace />} />
                 <Route path="/admin/naps" element={protectedPage(<CajasNap />, ['admin'])} />
                 <Route path="/admin/tr069" element={protectedPage(<EquiposTr069 />, ['admin'])} />
                 <Route path="/admin/tr069/plantillas" element={protectedPage(<PlantillasTr069 />, ['admin'])} />
