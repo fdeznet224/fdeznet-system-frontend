@@ -11,6 +11,7 @@ import { BOTON_ACCION_PRIMARIO, TARJETA } from '@/components/ui/estilo';
 import { abrirEquipoRed } from '@/utils/accesoRemoto';
 import { apiErrorMessage } from '@/utils/apiError';
 import EquipoRedModal from './EquipoRedModal';
+import MapaRed from './MapaRed';
 import type { Arbol, ClienteRadio, EquipoRed, RouterArbol } from './tipos';
 
 /** Verde si responde, rojo si no, gris si todavía no se revisa. */
@@ -174,6 +175,8 @@ export default function RedInalambrica() {
     const [cargando, setCargando] = useState(true);
     const [editando, setEditando] = useState<EquipoRed | 'nuevo' | null>(null);
     const [revisando, setRevisando] = useState<number | null>(null);
+    const [vista, setVista] = useState<'mapa' | 'lista'>(() => (localStorage.getItem('red_vista') === 'lista' ? 'lista' : 'mapa'));
+    const cambiarVista = (nueva: 'mapa' | 'lista') => { setVista(nueva); localStorage.setItem('red_vista', nueva); };
 
     const cargar = useCallback(async () => {
         try {
@@ -232,6 +235,17 @@ export default function RedInalambrica() {
                 <Vacio icono={WifiIcon} titulo="Aún no hay equipos de radio" detalle="Agrega tus PtP y AP; los clientes se acomodan solos en su AP al leer los Ubiquiti." />
             ) : (
                 <>
+                    <div className="flex gap-1.5" role="tablist" aria-label="Vista">
+                        {(['mapa', 'lista'] as const).map((v) => (
+                            <button key={v} type="button" role="tab" aria-selected={vista === v} onClick={() => cambiarVista(v)}
+                                className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${vista === v ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-white text-slate-600 ring-1 ring-black/5 dark:bg-slate-900 dark:text-slate-300'}`}>
+                                {v === 'mapa' ? 'Mapa' : 'Lista'}
+                            </button>
+                        ))}
+                    </div>
+                    {vista === 'mapa' ? (
+                        <MapaRed arbol={arbol} onEditar={setEditando} onRevisar={(e) => void revisar(e)} revisando={revisando} />
+                    ) : (<>
                     {arbol.troncal.length > 0 && (
                         <section className={`${TARJETA} p-3`} data-testid="troncal">
                             <h2 className="px-2 pb-2 font-bold text-slate-900 dark:text-white">Red troncal</h2>
@@ -245,6 +259,7 @@ export default function RedInalambrica() {
                     {arbol.routers.map((router) => (
                         <TarjetaRouter key={router.id ?? 'ninguno'} router={router} onEditar={setEditando} onRevisar={(e) => void revisar(e)} revisando={revisando} />
                     ))}
+                    </>)}
                 </>
             )}
 

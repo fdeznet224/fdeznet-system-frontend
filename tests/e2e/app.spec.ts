@@ -2684,6 +2684,16 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
   })
 
   await page.goto('/admin/red-inalambrica')
+  // Mapa: el nodo principal arriba y el MikroTik colgado de su Mimosa; al tocar el AP se ven sus clientes.
+  await expect(page.getByTestId('mapa-e5')).toContainText('RB-ADMINISTRADOR-20DENOVIEMBRE')
+  await expect(page.getByTestId('mapa-r4')).toContainText('Flores Magon')
+  await expect(page.getByTestId('mapa-e8')).toContainText('1 cliente')
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/7-mapa-red.png`, fullPage: true })
+  await page.getByTestId('mapa-e8').click()
+  await expect(page.getByTestId('mapa-panel')).toContainText('Ximena Zuñiga')
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/8-mapa-panel.png`, fullPage: true })
+  await page.getByTestId('mapa-panel').getByRole('button', { name: 'Cerrar' }).click()
+  await page.getByRole('tab', { name: 'Lista' }).click()
   await expect(page.getByTestId('router-2')).toContainText('Vicente Guerrero')
   await expect(page.getByTestId('equipo-1')).toContainText('PtP VG Sagrado')
   await expect(page.getByTestId('equipo-3')).toContainText('AP Sagrado Norte')
