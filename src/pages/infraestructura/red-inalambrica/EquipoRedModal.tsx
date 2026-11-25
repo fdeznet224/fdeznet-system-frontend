@@ -28,6 +28,8 @@ export default function EquipoRedModal({ equipo, equipos, tipos, marcas, onCerra
         ip: equipo?.ip ?? '',
         router_id: equipo?.router_id ? String(equipo.router_id) : '',
         padre_id: equipo?.padre_id ? String(equipo.padre_id) : '',
+        troncal: equipo?.troncal ?? false,
+        router_hijo_id: equipo?.router_hijo_id ? String(equipo.router_hijo_id) : '',
         ubicacion: equipo?.ubicacion ?? '',
         usuario: equipo?.usuario ?? '',
         clave: '',
@@ -52,6 +54,7 @@ export default function EquipoRedModal({ equipo, equipos, tipos, marcas, onCerra
             clave: datos.clave || null,
             router_id: datos.router_id ? Number(datos.router_id) : null,
             padre_id: datos.padre_id ? Number(datos.padre_id) : null,
+            router_hijo_id: datos.troncal && datos.router_hijo_id ? Number(datos.router_hijo_id) : null,
         };
         try {
             if (equipo) await client.put(`/red-inalambrica/equipos/${equipo.id}`, cuerpo);
@@ -79,7 +82,8 @@ export default function EquipoRedModal({ equipo, equipos, tipos, marcas, onCerra
     // Un equipo no puede colgar de sí mismo ni de lo que cuelga de él.
     const descendientes = (id: number): number[] => equipos.filter((e) => e.padre_id === id).flatMap((e) => [e.id, ...descendientes(e.id)]);
     const prohibidos = equipo ? new Set([equipo.id, ...descendientes(equipo.id)]) : new Set<number>();
-    const padres = equipos.filter((e) => !prohibidos.has(e.id) && (!datos.router_id || String(e.router_id) === datos.router_id));
+    // Troncal cuelga de troncal; los de la zona, de equipos de su MikroTik.
+    const padres = equipos.filter((e) => !prohibidos.has(e.id) && (datos.troncal ? e.troncal : !e.troncal && (!datos.router_id || String(e.router_id) === datos.router_id)));
 
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={equipo ? 'Editar equipo' : 'Agregar equipo'}>
@@ -108,7 +112,7 @@ export default function EquipoRedModal({ equipo, equipos, tipos, marcas, onCerra
                     <label><span className={ETIQUETA_CAMPO}>Modelo (opcional)</span>
                         <input value={datos.modelo} onChange={(e) => cambiar('modelo', e.target.value)} placeholder="LiteAP AC" className={CAMPO} />
                     </label>
-                    <label><span className={ETIQUETA_CAMPO}>MikroTik por el que se llega</span>
+                    <label><span className={ETIQUETA_CAMPO}>MikroTik desde el que se revisa</span>
                         <select required value={datos.router_id} onChange={(e) => cambiar('router_id', e.target.value)} className={CAMPO}>
                             <option value="">Elegir…</option>
                             {routers.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
@@ -120,6 +124,18 @@ export default function EquipoRedModal({ equipo, equipos, tipos, marcas, onCerra
                             {padres.map((e) => <option key={e.id} value={e.id}>{e.nombre} ({e.tipo_nombre})</option>)}
                         </select>
                     </label>
+                    <label className="col-span-2 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                        <input type="checkbox" checked={datos.troncal} onChange={(e) => cambiar('troncal', e.target.checked)} />
+                        Red troncal (va arriba de los MikroTik: nodo principal, troncal, enlaces a las zonas)
+                    </label>
+                    {datos.troncal && (
+                        <label className="col-span-2"><span className={ETIQUETA_CAMPO}>MikroTik de zona que cuelga de este equipo (opcional)</span>
+                            <select value={datos.router_hijo_id} onChange={(e) => cambiar('router_hijo_id', e.target.value)} className={CAMPO}>
+                                <option value="">Ninguno</option>
+                                {routers.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                            </select>
+                        </label>
+                    )}
                     <label className="col-span-2"><span className={ETIQUETA_CAMPO}>Ubicación (opcional)</span>
                         <input value={datos.ubicacion} onChange={(e) => cambiar('ubicacion', e.target.value)} placeholder="Torre del tanque, Sagrado Corazón" className={CAMPO} />
                     </label>

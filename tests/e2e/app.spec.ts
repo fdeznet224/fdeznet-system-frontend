@@ -2665,11 +2665,16 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
     clientes: [{ id: 9, contrato: '4A1B', nombre: 'Juan Pérez', estado: 'activo', ip_antena: '10.50.0.11', responde: true, latencia_ms: 4, senal: -61 }],
   })
   const enviados: unknown[] = []
+  const mimosa = equipo(7, 'Mimosa Flores Magón', 'ptp_estacion', { troncal: true, marca: 'mimosa', senal: null, router: {
+    id: 4, nombre: 'Flores Magon', ip: '10.8.0.4', en_linea: true, clientes_sin_ap: [],
+    equipos: [equipo(8, 'FdezNet-90-sec2', 'ap', { clientes: [{ id: 11, contrato: '3067', nombre: 'Ximena Zuñiga', estado: 'activo', ip_antena: '13.13.13.26', responde: true, latencia_ms: 3, senal: -63 }] })],
+  } })
   await page.route('**/api/red-inalambrica/arbol', (route) => route.fulfill({ json: {
+    troncal: [equipo(5, 'RB-ADMINISTRADOR-20DENOVIEMBRE', 'router', { troncal: true, marca: 'mikrotik', senal: null, hijos: [mimosa] })],
     routers: [{ id: 2, nombre: 'Vicente Guerrero', ip: '10.8.0.2', en_linea: true,
       equipos: [equipo(1, 'PtP VG Sagrado', 'ptp_base', { hijos: [ap] })],
       clientes_sin_ap: [{ id: 10, contrato: '7C2D', nombre: 'Ana López', estado: 'activo', ip_antena: '10.50.0.13', responde: false, latencia_ms: null, senal: null }] }],
-    tipos: { ptp_base: 'PtP (base)', ptp_estacion: 'PtP (estación)', ap: 'AP / sectorial', switch: 'Switch', otro: 'Otro' },
+    tipos: { router: 'MikroTik / router', ptp_base: 'PtP (base)', ptp_estacion: 'PtP (estación)', ap: 'AP / sectorial', switch: 'Switch', otro: 'Otro' },
     marcas: { ubiquiti: 'Ubiquiti', mikrotik: 'MikroTik', otra: 'Otra' },
   } }))
   await page.route('**/api/network/routers/', (route) => route.fulfill({ json: [{ id: 2, nombre: 'Vicente Guerrero' }] }))
@@ -2685,12 +2690,15 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
   await expect(page.getByTestId('equipo-3')).toContainText('Juan Pérez')
   await expect(page.getByTestId('equipo-3')).toContainText('-61 dBm')
   await expect(page.getByText('1 cliente de radio sin AP detectado')).toBeVisible()
+  await expect(page.getByTestId('troncal')).toContainText('RB-ADMINISTRADOR-20DENOVIEMBRE')
+  await expect(page.getByTestId('equipo-7').getByTestId('router-4')).toContainText('FdezNet-90-sec2')
+  await expect(page.getByTestId('equipo-8')).toContainText('Ximena Zuñiga')
   if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/6-red-inalambrica.png`, fullPage: true })
 
   await page.getByRole('button', { name: 'Agregar equipo' }).click()
   await page.getByPlaceholder('AP Sagrado Norte').fill('AP Sagrado Sur')
   await page.getByPlaceholder('10.20.30.2').fill('10.1.0.4')
-  await page.getByLabel('MikroTik por el que se llega').selectOption('2')
+  await page.getByLabel('MikroTik desde el que se revisa').selectOption('2')
   await page.getByLabel('Cuelga de').selectOption('1')
   await page.getByPlaceholder('ubnt').fill('ubnt')
   await page.getByRole('button', { name: 'Guardar' }).click()

@@ -21,6 +21,8 @@ export interface EquipoRed {
     ip: string;
     router_id: number | null;
     padre_id: number | null;
+    troncal: boolean;
+    router_hijo_id: number | null;
     zona_id: number | null;
     ubicacion: string | null;
     latitud: number | null;
@@ -49,6 +51,8 @@ export interface EquipoRed {
     airos_leido_en: string | null;
     hijos: EquipoRed[];
     clientes: ClienteRadio[];
+    /** El MikroTik de zona que cuelga de este enlace (red troncal). */
+    router?: RouterArbol | null;
 }
 
 export interface RouterArbol {
@@ -61,6 +65,7 @@ export interface RouterArbol {
 }
 
 export interface Arbol {
+    troncal: EquipoRed[];
     routers: RouterArbol[];
     tipos: Record<string, string>;
     marcas: Record<string, string>;

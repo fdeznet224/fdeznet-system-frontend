@@ -27,11 +27,21 @@ function Senal({ valor }: { valor: number | null }) {
 }
 
 function contarClientes(equipo: EquipoRed): number {
-    return equipo.clientes.length + equipo.hijos.reduce((n, h) => n + contarClientes(h), 0);
+    const delRouter = equipo.router
+        ? equipo.router.clientes_sin_ap.length + equipo.router.equipos.reduce((n, e) => n + contarClientes(e), 0)
+        : 0;
+    return equipo.clientes.length + delRouter + equipo.hijos.reduce((n, h) => n + contarClientes(h), 0);
 }
 
+/** Todos los equipos, incluidos los de los MikroTik que cuelgan de la troncal. */
 function todos(equipos: EquipoRed[]): EquipoRed[] {
-    return equipos.flatMap((e) => [e, ...todos(e.hijos)]);
+    return equipos.flatMap((e) => [e, ...todos(e.hijos), ...(e.router ? todos(e.router.equipos) : [])]);
+}
+
+/** Todos los MikroTik con sus clientes sin AP, también los colgados de la troncal. */
+function todosRouters(arbol: Arbol): RouterArbol[] {
+    const colgados = todos(arbol.troncal).flatMap((e) => (e.router ? [e.router] : []));
+    return [...arbol.routers, ...colgados];
 }
 
 function FilaCliente({ cliente }: { cliente: ClienteRadio }) {
@@ -54,12 +64,14 @@ function NodoEquipo({ equipo, nivel, onEditar, onRevisar, revisando }: {
     onRevisar: (equipo: EquipoRed) => void;
     revisando: number | null;
 }) {
-    const [abierto, setAbierto] = useState(nivel < 2);
+    const [abierto, setAbierto] = useState(nivel < 6);
     const clientes = contarClientes(equipo);
-    const tieneDentro = equipo.hijos.length > 0 || equipo.clientes.length > 0;
+    const tieneDentro = equipo.hijos.length > 0 || equipo.clientes.length > 0 || Boolean(equipo.router);
     return (
         <li data-testid={`equipo-${equipo.id}`}>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                {/* Flecha, punto y nombre juntos; en celular la señal y los botones bajan. */}
+                <div className="flex min-w-0 flex-1 basis-full items-center gap-2 sm:basis-auto">
                 <button type="button" onClick={() => setAbierto((a) => !a)} disabled={!tieneDentro} aria-label={abierto ? 'Cerrar' : 'Abrir'}
                     className="flex h-6 w-6 items-center justify-center text-slate-400 disabled:opacity-0">
                     {abierto ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
@@ -84,8 +96,9 @@ function NodoEquipo({ equipo, nivel, onEditar, onRevisar, revisando }: {
                     </p>
                     {equipo.airos_error && <p className="text-xs text-amber-600">{equipo.airos_error}</p>}
                 </div>
-                <Senal valor={equipo.senal} />
-                <div className="flex gap-1">
+                </div>
+                <span className="ml-8 sm:ml-0"><Senal valor={equipo.senal} /></span>
+                <div className="ml-auto flex gap-1 sm:ml-0">
                     <button type="button" aria-label={`Revisar ${equipo.nombre}`} onClick={() => onRevisar(equipo)} disabled={revisando === equipo.id}
                         className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800">
                         <ArrowPathIcon className={`h-4 w-4 ${revisando === equipo.id ? 'animate-spin' : ''}`} />
@@ -101,26 +114,32 @@ function NodoEquipo({ equipo, nivel, onEditar, onRevisar, revisando }: {
                 </div>
             </div>
             {abierto && tieneDentro && (
-                <ul className="ml-5 border-l border-slate-200 pl-3 dark:border-slate-700">
+                <ul className="ml-2 border-l border-slate-200 pl-2 sm:ml-5 sm:pl-3 dark:border-slate-700">
                     {equipo.hijos.map((hijo) => (
                         <NodoEquipo key={hijo.id} equipo={hijo} nivel={nivel + 1} onEditar={onEditar} onRevisar={onRevisar} revisando={revisando} />
                     ))}
                     {equipo.clientes.map((c) => <FilaCliente key={`c${c.id}`} cliente={c} />)}
+                    {equipo.router && (
+                        <li className="mt-1">
+                            <TarjetaRouter router={equipo.router} onEditar={onEditar} onRevisar={onRevisar} revisando={revisando} anidado />
+                        </li>
+                    )}
                 </ul>
             )}
         </li>
     );
 }
 
-function TarjetaRouter({ router, onEditar, onRevisar, revisando }: {
+function TarjetaRouter({ router, onEditar, onRevisar, revisando, anidado = false }: {
     router: RouterArbol;
     onEditar: (equipo: EquipoRed) => void;
     onRevisar: (equipo: EquipoRed) => void;
     revisando: number | null;
+    anidado?: boolean;
 }) {
     const [verSueltos, setVerSueltos] = useState(false);
     return (
-        <section className={`${TARJETA} p-3`} data-testid={`router-${router.id ?? 'ninguno'}`}>
+        <section className={anidado ? 'rounded-2xl bg-slate-50 p-1.5 ring-1 ring-slate-200 sm:p-2 dark:bg-slate-800/40 dark:ring-slate-700' : `${TARJETA} p-2 sm:p-3`} data-testid={`router-${router.id ?? 'ninguno'}`}>
             <div className="flex items-center gap-2 px-2 pb-2">
                 <ServerStackIcon className="h-5 w-5 text-blue-600" />
                 <Punto responde={router.en_linea} />
@@ -185,10 +204,12 @@ export default function RedInalambrica() {
         }
     };
 
-    const equipos = useMemo(() => todos((arbol?.routers ?? []).flatMap((r) => r.equipos)), [arbol]);
+    const equipos = useMemo(() => (arbol ? todos([...arbol.troncal, ...arbol.routers.flatMap((r) => r.equipos)]) : []), [arbol]);
+    const routers = useMemo(() => (arbol ? todosRouters(arbol) : []), [arbol]);
     const caidos = equipos.filter((e) => e.activo && e.responde === false).length;
-    const clientes = (arbol?.routers ?? []).reduce((n, r) => n + r.clientes_sin_ap.length, 0) + equipos.reduce((n, e) => n + e.clientes.length, 0);
-    const clientesCaidos = (arbol?.routers ?? []).flatMap((r) => [...r.clientes_sin_ap, ...todos(r.equipos).flatMap((e) => e.clientes)]).filter((c) => c.responde === false).length;
+    const radio = [...routers.flatMap((r) => r.clientes_sin_ap), ...equipos.flatMap((e) => e.clientes)];
+    const clientes = radio.length;
+    const clientesCaidos = radio.filter((c) => c.responde === false).length;
 
     return (
         <div className="mx-auto flex max-w-6xl flex-col gap-4">
@@ -207,12 +228,24 @@ export default function RedInalambrica() {
 
             {cargando ? (
                 <p className="py-16 text-center text-sm text-slate-500">Cargando la red…</p>
-            ) : !arbol || arbol.routers.length === 0 ? (
+            ) : !arbol || (arbol.routers.length === 0 && arbol.troncal.length === 0) ? (
                 <Vacio icono={WifiIcon} titulo="Aún no hay equipos de radio" detalle="Agrega tus PtP y AP; los clientes se acomodan solos en su AP al leer los Ubiquiti." />
             ) : (
-                arbol.routers.map((router) => (
-                    <TarjetaRouter key={router.id ?? 'ninguno'} router={router} onEditar={setEditando} onRevisar={(e) => void revisar(e)} revisando={revisando} />
-                ))
+                <>
+                    {arbol.troncal.length > 0 && (
+                        <section className={`${TARJETA} p-3`} data-testid="troncal">
+                            <h2 className="px-2 pb-2 font-bold text-slate-900 dark:text-white">Red troncal</h2>
+                            <ul>
+                                {arbol.troncal.map((equipo) => (
+                                    <NodoEquipo key={equipo.id} equipo={equipo} nivel={0} onEditar={setEditando} onRevisar={(e) => void revisar(e)} revisando={revisando} />
+                                ))}
+                            </ul>
+                        </section>
+                    )}
+                    {arbol.routers.map((router) => (
+                        <TarjetaRouter key={router.id ?? 'ninguno'} router={router} onEditar={setEditando} onRevisar={(e) => void revisar(e)} revisando={revisando} />
+                    ))}
+                </>
             )}
 
             {editando && arbol && (
