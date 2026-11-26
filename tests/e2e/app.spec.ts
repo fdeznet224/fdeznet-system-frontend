@@ -2314,8 +2314,16 @@ test('portal del cliente: entra con el contrato, crea su contraseña, ve su cuen
     await route.fulfill({ json: { bloqueados: ['7a:49:bf:ef:ce:78'] } })
   })
   await page.route('**/api/portal/red/bloqueados', (route) => route.fulfill({ json: { bloqueados: [] } }))
+  // La señal llega en una segunda lectura, unos segundos después de la lista.
+  await page.route('**/api/portal/red?senal=true', (route) => route.fulfill({ json: {
+    ip: '10.10.10.254', onu: 'HWTCF1C8D69E', modelo: 'Huawei HG8145V5', tr069: true, al_dia: true,
+    ultimo_reporte: new Date().toISOString(), bloqueo_disponible: true, error_bloqueo: null, redes: [],
+    equipos: [{ mac: '7a:49:bf:ef:ce:78', nombre: 'Galaxy-A56-5G', ip: '192.168.100.7', conectado: true, conexion: 'wifi', red: 'FdezNet-F1C8 · 2.4GHz', bloqueado: false, senal_dbm: -78, calidad_senal: 'débil' }],
+  } }))
   await page.getByRole('button', { name: 'Mi WiFi' }).click()
   await expect(page.getByText('FdezNet-F1C8')).toBeVisible()
+  await expect(page.getByTestId('equipos-portal')).toContainText('Señal débil')
+  await expect(page.getByText('Con señal débil el internet se siente lento')).toBeVisible()
   // Su módem con su modelo y su dibujo, para que vea qué equipo tiene.
   await expect(page.getByTestId('modelo-modem')).toHaveText('Huawei HG8145V5')
   await expect(page.getByRole('img', { name: 'Módem Huawei' })).toBeVisible()

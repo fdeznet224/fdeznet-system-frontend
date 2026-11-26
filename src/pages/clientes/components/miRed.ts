@@ -10,7 +10,12 @@ export interface EquipoRed {
     bloqueado: boolean | null;
     /** Nombre que le puso el cliente en su portal ("Celular de Juan"). */
     apodo?: string | null;
+    /** Con cuánta señal le llega el WiFi (dBm); solo equipos en WiFi y conectados. */
+    senal_dbm?: number | null;
+    calidad_senal?: CalidadSenal | null;
 }
+
+export type CalidadSenal = 'buena' | 'regular' | 'débil' | 'muy débil';
 
 export interface RedWifi {
     indice: number;
@@ -71,4 +76,16 @@ export interface AccesoPortal {
     ultimo_acceso: string | null;
     /** Celulares donde le llegan los avisos como notificación. */
     notificaciones: number;
+}
+
+/** La lista llega primero sin medir; la señal se lee aparte (unos segundos) y se pone en cada equipo. */
+export function conSenal(actual: EstadoRed, medido: EstadoRed): EstadoRed {
+    const senales = new Map(medido.equipos.map((e) => [e.mac, e]));
+    return {
+        ...actual,
+        equipos: actual.equipos.map((e) => {
+            const m = senales.get(e.mac);
+            return m ? { ...e, senal_dbm: m.senal_dbm ?? null, calidad_senal: m.calidad_senal ?? null } : e;
+        }),
+    };
 }

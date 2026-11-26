@@ -7,7 +7,8 @@ import {
 
 import portalClient from '@/api/portal';
 import { apiErrorMessage } from '@/utils/apiError';
-import { nombreEquipo, redesPorNombre, type EquipoRed, type EstadoRed } from '@/pages/clientes/components/miRed';
+import { conSenal, nombreEquipo, redesPorNombre, type EquipoRed, type EstadoRed } from '@/pages/clientes/components/miRed';
+import SenalWifi from '@/pages/clientes/components/SenalWifi';
 import DibujoModem from './DibujoModem';
 import { AVISO, BOTON, BOTON_SUAVE, CAMPO, ERROR, ETIQUETA, TARJETA, TITULO } from './ui';
 
@@ -159,6 +160,9 @@ function Equipo({ equipo, ocupado, onCambiar, onNombrar }: { equipo: EquipoRed; 
                     <PencilIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                 </span>
                 <span className={`block truncate text-xs ${equipo.bloqueado ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'}`}>{detalle}</span>
+                {equipo.conectado && !equipo.bloqueado && equipo.calidad_senal && (
+                    <span className="mt-0.5 block text-xs"><SenalWifi calidad={equipo.calidad_senal} dbm={equipo.senal_dbm} /></span>
+                )}
             </button>
             {equipo.bloqueado !== null && (
                 <Interruptor encendido={!equipo.bloqueado} ocupado={ocupado} onCambiar={onCambiar} etiqueta={`Internet de ${nombre}`} />
@@ -180,16 +184,31 @@ export default function RedPortal({ color }: { color: string }) {
     const [confirmarReinicio, setConfirmarReinicio] = useState(false);
     const [cambio, setCambio] = useState<Cambio | null>(null);
     const [nombrando, setNombrando] = useState<EquipoRed | null>(null);
+    const [midiendo, setMidiendo] = useState(false);
 
     const leer = useCallback(async () => {
         setCargando(true);
         setError(null);
+        let datos: EstadoRed | null = null;
         try {
-            setEstado((await portalClient.get<EstadoRed>('/portal/red')).data);
+            datos = (await portalClient.get<EstadoRed>('/portal/red')).data;
+            setEstado(datos);
         } catch (e) {
             setError(apiErrorMessage(e, 'No se pudo consultar tu módem'));
         } finally {
             setCargando(false);
+        }
+        // La señal de cada equipo tarda unos segundos más: la lista se muestra antes.
+        if (datos?.tr069 && datos.al_dia && datos.equipos.some((e) => e.conectado && e.conexion === 'wifi')) {
+            setMidiendo(true);
+            try {
+                const medido = (await portalClient.get<EstadoRed>('/portal/red', { params: { senal: true } })).data;
+                setEstado((actual) => actual && conSenal(actual, medido));
+            } catch {
+                // Sin señal se queda la lista como estaba.
+            } finally {
+                setMidiendo(false);
+            }
         }
     }, []);
 
@@ -351,6 +370,12 @@ export default function RedPortal({ color }: { color: string }) {
                         {activos.map((e) => <Equipo key={e.mac} equipo={e} ocupado={ocupado === e.mac} onCambiar={() => pedirCambio(e)} onNombrar={() => setNombrando(e)} />)}
                         {activos.length === 0 && <li className="py-6 text-center text-sm text-slate-400">No hay equipos conectados ahora.</li>}
                     </ul>
+                    {midiendo && <p className="text-xs text-slate-400">Midiendo la señal de tus equipos...</p>}
+                    {activos.some((e) => e.calidad_senal === 'débil' || e.calidad_senal === 'muy débil') && (
+                        <p className="mt-1 rounded-2xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                            Con señal débil el internet se siente lento en ese equipo. Acércalo al módem o quita lo que haya en medio (paredes, muebles); si está lejos, conéctalo a la red de 2.4 GHz, que llega más lejos.
+                        </p>
+                    )}
                     {desconectados.length > 0 && (
                         <>
                             <button type="button" onClick={() => setVerDesconectados((v) => !v)} className="mt-2 flex w-full items-center justify-between rounded-2xl px-1 py-2 text-sm text-slate-500 dark:text-slate-400">

@@ -7,7 +7,8 @@ import {
     BOTON_ACCION_PRIMARIO, BOTON_ACCION_SECUNDARIO, BOTON_ICONO, CAMPO, PILDORA, TARJETA, TITULO_SECCION,
 } from '@/components/ui/estilo';
 import { apiErrorMessage } from '@/utils/apiError';
-import { nombreEquipo, redesPorNombre, type AccesoPortal, type EquipoRed, type EstadoRed, type OnuAutomatica } from './miRed';
+import { conSenal, nombreEquipo, redesPorNombre, type AccesoPortal, type EquipoRed, type EstadoRed, type OnuAutomatica } from './miRed';
+import SenalWifi from './SenalWifi';
 
 function hace(fecha: string | null) {
     if (!fecha) return 'nunca';
@@ -32,17 +33,31 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
     const [ocupado, setOcupado] = useState<string | null>(null);
     const [editando, setEditando] = useState<string | null>(null);
     const [clave, setClave] = useState('');
+    const [midiendo, setMidiendo] = useState(false);
 
     const leer = useCallback(async () => {
         setCargando(true);
         setError(null);
+        let datos: EstadoRed | null = null;
         try {
-            const { data } = await client.get<EstadoRed>(base);
-            setEstado(data);
+            datos = (await client.get<EstadoRed>(base)).data;
+            setEstado(datos);
         } catch (e) {
             setError(apiErrorMessage(e, 'No se pudo leer la red del cliente'));
         } finally {
             setCargando(false);
+        }
+        // La señal de cada equipo se lee aparte (unos segundos): la lista se muestra antes.
+        if (datos?.tr069 && datos.al_dia && datos.equipos.some((e) => e.conectado && e.conexion === 'wifi')) {
+            setMidiendo(true);
+            try {
+                const medido = (await client.get<EstadoRed>(base, { params: { senal: true } })).data;
+                setEstado((actual) => actual && conSenal(actual, medido));
+            } catch {
+                // Sin señal se queda la lista como estaba.
+            } finally {
+                setMidiendo(false);
+            }
         }
     }, [base]);
 
@@ -193,7 +208,7 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
 
             {estado && (
                 <section className="space-y-2">
-                    <h4 className={TITULO_SECCION}>Equipos · {conectados} conectados{bloqueados ? ` · ${bloqueados} bloqueados` : ''}</h4>
+                    <h4 className={TITULO_SECCION}>Equipos · {conectados} conectados{bloqueados ? ` · ${bloqueados} bloqueados` : ''}{midiendo ? ' · midiendo señal...' : ''}</h4>
                     <div className={`${TARJETA} divide-y divide-slate-100 dark:divide-slate-800`} data-testid="equipos-red">
                         {estado.equipos.length === 0 && <p className="p-4 text-center text-sm text-slate-400">La ONU no reporta equipos.</p>}
                         {estado.equipos.map((equipo) => (
@@ -208,6 +223,9 @@ export default function MiRedCliente({ clienteId }: { clienteId: number }) {
                                     <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                                         {[equipo.apodo && equipo.nombre, equipo.ip, equipo.mac, equipo.red].filter(Boolean).join(' · ')}
                                     </p>
+                                    {equipo.conectado && equipo.calidad_senal && (
+                                        <p className="text-xs"><SenalWifi calidad={equipo.calidad_senal} dbm={equipo.senal_dbm} conDbm /></p>
+                                    )}
                                 </div>
                                 {equipo.bloqueado
                                     ? <span className={`hidden rounded-full px-2 py-0.5 text-xs font-semibold sm:inline ${PILDORA.rojo}`}>Bloqueado</span>
