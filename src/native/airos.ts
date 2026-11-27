@@ -6,7 +6,22 @@
  * por lo nativo (CapacitorHttp). La sesión de airOS es una cookie que se
  * guarda aquí y se manda a mano, sin depender del gestor de cookies.
  */
-import { Capacitor, CapacitorHttp, type HttpResponse } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+interface HttpResponse {
+    status: number;
+    headers: Record<string, string>;
+    data: string;
+}
+
+/** Componente nativo de la app (AntenaHttpPlugin.java): acepta el certificado
+ * propio de airOS, solo para IPs de la red local, y no sigue redirecciones. */
+const AntenaHttp = registerPlugin<{
+    request(opciones: {
+        url: string; method: string; headers?: Record<string, string>; timeoutMs?: number;
+        campos?: Campo[]; formulario?: Record<string, string>;
+    }): Promise<HttpResponse>;
+}>('AntenaHttp');
 
 export const IP_DE_FABRICA = '192.168.1.20';
 export const USUARIO_DE_FABRICA = 'ubnt';
@@ -46,7 +61,7 @@ export class Antena {
     private csrf = '';
     version: 6 | 8 | null = null;
 
-    constructor(ip = IP_DE_FABRICA, https = false) {
+    constructor(ip = IP_DE_FABRICA, https = true) {
         this.base = `${https ? 'https' : 'http'}://${ip}`;
     }
 
@@ -74,17 +89,12 @@ export class Antena {
 
     async pedir(ruta: string, opciones: { metodo?: string; campos?: Campo[]; formulario?: Record<string, string> } = {}): Promise<HttpResponse> {
         const { metodo = 'GET', campos, formulario } = opciones;
-        const respuesta = await CapacitorHttp.request({
+        const respuesta = await AntenaHttp.request({
             url: `${this.base}${ruta}`,
             method: metodo,
-            connectTimeout: ESPERA_MS,
-            readTimeout: ESPERA_MS * 2,
-            responseType: 'text',
-            ...(campos
-                ? { headers: this.cabeceras({ 'Content-Type': 'multipart/form-data' }), data: campos, dataType: 'formData' as const }
-                : formulario
-                    ? { headers: this.cabeceras({ 'Content-Type': 'application/x-www-form-urlencoded' }), data: formulario }
-                    : { headers: this.cabeceras() }),
+            timeoutMs: ESPERA_MS,
+            headers: this.cabeceras(),
+            ...(campos ? { campos } : formulario ? { formulario } : {}),
         });
         this.guardarCookie(respuesta);
         return respuesta;
@@ -92,7 +102,6 @@ export class Antena {
 
     private static json<T>(respuesta: HttpResponse): T | null {
         if (respuesta.status !== 200) return null;
-        if (typeof respuesta.data === 'object') return respuesta.data as T;
         const texto = String(respuesta.data || '').trim();
         if (!texto.startsWith('{') && !texto.startsWith('[')) return null;
         try {
@@ -107,6 +116,7 @@ export class Antena {
         try {
             const r = await this.pedir('/login.cgi');
             const texto = String(r.data || '');
+            // HTTP de una antena que obliga a HTTPS contesta 302: se prueba la HTTPS.
             return r.status === 200 && /airos|ubnt|ubiquiti|login\.cgi|api\/auth/i.test(texto);
         } catch {
             return false;
@@ -115,8 +125,8 @@ export class Antena {
 
     /**
      * Entra con usuario y clave. airOS 8: /api/auth. airOS 6: primero se pide
-     * la sesión y luego el formulario; una antena de fábrica pide además el
-     * país y aceptar la licencia (México = 484).
+     * la sesión y luego el formulario (uri, username, password; probado con
+     * una LiteBeam M5 v6.3.11 de fábrica).
      */
     async entrar(usuario = USUARIO_DE_FABRICA, clave = CLAVE_DE_FABRICA): Promise<void> {
         const r8 = await this.pedir('/api/auth', { formulario: { username: usuario, password: clave } }).catch(() => null);
@@ -132,11 +142,6 @@ export class Antena {
                 { key: 'uri', value: '/index.cgi', type: 'string' },
                 { key: 'username', value: usuario, type: 'string' },
                 { key: 'password', value: clave, type: 'string' },
-                // Primer arranque de fábrica: país y licencia (se ignoran si ya está configurada).
-                { key: 'country_select', value: '484', type: 'string' },
-                { key: 'country', value: '484', type: 'string' },
-                { key: 'ui_language', value: 'es_ES', type: 'string' },
-                { key: 'agreed', value: 'true', type: 'string' },
             ],
         });
         const prueba = Antena.json<Record<string, unknown>>(await this.pedir('/status.cgi'));
@@ -191,7 +196,7 @@ export class Antena {
 
 /** Busca la antena en la IP de fábrica (HTTP y HTTPS). */
 export async function buscarAntena(ip = IP_DE_FABRICA): Promise<Antena | null> {
-    for (const https of [false, true]) {
+    for (const https of [true, false]) {
         const antena = new Antena(ip, https);
         if (await antena.responde()) return antena;
     }
