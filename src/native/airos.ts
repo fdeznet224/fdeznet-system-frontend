@@ -34,6 +34,21 @@ export function esAppNativa(): boolean {
     return Capacitor.isNativePlatform();
 }
 
+/** La arma el servidor (GET /ordenes/{id}/antena) con los datos del cliente. */
+export interface PlantillaAntena {
+    ip: string;
+    mascara: string;
+    gateway: string;
+    vlan: number;
+    lan_ip: string;
+    nombre: string;
+    usuario: string | null;
+    usuario_empresa: boolean;
+    pppoe_usuario: string;
+    borrar: string[];
+    claves: Record<string, string>;
+}
+
 export interface EstadoAntena {
     modelo?: string;
     firmware?: string;
@@ -224,10 +239,10 @@ export class Antena {
      * reiniciar el equipo; se espera a que vuelva y se entra otra vez.
      * Probado con LiteBeam M5 v6.3.11.
      */
-    async aplicarCambios(cambios: Record<string, string | null>): Promise<void> {
+    async aplicarCambios(cambios: Record<string, string | null>, opciones: { borrar?: string[]; esperar?: boolean } = {}): Promise<void> {
         if (this.version === 8) throw new Error('Configurar airOS 8 todavía no está disponible');
         const actual = await this.bajarConfiguracion();
-        const nueva = editarConfiguracion(actual, cambios);
+        const nueva = editarConfiguracion(actual, cambios, opciones.borrar);
         const pagina = String((await this.pedir('/system.cgi')).data || '');
         const token = (pagina.match(/name="token" value="([^"]*)"/) || [])[1] || '';
         await this.pedir('/system.cgi', {
@@ -243,7 +258,17 @@ export class Antena {
         const falta = Object.entries(cambios).find(([clave, valor]) => valor !== null && !cargada.includes(`\n${clave}=${valor}\n`) && !cargada.startsWith(`${clave}=${valor}\n`));
         if (falta) throw new Error(`La antena no aceptó la configuración (${falta[0]})`);
         await this.pedir('/apply.cgi').catch(() => null);
-        await this.esperarRegreso();
+        if (opciones.esperar !== false) await this.esperarRegreso();
+    }
+
+    /**
+     * Configuración final del cliente (modo router, PPPoE, administración en la
+     * VLAN, LAN para el Mercusys): la arma el servidor y aquí se cambia todo el
+     * bloque de red conservando el sector y su clave. Después la antena cambia
+     * de IP local (192.168.20.1), así que no se espera a que vuelva aquí.
+     */
+    async aplicarPlantilla(plantilla: PlantillaAntena): Promise<void> {
+        await this.aplicarCambios(plantilla.claves, { borrar: plantilla.borrar, esperar: false });
     }
 
     /** Tras aplicar: espera a que deje de responder y vuelva (máx. ~2 min), y entra. */
@@ -318,11 +343,15 @@ function aBase64(texto: string): string {
 }
 
 /** Cambia, agrega o borra (null) líneas "clave=valor" de un system.cfg, ordenado como airOS. */
-export function editarConfiguracion(cfg: string, cambios: Record<string, string | null>): string {
+export function editarConfiguracion(cfg: string, cambios: Record<string, string | null>, borrar: string[] = []): string {
     const lineas = new Map<string, string>();
     for (const linea of cfg.split(/\r?\n/)) {
         const i = linea.indexOf('=');
-        if (i > 0) lineas.set(linea.slice(0, i), linea.slice(i + 1));
+        if (i <= 0) continue;
+        const clave = linea.slice(0, i);
+        // Bloques que se reemplazan completos (ej. "netconf." o "netmode").
+        if (borrar.some((p) => clave === p || clave.startsWith(p))) continue;
+        lineas.set(clave, linea.slice(i + 1));
     }
     for (const [clave, valor] of Object.entries(cambios)) {
         if (valor === null) lineas.delete(clave);

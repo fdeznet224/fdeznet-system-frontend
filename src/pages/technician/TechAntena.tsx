@@ -6,13 +6,28 @@ import {
 import {
     Antena, CLAVE_DE_FABRICA, IP_DE_FABRICA, USUARIO_DE_FABRICA, buscarAntena, calidadSenal, esAppNativa,
     capacidadEstimada, detenerPitido, guardarSectoresDelSistema, infoDeSector, iniciarPitido, sectoresGuardados,
-    SECTOR_CASI_LLENO, SECTOR_SATURADO, veredictoInstalacion, type EstadoAntena, type InfoSector, type Sector,
+    SECTOR_CASI_LLENO, SECTOR_SATURADO, veredictoInstalacion, type EstadoAntena, type InfoSector, type PlantillaAntena, type Sector,
 } from '@/native/airos';
 import client from '@/api/axios';
 import { BOTON_EXITO, BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO, ETIQUETA_CAMPO, PILDORA, TARJETA } from '@/components/ui/estilo';
 
-type Paso = 1 | 2 | 3 | 4;
-const PASOS: Record<Paso, string> = { 1: 'Conectar', 2: 'Red WiFi', 3: 'Alinear', 4: 'Terminar' };
+type Paso = 1 | 2 | 3 | 4 | 5;
+const PASOS: Record<Paso, string> = { 1: 'Conectar', 2: 'Red WiFi', 3: 'Alinear', 4: 'Configurar', 5: 'Terminar' };
+const claveOrden = (orden: string) => `antena-orden:${orden}`;
+
+interface DatosOrden {
+    nombre: string;
+    contrato: string;
+    usuario_pppoe: string;
+    password_pppoe: string;
+    plantilla: PlantillaAntena;
+}
+
+interface EstadoConexion {
+    pppoe: { conectado: boolean; ip?: string | null };
+    antena: { responde?: boolean | null } | null;
+    ip_antena: string | null;
+}
 const LECTURA_MS = 1500;
 const claveGuardada = (ssid: string) => localStorage.getItem(`clave-sector:${ssid}`) || '';
 /** Lo que deja el asistente para la activación del cliente. */
@@ -45,6 +60,50 @@ export default function TechAntena() {
     const [verClave, setVerClave] = useState(false);
     const antena = useRef<Antena | null>(null);
     const aplicando = useRef(false);
+    const [orden, setOrden] = useState<DatosOrden | null>(() => {
+        try {
+            return ordenId ? JSON.parse(localStorage.getItem(claveOrden(ordenId)) || 'null') : null;
+        } catch {
+            return null;
+        }
+    });
+    const [ordenError, setOrdenError] = useState<string | null>(null);
+    const [medicion, setMedicion] = useState<EstadoAntena | null>(null);
+    const [configurada, setConfigurada] = useState(false);
+    const [conexion, setConexion] = useState<EstadoConexion | null>(null);
+    const [registro, setRegistro] = useState<string | null>(null);
+
+    // Con internet se trae (y se guarda) la configuración del cliente de la orden.
+    useEffect(() => {
+        if (!ordenId) return;
+        client.get<DatosOrden>(`/ordenes/${ordenId}/antena`)
+            .then(({ data }) => {
+                localStorage.setItem(claveOrden(ordenId), JSON.stringify(data));
+                setOrden(data);
+                setOrdenError(null);
+            })
+            .catch((e) => {
+                const detalle = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+                if (detalle) setOrdenError(detalle);
+            });
+    }, [ordenId]);
+
+    // Configurada la antena: se espera a que el sistema vea su PPPoE (llega cuando hay internet).
+    useEffect(() => {
+        if (paso !== 4 || !configurada || !ordenId) return;
+        let vivo = true;
+        const revisar = async () => {
+            try {
+                const { data } = await client.get<EstadoConexion>(`/ordenes/${ordenId}/antena/estado`);
+                if (vivo) setConexion(data);
+            } catch {
+                /* sin internet todavía: se reintenta */
+            }
+        };
+        void revisar();
+        const id = window.setInterval(() => void revisar(), 6000);
+        return () => { vivo = false; window.clearInterval(id); };
+    }, [paso, configurada, ordenId]);
 
     // Con internet (antes de llegar al WiFi del cliente) se actualizan los
     // clientes por sector; sin internet se usa lo guardado.
@@ -184,18 +243,55 @@ export default function TechAntena() {
         }
     };
 
-    const terminar = () => {
+    /** De Alinear al siguiente paso: se guarda la medición (después de configurar ya no se lee aquí). */
+    const terminarAlineacion = () => {
         if (!estado) return;
         const veredicto = veredictoInstalacion(estado);
-        if (veredicto.nivel === 'mala' && !window.confirm('La instalación quedó mala. ¿Terminar de todos modos?')) return;
+        if (veredicto.nivel === 'mala' && !window.confirm('La instalación quedó mala. ¿Seguir de todos modos?')) return;
         const estimada = capacidadEstimada(estado);
+        setMedicion(estado);
         sessionStorage.setItem(CLAVE_ANTENA_INSTALADA, JSON.stringify({
             orden: ordenId, ssid: estado.ssid, apMac: estado.apMac, modelo: estado.modelo, senal: estado.senal,
             ccq: estado.ccq, capacidad: estado.capacidadAirmax, distanciaM: estado.distanciaM,
             bajadaEstimada: estimada?.bajada, subidaEstimada: estimada?.subida, calidad: veredicto.texto,
             en: new Date().toISOString(),
         }));
-        setPaso(4);
+        setPaso(ordenId ? 4 : 5);
+    };
+
+    const configurar = async () => {
+        if (!antena.current || !orden) return;
+        aplicando.current = true;
+        setOcupado(`Configurando la antena de ${orden.nombre}…`);
+        setError(null);
+        try {
+            await antena.current.aplicarPlantilla(orden.plantilla);
+            setConfigurada(true);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'No se pudo configurar la antena');
+        } finally {
+            aplicando.current = false;
+            setOcupado(null);
+        }
+    };
+
+    const terminar = async () => {
+        const m = medicion || estado;
+        if (ordenId && m) {
+            try {
+                const { data } = await client.post<{ resumen: string }>(`/ordenes/${ordenId}/antena`, {
+                    ssid: m.ssid || 'desconocido', frecuencia: m.frecuencia, senal: m.senal, ccq: m.ccq,
+                    distancia_m: m.distanciaM, modelo: m.modelo, calidad: veredictoInstalacion(m).texto, configurada,
+                });
+                setRegistro(data.resumen);
+            } catch {
+                setRegistro(null);
+                setError('No se pudo guardar en el sistema (¿sin internet?). Toca Terminar otra vez cuando haya señal.');
+                return;
+            }
+        }
+        localStorage.removeItem(claveOrden(ordenId || ''));
+        setPaso(5);
     };
 
     if (!esAppNativa()) {
@@ -216,8 +312,8 @@ export default function TechAntena() {
             </div>
 
             {/* Pasos del tutorial */}
-            <ol className="grid grid-cols-4 gap-1.5">
-                {([1, 2, 3, 4] as Paso[]).map((n) => (
+            <ol className="grid grid-cols-5 gap-1">
+                {([1, 2, 3, 4, 5] as Paso[]).filter((n) => n !== 4 || ordenId).map((n) => (
                     <li key={n} className="flex flex-col items-center gap-1">
                         <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${n < paso
                             ? 'bg-emerald-500 text-white' : n === paso ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800'}`}>
@@ -232,6 +328,14 @@ export default function TechAntena() {
             {ocupado && (
                 <p className={`flex items-center gap-2 rounded-xl p-3 text-sm ${PILDORA.azul}`}>
                     <ArrowPathIcon className="h-4 w-4 animate-spin" /> {ocupado}
+                </p>
+            )}
+
+            {ordenId && (
+                <p className={`rounded-xl p-3 text-xs ${orden ? PILDORA.azul : PILDORA.ambar}`}>
+                    {orden
+                        ? <>Instalación de <b>{orden.nombre}</b> · contrato {orden.contrato}</>
+                        : ordenError || 'Abre esta pantalla con internet una vez para traer los datos del cliente.'}
                 </p>
             )}
 
@@ -324,28 +428,72 @@ export default function TechAntena() {
             )}
 
             {paso === 3 && estado && <Alineacion estado={estado} sinRespuesta={sinRespuesta}
-                onCambiar={irAPaso2} onTerminar={terminar} ocupado={Boolean(ocupado)}
+                onCambiar={irAPaso2} onTerminar={terminarAlineacion} ocupado={Boolean(ocupado)} textoSiguiente={ordenId ? 'Siguiente: configurar' : 'Terminar instalación'}
                 pitido={pitido} onPitido={() => void cambiarPitido()} />}
 
             {paso === 4 && (
+                <div className={`${TARJETA} flex flex-col gap-3 p-4`} data-testid="configurar">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">Paso 4: configura la antena del cliente</p>
+                    {!orden ? (
+                        <p className="text-sm text-amber-700 dark:text-amber-300">
+                            Faltan los datos del cliente. Activa la orden con internet y vuelve a abrir el asistente desde ella.
+                        </p>
+                    ) : !configurada ? (
+                        <>
+                            <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl bg-slate-50 p-3 text-xs dark:bg-slate-800/60">
+                                <dt className="text-slate-500">Cliente</dt><dd className="font-semibold">{orden.nombre}</dd>
+                                <dt className="text-slate-500">Modo</dt><dd className="font-semibold">Router con PPPoE</dd>
+                                <dt className="text-slate-500">PPPoE</dt><dd className="font-mono font-semibold">{orden.plantilla.pppoe_usuario}</dd>
+                                <dt className="text-slate-500">IP de la antena</dt><dd className="font-mono font-semibold">{orden.plantilla.ip} (VLAN {orden.plantilla.vlan})</dd>
+                                <dt className="text-slate-500">Red al módem</dt><dd className="font-mono font-semibold">{orden.plantilla.lan_ip}</dd>
+                                <dt className="text-slate-500">Sector</dt><dd className="font-semibold">{medicion?.ssid} · {medicion?.senal} dBm</dd>
+                            </dl>
+                            {!orden.plantilla.usuario_empresa && (
+                                <p className="text-xs text-amber-700 dark:text-amber-300">Sin usuario de la empresa configurado: la antena se queda con su clave actual.</p>
+                            )}
+                            <button type="button" onClick={() => void configurar()} disabled={Boolean(ocupado)} className={BOTON_PRIMARIO}>
+                                Aplicar configuración del cliente
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <p className={`rounded-xl p-3 text-sm ${PILDORA.verde}`}>✓ Configuración aplicada en la antena.</p>
+                            <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-200">
+                                <li>Pasa el cable de la antena al puerto <b>WAN</b> (azul) del módem.</li>
+                                <li>Deja el módem como viene de fábrica (IP dinámica) y ponle el WiFi del cliente.</li>
+                                <li>Espera aquí: el sistema confirma cuando conecte.</li>
+                            </ol>
+                            <div className="flex flex-col gap-1.5 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800/60">
+                                <Comprobacion ok={Boolean(conexion?.pppoe.conectado)} texto={conexion?.pppoe.conectado ? `PPPoE conectado (${conexion.pppoe.ip})` : 'Esperando que conecte el PPPoE…'} />
+                                <Comprobacion ok={Boolean(conexion?.antena?.responde)} texto={conexion?.antena?.responde ? `La antena responde en ${conexion.ip_antena}` : 'Esperando que la antena responda en su IP…'} />
+                                {!conexion && <p className="text-[11px] text-slate-500">Se revisa cada 6 s; necesita internet (llega por el PPPoE o por datos).</p>}
+                            </div>
+                            <button type="button" onClick={() => void terminar()} disabled={!conexion?.pppoe.conectado} className={BOTON_EXITO}>
+                                Terminar instalación
+                            </button>
+                            <button type="button" onClick={() => void terminar()} className="text-xs font-semibold text-slate-500">Terminar sin confirmar</button>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {paso === 5 && (
                 <div className={`${TARJETA} flex flex-col items-center gap-3 p-6 text-center`}>
                     <CheckCircleIcon className="h-12 w-12 text-emerald-500" />
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">Antena lista</p>
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">Instalación terminada</p>
                     <p className="text-sm text-slate-600 dark:text-slate-300">
-                        Conectada a <b>{estado?.ssid}</b> · calidad <b>{estado ? veredictoInstalacion(estado).texto : ''}</b>. Ahora pasa el cable de la antena al puerto <b>WAN</b> del módem.
+                        {registro || <>Conectada a <b>{(medicion || estado)?.ssid}</b> · calidad <b>{(medicion || estado) ? veredictoInstalacion((medicion || estado) as EstadoAntena).texto : ''}</b>.</>}
                     </p>
-                    <button type="button" onClick={() => navigate(ordenId ? `/tech/activar/${ordenId}` : '/tech/dashboard')} className={BOTON_EXITO}>
-                        {ordenId ? 'Continuar con la activación del cliente' : 'Volver al inicio'}
-                    </button>
+                    <button type="button" onClick={() => navigate('/tech/dashboard')} className={BOTON_EXITO}>Volver al inicio</button>
                 </div>
             )}
         </div>
     );
 }
 
-function Alineacion({ estado, sinRespuesta, onCambiar, onTerminar, ocupado, pitido, onPitido }: {
+function Alineacion({ estado, sinRespuesta, onCambiar, onTerminar, ocupado, pitido, onPitido, textoSiguiente }: {
     estado: EstadoAntena; sinRespuesta: boolean; onCambiar: () => void; onTerminar: () => void; ocupado: boolean;
-    pitido: boolean; onPitido: () => void;
+    pitido: boolean; onPitido: () => void; textoSiguiente: string;
 }) {
     const estimada = capacidadEstimada(estado);
     const enlazada = Boolean(estado.enlazada);
@@ -414,7 +562,7 @@ function Alineacion({ estado, sinRespuesta, onCambiar, onTerminar, ocupado, piti
 
             <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={onCambiar} disabled={ocupado} className={`${BOTON_SECUNDARIO} h-11`}>Cambiar de sector</button>
-                <button type="button" onClick={onTerminar} disabled={ocupado || !enlazada} className={BOTON_EXITO}>Terminar instalación</button>
+                <button type="button" onClick={onTerminar} disabled={ocupado || !enlazada} className={BOTON_EXITO}>{textoSiguiente}</button>
             </div>
         </div>
     );
@@ -440,5 +588,13 @@ function Saturacion({ info, hayLista }: { info: InfoSector | null; hayLista: boo
         <span className={`mt-0.5 block text-[11px] font-semibold ${lleno ? 'text-rose-600' : casi ? 'text-amber-600' : 'text-slate-500'}`}>
             {info.nombre} · {info.clientes} clientes{lleno ? ' · ⚠️ saturado, usa otro sector' : casi ? ' · casi lleno' : ''}
         </span>
+    );
+}
+
+function Comprobacion({ ok, texto }: { ok: boolean; texto: string }) {
+    return (
+        <p className={`flex items-center gap-2 ${ok ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-500'}`}>
+            {ok ? <CheckCircleIcon className="h-5 w-5" /> : <ArrowPathIcon className="h-5 w-5 animate-spin" />} {texto}
+        </p>
     );
 }

@@ -64,6 +64,9 @@ interface Catalogo {
 }
 
 interface Resultado {
+    orden_id?: number;
+    /** Antena: la configuración que aplica el asistente (o por qué no se pudo armar). */
+    antena?: { plantilla: unknown; aviso: string | null } | null;
     cliente_id: number;
     contrato: string;
     nombre: string;
@@ -340,6 +343,7 @@ export default function TechActivar() {
             toast.success('¡Cliente activado!');
             await setCachedValue(claveBorrador, null);
             if (ordenId) await guardarActivacion(ordenId, data).catch(() => undefined);
+            guardarAntenaDeOrden(data);
             setResultado(data);
         } catch (error) {
             toast.error(apiErrorMessage(error, 'No se pudo activar'), { duration: 8000 });
@@ -410,12 +414,23 @@ export default function TechActivar() {
                                 {resultado.wifi?.automatica
                                     ? 'Abajo ves cuando la ONU quede configurada con su PPPoE y su WiFi.'
                                     : resultado.tipo_conexion === 'radio'
-                                        ? 'Configura la antena del cliente con estos datos.'
+                                        ? 'Ahora configura la antena con el asistente (abajo).'
                                         : 'Configura la ONU del cliente con estos datos.'}
                             </p>
                         </div>
                     </div>
                     {resultado.wifi?.automatica && resultado.cliente_id ? <EstadoOnuNueva clienteId={resultado.cliente_id} /> : null}
+                    {resultado.tipo_conexion === 'radio' && (
+                        resultado.antena?.aviso
+                            ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">Antena: {resultado.antena.aviso}</p>
+                            : esAppNativa() && resultado.orden_id
+                                ? (
+                                    <Link to={`/tech/antena?orden=${resultado.orden_id}`} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-violet-600 text-sm font-bold text-white">
+                                        📡 Configurar antena del cliente
+                                    </Link>
+                                )
+                                : <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">Configura la antena con la app de Android (FdezNet Técnico).</p>
+                    )}
                     <div className={tarjeta}>
                         {filas.map(([nombre, valor]) => (
                             <div key={nombre} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0 dark:border-slate-800">
@@ -682,4 +697,13 @@ function PantallaActivando({ esAntena, conOlt }: { esAntena: boolean; conOlt: bo
             </div>
         </div>
     );
+}
+
+/** Lo que el asistente de antena necesita sin internet (en la casa del cliente). */
+function guardarAntenaDeOrden(data: Resultado) {
+    if (data.tipo_conexion !== 'radio' || !data.antena?.plantilla || !data.orden_id) return;
+    localStorage.setItem(`antena-orden:${data.orden_id}`, JSON.stringify({
+        nombre: data.nombre, contrato: data.contrato, usuario_pppoe: data.usuario_pppoe,
+        password_pppoe: data.password_pppoe, plantilla: data.antena.plantilla,
+    }));
 }
