@@ -6,7 +6,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // CapacitorHttp sin bloqueos de CORS ni de contenido mixto.
 const config: CapacitorConfig = {
   appId: 'com.fdezpay.tecnico',
-  appName: 'FdezPay Técnico',
+  appName: 'FdezNet Técnico',
   webDir: 'dist',
   server: {
     url: 'https://fdezpay.com/',
