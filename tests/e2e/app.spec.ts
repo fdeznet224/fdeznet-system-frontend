@@ -2816,8 +2816,9 @@ test('pool de antenas: ver IP libres, de clientes, sin registro y liberar la de 
   page.on('dialog', (dialogo) => dialogo.accept())
 
   await page.goto('/admin/redes')
-  await expect(page.getByText('📡 Pool de antenas · desde 13.13.13.11').first()).toBeVisible()
-  await page.getByRole('button', { name: /Ver IPs/ }).first().click()
+  // Tabla en escritorio y tarjetas en celular: solo cuenta lo visible.
+  await expect(page.getByText('📡 Pool de antenas · desde 13.13.13.11').filter({ visible: true })).toBeVisible()
+  await page.getByRole('button', { name: /Ver IPs/ }).filter({ visible: true }).click()
   await expect(page.getByText('2 IP disponibles para antenas nuevas')).toBeVisible()
   await expect(page.getByText('Ana López')).toBeVisible()
   await expect(page.getByText('No responde')).toBeVisible()

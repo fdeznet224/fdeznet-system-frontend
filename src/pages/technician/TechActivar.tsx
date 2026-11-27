@@ -1,6 +1,7 @@
+import { esAppNativa } from '@/native/airos';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
     ArrowLeftIcon,
@@ -587,6 +588,11 @@ export default function TechActivar() {
                                 </span>
                             )}
                         </label>
+                    )}
+                    {esAntena && esAppNativa() && (
+                        <Link to="/tech/antena" className="block rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
+                            📡 Abrir asistente de antena (buscar, sectores y señal)
+                        </Link>
                     )}
                     {esAntena && (
                         <label className="block"><span className={etiqueta}>MAC de la WAN de la antena{esDhcp ? '' : ' (opcional)'}</span>

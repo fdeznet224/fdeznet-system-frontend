@@ -68,6 +68,7 @@ const ClientTechView = lazy(() => import('@/pages/technician/ClientTechView'));
 const TechSearch = lazy(() => import('@/pages/technician/TechSearch'));
 const TechInstallForm = lazy(() => import('@/pages/technician/TechInstallForm'));
 const TechActivar = lazy(() => import('@/pages/technician/TechActivar'));
+const TechAntena = lazy(() => import('@/pages/technician/TechAntena'));
 const TechSimulador = lazy(() => import('@/pages/technician/TechSimulador'));
 const QrScanner = lazy(() => import('@/pages/tools/QrScanner'));
 const OltRadarVsolPage = lazy(() => import('@/pages/infraestructura/olts/OltRadarVsolPage'));
@@ -197,6 +198,7 @@ function App() {
             <Route path="/scanner" element={protectedPage(<QrScanner />, ['tecnico'])} />
             <Route path="/tech/dashboard" element={protectedPage(<TechDashboard />, ['tecnico'])} />
             <Route path="/tech/buscar" element={protectedPage(<TechSearch />, ['tecnico'])} />
+            <Route path="/tech/antena" element={protectedPage(<TechAntena />, ['tecnico', 'admin'])} />
             <Route path="/tech/cliente/:cedula" element={protectedPage(<ClientTechView />, ['tecnico'])} />
             <Route path="/tech/instalar/:cedula" element={protectedPage(<TechInstallForm />, ['tecnico'])} />
             <Route path="/tech/activar/:ordenId" element={protectedPage(<TechActivar />, ['tecnico'])} />

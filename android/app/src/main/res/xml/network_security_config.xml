@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Las antenas Ubiquiti de fábrica solo hablan HTTP (192.168.1.20) y con
+     certificado propio en HTTPS: se permite HTTP sin cifrar y se confía en
+     certificados del usuario/sistema. El sistema (fdezpay.com) sigue en HTTPS. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
