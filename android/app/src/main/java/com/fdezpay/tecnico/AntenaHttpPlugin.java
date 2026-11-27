@@ -31,6 +31,11 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import android.content.Context;
+import android.media.AudioManager;
+import android.media.ToneGenerator;
+import android.os.PowerManager;
+
 /**
  * HTTP hacia las antenas Ubiquiti de la red local. airOS obliga a HTTPS con
  * un certificado autofirmado que Android rechaza; aquí se acepta, pero SOLO
@@ -136,6 +141,119 @@ public class AntenaHttpPlugin extends Plugin {
                 if (conexion != null) conexion.disconnect();
             }
         });
+    }
+
+    // ------------------------------------------------------------ pitido
+    // Para alinear con las dos manos: lee la señal de la antena y pita más
+    // rápido y más agudo mientras mejor sea. Corre aquí (no en la página) para
+    // que siga con el celular bloqueado; mantiene la CPU despierta mientras pita.
+    private final java.util.concurrent.atomic.AtomicInteger sesionPitido = new java.util.concurrent.atomic.AtomicInteger();
+    private volatile int senalActual = 0;
+    private volatile boolean enlazadaActual = false;
+    private PowerManager.WakeLock despierto;
+    private static final long MAXIMO_PITIDO_MS = 30 * 60 * 1000L;
+
+    @PluginMethod
+    public void iniciarPitido(PluginCall call) {
+        final String url = call.getString("url", "");
+        final String cookie = call.getString("cookie", "");
+        try {
+            if (!esIpLocal(new URL(url).getHost())) {
+                call.reject("Solo se permiten IPs de la red local");
+                return;
+            }
+        } catch (Exception e) {
+            call.reject("URL inválida");
+            return;
+        }
+        detener();
+        PowerManager energia = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+        despierto = energia.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FdezNet:alinear");
+        despierto.acquire(MAXIMO_PITIDO_MS);
+        final long inicio = System.currentTimeMillis();
+        final int sesion = sesionPitido.incrementAndGet();
+        Thread lector = new Thread(() -> {
+            while (sesionPitido.get() == sesion && System.currentTimeMillis() - inicio < MAXIMO_PITIDO_MS) {
+                leerSenal(url, cookie);
+                dormir(1000);
+            }
+        });
+        Thread pitador = new Thread(() -> {
+            ToneGenerator tono = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
+            try {
+                while (sesionPitido.get() == sesion && System.currentTimeMillis() - inicio < MAXIMO_PITIDO_MS) {
+                    if (!enlazadaActual) {
+                        tono.startTone(ToneGenerator.TONE_PROP_NACK, 400);
+                        dormir(2500);
+                        continue;
+                    }
+                    int s = senalActual;
+                    // Más señal = más agudo y más seguido (como un detector).
+                    int tipo = s >= -60 ? ToneGenerator.TONE_DTMF_D : s >= -68 ? ToneGenerator.TONE_DTMF_9
+                        : s >= -75 ? ToneGenerator.TONE_DTMF_5 : ToneGenerator.TONE_DTMF_1;
+                    long pausa = s >= -60 ? 150 : s >= -65 ? 300 : s >= -70 ? 550 : s >= -75 ? 850 : 1300;
+                    tono.startTone(tipo, 90);
+                    dormir(90 + pausa);
+                }
+            } finally {
+                tono.release();
+            }
+        });
+        lector.start();
+        pitador.start();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void detenerPitido(PluginCall call) {
+        detener();
+        call.resolve();
+    }
+
+    private void detener() {
+        sesionPitido.incrementAndGet();
+        if (despierto != null && despierto.isHeld()) despierto.release();
+        despierto = null;
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        detener();
+        super.handleOnDestroy();
+    }
+
+    private void leerSenal(String url, String cookie) {
+        HttpURLConnection conexion = null;
+        try {
+            conexion = (HttpURLConnection) new URL(url).openConnection();
+            if (conexion instanceof HttpsURLConnection) {
+                ((HttpsURLConnection) conexion).setSSLSocketFactory(fabricaSinValidar());
+                ((HttpsURLConnection) conexion).setHostnameVerifier((n, x) -> true);
+            }
+            conexion.setConnectTimeout(3000);
+            conexion.setReadTimeout(3000);
+            conexion.setInstanceFollowRedirects(false);
+            if (cookie != null && !cookie.isEmpty()) conexion.setRequestProperty("Cookie", cookie);
+            if (conexion.getResponseCode() != 200) return;
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            InputStream entrada = conexion.getInputStream();
+            byte[] bufer = new byte[8192];
+            int leidos;
+            while ((leidos = entrada.read(bufer)) != -1) bytes.write(bufer, 0, leidos);
+            JSONObject wifi = new JSONObject(bytes.toString("UTF-8")).optJSONObject("wireless");
+            if (wifi == null) return;
+            String ap = wifi.optString("apmac", "");
+            enlazadaActual = !ap.isEmpty() && !"00:00:00:00:00:00".equals(ap);
+            senalActual = wifi.optInt("signal", 0);
+        } catch (Exception e) {
+            enlazadaActual = false;
+        } finally {
+            if (conexion != null) conexion.disconnect();
+        }
+    }
+
+    private static void dormir(long ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException ignorado) { Thread.currentThread().interrupt(); }
     }
 
     private static void escribirFormulario(HttpURLConnection conexion, JSObject datos) throws Exception {

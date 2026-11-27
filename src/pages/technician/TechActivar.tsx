@@ -590,7 +590,7 @@ export default function TechActivar() {
                         </label>
                     )}
                     {esAntena && esAppNativa() && (
-                        <Link to="/tech/antena" className="block rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
+                        <Link to={`/tech/antena${ordenId ? `?orden=${ordenId}` : ''}`} className="block rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
                             📡 Abrir asistente de antena (buscar, sectores y señal)
                         </Link>
                     )}

@@ -8,9 +8,12 @@ const config: CapacitorConfig = {
   appId: 'com.fdezpay.tecnico',
   appName: 'FdezNet Técnico',
   webDir: 'dist',
+  // CAP_URL=http://localhost:4173/ arma la app de pruebas (scripts/celular.sh):
+  // carga la versión de la computadora por el cable USB en lugar del VPS.
   server: {
-    url: 'https://fdezpay.com/',
-    allowNavigation: ['fdezpay.com'],
+    url: process.env.CAP_URL || 'https://fdezpay.com/',
+    allowNavigation: ['fdezpay.com', 'localhost'],
+    cleartext: Boolean(process.env.CAP_URL),
   },
   plugins: {
     // Solo las llamadas a la antena van por lo nativo (se piden a mano);

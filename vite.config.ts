@@ -10,6 +10,23 @@ const CSP_PRODUCCION = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'
 export default defineConfig({
   preview: {
     headers: { 'Content-Security-Policy': CSP_PRODUCCION },
+    // Pruebas en el celular (scripts/celular.sh): la app carga esta versión
+    // por el cable USB y la API va al sistema real, con el mismo origen.
+    ...(process.env.CELULAR
+      ? {
+          host: '127.0.0.1',
+          port: 4173,
+          strictPort: true,
+          proxy: {
+            '/api': {
+              target: process.env.CELULAR_API || 'https://fdezpay.com',
+              changeOrigin: true,
+              secure: true,
+              headers: { origin: process.env.CELULAR_API || 'https://fdezpay.com' },
+            },
+          },
+        }
+      : {}),
   },
   resolve: {
     alias: {
