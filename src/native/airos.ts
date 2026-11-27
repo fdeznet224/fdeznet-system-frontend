@@ -41,6 +41,14 @@ export interface EstadoAntena {
     senal?: number | null;
     ruido?: number | null;
     ccq?: number | null;
+    /** airMAX: calidad y capacidad (%), y velocidades de enlace (Mbps). */
+    calidadAirmax?: number | null;
+    capacidadAirmax?: number | null;
+    txMbps?: number | null;
+    rxMbps?: number | null;
+    frecuencia?: string;
+    distanciaM?: number | null;
+    apMac?: string;
     enlazada: boolean;
 }
 
@@ -60,6 +68,7 @@ export class Antena {
     private cookie = '';
     private csrf = '';
     version: 6 | 8 | null = null;
+    private credenciales: { usuario: string; clave: string } | null = null;
 
     constructor(ip = IP_DE_FABRICA, https = true) {
         this.base = `${https ? 'https' : 'http'}://${ip}`;
@@ -129,6 +138,9 @@ export class Antena {
      * una LiteBeam M5 v6.3.11 de fábrica).
      */
     async entrar(usuario = USUARIO_DE_FABRICA, clave = CLAVE_DE_FABRICA): Promise<void> {
+        this.credenciales = { usuario, clave };
+        this.cookie = '';
+        this.csrf = '';
         const r8 = await this.pedir('/api/auth', { formulario: { username: usuario, password: clave } }).catch(() => null);
         if (r8 && r8.status === 200 && this.csrf) {
             this.version = 8;
@@ -149,7 +161,7 @@ export class Antena {
     }
 
     async estado(): Promise<EstadoAntena> {
-        type Valores = Record<string, string | number | undefined>;
+        type Valores = Record<string, string | number | undefined> & { polling?: Record<string, number> };
         const datos = Antena.json<{ host?: Valores; wireless?: Valores }>(await this.pedir('/status.cgi'));
         if (!datos) throw new Error('La antena no mostró su estado');
         const host: Valores = datos.host || {};
@@ -165,6 +177,13 @@ export class Antena {
             senal: numero(wifi.signal),
             ruido: numero(wifi.noisef),
             ccq: numero(wifi.ccq),
+            calidadAirmax: numero(wifi.polling?.quality),
+            capacidadAirmax: numero(wifi.polling?.capacity),
+            txMbps: numero(wifi.txrate),
+            rxMbps: numero(wifi.rxrate),
+            frecuencia: texto(wifi.frequency),
+            distanciaM: numero(wifi.distance),
+            apMac: texto(wifi.apmac),
             enlazada: Boolean(wifi.apmac) && wifi.apmac !== '00:00:00:00:00:00',
         };
     }
@@ -192,6 +211,118 @@ export class Antena {
         if (r.status !== 200 || !texto.includes('netconf.')) throw new Error('La antena no entregó su configuración');
         return texto;
     }
+    /**
+     * Cambia la configuración: baja system.cfg, aplica los cambios (clave → valor;
+     * null borra la línea), la sube por system.cgi (con el token de la página) y
+     * la aplica con apply.cgi. airOS reinicia sus servicios (~20 s) sin
+     * reiniciar el equipo; se espera a que vuelva y se entra otra vez.
+     * Probado con LiteBeam M5 v6.3.11.
+     */
+    async aplicarCambios(cambios: Record<string, string | null>): Promise<void> {
+        if (this.version === 8) throw new Error('Configurar airOS 8 todavía no está disponible');
+        const actual = await this.bajarConfiguracion();
+        const nueva = editarConfiguracion(actual, cambios);
+        const pagina = String((await this.pedir('/system.cgi')).data || '');
+        const token = (pagina.match(/name="token" value="([^"]*)"/) || [])[1] || '';
+        await this.pedir('/system.cgi', {
+            metodo: 'POST',
+            campos: [
+                { key: 'token', value: token, type: 'string' },
+                { key: 'cfgfile', value: aBase64(nueva), type: 'base64File', fileName: 'system.cfg', contentType: 'application/octet-stream' },
+                { key: 'cfgupload', value: 'Upload', type: 'string' },
+                { key: 'action', value: 'cfgupload', type: 'string' },
+            ],
+        });
+        const cargada = await this.bajarConfiguracion();
+        const falta = Object.entries(cambios).find(([clave, valor]) => valor !== null && !cargada.includes(`\n${clave}=${valor}\n`) && !cargada.startsWith(`${clave}=${valor}\n`));
+        if (falta) throw new Error(`La antena no aceptó la configuración (${falta[0]})`);
+        await this.pedir('/apply.cgi').catch(() => null);
+        await this.esperarRegreso();
+    }
+
+    /** Tras aplicar: espera a que deje de responder y vuelva (máx. ~2 min), y entra. */
+    async esperarRegreso(maximoMs = 120000): Promise<void> {
+        const inicio = Date.now();
+        await esperar(5000);
+        while (Date.now() - inicio < maximoMs) {
+            if (await this.responde()) {
+                if (this.credenciales) {
+                    try {
+                        await this.entrar(this.credenciales.usuario, this.credenciales.clave);
+                        return;
+                    } catch {
+                        /* aún arrancando su web */
+                    }
+                } else {
+                    return;
+                }
+            }
+            await esperar(3000);
+        }
+        throw new Error('La antena no volvió después de aplicar la configuración');
+    }
+
+    /**
+     * Enlaza la antena (estación WDS) al sector elegido, fijada a su MAC.
+     * WPA/WPA2 personal va por wpa_supplicant, como en las antenas de clientes.
+     */
+    async conectarSector(sector: Sector, claveWifi?: string): Promise<void> {
+        const abierto = !sector.seguridad || sector.seguridad === 'none';
+        if (!abierto && (!claveWifi || claveWifi.length < 8)) throw new Error('Falta la clave WiFi del sector (mínimo 8 caracteres)');
+        const cambios: Record<string, string | null> = {
+            'radio.1.mode': 'Managed',
+            'wireless.1.ssid': sector.ssid,
+            'wireless.1.ap': sector.mac,
+            'wireless.1.wds.status': 'enabled',
+            'wireless.1.security.type': 'none',
+        };
+        if (abierto) {
+            Object.assign(cambios, { 'wpasupplicant.status': 'disabled', 'wpasupplicant.device.1.status': 'disabled' });
+        } else {
+            Object.assign(cambios, {
+                'wpasupplicant.status': 'enabled',
+                'wpasupplicant.device.1.status': 'enabled',
+                'wpasupplicant.device.1.devname': 'ath0',
+                'wpasupplicant.device.1.driver': 'madwifi',
+                'wpasupplicant.device.1.profile': 'WPA-PSK',
+                'wpasupplicant.profile.1.name': 'WPA-PSK',
+                'wpasupplicant.profile.1.network.1.ssid': sector.ssid,
+                'wpasupplicant.profile.1.network.1.bssid': '',
+                'wpasupplicant.profile.1.network.1.psk': claveWifi as string,
+                'wpasupplicant.profile.1.network.1.key_mgmt.1.name': 'WPA-PSK',
+                'wpasupplicant.profile.1.network.1.pairwise.1.name': 'CCMP',
+                // "wpa" = WPA1 (proto WPA); "wpa2" = RSN.
+                'wpasupplicant.profile.1.network.1.proto.1.name': sector.seguridad === 'wpa' ? 'WPA' : 'RSN',
+                'wpasupplicant.profile.1.network.1.eap.1.status': 'disabled',
+            });
+        }
+        await this.aplicarCambios(cambios);
+    }
+}
+
+function esperar(ms: number) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function aBase64(texto: string): string {
+    const bytes = new TextEncoder().encode(texto);
+    let binario = '';
+    bytes.forEach((b) => { binario += String.fromCharCode(b); });
+    return btoa(binario);
+}
+
+/** Cambia, agrega o borra (null) líneas "clave=valor" de un system.cfg, ordenado como airOS. */
+export function editarConfiguracion(cfg: string, cambios: Record<string, string | null>): string {
+    const lineas = new Map<string, string>();
+    for (const linea of cfg.split(/\r?\n/)) {
+        const i = linea.indexOf('=');
+        if (i > 0) lineas.set(linea.slice(0, i), linea.slice(i + 1));
+    }
+    for (const [clave, valor] of Object.entries(cambios)) {
+        if (valor === null) lineas.delete(clave);
+        else lineas.set(clave, valor);
+    }
+    return [...lineas.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([c, v]) => `${c}=${v}`).join('\n') + '\n';
 }
 
 /** Busca la antena en la IP de fábrica (HTTP y HTTPS). */
