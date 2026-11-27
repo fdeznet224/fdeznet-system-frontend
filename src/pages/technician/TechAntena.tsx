@@ -96,7 +96,8 @@ export default function TechAntena() {
         );
     }
 
-    const calidad = calidadSenal(estado?.senal);
+    // Sin enlace airOS reporta señal 0: no es "Excelente".
+    const calidad = calidadSenal(estado?.enlazada ? estado.senal : null);
 
     return (
         <div className="mx-auto flex max-w-md flex-col gap-4 p-4 pb-24">
