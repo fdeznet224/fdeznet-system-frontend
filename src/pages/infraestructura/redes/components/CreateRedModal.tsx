@@ -22,7 +22,8 @@ const getErrorMessage = (error: unknown) => {
 
 export default function CreateRedModal({ isOpen, onClose, onSuccess, routers, redToEdit }: Props) {
     const [formData, setFormData] = useState({
-        nombre: '', cidr: '', gateway: '', router_id: ''
+        nombre: '', cidr: '', gateway: '', router_id: '',
+        tipo: 'clientes' as 'clientes' | 'antenas', ip_inicio: '', ip_fin: ''
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,10 +35,13 @@ export default function CreateRedModal({ isOpen, onClose, onSuccess, routers, re
                     nombre: redToEdit.nombre,
                     cidr: redToEdit.cidr,
                     gateway: redToEdit.gateway ?? '',
-                    router_id: redToEdit.router_id.toString()
+                    router_id: redToEdit.router_id.toString(),
+                    tipo: redToEdit.tipo ?? 'clientes',
+                    ip_inicio: redToEdit.ip_inicio ?? '',
+                    ip_fin: redToEdit.ip_fin ?? ''
                 });
             } else {
-                setFormData({ nombre: '', cidr: '', gateway: '', router_id: '' });
+                setFormData({ nombre: '', cidr: '', gateway: '', router_id: '', tipo: 'clientes', ip_inicio: '', ip_fin: '' });
             }
         }
     }, [isOpen, redToEdit]);
@@ -74,7 +78,7 @@ export default function CreateRedModal({ isOpen, onClose, onSuccess, routers, re
         /* ✅ ADAPTADO: Backdrop adaptativo */
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-colors">
             {/* ✅ ADAPTADO: Contenedor adaptativo */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg shadow-2xl overflow-hidden transition-colors duration-300">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl transition-colors duration-300">
                 
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 transition-colors">
@@ -105,6 +109,26 @@ export default function CreateRedModal({ isOpen, onClose, onSuccess, routers, re
                             <option value="">Selecciona un Router...</option>
                             {routers.map(r => <option key={r.id} value={r.id} className="bg-white dark:bg-slate-900">{r.nombre} ({r.ip_vpn})</option>)}
                         </select>
+                    </div>
+
+                    {/* Tipo */}
+                    <div>
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Uso de la red</span>
+                        <div className="grid grid-cols-2 gap-2">
+                            {([['clientes', 'IP de clientes'], ['antenas', 'Pool de antenas (radio)']] as const).map(([valor, nombre]) => (
+                                <button key={valor} type="button" onClick={() => setFormData({ ...formData, tipo: valor })}
+                                    className={`rounded-xl border p-2.5 text-sm font-bold transition-colors ${formData.tipo === valor
+                                        ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
+                                        : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400'}`}>
+                                    {nombre}
+                                </button>
+                            ))}
+                        </div>
+                        {formData.tipo === 'antenas' && (
+                            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                                IP de administración de las antenas de los clientes. Al activar un cliente de radio el sistema le da la siguiente libre.
+                            </p>
+                        )}
                     </div>
 
                     {/* Nombre */}
@@ -140,6 +164,25 @@ export default function CreateRedModal({ isOpen, onClose, onSuccess, routers, re
                                 value={formData.gateway} onChange={e => setFormData({...formData, gateway: e.target.value})}
                             />
                         </div>
+                        <div>
+                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 mb-1 block">Rango: desde (opcional)</label>
+                            <input type="text"
+                                className="w-full bg-white dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-slate-900 dark:text-white font-mono text-sm focus:border-emerald-500 outline-none transition-colors"
+                                placeholder={formData.tipo === 'antenas' ? '13.13.13.11' : 'toda la red'}
+                                value={formData.ip_inicio} onChange={e => setFormData({...formData, ip_inicio: e.target.value})}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 mb-1 block">Rango: hasta (opcional)</label>
+                            <input type="text"
+                                className="w-full bg-white dark:bg-[#0b0c10] border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-slate-900 dark:text-white font-mono text-sm focus:border-emerald-500 outline-none transition-colors"
+                                placeholder={formData.tipo === 'antenas' ? '13.13.13.254' : 'toda la red'}
+                                value={formData.ip_fin} onChange={e => setFormData({...formData, ip_fin: e.target.value})}
+                            />
+                        </div>
+                        <p className="col-span-2 text-[11px] text-slate-500 dark:text-slate-400">
+                            Deja fuera del rango las IP de AP, PtP y OLT.
+                        </p>
                     </div>
 
                     {/* Botones */}

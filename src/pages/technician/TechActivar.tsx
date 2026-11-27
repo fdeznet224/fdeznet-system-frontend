@@ -51,6 +51,8 @@ interface Catalogo {
         router?: Opcion & { modo: string } | null;
         olt?: Opcion | null;
         red?: Opcion & { cidr?: string } | null;
+        /** Con pool de antenas en el MikroTik, la IP de la antena la da el sistema. */
+        pool_antenas?: Opcion & { cidr?: string } | null;
         planes: (Opcion & { precio: number })[];
         naps: (Opcion & { capacidad: number })[];
         plantilla_id?: number | null;
@@ -303,7 +305,7 @@ export default function TechActivar() {
         if (!esAntena && infra?.olt && !onuElegida && normalizarSerie(form.onu).length < SERIE_MINIMA) {
             return toast.error('Escribe, escanea o elige el serial/MAC de la ONU instalada');
         }
-        if (esAntena && !(form.ip_antena || '').trim()) return toast.error('Falta la IP de administración de la antena');
+        if (esAntena && !infra?.pool_antenas && !(form.ip_antena || '').trim()) return toast.error('Falta la IP de administración de la antena');
         if (!esAntena && form.caja_nap_id && !form.puerto_nap) return toast.error('Indica el puerto de la caja NAP');
         if (!form.latitud || !form.longitud) return toast.error('Falta capturar la ubicación GPS');
         if (esDhcp && !form.mac_address.trim()) {
@@ -577,8 +579,14 @@ export default function TechActivar() {
                         </p>
                     )}
                     {esAntena && (
-                        <label className="block"><span className={etiqueta}>IP de administración de la antena</span>
-                            <input value={form.ip_antena || ''} onChange={(e) => cambiar({ ip_antena: e.target.value })} placeholder="192.168.1.20" inputMode="decimal" className={`${campo} font-mono`} /></label>
+                        <label className="block"><span className={etiqueta}>IP de administración de la antena{infra?.pool_antenas ? ' (opcional)' : ''}</span>
+                            <input value={form.ip_antena || ''} onChange={(e) => cambiar({ ip_antena: e.target.value })} placeholder={infra?.pool_antenas ? 'Automática del pool' : '192.168.1.20'} inputMode="decimal" className={`${campo} font-mono`} />
+                            {infra?.pool_antenas && (
+                                <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                                    Déjala vacía: al activar el sistema da la siguiente libre de {infra.pool_antenas.cidr || infra.pool_antenas.nombre}.
+                                </span>
+                            )}
+                        </label>
                     )}
                     {esAntena && (
                         <label className="block"><span className={etiqueta}>MAC de la WAN de la antena{esDhcp ? '' : ' (opcional)'}</span>

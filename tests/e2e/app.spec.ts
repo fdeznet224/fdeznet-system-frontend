@@ -2783,3 +2783,50 @@ test('red inalámbrica: árbol MikroTik → PtP → AP → clientes y alta de un
   await expect.poll(() => enviados.length).toBe(1)
   expect(enviados[0]).toMatchObject({ nombre: 'AP Sagrado Sur', tipo: 'ap', ip: '10.1.0.4', router_id: 2, padre_id: 1, usuario: 'ubnt' })
 })
+
+test('pool de antenas: ver IP libres, de clientes, sin registro y liberar la de una baja', async ({ page }) => {
+  await authenticateAs(page)
+  await mockApi(page)
+  const liberadas: unknown[] = []
+  let liberada = false
+  await page.route('**/api/network/routers/', (route) => route.fulfill({ json: [{ id: 4, nombre: 'Flores Magon', ip_vpn: '10.8.0.4' }] }))
+  await page.route('**/api/network/redes/', (route) => route.fulfill({ json: [
+    { id: 3, router_id: 4, nombre: 'Clientes_Flores_Magon', cidr: '10.10.11.0/24', gateway: '10.10.11.1', tipo: 'clientes', ip_inicio: null, ip_fin: null },
+    { id: 7, router_id: 4, nombre: 'Antenas Flores Magon', cidr: '13.13.13.0/24', gateway: '13.13.13.1', tipo: 'antenas', ip_inicio: '13.13.13.11', ip_fin: '13.13.13.14' },
+  ] }))
+  await page.route('**/api/network/redes/7/mapa-ips', (route) => route.fulfill({ json: {
+    red: { id: 7, nombre: 'Antenas Flores Magon', cidr: '13.13.13.0/24', gateway: '13.13.13.1', tipo: 'antenas', ip_inicio: '13.13.13.11', ip_fin: '13.13.13.14' },
+    ips: [
+      { ip: '13.13.13.3', estado: 'equipo', en_rango: false, detalle: 'FdezNet-90-sec2' },
+      { ip: '13.13.13.11', estado: 'cliente', en_rango: true, detalle: 'Ana López', cliente_estado: 'activo', responde: false },
+      liberada
+        ? { ip: '13.13.13.12', estado: 'libre', en_rango: true }
+        : { ip: '13.13.13.12', estado: 'baja', en_rango: true, detalle: 'Beto Ruiz', cliente_estado: 'cancelado' },
+      { ip: '13.13.13.13', estado: 'mikrotik', en_rango: true, detalle: 'Equipo en ARP: 60:22:32:B2:CF:FA' },
+      { ip: '13.13.13.14', estado: 'libre', en_rango: true },
+    ],
+    resumen: { libre: liberada ? 2 : 1, cliente: 1, baja: liberada ? 0 : 1, mikrotik: 1, equipo: 1, gateway: 0, disponibles: 2 },
+    mikrotik_verificado: true, error: null,
+  } }))
+  await page.route('**/api/network/redes/7/liberar', (route) => {
+    liberadas.push(route.request().postDataJSON())
+    liberada = true
+    return route.fulfill({ json: { ip: '13.13.13.12', liberada: true, clientes: 1 } })
+  })
+  page.on('dialog', (dialogo) => dialogo.accept())
+
+  await page.goto('/admin/redes')
+  await expect(page.getByText('📡 Pool de antenas · desde 13.13.13.11').first()).toBeVisible()
+  await page.getByRole('button', { name: /Ver IPs/ }).first().click()
+  await expect(page.getByText('2 IP disponibles para antenas nuevas')).toBeVisible()
+  await expect(page.getByText('Ana López')).toBeVisible()
+  await expect(page.getByText('No responde')).toBeVisible()
+  await expect(page.getByText('Equipo en ARP: 60:22:32:B2:CF:FA')).toBeVisible()
+  await expect(page.getByText('fuera del rango')).toBeVisible()
+  if (process.env.CAPTURAS) await page.screenshot({ path: `${process.env.CAPTURAS}/pool-antenas.png`, fullPage: true })
+  await page.getByRole('button', { name: 'Liberar' }).click()
+  await expect.poll(() => liberadas).toEqual([{ ip: '13.13.13.12' }])
+  await expect(page.getByText('Beto Ruiz')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Sin uso · 0' }).click()
+  await expect(page.getByText('No hay IP en este filtro.')).toBeVisible()
+})

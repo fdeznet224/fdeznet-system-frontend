@@ -3,6 +3,7 @@ import client from '@/api/axios';
 import { toast } from 'react-hot-toast';
 import { PlusIcon, ArrowPathIcon, ServerIcon, TrashIcon, MagnifyingGlassIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import CreateRedModal from './components/CreateRedModal';
+import MapaIpsModal from './components/MapaIpsModal';
 import type { RedRecord, RouterOption } from './types';
 import { apiErrorMessage } from '@/utils/apiError';
 import { EncabezadoPagina } from '@/components/ui/Pagina';
@@ -24,6 +25,7 @@ export default function RedesIP() {
     });
 
     const [testingId, setTestingId] = useState<number | null>(null);
+    const [mapaDe, setMapaDe] = useState<RedRecord | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -31,12 +33,11 @@ export default function RedesIP() {
             const resRouters = await client.get<RouterOption[]>('/network/routers/');
             setRouters(resRouters.data);
 
-            let url = '/network/redes/';
-            if (selectedRouter !== 'all') {
-                url = `/network/redes/router/${selectedRouter}`;
-            }
-            const resRedes = await client.get<RedRecord[]>(url);
-            setRedes(resRedes.data);
+            // Todas (clientes y pools de antenas); el filtro por router es local.
+            const resRedes = await client.get<RedRecord[]>('/network/redes/');
+            setRedes(selectedRouter === 'all'
+                ? resRedes.data
+                : resRedes.data.filter(r => String(r.router_id) === selectedRouter));
 
         } catch {
             toast.error("Error al cargar topología de red");
@@ -85,7 +86,7 @@ export default function RedesIP() {
 
             <EncabezadoPagina
                 titulo="Gestión de Redes (IPAM)"
-                descripcion="Segmentos de red y pools de IPs para clientes."
+                descripcion="Redes de IP de clientes y pools de IP de antenas de radio."
                 acciones={(
                     <>
                         <select aria-label="Router" value={selectedRouter} onChange={(e) => setSelectedRouter(e.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
@@ -136,7 +137,10 @@ export default function RedesIP() {
                                     const routerAsignado = routers.find(r => r.id === red.router_id);
                                     return (
                                         <tr key={red.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors group bg-transparent">
-                                            <td className="px-6 py-4 font-bold text-slate-800 dark:text-white text-sm">{red.nombre}</td>
+                                            <td className="px-6 py-4 font-bold text-slate-800 dark:text-white text-sm">
+                                                {red.nombre}
+                                                <TipoRed red={red} />
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-500/20 dark:border-emerald-400/20 inline-block">
                                                     {red.cidr}
@@ -155,14 +159,18 @@ export default function RedesIP() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <button
+                                                {red.tipo === 'antenas' ? (
+                                                    <button onClick={() => setMapaDe(red)} className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/20 px-3 py-1.5 rounded-lg border border-violet-200 dark:border-violet-500/20 transition-all active:scale-95">
+                                                        <MagnifyingGlassIcon className="w-3.5 h-3.5" /> Ver IPs
+                                                    </button>
+                                                ) : <button
                                                     onClick={() => handleCheckFreeIP(red.id)}
                                                     disabled={testingId === red.id}
                                                     className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-white bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-600 dark:hover:bg-blue-600 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
                                                 >
                                                     {testingId === red.id ? <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" /> : <MagnifyingGlassIcon className="w-3.5 h-3.5" />}
                                                     {testingId === red.id ? 'Calculando...' : 'Verificar'}
-                                                </button>
+                                                </button>}
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
@@ -193,6 +201,7 @@ export default function RedesIP() {
                                         <div className="flex justify-between items-start gap-2">
                                             <div>
                                                 <h3 className="font-bold text-slate-800 dark:text-white text-sm leading-tight truncate max-w-[160px]">{red.nombre}</h3>
+                                                <TipoRed red={red} />
                                                 <p className="text-xs text-slate-400 dark:text-slate-500 font-bold mt-0.5">Nodo: {routerAsignado?.nombre || 'Desconocido'}</p>
                                             </div>
                                             <span className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-500/20 dark:border-emerald-400/20 shrink-0">
@@ -219,14 +228,18 @@ export default function RedesIP() {
 
                                         {/* Botones Operativos del Segmento */}
                                         <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800/60 pt-2 mt-0.5">
-                                            <button
+                                            {red.tipo === 'antenas' ? (
+                                                <button onClick={() => setMapaDe(red)} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300 font-extrabold rounded-lg text-xs shadow-sm transition-all active:scale-[0.98]">
+                                                    <MagnifyingGlassIcon className="w-3.5 h-3.5" /> <span>Ver IPs del pool</span>
+                                                </button>
+                                            ) : <button
                                                 onClick={() => handleCheckFreeIP(red.id)}
                                                 disabled={testingId === red.id}
                                                 className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 font-extrabold rounded-lg text-xs shadow-sm transition-all active:scale-[0.98]"
                                             >
                                                 {testingId === red.id ? <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" /> : <MagnifyingGlassIcon className="w-3.5 h-3.5" />}
                                                 <span>{testingId === red.id ? 'Calculando...' : 'Escanear IP Libre'}</span>
-                                            </button>
+                                            </button>}
 
                                             <button onClick={() => setModalConfig({ isOpen: true, red })} className="p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-blue-600 dark:hover:text-white rounded-lg active:scale-90 transition-all shrink-0">
                                                 <PencilSquareIcon className="w-4 h-4" />
@@ -245,6 +258,8 @@ export default function RedesIP() {
                 </div>
             </div>
 
+            <MapaIpsModal red={mapaDe} onClose={() => setMapaDe(null)} />
+
             {/* MODAL REUTILIZABLE (Crear/Editar) */}
             <CreateRedModal
                 isOpen={modalConfig.isOpen}
@@ -254,5 +269,14 @@ export default function RedesIP() {
                 routers={routers}
             />
         </div>
+    );
+}
+
+function TipoRed({ red }: { red: RedRecord }) {
+    if (red.tipo !== 'antenas') return null;
+    return (
+        <span className="mt-1 block w-fit rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:bg-violet-500/10 dark:text-violet-300">
+            📡 Pool de antenas{red.ip_inicio ? ` · desde ${red.ip_inicio}` : ''}
+        </span>
     );
 }
