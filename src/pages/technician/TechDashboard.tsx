@@ -1,3 +1,4 @@
+import { esAppNativa } from '@/native/airos';
 import { useState, useEffect, type ComponentType } from 'react';
 import { useNavigate } from 'react-router-dom';
 import client from '../../api/axios';
@@ -15,6 +16,7 @@ import {
     PlusIcon,
     MapIcon,
     CalendarDaysIcon,
+    SignalIcon,
 } from '@heroicons/react/24/outline';
 
 import ChatModal from '@/components/chat/ChatModal';
@@ -452,6 +454,15 @@ export default function TechDashboard() {
                         >
                             <CalendarDaysIcon className="h-5 w-5" /> Simular cobro para un cliente
                         </button>
+                        {esAppNativa() && (
+                            <button
+                                type="button"
+                                onClick={() => navigate('/tech/antena')}
+                                className={`${BOTON_SECUNDARIO} h-12 w-full rounded-2xl text-sm`}
+                            >
+                                <SignalIcon className="h-5 w-5" /> Asistente de antena
+                            </button>
+                        )}
                     </div>
                 )}
 
