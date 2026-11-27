@@ -6,7 +6,7 @@
  * por lo nativo (CapacitorHttp). La sesión de airOS es una cookie que se
  * guarda aquí y se manda a mano, sin depender del gestor de cookies.
  */
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor, CapacitorCookies, registerPlugin } from '@capacitor/core';
 
 interface HttpResponse {
     status: number;
@@ -162,6 +162,9 @@ export class Antena {
         this.credenciales = { usuario, clave };
         this.cookie = '';
         this.csrf = '';
+        // Android guarda solo las cookies (CookieManager): si ya se entró antes a
+        // esta antena, airOS no manda sesión nueva y la de aquí queda vacía.
+        await CapacitorCookies.clearCookies({ url: this.base }).catch(() => undefined);
         const r8 = await this.pedir('/api/auth', { formulario: { username: usuario, password: clave } }).catch(() => null);
         if (r8 && r8.status === 200 && this.csrf) {
             this.version = 8;
